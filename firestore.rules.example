@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function isStaff() {
+      return signedIn() && userDoc().data.role in ['teacher', 'admin'];
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isStaff();
+    }
+
+    match /courses/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    match /lessons/{id} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+
+    match /progress/{id} {
+      allow read: if signedIn() && (
+        resource == null || resource.data.userId == request.auth.uid
+      );
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /posts/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if signedIn();
+      allow delete: if signedIn() && resource.data.authorId == request.auth.uid;
+
+      match /comments/{cid} {
+        allow read: if signedIn();
+        allow create: if signedIn();
+      }
+    }
+
+    match /announcements/{id} {
+      allow read: if signedIn();
+      allow write: if isStaff();
+    }
+  }
+}

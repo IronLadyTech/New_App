@@ -1,0 +1,35 @@
+# Render Blueprint — deploy from repo root with Root Directory = il-guide-api
+# Dashboard: New → Blueprint → connect this repo, or set Root Directory manually.
+
+services:
+  - type: web
+    name: il-guide-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: IL_GUIDE_API_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"
+      # Optional — add a Render Redis instance and paste its Internal URL:
+      # - key: REDIS_URL
+      #   fromService:
+      #     name: il-guide-redis
+      #     type: redis
+      #     property: connectionString
+
+# Optional Redis for nudge rotation (uncomment service + REDIS_URL above):
+#  - type: redis
+#    name: il-guide-redis
+#    plan: free
+#    maxmemoryPolicy: allkeys-lru
+#    ipAllowList: []

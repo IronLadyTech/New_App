@@ -1,0 +1,271 @@
+PAGES 7
+
+---PAGE 1---
+Iron Lady App + LMS 
+Content, CMS & Video Architecture 
+Architecture & Storage Strategy Documentation 
+1. Executive Summary 
+The recommended architecture keeps the App and Web LMS as separate user experiences while sharing 
+the same participant identity, business rules, progress and content source of truth. A dedicated CMS allows 
+the Customer Experience (CX) team to continuously publish events, assignments, reminders, 
+announcements, videos, podcasts, testimonials, activities and community content without developer 
+changes. 
+Core principle: Firebase is the application/data brain; Firebase Storage holds files; a dedicated video 
+platform handles video streaming; Zoho remains the CRM/payment/enrollment source; Cloud Functions 
+enforce business rules and integrations; the CMS controls what content is published. 
+2. Product Structure: App + LMS 
+Use both products rather than forcing one product to do everything. 
+ Mobile App: daily engagement layer — notifications, short tasks, community, short videos, activities, 
+testimonials and announcements. 
+ Web LMS: deep learning/work layer — structured courses, detailed assignments, long-form learning, 
+progress and reporting. 
+ Both use the same backend/business rules so participant progress remains synchronized. 
+3. Shared Source of Truth 
+Do not synchronize App → LMS directly. Both products read/write the same backend source of truth. 
+Example: if a participant completes Task 2 in the App, the shared progress state is updated; Task 3 can 
+then become available in the LMS. 
+Recommended identity model: 
+ Use a stable participant/Zoho Contact ID as the business identity. 
+ Map Firebase UID/phone authentication to that participant ID. 
+ Do not use phone number as the primary business key. 
+ Keep program/batch enrollment as separate records so one participant can belong to multiple programs. 
+4. Authentication & Access 
+LMS: Zoho username/password today. App: Firebase Phone + OTP. 
+After authentication, both resolve the same participant record and then check enrollment/payment/program 
+access. 
+Recommended access flow: 
+
+---PAGE 2---
+1. Authenticate user. 
+2. Resolve participant identity. 
+3. Load enrollments/programs/batches. 
+4. Check payment/access level. 
+5. Return only content the participant is entitled to access. 
+5. CMS for the CX Team 
+The CMS should be a first-class admin product. CX should not need a developer to add or update routine 
+content. 
+ Events 
+ Assignments 
+ Assignment reminders 
+ Announcements / important updates 
+ Session recordings 
+ Community videos 
+ Podcasts 
+ Testimonials 
+ Activities 
+ Resources / PDFs 
+ Banners 
+ Notifications 
+6. CMS Publishing Workflow 
+Recommended lifecycle: 
+DRAFT → REVIEW → APPROVED → PUBLISHED → ARCHIVED 
+Every content item should record who created/updated it, when it was published, its target audience and its 
+status. 
+7. Audience Targeting 
+CX should be able to target content by: 
+ Program: LEP / MBW / 100BM etc. 
+ Batch 
+ Participant status 
+ Payment/access level 
+ Persona/segment such as Tech, Marketing or HR where applicable 
+ Location where applicable 
+ Publish/start/end dates 
+8. Events & Reminders 
+An event should contain title, date, time, program, batch, description, meeting URL, status and reminder 
+rules. 
+
+---PAGE 3---
+Example reminder schedule: 1 day before, 30 minutes before and 10 minutes before. 
+The CMS creates the event; backend notification jobs deliver push notifications and can later integrate with 
+WhatsApp/email/SMS. 
+9. Content vs Learning Data 
+Separate general content from learning objects. 
+Content CMS: 
+ Announcement 
+ Article 
+ Video 
+ Podcast 
+ Community Video 
+ Testimonial 
+ Activity 
+ Event 
+ Resource 
+Learning CMS: 
+ Course 
+ Module 
+ Lesson 
+ Assignment 
+ Quiz 
+ Task 
+ Submission 
+ Progress 
+10. Storage Strategy 
+Data Recommended storage Reason 
+Participant, enrollment, payment/access 
+metadata 
+Firestore Fast application data and 
+business state 
+Course/module/task/progress metadata Firestore Shared source of truth 
+CMS metadata Firestore Searchable, filterable 
+content records 
+PDFs/documents/images/thumbnails/banners Firebase Storage File/object storage 
+Session recordings Cloudflare Stream or Mux Encoding, adaptive 
+streaming and CDN 
+Community videos Cloudflare Stream or Mux Efficient video delivery 
+Podcast video Cloudflare Stream or Mux Video streaming 
+Podcast audio Object storage/CDN or 
+suitable media service 
+Efficient audio delivery 
+Notifications/jobs Firestore + push notification 
+service 
+Scheduling and delivery 
+state 
+
+---PAGE 4---
+11. YouTube Unlisted Option 
+You can start with an existing YouTube channel and store only the YouTube video ID/link as CMS metadata. 
+The App/LMS can display an embedded player without showing a normal URL in the UI. 
+Example: 
+videos/V001 → provider: "youtube" → videoId: "abc123" 
+However, YouTube Unlisted is not strong access control. Unlisted means the video is not normally 
+discoverable, but anyone who obtains the link can potentially share it. Hiding the link in the UI does not 
+prevent extraction, sharing, screenshots/screen recording, or playback outside your platform. 
+12. Strong Video Security Option 
+For paid/high-value/private recordings, use a video streaming service that supports controlled playback, 
+such as Cloudflare Stream or Mux. 
+Recommended flow: 
+App/LMS → Firebase Auth → Cloud Function → verify participant/program/batch/payment → temporary 
+authorized playback → video player 
+ Do not expose permanent unrestricted video URLs. 
+ Validate access server-side; never trust frontend-only payment/access flags. 
+ Keep video provider credentials/secrets server-side. 
+ Use authenticated/signed playback where supported. 
+ Screen recording cannot be completely prevented on a user's device. 
+13. Hybrid Video Strategy 
+A practical cost-conscious model is to support multiple providers in the CMS. 
+ YouTube Unlisted: low-risk/general content, promotional videos, testimonials or content where link 
+sharing is acceptable. 
+ Cloudflare Stream/Mux: paid course recordings, private workshops, batch sessions and high-value 
+exclusive content. 
+Store a provider field so migration does not require redesigning the App/LMS: 
+provider: "youtube" / "cloudflare" / "mux" 
+14. Reusable Content Strategy 
+Do not upload the same reusable video separately for every batch. 
+Example: one 'Salary Negotiation Masterclass' video can be mapped to MBW-10, MBW-11 and MBW-12. 
+Use a video/content record plus batch/program mappings. 
+Conceptual structure: 
+videos/{videoId} → video metadata/provider ID 
+
+---PAGE 5---
+content/{contentId} → title/type/description/targeting 
+programContent/{mappingId} → programId/batchId/contentId 
+15. Suggested Firestore Structure 
+ participants/ 
+ programs/ 
+ batches/ 
+ enrollments/ 
+ courses/ 
+ modules/ 
+ lessons/ 
+ assignments/ 
+ tasks/ 
+ submissions/ 
+ progress/ 
+ content/ 
+ events/ 
+ announcements/ 
+ activities/ 
+ podcasts/ 
+ testimonials/ 
+ resources/ 
+ videos/ 
+ contentMedia/ 
+ notifications/ 
+ notificationJobs/ 
+ community/ 
+ communityPosts/ 
+ communityVideos/ 
+ cmsUsers/ 
+ auditLogs/ 
+16. Example Video Metadata 
+{ 
+  "title": "MBW Week 3 Session", 
+  "provider": "youtube", 
+  "videoId": "abc123xyz", 
+  "type": "session_recording", 
+  "duration": 72, 
+  "status": "published" 
+} 
+17. Security Requirements 
+ Firebase Authentication + Firestore Security Rules. 
+
+---PAGE 6---
+ Frontend must never be the final authority for payment or content access. 
+ Users must not directly edit paymentStatus, accessLevel or completion state. 
+ Cloud Functions should validate authenticated identity, enrollment and business rules. 
+ Zoho API credentials/secrets stay server-side. 
+ Use server timestamps. 
+ Use admin roles/custom claims for CMS access. 
+ Validate Zoho webhooks and run scheduled reconciliation. 
+ Use idempotent assignment submissions. 
+ Add audit logs for important CMS/admin changes. 
+ Keep development, staging and production environments separate. 
+ Moderate and secure community content. 
+18. Zoho Synchronization 
+Recommended model: 
+Zoho → webhook → Cloud Function → Firestore, with scheduled reconciliation as a backup. 
+For initial migration, import participants in pages/batches. For future updates, upsert using the stable Zoho 
+record ID rather than creating duplicate participants. 
+This lets App and LMS read current participant/payment/enrollment state quickly without querying Zoho on 
+every screen. 
+19. End-to-End Architecture 
+Zoho CRM/Payment/Enrollment 
+        ↓ 
+Firebase Auth + Firestore 
+        ↓ 
+Cloud Functions / Business Rules / Sync 
+        ↓ 
+CMS + Access Control + Notifications 
+        ↓ 
+ ┌───────────────┬─────────────────┐ 
+ │               │                 │ 
+ App             LMS          Media Services 
+ │               │                 │ 
+ └───────────────┴───────→ Video/CDN 
+ 
+Firebase Storage handles documents/images; Cloudflare Stream/Mux handles private video streaming; 
+YouTube Unlisted can be supported for low-risk content. 
+20. Strong Points to Showcase to the Team 
+ Login-based access: participants see content based on authenticated identity and enrollment. 
+ Participant-level authorization: program, batch and payment rules can be enforced centrally. 
+ No normal video URLs shown in the UI. 
+ Temporary/signed playback can be used for protected video. 
+
+---PAGE 7---
+ One content source works across both App and LMS. 
+ CX team can publish content without developer involvement. 
+ One reusable video can serve multiple batches. 
+ Video traffic is separated from Firebase application traffic. 
+ Architecture can scale as recordings and users grow. 
+ YouTube can be used initially and stronger video hosting can be introduced later without redesigning the 
+CMS. 
+21. Recommended Implementation Order 
+6. Finalize participant + enrollment identity model. 
+7. Build Firestore source of truth for participant/program/batch/access/progress. 
+8. Build CMS admin authentication and roles. 
+9. Build content creation/publishing workflow. 
+10. Add audience/program/batch targeting. 
+11. Add App + LMS content APIs/read models. 
+12. Add notification scheduling. 
+13. Add YouTube provider first if cost is the priority. 
+14. Add Cloudflare Stream/Mux provider for protected video. 
+15. Add audit logs, analytics and reconciliation. 
+16. Load-test for the 10,000+ user target. 
+22. Key Design Principle 
+The App and LMS should never be responsible for storing or securing videos. Firebase manages 
+identity, access, progress and content metadata; the video platform manages secure video 
+streaming; Zoho manages CRM/payment/enrollment data; Cloud Functions enforce business rules; 
+and the CMS gives CX control over what content is published to which program or batch. 
+ 
+Note: This document consolidates the architecture decisions and options discussed in this chat. Exact 
+vendor pricing should be rechecked before implementation because pricing can change. 

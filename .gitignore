@@ -32,6 +32,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+il-guide-api/.env
+il-guide-api/venv/
+il-guide-api/**/__pycache__/
 
 # typescript
 *.tsbuildinfo
