@@ -8,7 +8,7 @@ export default function EngageStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="Feed"
-        getComponent={() => require('../screens/engage/FeedScreen').default}
+        getComponent={() => require('../screens/engage/EngageHome').default}
       />
       <Stack.Screen
         name="PostDetail"

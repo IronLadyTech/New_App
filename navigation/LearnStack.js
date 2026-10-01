@@ -8,7 +8,7 @@ export default function LearnStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="Programs"
-        getComponent={() => require('../screens/learn/ProgramsScreen').default}
+        getComponent={() => require('../screens/learn/LearnLibrary').default}
       />
       <Stack.Screen
         name="ProgramTasks"
