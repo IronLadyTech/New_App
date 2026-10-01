@@ -15,7 +15,7 @@ export function useILGuideWhisper(surface) {
   const { user, profile, isStaff } = useAuth();
   const { enrolledPrograms, progressByProgram, tasksByProgram, subsByProgram } =
     usePrograms();
-  const { announcements } = useCourses();
+  const { visibleAnnouncements, upcomingEventList } = useCourses();
 
   const [whisper, setWhisper] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,8 @@ export function useILGuideWhisper(surface) {
         progressByProgram,
         tasksByProgram,
         subsByProgram,
-        announcements,
+        announcements: visibleAnnouncements,
+        upcomingEventList,
         surface:
           surface === IL_GUIDE_SURFACES.ONBOARD
             ? IL_GUIDE_SURFACES.ONBOARD
@@ -86,7 +87,8 @@ export function useILGuideWhisper(surface) {
     progressByProgram,
     tasksByProgram,
     subsByProgram,
-    announcements,
+    visibleAnnouncements,
+    upcomingEventList,
     surface,
     firstLogin,
     isGuest,

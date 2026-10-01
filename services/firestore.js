@@ -245,6 +245,54 @@ export function subscribeToAnnouncements(onData, onError) {
   );
 }
 
+// ─── Events (shared with web LMS `events` collection) ───────────────────────
+
+export function subscribeToEvents(onData, onError) {
+  const q = query(collection(db, 'events'), orderBy('date', 'asc'), limit(60));
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    },
+    (err) => {
+      // Fallback when composite index is missing — load unsorted and sort client-side
+      if (err?.code === 'failed-precondition') {
+        return onSnapshot(
+          collection(db, 'events'),
+          (snap) => {
+            const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+            rows.sort((a, b) => {
+              const da = `${a.date || ''} ${a.time || ''}`;
+              const db_ = `${b.date || ''} ${b.time || ''}`;
+              return da.localeCompare(db_);
+            });
+            onData(rows.slice(0, 60));
+          },
+          onError
+        );
+      }
+      onError?.(err);
+    }
+  );
+}
+
+export async function saveFcmToken(uid, token) {
+  if (!uid || !token) return;
+  await updateDoc(doc(db, 'users', uid), {
+    fcmToken: token,
+    fcmTokenUpdatedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function clearFcmToken(uid) {
+  if (!uid) return;
+  await updateDoc(doc(db, 'users', uid), {
+    fcmToken: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 // ─── Engagement / Posts ─────────────────────────────────────────────────────
 
 export function subscribeToPosts(onData, onError) {
@@ -346,6 +394,70 @@ export function subscribeToLeaderboard(onData, onError) {
     },
     onError
   );
+}
+
+// ─── Payment orders / receipts ──────────────────────────────────────────────
+
+function receiptNumber() {
+  const d = new Date();
+  const ymd = d.toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `IL-${ymd}-${rand}`;
+}
+
+export async function savePaymentOrder(payload) {
+  const transactionId = payload.transactionId || `pending_${Date.now()}`;
+  const ref = doc(db, 'payment_orders', transactionId);
+  const existing = await getDoc(ref);
+  if (existing.exists()) {
+    return { id: existing.id, ...existing.data() };
+  }
+
+  const record = {
+    uid: payload.uid,
+    transactionId,
+    razorpayOrderId: payload.razorpayOrderId || null,
+    receiptNumber: receiptNumber(),
+    status: 'paid',
+    gateway: 'razorpay',
+    currency: payload.currency || 'INR',
+    amountPaise: payload.amountPaise,
+    amountRupees: (payload.amountPaise || 0) / 100,
+    programId: payload.programId || null,
+    programTitle: payload.programTitle || '',
+    description: payload.description || 'Programme balance',
+    payerName: payload.payerName || '',
+    payerEmail: payload.payerEmail || '',
+    payerPhone: payload.payerPhone || '',
+    paidAt: serverTimestamp(),
+    createdAt: serverTimestamp(),
+  };
+  await setDoc(ref, record);
+  return { id: ref.id, ...record };
+}
+
+export function subscribeToMyOrders(uid, onData, onError) {
+  const mapped = (snap) => {
+    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    rows.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || 0;
+      const tb = b.createdAt?.toMillis?.() || 0;
+      return tb - ta;
+    });
+    onData(rows);
+  };
+  const q = query(
+    collection(db, 'payment_orders'),
+    where('uid', '==', uid),
+    limit(50)
+  );
+  return onSnapshot(q, mapped, onError);
+}
+
+export async function getPaymentOrder(orderId) {
+  const snap = await getDoc(doc(db, 'payment_orders', orderId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
 }
 
 // Re-export helpers useful to callers

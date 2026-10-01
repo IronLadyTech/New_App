@@ -10,8 +10,15 @@ import {
   subscribeToCourses,
   subscribeToUserProgress,
   subscribeToAnnouncements,
+  subscribeToEvents,
   enrollInCourse,
 } from '../services/firestore';
+import { filterAnnouncementsForUser } from '../utils/announcementUtils';
+import {
+  resolveVisibleEvents,
+  upcomingEvents,
+} from '../utils/eventVisibility';
+import { learnerBatchId } from '../utils/programAccess';
 import { useAuth } from './AuthContext';
 
 const CoursesContext = createContext(null);
@@ -21,6 +28,7 @@ export function CoursesProvider({ children }) {
   const [courses, setCourses] = useState([]);
   const [progress, setProgress] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -40,9 +48,13 @@ export function CoursesProvider({ children }) {
       setAnnouncements,
       (err) => setError(err.message)
     );
+    const unsubEvents = subscribeToEvents(setEvents, (err) =>
+      setError(err.message)
+    );
     return () => {
       unsubCourses();
       unsubAnnouncements();
+      unsubEvents();
     };
   }, []);
 
@@ -74,6 +86,24 @@ export function CoursesProvider({ children }) {
     return map;
   }, [progress]);
 
+  const visibleAnnouncements = useMemo(
+    () => filterAnnouncementsForUser(announcements, user?.uid),
+    [announcements, user?.uid]
+  );
+
+  const visibleEvents = useMemo(
+    () =>
+      resolveVisibleEvents(events, {
+        batchId: learnerBatchId(profile),
+      }),
+    [events, profile]
+  );
+
+  const upcomingEventList = useMemo(
+    () => upcomingEvents(visibleEvents, 5),
+    [visibleEvents]
+  );
+
   const enroll = useCallback(
     async (courseId) => {
       if (!user?.uid) throw new Error('Sign in to enroll');
@@ -89,6 +119,10 @@ export function CoursesProvider({ children }) {
       progress,
       progressByCourse,
       announcements,
+      visibleAnnouncements,
+      events,
+      visibleEvents,
+      upcomingEventList,
       loading,
       error,
       enroll,
@@ -100,6 +134,10 @@ export function CoursesProvider({ children }) {
       progress,
       progressByCourse,
       announcements,
+      visibleAnnouncements,
+      events,
+      visibleEvents,
+      upcomingEventList,
       loading,
       error,
       enroll,

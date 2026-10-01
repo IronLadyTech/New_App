@@ -14,6 +14,7 @@ export function buildILGuideContext({
   tasksByProgram = {},
   subsByProgram = {},
   announcements = [],
+  upcomingEventList = [],
   surface,
   firstLogin = false,
 }) {
@@ -43,13 +44,24 @@ export function buildILGuideContext({
     (t) => !isTaskDoneStatus(primarySubs[t.id]?.status)
   );
 
-  const upcomingEvent = announcements?.[0]
+  const nextCalendarEvent = upcomingEventList?.[0];
+  const upcomingEvent = nextCalendarEvent
     ? {
-        id: announcements[0].id,
-        title: announcements[0].title,
-        body: announcements[0].body || announcements[0].message || '',
+        id: nextCalendarEvent.id,
+        title: nextCalendarEvent.title,
+        body:
+          nextCalendarEvent.description ||
+          [nextCalendarEvent.date, nextCalendarEvent.time]
+            .filter(Boolean)
+            .join(' · '),
       }
-    : null;
+    : announcements?.[0]
+      ? {
+          id: announcements[0].id,
+          title: announcements[0].title,
+          body: announcements[0].body || announcements[0].message || '',
+        }
+      : null;
 
   const ctx = {
     participantId: user?.uid,

@@ -34,10 +34,8 @@ export default function ProgramsScreen({ navigation }) {
     return <LoadingState message="Loading programs…" />;
   }
 
-  const list =
-    enrolledPrograms.length > 0
-      ? enrolledPrograms
-      : allPrograms; // show all locked if not enrolled yet
+  // Always show all three journey programs; lock state reflects enrollment + payment.
+  const list = allPrograms;
 
   return (
     <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
@@ -75,18 +73,29 @@ export default function ProgramsScreen({ navigation }) {
           };
           const pay = programPaymentStatus(profile, item.id);
 
+          const needsBalance =
+            enrolled && pay === PAYMENT_STATUS.REGISTER;
+
           return (
             <TouchableOpacity
-              disabled={!open}
-              onPress={() =>
+              disabled={!open && !needsBalance}
+              onPress={() => {
+                if (needsBalance) {
+                  navigation.getParent()?.navigate('Profile', {
+                    screen: 'PaymentEnrollment',
+                    params: { programId: item.id },
+                  });
+                  return;
+                }
+                if (!open) return;
                 navigation.navigate('ProgramTasks', {
                   programId: item.id,
                   title: item.title,
-                })
-              }
+                });
+              }}
               activeOpacity={0.85}
               className={`mb-3 rounded-2xl border border-ink-100 bg-white p-4 ${
-                open ? '' : 'opacity-55'
+                open || needsBalance ? '' : 'opacity-55'
               }`}
             >
               <View className="mb-2 flex-row items-start justify-between">

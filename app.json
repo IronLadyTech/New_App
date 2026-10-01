@@ -12,6 +12,7 @@
       "bundleIdentifier": "com.lmsapp.mobile"
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#1a78f5",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -21,11 +22,19 @@
       "package": "com.lmsapp.mobile"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single"
     },
     "plugins": [
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "color": "#1a78f5"
+        }
+      ],
+      "expo-font"
     ]
   }
 }

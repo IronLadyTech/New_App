@@ -136,6 +136,15 @@ export default function LoginScreen({ navigation }) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => navigation.navigate('PhoneLogin')}
+              className="mt-4 items-center rounded-xl border border-ink-200 bg-white py-3.5"
+            >
+              <Text className="text-sm font-semibold text-ink-800">
+                Sign in with phone OTP
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => navigation.navigate('Signup')}
               className="mt-5 items-center"
             >
