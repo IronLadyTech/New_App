@@ -53,7 +53,8 @@ const navDot = {
 export default function GuestHomeScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { findRegistration, goProgram, goChallenge, goEngage } = useGuestActions();
+  const { findRegistration, goProgram, goChallenge, goEngage, previewRegisteredHome, previewEnrolledHome } =
+    useGuestActions();
   const [slide, setSlide] = useState(0);
   const pager = useRef(null);
   const cardW = width - 40;
@@ -990,6 +991,39 @@ export default function GuestHomeScreen() {
           body="Tell us the number you registered with, or the email, and we will connect this device to your record."
           onPress={findRegistration}
         />
+
+        {__DEV__ ? (
+          <WhiteCard style={{ marginTop: 16, borderRadius: 20, padding: 16 }}>
+            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, letterSpacing: 1.2 }]}>
+              Dev · preview homes
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}>
+              Open the LEP homes without OTP. Log out from Profile to come back here.
+            </ILText>
+            <Pressable
+              onPress={previewRegisteredHome}
+              style={{ marginTop: 14, backgroundColor: G.dark, borderRadius: 999, paddingVertical: 14, alignItems: 'center' }}
+            >
+              <ILText role="label" color="#FFFFFF">
+                Registered home
+              </ILText>
+            </Pressable>
+            <Pressable
+              onPress={previewEnrolledHome}
+              style={{
+                marginTop: 10,
+                backgroundColor: G.cta,
+                borderRadius: 999,
+                paddingVertical: 14,
+                alignItems: 'center',
+              }}
+            >
+              <ILText role="label" color="#FFFFFF">
+                Enrolled home
+              </ILText>
+            </Pressable>
+          </WhiteCard>
+        ) : null}
       </ScrollView>
     </Page>
   );

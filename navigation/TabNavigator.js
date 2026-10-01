@@ -22,12 +22,12 @@ export default function TabNavigator() {
     >
       <Tab.Screen
         name="Home"
-        getComponent={() => require('../screens/home/HomeScreen').default}
+        getComponent={() => require('./HomeStack').default}
         options={{ tabBarLabel: 'Home' }}
       />
       <Tab.Screen
         name="MyProgram"
-        getComponent={() => require('../screens/program/MyProgramScreen').default}
+        getComponent={() => require('./MyProgramStack').default}
         options={{ tabBarLabel: 'My Program' }}
       />
       <Tab.Screen

@@ -17,13 +17,23 @@ function navigateInStack(navigation, name, params) {
 
 export function useGuestActions() {
   const navigation = useNavigation();
-  const { enterAuthFromGuest } = useAuth();
+  const { enterAuthFromGuest, enterLepPreview, enterJourneyPreview } = useAuth();
   return {
     findRegistration: enterAuthFromGuest,
+    previewRegisteredHome: () => enterLepPreview('registered'),
+    previewEnrolledHome: () => enterLepPreview('enrolled'),
+    previewJourney: enterJourneyPreview,
     goPrograms: () => navigation.navigate('Programs'),
     goEngage: () => navigation.navigate('Engage'),
     goHome: () => navigation.navigate('Home'),
     goProgram: (id) => navigateInStack(navigation, 'ProgramDetail', { id }),
-    goChallenge: () => navigateInStack(navigation, 'ChallengeHub'),
+    goChallenge: () => {
+      const names = navigation.getState?.()?.routeNames;
+      if (Array.isArray(names) && names.includes('ChallengeHub')) {
+        navigation.navigate('ChallengeHub');
+        return;
+      }
+      navigation.navigate('Home', { screen: 'ChallengeHub' });
+    },
   };
 }

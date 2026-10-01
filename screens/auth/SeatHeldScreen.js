@@ -139,9 +139,12 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     BATCHES[0];
 
   const finish = () => {
+    if (navigation?.navigate) {
+      navigation.navigate('JourneyPicker', { name, batch });
+      return;
+    }
     if (typeof onContinue === 'function') {
       onContinue();
-      return;
     }
   };
 

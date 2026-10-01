@@ -192,13 +192,26 @@ export function PillRow({ items, value, onChange }) {
               borderColor: active ? G.cta : G.line,
             }}
           >
-            <ILText
-              role="label"
-              color={active ? '#FFFFFF' : G.ink}
-              style={[af, { fontSize: 12, lineHeight: 16 }]}
-            >
-              {item}
-            </ILText>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <ILText
+                role="label"
+                color={active ? '#FFFFFF' : G.ink}
+                style={[af, { fontSize: 12, lineHeight: 16 }]}
+              >
+                {item}
+              </ILText>
+              {active ? (
+                <View
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: 3,
+                    backgroundColor: '#FFFFFF',
+                    marginLeft: 6,
+                  }}
+                />
+              ) : null}
+            </View>
           </Pressable>
         );
       })}

@@ -47,7 +47,10 @@ export default function OrderReceiptScreen({ navigation, route }) {
   const [loading, setLoading] = useState(!route?.params?.order);
 
   useEffect(() => {
-    if (order || !orderId) return;
+    if (order || !orderId || orderId === 'registration-fee') {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     getPaymentOrder(orderId).then((row) => {
       if (!cancelled) {
