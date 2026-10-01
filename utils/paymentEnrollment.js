@@ -131,6 +131,55 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
   };
 }
 
+/** Local registration-fee receipt so Profile / Orders can show it without a Firestore uid. */
+export function registrationFeeOrder(profile, user) {
+  const vm = buildPaymentEnrollmentView(profile, user);
+  const paidAt = profile?.programAccess?.[vm.programId]?.registrationPaidAt
+    || profile?.registrationPaidAt
+    || new Date('2026-09-12T10:00:00+05:30');
+  return {
+    id: 'registration-fee',
+    amountRupees: vm.registrationFee,
+    programTitle: vm.programTitle,
+    programId: vm.programId,
+    description: `${vm.programTitle} — registration fee`,
+    transactionId: `ILREG${vm.txnLast4}`,
+    receiptNumber: `IL-REG-${vm.txnLast4}`,
+    paidAt,
+    payerName: profile?.displayName || user?.displayName || 'Ananya Rao',
+    payerEmail: profile?.email || user?.email || '',
+    payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
+    currency: 'INR',
+    uid: user?.uid || 'preview',
+  };
+}
+
+/** The ₹1 Razorpay test charge the learner already paid. */
+export function razorpayOneRupeeOrder(profile, user) {
+  const access = profile?.programAccess?.lep || {};
+  const paymentId = access.razorpayPaymentId || profile?.razorpayPaymentId || null;
+  const orderId = access.razorpayOrderId || profile?.razorpayOrderId || null;
+  const paidAt = access.fullPaidAt || access.paidAt || profile?.fullPaidAt || new Date();
+  return {
+    id: paymentId || 'razorpay-1-rupee',
+    amountRupees: 1,
+    amountPaise: 100,
+    programTitle: 'Leadership Essentials Program',
+    programId: 'lep',
+    description: 'Leadership Essentials Program — programme balance',
+    transactionId: paymentId || 'Razorpay ₹1',
+    razorpayOrderId: orderId,
+    receiptNumber: paymentId || 'IL-RZP-1',
+    paidAt,
+    gateway: 'razorpay',
+    currency: 'INR',
+    payerName: profile?.displayName || user?.displayName || '',
+    payerEmail: profile?.email || user?.email || '',
+    payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
+    uid: user?.uid || 'preview',
+  };
+}
+
 function defaultBatchSessions() {
   return [
     {

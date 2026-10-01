@@ -26,6 +26,10 @@ export default function AuthNavigator() {
       <Stack.Screen name="ChooseBatchDate" component={ChooseBatchDateScreen} />
       <Stack.Screen name="SeatHeld" component={SeatHeldScreen} />
       <Stack.Screen
+        name="JourneyPicker"
+        getComponent={() => require('../screens/auth/JourneyPickerScreen').default}
+      />
+      <Stack.Screen
         name="GuestStart"
         getComponent={() => require('../screens/auth/GuestStartScreen').default}
       />

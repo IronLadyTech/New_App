@@ -7,6 +7,7 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { GuestBackBar, Page, PinkDisc, StatNum, WhiteCard } from './GuestBits';
+import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 
 const CARD = [
   { t: 'Your BHAG', d: 'Day 1 · tonight' },
@@ -56,11 +57,11 @@ export default function GuestChallengeHubScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: Math.max(insets.bottom, 16) + 24,
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >
         <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 11 }]}>
-          You’re in.
+          You’re in, Priya.
         </ILText>
         <ILText
           role="display"
@@ -121,6 +122,7 @@ export default function GuestChallengeHubScreen({ navigation }) {
             Where every Iron Lady journey starts: name the goal, then pick where to put your energy. 15 minutes, one task, one bonus.
           </ILText>
           <Pressable
+            onPress={() => navigation.navigate('ChallengeDay')}
             style={{
               marginTop: 16,
               backgroundColor: G.cta,
@@ -178,7 +180,7 @@ export default function GuestChallengeHubScreen({ navigation }) {
               </View>
             </View>
           ))}
-          <Pressable style={{ marginTop: 14 }}>
+          <Pressable onPress={() => navigation.navigate('ChallengeDone')} style={{ marginTop: 14 }}>
             <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
               See a finished card →
             </ILText>

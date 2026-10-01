@@ -21,13 +21,16 @@ const JUMPS = [
   { label: 'Welcome', route: 'FirstLoginWelcome' },
   { label: 'Choose batch', route: 'ChooseBatchDate' },
   { label: 'Seat held', route: 'SeatHeld' },
+  { label: 'Journey picker', route: 'JourneyPicker' },
   { label: 'Guest start', route: 'GuestStart' },
   { label: 'Guest · Home', guest: true },
+  { label: 'LEP · Registered home', lep: 'registered' },
+  { label: 'LEP · Enrolled home', lep: 'enrolled' },
 ];
 
 export default function ScreenLab({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { enterGuest } = useAuth();
+  const { enterGuest, enterJourneyPreview } = useAuth();
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
@@ -69,6 +72,10 @@ export default function ScreenLab({ navigation }) {
               onPress={() => {
                 if (item.guest) {
                   enterGuest();
+                  return;
+                }
+                if (item.lep) {
+                  enterJourneyPreview('lep', item.lep);
                   return;
                 }
                 item.prep?.();

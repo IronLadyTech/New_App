@@ -11,12 +11,47 @@ import { subscribeToAuth, fetchUserProfile, logOut as authLogOut } from '../serv
 import { subscribeToUser } from '../services/firestore';
 
 const GUEST_KEY = 'il_guest_mode';
+const LAB_LEP_KEY = 'il_lab_lep';
+const LAB_JOURNEY_KEY = 'il_lab_journey';
 const AuthContext = createContext(null);
+
+function parseLabJourney(raw, legacyLep) {
+  if (raw) {
+    try {
+      const v = JSON.parse(raw);
+      if (v?.program && v?.state) return { program: v.program, state: v.state };
+    } catch {
+      /* ignore */
+    }
+  }
+  if (legacyLep === 'enrolled' || legacyLep === 'registered') {
+    return { program: 'lep', state: legacyLep };
+  }
+  return null;
+}
+
+function labProfile({ program, state }) {
+  const enrolled = state === 'enrolled';
+  const pay = enrolled ? 'paid' : 'register';
+  return {
+    displayName: 'Ananya Rao',
+    firstName: 'Ananya',
+    program,
+    programs: [program],
+    paymentStatus: pay,
+    programAccess: { [program]: { paymentStatus: pay } },
+    ilGuideOnboarded: true,
+    labProgram: program,
+    labState: state,
+    labLep: program === 'lep' ? state : undefined,
+  };
+}
 
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [guestMode, setGuestMode] = useState(false);
+  const [labJourney, setLabJourney] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
 
@@ -26,9 +61,16 @@ export function AuthProvider({ children }) {
       if (!cancelled) setInitializing(false);
     }, 400);
 
-    AsyncStorage.getItem(GUEST_KEY)
-      .then((value) => {
-        if (!cancelled) setGuestMode(value === '1');
+    Promise.all([
+      AsyncStorage.getItem(GUEST_KEY),
+      AsyncStorage.getItem(LAB_JOURNEY_KEY),
+      AsyncStorage.getItem(LAB_LEP_KEY),
+    ])
+      .then(([guest, journey, legacyLep]) => {
+        if (cancelled) return;
+        const lab = parseLabJourney(journey, legacyLep);
+        setLabJourney(lab);
+        setGuestMode(guest === '1' && !lab);
       })
       .catch(() => {});
 
@@ -73,12 +115,15 @@ export function AuthProvider({ children }) {
     await authLogOut();
     setProfile(null);
     setGuestMode(false);
-    await AsyncStorage.removeItem(GUEST_KEY);
+    setLabJourney(null);
+    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
   }, []);
 
   const enterGuest = useCallback(async (firstName) => {
+    setLabJourney(null);
     setGuestMode(true);
     await AsyncStorage.setItem(GUEST_KEY, '1');
+    await AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY]);
     if (firstName) {
       await AsyncStorage.setItem('il_guest_name', firstName);
     }
@@ -89,32 +134,90 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem(GUEST_KEY);
   }, []);
 
+  const exitToLogin = useCallback(async () => {
+    setLabJourney(null);
+    setGuestMode(false);
+    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
+  }, []);
+
+  const enterJourneyPreview = useCallback(async (program, state) => {
+    const next = {
+      program: 'lep',
+      state: state === 'enrolled' ? 'enrolled' : 'registered',
+    };
+    setGuestMode(false);
+    setLabJourney(next);
+    await AsyncStorage.setItem(LAB_JOURNEY_KEY, JSON.stringify(next));
+    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY]);
+  }, []);
+
+  const enterLepPreview = useCallback(
+    (state) => enterJourneyPreview('lep', state),
+    [enterJourneyPreview]
+  );
+
+  const resolvedProfile = useMemo(() => {
+    if (!labJourney) return profile;
+    const lab = labProfile(labJourney);
+    const pid = lab.program;
+    const live = profile?.programAccess?.[pid] || {};
+    return {
+      ...(profile || {}),
+      ...lab,
+      phoneNumber: profile?.phoneNumber || profile?.phone || lab.phoneNumber,
+      email: profile?.email,
+      photoURL: profile?.photoURL,
+      programAccess: {
+        ...(profile?.programAccess || {}),
+        [pid]: {
+          ...live,
+          ...(lab.programAccess?.[pid] || {}),
+          razorpayPaymentId: live.razorpayPaymentId,
+          razorpayOrderId: live.razorpayOrderId,
+          fullPaidAt: live.fullPaidAt,
+          registrationFee: live.registrationFee,
+          registrationAmount: live.registrationAmount,
+          txnLast4: live.txnLast4 || live.transactionLast4,
+        },
+      },
+    };
+  }, [profile, labJourney]);
+
   const value = useMemo(
     () => ({
       user: firebaseUser,
-      profile,
-      role: profile?.role || (guestMode ? 'guest' : 'student'),
-      isAuthenticated: !!firebaseUser,
-      isGuest: guestMode && !firebaseUser,
+      accountProfile: profile,
+      profile: resolvedProfile,
+      role: resolvedProfile?.role || (guestMode ? 'guest' : 'student'),
+      isAuthenticated: !!firebaseUser || !!labJourney,
+      isGuest: guestMode && !firebaseUser && !labJourney,
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
-        profile?.role
+        resolvedProfile?.role
       ),
       initializing,
       error,
       logout,
       enterGuest,
       enterAuthFromGuest,
+      enterLepPreview,
+      enterJourneyPreview,
+      exitToLogin,
       setError,
     }),
     [
       firebaseUser,
       profile,
+      resolvedProfile,
       guestMode,
+      labJourney,
       initializing,
       error,
       logout,
       enterGuest,
       enterAuthFromGuest,
+      enterLepPreview,
+      enterJourneyPreview,
+      exitToLogin,
     ]
   );
 

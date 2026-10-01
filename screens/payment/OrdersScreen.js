@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import EmptyState from '../../components/EmptyState';
-import { subscribeToMyOrders } from '../../services/firestore';
+import { useMyReceipts } from '../../hooks/useMyReceipts';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 
 function formatWhen(value) {
@@ -20,18 +20,8 @@ function formatWhen(value) {
 }
 
 export default function OrdersScreen({ navigation }) {
-  const { user } = useAuth();
-  const [orders, setOrders] = useState([]);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!user?.uid) return undefined;
-    return subscribeToMyOrders(
-      user.uid,
-      setOrders,
-      (err) => setError(err.message)
-    );
-  }, [user?.uid]);
+  const { exitToLogin } = useAuth();
+  const { orders, error, signedIn } = useMyReceipts();
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: IL_BRAND.cream }} edges={['top']}>
@@ -51,17 +41,21 @@ export default function OrdersScreen({ navigation }) {
         ListEmptyComponent={
           <EmptyState
             icon="receipt-outline"
-            title={error ? 'Could not load orders' : 'No payments yet'}
+            title={error ? 'Could not load orders' : signedIn ? 'No payments yet' : 'Sign in to see your receipt'}
             message={
               error ||
-              'When you complete a Razorpay payment, the receipt appears here with transaction ID and full details.'
+              (signedIn
+                ? 'When you complete a Razorpay payment, the receipt appears here with transaction ID and full details.'
+                : 'Your old Razorpay receipt is saved on the phone number you paid with. Sign in to load it.')
             }
+            actionLabel={signedIn ? undefined : 'Sign in'}
+            onAction={signedIn ? undefined : exitToLogin}
           />
         }
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() =>
-              navigation.navigate('OrderReceipt', { orderId: item.id })
+              navigation.navigate('OrderReceipt', { orderId: item.id, order: item })
             }
             activeOpacity={0.85}
             style={{

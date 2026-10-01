@@ -7,6 +7,10 @@ export default function LearnStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
+        name="LepLearn"
+        getComponent={() => require('../screens/lep/LepLearnScreen').default}
+      />
+      <Stack.Screen
         name="Programs"
         getComponent={() => require('../screens/learn/ProgramsScreen').default}
       />

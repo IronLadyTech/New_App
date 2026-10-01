@@ -19,6 +19,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { cacheReceipts } from './receiptStore';
 
 // ─── Users ──────────────────────────────────────────────────────────────────
 
@@ -410,7 +411,9 @@ export async function savePaymentOrder(payload) {
   const ref = doc(db, 'payment_orders', transactionId);
   const existing = await getDoc(ref);
   if (existing.exists()) {
-    return { id: existing.id, ...existing.data() };
+    const saved = { id: existing.id, ...existing.data() };
+    await cacheReceipts([saved]);
+    return saved;
   }
 
   const record = {
@@ -433,25 +436,72 @@ export async function savePaymentOrder(payload) {
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, record);
-  return { id: ref.id, ...record };
+  const saved = {
+    id: ref.id,
+    ...record,
+    paidAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+  await cacheReceipts([saved]);
+  return saved;
+}
+
+function sortPaidRows(rows) {
+  return [...rows].sort((a, b) => {
+    const ta = a.createdAt?.toMillis?.() || a.paidAtMs || 0;
+    const tb = b.createdAt?.toMillis?.() || b.paidAtMs || 0;
+    return tb - ta;
+  });
 }
 
 export function subscribeToMyOrders(uid, onData, onError) {
-  const mapped = (snap) => {
-    const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    rows.sort((a, b) => {
-      const ta = a.createdAt?.toMillis?.() || 0;
-      const tb = b.createdAt?.toMillis?.() || 0;
-      return tb - ta;
-    });
-    onData(rows);
-  };
   const q = query(
     collection(db, 'payment_orders'),
     where('uid', '==', uid),
     limit(50)
   );
-  return onSnapshot(q, mapped, onError);
+  return onSnapshot(
+    q,
+    (snap) => onData(sortPaidRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })))),
+    onError
+  );
+}
+
+export function subscribeToMyRazorpayPayments(uid, onData, onError) {
+  const q = query(
+    collection(db, 'razorpay_payments'),
+    where('uid', '==', uid),
+    limit(50)
+  );
+  return onSnapshot(
+    q,
+    (snap) =>
+      onData(
+        sortPaidRows(
+          snap.docs.map((d) => {
+            const row = d.data();
+            return {
+              id: d.id,
+              uid: row.uid,
+              transactionId: row.paymentId || d.id,
+              razorpayOrderId: row.orderId,
+              receiptNumber: row.paymentId || d.id,
+              status: 'paid',
+              gateway: 'razorpay',
+              currency: 'INR',
+              amountPaise: row.amountPaise,
+              amountRupees: (row.amountPaise || 0) / 100,
+              programId: row.programId,
+              programTitle: row.programTitle || '',
+              description: 'Programme balance',
+              paidAt: row.verifiedAt || row.paidAt,
+              createdAt: row.verifiedAt || row.createdAt,
+            };
+          })
+        )
+      ),
+    onError
+  );
 }
 
 export async function getPaymentOrder(orderId) {

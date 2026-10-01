@@ -26,7 +26,7 @@ import {
   openRazorpayInBrowser,
   verifyRazorpayPayment,
 } from '../../services/razorpay';
-import { buildPaymentEnrollmentView } from '../../utils/paymentEnrollment';
+import { buildPaymentEnrollmentView, razorpayOneRupeeOrder, registrationFeeOrder } from '../../utils/paymentEnrollment';
 
 function PaymentRow({ label, detail, amount, status, statusTone }) {
   return (
@@ -235,23 +235,43 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
             )}
           </View>
 
-          <PaymentRow
-            label="Registration fee"
-            detail={`Received · txn ending ${vm.txnLast4}`}
-            amount={vm.registrationFeeLabel}
-            status={`PAID ${vm.registrationPaidLabel}`}
-            statusTone="paid"
-          />
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() =>
+              navigation.navigate('OrderReceipt', {
+                orderId: 'registration-fee',
+                order: registrationFeeOrder(profile, user),
+              })
+            }
+          >
+            <PaymentRow
+              label="Registration fee"
+              detail={`Received · txn ending ${vm.txnLast4} · tap for receipt`}
+              amount={vm.registrationFeeLabel}
+              status={`PAID ${vm.registrationPaidLabel}`}
+              statusTone="paid"
+            />
+          </TouchableOpacity>
 
           <View style={styles.divider} />
 
-          <PaymentRow
-            label="Programme balance"
-            detail={vm.balanceNote}
-            amount={vm.programBalanceLabel}
-            status={vm.balanceDue ? `DUE ${vm.balanceDueLabel}` : 'PAID'}
-            statusTone={vm.balanceDue ? 'due' : 'paid'}
-          />
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() =>
+              navigation.navigate('OrderReceipt', {
+                orderId: 'razorpay-1-rupee',
+                order: razorpayOneRupeeOrder(profile, user),
+              })
+            }
+          >
+            <PaymentRow
+              label="Programme balance"
+              detail="Razorpay · ₹1 paid · tap for receipt"
+              amount="₹ 1"
+              status="PAID"
+              statusTone="paid"
+            />
+          </TouchableOpacity>
 
           <View style={styles.progressTrack}>
             <View
