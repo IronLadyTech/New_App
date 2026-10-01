@@ -17,6 +17,7 @@ import {
   WhiteCard,
 } from './GuestBits';
 import { useGuestActions } from './useGuestActions';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 const UNLOCK = [
   { title: 'Your batch & community circle', sub: 'Cohort chat, Thursday triads' },
@@ -34,17 +35,18 @@ const PROOF = [
 
 export default function GuestMeScreen() {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { findRegistration, goLearn } = useGuestActions();
 
   return (
     <Page>
       <StatusBar style="dark" />
-      <GuestHeader />
+      <GuestHeader floating />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingTop: headerPad + 16,
           paddingBottom: Math.max(insets.bottom, 16) + 12,
         }}
       >

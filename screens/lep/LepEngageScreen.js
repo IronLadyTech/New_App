@@ -9,23 +9,26 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled } from '../../utils/lepState';
-import { LepHeader, LinkRow, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
+import { CoverThumb, LepHeader, LinkRow, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, HERO, PODCASTS } from './lepData';
+import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, PODCASTS } from './lepData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 export default function LepEngageScreen() {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
 
   return (
     <Page>
       <StatusBar style="dark" />
-      <LepHeader photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} />
+      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+        paddingTop: headerPad + 4,
           paddingHorizontal: 20,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
@@ -191,40 +194,8 @@ function EnrolledEngage({ nav }) {
       <View style={{ flexDirection: 'row', marginTop: 12 }}>
         {ARMY_STORIES.map((story, i) => (
           <WhiteCard key={story.title} style={{ flex: 1, marginRight: i === 0 ? 10 : 0, borderRadius: 20, overflow: 'hidden' }}>
-            <View style={{ height: 110, backgroundColor: G.dark }}>
-              <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
-              <View
-                style={{
-                  position: 'absolute',
-                  alignSelf: 'center',
-                  top: 37,
-                  left: '50%',
-                  marginLeft: -18,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: 'rgba(255,255,255,0.92)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="play-arrow" size={20} color={G.ink} />
-              </View>
-              <View
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  bottom: 10,
-                  backgroundColor: '#111',
-                  borderRadius: 6,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                }}
-              >
-                <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                  {story.time}
-                </ILText>
-              </View>
+            <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+              <CoverThumb source={story.img} play time={story.time} />
             </View>
             <View style={{ padding: 12 }}>
               <ILText role="label" color={G.ink} style={{ fontSize: 13 }} numberOfLines={3}>
@@ -303,64 +274,40 @@ function RegisteredEngage({ nav }) {
         <LinkRow label="All episodes" />
       </View>
 
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}>
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 14,
-            backgroundColor: G.dark,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <View style={{ position: 'absolute', top: 6, left: 6 }}>
-            <FreeDot />
-          </View>
-          <MaterialIcons name="mic" size={22} color={G.pink} />
+      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
+        <View style={{ aspectRatio: 16 / 9 }}>
+          <CoverThumb source={PODCASTS[0].img} play time={PODCASTS[0].meta} />
         </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
+        <View style={{ padding: 14 }}>
           <SoftChip>Free</SoftChip>
-          <ILText role="label" color={G.ink} style={{ marginTop: 6 }} numberOfLines={2}>
-            {PODCASTS[0].title}
+          <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
+            {PODCASTS[0].who}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-            {PODCASTS[0].meta}
+            {PODCASTS[0].title}
           </ILText>
         </View>
-        <PlayDot />
       </WhiteCard>
 
-      <View style={{ flexDirection: 'row', marginTop: 10 }}>
-        {PODCASTS.slice(1).map((ep, i) => (
-          <WhiteCard key={ep.title} style={{ flex: 1, marginRight: i === 0 ? 10 : 0, borderRadius: 18, padding: 12 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: G.dark,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="mic" size={16} color={G.pink} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
+          {PODCASTS.slice(1).map((ep) => (
+            <WhiteCard key={ep.title} style={{ width: 240, marginRight: 12, borderRadius: 18, overflow: 'hidden' }}>
+              <View style={{ aspectRatio: 16 / 9 }}>
+                <CoverThumb source={ep.img} play />
               </View>
-              <FreeDot />
-            </View>
-            <ILText role="label" color={G.ink} style={{ marginTop: 10, fontSize: 12 }} numberOfLines={3}>
-              {ep.title}
-            </ILText>
-            <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <ILText role="bodySm" color={G.meta} style={{ fontSize: 11 }}>
-                {ep.meta.split('·')[1]?.trim() || ep.meta}
-              </ILText>
-              <PlayDot small />
-            </View>
-          </WhiteCard>
-        ))}
-      </View>
+              <View style={{ padding: 12 }}>
+                <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
+                  {ep.meta}
+                </ILText>
+                <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={2}>
+                  {ep.who}
+                </ILText>
+              </View>
+            </WhiteCard>
+          ))}
+        </View>
+      </ScrollView>
 
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
 import MyProgramScreen from '../screens/program/MyProgramScreen';
 import LepMyProgramScreen from '../screens/lep/LepMyProgramScreen';
+import BmMyProgramScreen from '../screens/program/BmMyProgramScreen';
 import {
   LepAssignmentScreen,
   LepPhaseDetailScreen,
@@ -13,7 +14,13 @@ const Stack = createNativeStackNavigator();
 
 function MyProgramRoot(props) {
   const { program } = useProgramNav();
-  return program === 'lep' ? <LepMyProgramScreen {...props} /> : <MyProgramScreen {...props} />;
+  return program === 'lep' ? (
+    <LepMyProgramScreen {...props} />
+  ) : program === '100bm' ? (
+    <BmMyProgramScreen {...props} />
+  ) : (
+    <MyProgramScreen {...props} />
+  );
 }
 
 export default function MyProgramStack() {

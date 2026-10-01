@@ -127,7 +127,7 @@ export function LepNotificationsScreen() {
       title="Notifications"
       sub="2 need attention"
       right={
-        <ILText role="label" color={G.cta} style={[af, { fontSize: 12 }]}>
+        <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
           Mark all read
         </ILText>
       }
@@ -324,7 +324,7 @@ export function LepAssignmentScreen() {
   const [c, setC] = useState('');
   const navigation = useNavigation();
   return (
-    <Shell title="Day 2 Assignment" sub="LEP · Assignment" right={<SoftChip>In progress</SoftChip>}>
+    <Shell title="Day 2 Assignment" sub="LEP · Assignment" right={<SoftChip onDark>In progress</SoftChip>}>
       <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
         Self-paced · ~15 minutes
       </ILText>

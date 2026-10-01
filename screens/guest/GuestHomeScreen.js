@@ -25,10 +25,13 @@ import {
   WorthTrack,
   fillAbs,
 } from './GuestBits';
+import { CoverThumb } from '../lep/LepBits';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useGuestActions } from './useGuestActions';
 import {
   CHALLENGE_DAYS,
+  COMMUNITY_VIDEOS,
+  CSUITE_HOME,
   DRILLS,
   EPISODES,
   FACE,
@@ -38,6 +41,8 @@ import {
   STORIES,
   TOPICS,
 } from './guestData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import ArmyPass from './ArmyPass';
 
 const navDot = {
   width: 36,
@@ -52,6 +57,7 @@ const navDot = {
 
 export default function GuestHomeScreen() {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { width } = useWindowDimensions();
   const { findRegistration, goProgram, goChallenge, goEngage, previewRegisteredHome, previewEnrolledHome } =
     useGuestActions();
@@ -68,71 +74,19 @@ export default function GuestHomeScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <GuestHeader />
+      <GuestHeader floating />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 18,
+          paddingTop: headerPad + 18,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >
-        <ILText
-          role="display"
-          color={G.ink}
-          style={{ fontFamily: IL_FONTS.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.7 }}
-        >
-          Welcome to the
-        </ILText>
-        <ILText
-          role="display"
-          color={G.ink}
-          style={{ fontFamily: IL_FONTS.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.7 }}
-        >
-          <ILText
-            role="display"
-            color={G.cta}
-            style={{ fontFamily: IL_FONTS.displayItalic, fontSize: 34, lineHeight: 40, letterSpacing: -0.7 }}
-          >
-            Iron Lady
-          </ILText>
-          {' '}Army.
-        </ILText>
-        <ILText role="body" color={G.meta} style={{ marginTop: 8, fontSize: 15, lineHeight: 22 }}>
+        <ArmyPass />
+        <ILText role="body" color={G.meta} align="center" style={{ marginTop: 12, fontSize: 15, lineHeight: 22 }}>
           Tonight, you take your first step.
         </ILText>
-
-        <WhiteCard
-          style={{
-            marginTop: 20,
-            borderRadius: 22,
-            paddingVertical: 16,
-            flexDirection: 'row',
-          }}
-        >
-          {[
-            ['78,000+', 'women trained', G.ink],
-            ['191', 'now ₹1Cr earners', G.cta],
-            ['4.9★', 'average rating', G.ink],
-          ].map(([n, l, c], i) => (
-            <View
-              key={l}
-              style={{
-                flex: 1,
-                alignItems: 'center',
-                borderLeftWidth: i ? 1 : 0,
-                borderLeftColor: G.line,
-              }}
-            >
-              <StatNum color={c} size={24}>
-                {n}
-              </StatNum>
-              <ILText role="bodySm" color={G.meta} align="center" style={{ marginTop: 2, fontSize: 11 }}>
-                {l}
-              </ILText>
-            </View>
-          ))}
-        </WhiteCard>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
           <View style={{ flexDirection: 'row' }}>
@@ -572,33 +526,18 @@ export default function GuestHomeScreen() {
             Leaders who sit at the top table
           </ILText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-            {['Winning Ways for Women', 'The One Notch Up'].map((t, i) => (
-              <View key={t} style={{ width: 220, marginRight: 12 }}>
+            {CSUITE_HOME.map((c) => (
+              <View key={c.title} style={{ width: 220, marginRight: 12 }}>
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
-                  <View style={{ height: 120 }}>
-                    <Image source={HERO} style={{ width: '100%', height: '100%' }} />
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 10,
-                        left: 10,
-                        backgroundColor: G.cta,
-                        borderRadius: 999,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                      }}
-                    >
-                      <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                        C-suite
-                      </ILText>
-                    </View>
+                  <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                    <CoverThumb source={c.img} play time={c.tag} />
                   </View>
                   <View style={{ padding: 12 }}>
                     <ILText role="label" color={G.ink} numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
-                      {t}
+                      {c.title}
                     </ILText>
-                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
-                      {i ? 'Simon Newman' : 'Indra Nooyi · former CEO, PepsiCo'}
+                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }} numberOfLines={1}>
+                      {c.who}
                     </ILText>
                   </View>
                 </WhiteCard>
@@ -652,40 +591,23 @@ export default function GuestHomeScreen() {
               </ILText>
             </View>
           </View>
-          <Pressable onPress={goEngage} style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden', height: 150 }}>
-            <Image source={HERO} style={fillAbs} />
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.72)']} style={fillAbs} />
-            <View
-              style={{
-                position: 'absolute',
-                top: 12,
-                left: 12,
-                backgroundColor: G.cta,
-                borderRadius: 999,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-              }}
-            >
-              <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                Latest · 46 min
-              </ILText>
+          <Pressable onPress={goEngage} style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden' }}>
+            <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+              <CoverThumb source={EPISODES[0].img} play time={`Latest · ${EPISODES[0].min}`} />
             </View>
-            <View style={{ position: 'absolute', left: 14, right: 56, bottom: 14 }}>
+            <View style={{ paddingTop: 12 }}>
               <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 19 }}>
-                The One Notch Up: A Global CEO’s Blueprint for Leadership
+                {EPISODES[0].title}
               </ILText>
               <ILText role="bodySm" color="rgba(255,255,255,0.75)" style={{ marginTop: 4, fontSize: 11 }}>
-                Simon Newman · Co-Founder & Chairman, Iron Lady
+                {EPISODES[0].person}
               </ILText>
-            </View>
-            <View style={{ position: 'absolute', right: 12, bottom: 14 }}>
-              <PlayDisc size={40} />
             </View>
           </Pressable>
         </View>
 
         <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingVertical: 4 }}>
-          {EPISODES.slice(0, 4).map((e, i) => (
+          {EPISODES.filter((e) => !e.featured).slice(0, 4).map((e, i) => (
             <View
               key={e.title}
               style={{
@@ -697,7 +619,9 @@ export default function GuestHomeScreen() {
                 borderTopColor: G.line,
               }}
             >
-              <Image source={FACE} style={{ width: 40, height: 40, borderRadius: 20 }} />
+              <View style={{ width: 72, height: 40, borderRadius: 8, overflow: 'hidden', backgroundColor: G.dark }}>
+                <CoverThumb source={e.img} />
+              </View>
               <View style={{ flex: 1, marginHorizontal: 12 }}>
                 <ILText role="label" color={G.ink} numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
                   {e.title}
@@ -755,37 +679,21 @@ export default function GuestHomeScreen() {
             Real women · real turning points
           </ILText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
-            {[
-              'Walk to the Board 2026 · Bold Steps. Big Stories. Bigger Leaders.',
-              '“My work will speak” — the myth Mohini broke in 21 years',
-            ].map((t) => (
-              <View key={t} style={{ width: 240, marginRight: 12 }}>
+            {COMMUNITY_VIDEOS.map((v) => (
+              <View key={v.title} style={{ width: 240, marginRight: 12 }}>
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
-                  <View style={{ height: 130 }}>
-                    <Image source={HERO} style={fillAbs} />
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 10,
-                        left: 10,
-                        backgroundColor: G.cta,
-                        borderRadius: 999,
-                        paddingHorizontal: 8,
-                        paddingVertical: 3,
-                      }}
-                    >
-                      <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                        Community
-                      </ILText>
-                    </View>
-                    <View style={{ ...fillAbs, alignItems: 'center', justifyContent: 'center' }}>
-                      <PlayDisc size={40} />
-                    </View>
+                  <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                    <CoverThumb source={v.img} play />
                   </View>
                   <View style={{ padding: 12 }}>
                     <ILText role="label" color={G.ink} numberOfLines={3} style={{ fontSize: 13, lineHeight: 18 }}>
-                      {t}
+                      {v.title}
                     </ILText>
+                    {v.meta ? (
+                      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
+                        {v.meta}
+                      </ILText>
+                    ) : null}
                   </View>
                 </WhiteCard>
               </View>

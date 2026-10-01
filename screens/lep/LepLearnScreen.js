@@ -9,14 +9,14 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled } from '../../utils/lepState';
-import { GuideFace, LepHeader, Page, PillRow, RedCta, SectionHead, SoftChip, WhiteCard } from './LepBits';
+import { CoverThumb, GuideFace, LepHeader, Page, PillRow, SectionHead, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import {
-  CASES_MORE_ENR,
+  CASES_ENR,
+  COVER,
   EVENT_NEAR_ENR,
   EVENT_ROOMS_ENR,
   FACE,
-  HERO,
   LEARN_CASES_LOCKED,
   LEARN_CHIPS_ENR,
   LEARN_CHIPS_REG,
@@ -32,6 +32,7 @@ import {
   LEARN_FRESH_ENR,
   LEARN_WHISPER,
   LEARN_WHISPER_ENR,
+  STORY_FEATURED_ENR,
   PRINCIPLES_COMMAND_ENR,
   PRINCIPLES_FOUND_ENR,
   PRINCIPLES_INFLUENCE_ENR,
@@ -39,10 +40,12 @@ import {
   PRINCIPLES_OPEN,
   STORIES_FUNC_ENR,
 } from './lepData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 export default function LepLearnScreen() {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
   const chips = enrolled ? LEARN_CHIPS_ENR : LEARN_CHIPS_REG;
@@ -51,10 +54,11 @@ export default function LepLearnScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <LepHeader photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} />
+      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+        paddingTop: headerPad + 4,
           paddingHorizontal: 20,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
@@ -79,28 +83,16 @@ export default function LepLearnScreen() {
           </>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-              <ILText role="display" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 32, lineHeight: 38 }}>
-                Learn Library
-              </ILText>
-              <View style={{ backgroundColor: G.mutedFill, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 9, letterSpacing: 0.8 }]}>
-                  MASTERCLASS REGISTERED
-                </ILText>
-              </View>
-            </View>
-            <ILText role="body" color={G.meta} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
-              4 foundation principles accessible · 23 unlocked upon enrollment
-            </ILText>
+            <RegisteredHead chip={chip} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
               <PillRow items={chips} value={chip} onChange={setChip} />
             </ScrollView>
             {chip === 'Principles' ? (
-              <PrinciplesPane enrolled={false} onEnroll={nav.goEnroll} />
+              <PrinciplesPane onEnroll={nav.goEnroll} />
             ) : chip === 'Case studies' ? (
-              <CasesPane enrolled={false} onEnroll={nav.goEnroll} />
+              <CasesPane onEnroll={nav.goEnroll} />
             ) : chip === 'Events' ? (
-              <EventsPane enrolled={false} onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
+              <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
             ) : (
               <ForYouPane enrolled={false} onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
             )}
@@ -111,61 +103,76 @@ export default function LepLearnScreen() {
   );
 }
 
+const REG_HEAD = {
+  'For you': {
+    title: 'Learn Library',
+    badge: 'MASTERCLASS REGISTERED',
+    sub: '4 foundation principles accessible · 23 unlocked upon enrollment',
+  },
+  Principles: {
+    title: 'The 27 Principles',
+    badge: '4 OF 27 OPEN',
+    sub: 'The four Foundation Principles from your Masterclass are open. The remaining 23 unlock the day your enrollment completes.',
+  },
+  'Case studies': {
+    title: 'Case studies',
+    badge: '1 FREE',
+    sub: 'Real promotions, real negotiations, told by the women who ran them. One is open to every member.',
+  },
+  Events: {
+    title: 'Events',
+    badge: 'OPEN TO ALL',
+    sub: 'Chapter meetups and open sessions are open to every member. Cohort rooms open when you enroll.',
+  },
+};
+
+function RegisteredHead({ chip }) {
+  const copy = REG_HEAD[chip] || REG_HEAD['For you'];
+  return (
+    <>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <ILText
+          role="display"
+          color={G.ink}
+          style={{ flexShrink: 1, fontFamily: IL_FONTS.display, fontSize: 32, lineHeight: 38 }}
+        >
+          {copy.title}
+        </ILText>
+        <View
+          style={{
+            marginLeft: 8,
+            backgroundColor: G.mutedFill,
+            borderRadius: 999,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+          }}
+        >
+          <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 9, letterSpacing: 0.8 }]}>
+            {copy.badge}
+          </ILText>
+        </View>
+      </View>
+      <ILText role="body" color={G.meta} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
+        {copy.sub}
+      </ILText>
+    </>
+  );
+}
+
 function ForYouPane({ enrolled, onEnroll, onTicket }) {
   return (
     <>
-      <View style={{ marginTop: 18, height: 268, borderRadius: 28, overflow: 'hidden', backgroundColor: G.dark, padding: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View
-            style={{
-              backgroundColor: G.cta,
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF', marginRight: 6 }} />
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9, letterSpacing: 0.7 }]}>
-              FEATURED MASTERCLASS
-            </ILText>
-          </View>
-          <ILText role="eyebrow" color="rgba(255,255,255,0.7)" style={[af, { fontSize: 10 }]}>
-            28 mins · Live case
-          </ILText>
+      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+        <View style={{ aspectRatio: 16 / 9 }}>
+          <CoverThumb source={COVER.radhika} height="100%" play />
         </View>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: G.cta,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
-          </View>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons name="place" size={12} color={G.cta} />
-          <ILText role="eyebrow" color={G.cta} style={[af, { marginLeft: 4, fontSize: 9, letterSpacing: 0.6 }]}>
-            PICKED FOR WOMEN IN TECHNOLOGY IN BENGALURU
-          </ILText>
-        </View>
-        <ILText
-          role="title"
-          color="#FFFFFF"
-          style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 30 }}
-        >
-          Technology isn’t a cost. It’s a growth multiplier.
-        </ILText>
-        <ILText role="label" color="#FFFFFF" style={{ marginTop: 12, fontSize: 13 }}>
-          Start watch →
-        </ILText>
       </View>
+      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
+        PICKED FOR WOMEN IN TECHNOLOGY IN BENGALURU
+      </ILText>
+      <ILText role="label" color={G.cta} style={{ marginTop: 6, fontSize: 13 }}>
+        Start watch →
+      </ILText>
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent="1 in progress" />
@@ -194,18 +201,24 @@ function ForYouPane({ enrolled, onEnroll, onTicket }) {
               borderTopColor: G.line,
             }}
           >
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: item.open ? G.pink : G.mutedFill,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name={item.open ? 'play-arrow' : 'lock'} size={18} color={item.open ? G.cta : G.meta} />
-            </View>
+            {item.img ? (
+              <View style={{ width: 72, height: 40, borderRadius: 10, overflow: 'hidden', backgroundColor: G.dark }}>
+                <CoverThumb source={item.img} />
+              </View>
+            ) : (
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: item.open ? G.pink : G.mutedFill,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialIcons name={item.open ? 'play-arrow' : 'lock'} size={18} color={item.open ? G.cta : G.meta} />
+              </View>
+            )}
             <View style={{ flex: 1, marginLeft: 12 }}>
               <ILText role="label" color={G.ink} numberOfLines={1}>
                 {item.title}
@@ -327,11 +340,19 @@ function ContinueCard({ item }) {
         width: 240,
         marginRight: 12,
         borderRadius: 22,
-        padding: 16,
+        overflow: 'hidden',
+        padding: item.img ? 0 : 16,
         opacity: item.open ? 1 : 0.72,
       }}
     >
+      {item.img ? (
+        <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+          <CoverThumb source={item.img} play />
+        </View>
+      ) : null}
+      <View style={{ padding: item.img ? 14 : 0 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {item.img ? null : (
         <View
           style={{
             width: 36,
@@ -344,6 +365,7 @@ function ContinueCard({ item }) {
         >
           <MaterialIcons name="play-arrow" size={18} color={G.ink} />
         </View>
+        )}
         {item.left ? (
           <View style={{ backgroundColor: G.mutedFill, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
             <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 9 }]}>
@@ -381,238 +403,375 @@ function ContinueCard({ item }) {
           {item.cta}
         </ILText>
       )}
+      </View>
     </WhiteCard>
   );
 }
 
-function PrinciplesPane({ enrolled, onEnroll }) {
+function GateCard({ title, body, onPress }) {
+  return (
+    <View style={{ marginTop: 22, backgroundColor: G.dark, borderRadius: 24, padding: 20 }}>
+      <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+        ENROLLMENT PENDING
+      </ILText>
+      <ILText
+        role="display"
+        color="#FFFFFF"
+        style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 30 }}
+      >
+        {title}
+      </ILText>
+      <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
+        {body}
+      </ILText>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => ({
+          marginTop: 18,
+          alignSelf: 'flex-start',
+          backgroundColor: G.cta,
+          borderRadius: 999,
+          paddingVertical: 12,
+          paddingHorizontal: 20,
+          flexDirection: 'row',
+          alignItems: 'center',
+          opacity: pressed ? 0.9 : 1,
+        })}
+      >
+        <ILText role="label" color="#FFFFFF">
+          Complete enrollment
+        </ILText>
+        <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+      </Pressable>
+    </View>
+  );
+}
+
+function WhyCard({ title, body, foot }) {
   return (
     <>
-      <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 24 }}>
-        The 27 Principles
-      </ILText>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 6 }}>
-        {enrolled ? 'Three tracks, nothing locked' : '4 of 27 open — the Foundation Principles from the Masterclass'}
-      </ILText>
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
+      <View style={{ marginTop: 26 }}>
+        <SectionHead title={title} />
+      </View>
+      <WhiteCard style={{ marginTop: 12, borderRadius: 20, padding: 18, borderLeftWidth: 3, borderLeftColor: G.cta }}>
+        <ILText role="body" color={G.ink} style={{ fontSize: 15, lineHeight: 22 }}>
+          {body}
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
+          {foot}
+        </ILText>
+      </WhiteCard>
+    </>
+  );
+}
+
+function NumberRow({ item, locked, onPress }) {
+  return (
+    <WhiteCard
+      onPress={onPress}
+      style={{
+        marginTop: 10,
+        borderRadius: 18,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+        opacity: locked ? 0.72 : 1,
+      }}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          backgroundColor: locked ? G.mutedFill : G.pink,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ILText role="label" color={locked ? G.ink : G.cta} style={{ fontSize: 13 }}>
+          {item.n}
+        </ILText>
+      </View>
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+        <ILText role="label" color={G.ink} numberOfLines={1} style={{ fontSize: 15 }}>
+          {item.title}
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 13 }}>
+          {item.min} · {item.track}
+        </ILText>
+      </View>
+      {locked ? (
+        <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+      ) : (
+        <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+          {item.state}
+        </ILText>
+      )}
+    </WhiteCard>
+  );
+}
+
+function PrinciplesPane({ onEnroll }) {
+  return (
+    <>
+      <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 18 }}>
         <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
           FOUNDATION TRACK
         </ILText>
-        <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
-          4 absorbed · 15%
-        </ILText>
-        <View style={{ marginTop: 10, height: 4, backgroundColor: G.mutedFill, borderRadius: 2 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
+          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}>
+            4 principles absorbed
+          </ILText>
+          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 28 }}>
+            15%
+          </ILText>
+        </View>
+        <View style={{ marginTop: 12, height: 4, backgroundColor: G.mutedFill, borderRadius: 2 }}>
           <View style={{ width: '15%', height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
         </View>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13, lineHeight: 18 }}>
+          Carried over from Executive Masterclass · completed 4 / 4
+        </ILText>
       </WhiteCard>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        {PRINCIPLES_OPEN.map((p, i) => (
-          <View
-            key={p.n}
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderTopWidth: i ? 1 : 0,
-              borderTopColor: G.line,
-            }}
-          >
-            <ILText role="display" color={G.cta} style={{ fontFamily: IL_FONTS.display, fontSize: 18, width: 36 }}>
-              {p.n}
-            </ILText>
-            <View style={{ flex: 1 }}>
-              <ILText role="label" color={G.ink}>
-                {p.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                {p.sub}
-              </ILText>
-            </View>
-            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-              {p.state}
-            </ILText>
-          </View>
-        ))}
-      </WhiteCard>
-      {!enrolled ? (
-        <>
-          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-            {PRINCIPLES_LOCKED.map((p, i) => (
-              <View
-                key={p.n}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  borderTopWidth: i ? 1 : 0,
-                  borderTopColor: G.line,
-                }}
-              >
-                <MaterialIcons name="lock" size={16} color={G.meta} />
-                <ILText role="display" color={G.meta} style={{ fontFamily: IL_FONTS.display, fontSize: 16, width: 36, marginLeft: 8 }}>
-                  {p.n}
-                </ILText>
-                <ILText role="label" color={G.meta} style={{ flex: 1 }}>
-                  {p.title}
-                </ILText>
-              </View>
-            ))}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: G.line }}>
-              <ILText role="label" color={G.ink}>
-                19 more across Influence & Command
-              </ILText>
-            </View>
-          </WhiteCard>
-          <View style={{ marginTop: 18 }}>
-            <RedCta label="Complete enrollment" onPress={onEnroll} />
-          </View>
-        </>
-      ) : null}
+
+      <View style={{ marginTop: 26 }}>
+        <SectionHead title="Open to you" accent="4 principles" />
+      </View>
+      {PRINCIPLES_OPEN.map((p) => (
+        <NumberRow key={p.n} item={p} />
+      ))}
+
+      <View style={{ marginTop: 26 }}>
+        <SectionHead title="Locked until enrollment" accent="23 principles" />
+      </View>
+      {PRINCIPLES_LOCKED.map((p) => (
+        <NumberRow key={p.n} item={p} locked />
+      ))}
+      <View
+        style={{
+          marginTop: 10,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderStyle: 'dashed',
+          borderColor: G.line,
+          paddingVertical: 14,
+          paddingHorizontal: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+      >
+        <MaterialIcons name="more-horiz" size={18} color={G.meta} />
+        <ILText role="label" color={G.ink} style={{ marginLeft: 10, fontSize: 14 }}>
+          19 more principles across Influence & Command
+        </ILText>
+      </View>
+
+      <GateCard
+        title="Open all 27 Principles"
+        body="Plus private cohort triads and the Thursday Circles."
+        onPress={onEnroll}
+      />
     </>
   );
 }
 
-function CasesPane({ enrolled, onEnroll }) {
+function CasesPane({ onEnroll }) {
+  const locked = CASES_ENR.filter((c) => !c.featured).map((c) => ({
+    tag: c.tag,
+    title: c.title,
+    meta: `${c.who} · cohort only`,
+  }));
   return (
     <>
-      <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 24 }}>
-        Case studies
-      </ILText>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 6 }}>
-        {enrolled ? '9 open, filtered by function' : '1 free preview · 8 locked inside the cohort'}
-      </ILText>
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
-        <SoftChip>Free preview</SoftChip>
-        <ILText
-          role="title"
-          color={G.ink}
-          style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
-        >
-          From Senior Manager to CXO in 14 months
-        </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-          One free case plays in full. Named companies and real numbers stay in the cohort room.
-        </ILText>
-      </WhiteCard>
-      {!enrolled ? (
-        <>
-          <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 20 }}>
-            Cohort only
+      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+        <View style={{ aspectRatio: 16 / 9 }}>
+          <CoverThumb source={COVER.priyanka} play time="31 mins" />
+        </View>
+      </View>
+      <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+          <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
+            FREE PREVIEW
           </ILText>
-          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-            {LEARN_CASES_LOCKED.map((title, i) => (
+        </View>
+        <ILText role="bodySm" color={G.meta} style={{ marginLeft: 10, fontSize: 13 }}>
+          Priyanka Sunder · Cybersecurity
+        </ILText>
+      </View>
+
+      <View style={{ marginTop: 26 }}>
+        <SectionHead title="Locked until enrollment" accent="8 case studies" />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
+        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
+          {locked.map((c) => (
+            <WhiteCard key={c.title} style={{ width: 230, marginRight: 12, borderRadius: 20, padding: 12 }}>
               <View
-                key={title}
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  flexDirection: 'row',
+                  height: 92,
+                  borderRadius: 14,
+                  backgroundColor: G.mutedFill,
                   alignItems: 'center',
-                  borderTopWidth: i ? 1 : 0,
-                  borderTopColor: G.line,
+                  justifyContent: 'center',
                 }}
               >
-                <MaterialIcons name="lock" size={16} color={G.meta} />
-                <ILText role="label" color={G.meta} style={{ marginLeft: 10, flex: 1 }}>
-                  {title}
+                <MaterialIcons name="lock-outline" size={18} color={G.meta} />
+                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
+                  Cohort only
                 </ILText>
               </View>
-            ))}
-          </WhiteCard>
-          <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16 }}>
-            <ILText role="label" color={G.ink}>
-              Why cases stay inside the cohort
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
-              Named companies, real numbers, one room only.
-            </ILText>
-          </WhiteCard>
-          <View style={{ marginTop: 18 }}>
-            <RedCta label="Complete enrollment" onPress={onEnroll} />
-          </View>
-        </>
-      ) : null}
+              <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 12, fontSize: 10 }]}>
+                {c.tag}
+              </ILText>
+              <ILText role="label" color={G.ink} style={{ marginTop: 4, fontSize: 15 }} numberOfLines={2}>
+                {c.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 12 }} numberOfLines={1}>
+                {c.meta}
+              </ILText>
+            </WhiteCard>
+          ))}
+        </View>
+      </ScrollView>
+
+      <WhyCard
+        title="Why cases stay inside the cohort"
+        body="Every case names the company, the numbers and the conversation that turned it. The women who told them agreed to one room only — the cohort."
+        foot="Confidential · not downloadable"
+      />
+      <GateCard
+        title="Open all 8 case studies"
+        body="Named companies, real numbers, the full transcript of each turn."
+        onPress={onEnroll}
+      />
     </>
   );
 }
 
-function EventsPane({ enrolled, onEnroll, onTicket }) {
+const EVENT_CITIES = ['Bengaluru', 'Mumbai', 'Pune', 'Delhi NCR', 'Hyderabad'];
+
+function EventsPane({ onEnroll, onTicket }) {
+  const [city, setCity] = useState('Bengaluru');
   return (
     <>
-      <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 24 }}>
-        Events
-      </ILText>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 6 }}>
-        {enrolled ? 'Cohort rooms unlocked' : 'Public events open · cohort rooms locked'}
-      </ILText>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
         <View style={{ flexDirection: 'row' }}>
-          {LEARN_CITIES.map((city, i) => (
-            <View
-              key={city}
+          {EVENT_CITIES.map((c) => (
+            <Pressable
+              key={c}
+              onPress={() => setCity(c)}
               style={{
                 marginRight: 8,
                 paddingHorizontal: 14,
                 paddingVertical: 8,
                 borderRadius: 999,
-                backgroundColor: i === 0 ? G.dark : G.white,
+                backgroundColor: c === city ? G.dark : G.white,
                 borderWidth: 1,
-                borderColor: i === 0 ? G.dark : G.line,
+                borderColor: c === city ? G.dark : G.line,
               }}
             >
-              <ILText role="label" color={i === 0 ? '#FFFFFF' : G.ink} style={{ fontSize: 12 }}>
-                {city}
+              <ILText role="label" color={c === city ? '#FFFFFF' : G.ink} style={{ fontSize: 13 }}>
+                {c}
               </ILText>
-            </View>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
-      <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 20, fontSize: 10 }]}>
-        OPEN TO EVERY MEMBER
-      </ILText>
-      {LEARN_EVENTS_OPEN.map((item) => (
-        <WhiteCard key={item.title} style={{ marginTop: 10, borderRadius: 22, padding: 16 }} onPress={onTicket}>
-          <ILText role="label" color={G.ink}>
-            {item.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-            {item.meta}
-          </ILText>
+
+      <View style={{ marginTop: 22 }}>
+        <SectionHead title="Open to every member" accent={`${LEARN_EVENTS_OPEN.length} upcoming`} />
+      </View>
+      {LEARN_EVENTS_OPEN.map((e) => (
+        <WhiteCard
+          key={e.title}
+          onPress={onTicket}
+          style={{ marginTop: 10, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' }}
+        >
+          <View
+            style={{
+              width: 48,
+              height: 52,
+              borderRadius: 12,
+              backgroundColor: G.pink,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
+              {e.mon}
+            </ILText>
+            <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 20 }}>
+              {e.day}
+            </ILText>
+          </View>
+          <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+            <ILText role="label" color={G.ink} numberOfLines={1} style={{ fontSize: 15 }}>
+              {e.title}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 13 }} numberOfLines={2}>
+              {e.meta}
+            </ILText>
+          </View>
+          <View
+            style={{
+              borderWidth: 1.5,
+              borderColor: G.cta,
+              borderRadius: 999,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+            }}
+          >
+            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+              RSVP
+            </ILText>
+          </View>
         </WhiteCard>
       ))}
-      {!enrolled ? (
-        <>
-          <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 22, fontSize: 10 }]}>
-            LOCKED COHORT ROOMS
-          </ILText>
-          {LEARN_EVENTS_LOCKED.map((item) => (
-            <WhiteCard key={item.title} style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row' }}>
-              <MaterialIcons name="lock" size={16} color={G.meta} />
-              <View style={{ marginLeft: 10, flex: 1 }}>
-                <ILText role="label" color={G.meta}>
-                  {item.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                  {item.meta}
-                </ILText>
-              </View>
-            </WhiteCard>
-          ))}
-          <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16 }}>
-            <ILText role="label" color={G.ink}>
-              Complete enrollment by 15 Sep
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-              To keep the held seat and open Day 1, Day 2 and Thursday Circle.
-            </ILText>
-          </WhiteCard>
-          <View style={{ marginTop: 18 }}>
-            <RedCta label="Complete enrollment" onPress={onEnroll} />
+
+      <View style={{ marginTop: 26 }}>
+        <SectionHead title="Cohort rooms" accent="Locked" />
+      </View>
+      {LEARN_EVENTS_LOCKED.map((e) => (
+        <WhiteCard
+          key={e.title}
+          style={{
+            marginTop: 10,
+            borderRadius: 18,
+            padding: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            opacity: 0.72,
+          }}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 12,
+              backgroundColor: G.mutedFill,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name={e.icon} size={18} color={G.ink} />
           </View>
-        </>
-      ) : null}
+          <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+            <ILText role="label" color={G.ink} style={{ fontSize: 15 }}>
+              {e.title}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 13 }}>
+              {e.meta}
+            </ILText>
+          </View>
+          <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+        </WhiteCard>
+      ))}
+
+      <GateCard
+        title="Your seat is held"
+        body="Complete enrollment by 15 Sep to keep it and open every cohort room."
+        onPress={onEnroll}
+      />
     </>
   );
 }
@@ -659,57 +818,24 @@ function EnrolledForYou({ onTicket }) {
   const [city, setCity] = useState('Pune');
   return (
     <>
-      <View style={{ marginTop: 18, height: 278, borderRadius: 28, overflow: 'hidden', backgroundColor: G.dark, padding: 18 }}>
-        <View
-          style={{
-            alignSelf: 'flex-start',
-            backgroundColor: 'rgba(255,255,255,0.12)',
-            borderRadius: 999,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
-        >
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: G.cta, marginRight: 6 }} />
-          <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9, letterSpacing: 0.7 }]}>
-            FEATURED MASTERCLASS
-          </ILText>
+      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+        <View style={{ aspectRatio: 16 / 9 }}>
+          <CoverThumb source={COVER.priyanka} play />
         </View>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: G.cta,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
-          </View>
-        </View>
-        <ILText role="eyebrow" color="rgba(255,255,255,0.55)" style={[af, { fontSize: 10, alignSelf: 'flex-end' }]}>
-          28 mins · Live case
-        </ILText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
-          <MaterialIcons name="star" size={12} color={G.cta} />
-          <ILText role="eyebrow" color={G.cta} style={[af, { marginLeft: 4, fontSize: 9, letterSpacing: 0.6 }]}>
-            TARGETED RECOMMENDATION
-          </ILText>
-        </View>
-        <ILText
-          role="title"
-          color="#FFFFFF"
-          style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 30 }}
-        >
-          Picked for women in Technology in Bengaluru
-        </ILText>
-        <ILText role="bodySm" color="rgba(255,255,255,0.7)" style={{ marginTop: 6, fontSize: 13 }}>
-          Overcoming the engineering-to-VP ceiling: How senior women make the jump
-        </ILText>
       </View>
+      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
+        TARGETED RECOMMENDATION
+      </ILText>
+      <ILText
+        role="title"
+        color={G.ink}
+        style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+      >
+        Picked for women in Technology in Bengaluru
+      </ILText>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+        Priyanka Sunder · Cybersecurity & Information Security
+      </ILText>
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent="2 in progress" />
@@ -718,42 +844,8 @@ function EnrolledForYou({ onTicket }) {
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
           {LEARN_CONTINUE_ENR.map((item) => (
             <WhiteCard key={item.title} style={{ width: 248, marginRight: 12, borderRadius: 22, overflow: 'hidden' }}>
-              <View style={{ height: 120, backgroundColor: G.dark }}>
-                <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.7 }} resizeMode="cover" />
-                <View
-                  style={{
-                    position: 'absolute',
-                    alignSelf: 'center',
-                    top: 42,
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: 'rgba(255,255,255,0.92)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    left: '50%',
-                    marginLeft: -18,
-                  }}
-                >
-                  <MaterialIcons name="play-arrow" size={20} color={G.ink} />
-                </View>
-                {item.left ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      right: 10,
-                      bottom: 10,
-                      backgroundColor: '#111',
-                      borderRadius: 6,
-                      paddingHorizontal: 6,
-                      paddingVertical: 2,
-                    }}
-                  >
-                    <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                      {item.left}
-                    </ILText>
-                  </View>
-                ) : null}
+              <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                <CoverThumb source={item.img} play time={item.left} />
                 <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: G.mutedFill }}>
                   <View style={{ width: `${item.pct}%`, height: 3, backgroundColor: G.cta }} />
                 </View>
@@ -799,8 +891,8 @@ function EnrolledForYou({ onTicket }) {
               borderTopColor: G.line,
             }}
           >
-            <View style={{ width: 44, height: 44, borderRadius: 22, overflow: 'hidden', backgroundColor: G.dark }}>
-              <Image source={FACE} style={{ width: 44, height: 44 }} />
+            <View style={{ width: 72, height: 40, borderRadius: 10, overflow: 'hidden', backgroundColor: G.dark }}>
+              <CoverThumb source={item.img} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1055,7 +1147,7 @@ function PrinciplesEnrolled({ onResume }) {
           <View style={{ width: '33%', height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
         </View>
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 12 }}>
-          Foundation closed on 12 Sep · Influence opening with Day 1
+          Foundation closed on 12 Sep · Influence opens with Day 1
         </ILText>
       </WhiteCard>
 
@@ -1184,7 +1276,7 @@ function PrinciplesEnrolled({ onResume }) {
 
       <NextCard
         kicker="NEXT FOR YOU"
-        title="Principle 10 · Negotiating from the seat you want"
+        title="Principle 10 · Negotiate from the seat you want"
         body="18 minutes. Finish before Saturday and you walk into Day 1 current."
         cta="Resume principle 10 →"
         onPress={onResume}
@@ -1195,6 +1287,9 @@ function PrinciplesEnrolled({ onResume }) {
 
 function CasesEnrolled({ onMark }) {
   const [fn, setFn] = useState('Technology');
+  const list = CASES_ENR.filter((c) => c.fn === fn);
+  const feat = list.find((c) => c.featured) || list[0];
+  const more = list.filter((c) => c !== feat);
   return (
     <>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
@@ -1225,50 +1320,21 @@ function CasesEnrolled({ onMark }) {
           Picked for {fn}
         </ILText>
         <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          9 cases
+          {list.length} cases
         </ILText>
       </View>
-      <View style={{ marginTop: 12, height: 220, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
-        <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.45 }} resizeMode="cover" />
-        <View style={{ position: 'absolute', left: 16, right: 16, top: 16, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
-              {fn.toUpperCase()}
-            </ILText>
+      {feat ? (
+        <View style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+          <View style={{ aspectRatio: 16 / 9 }}>
+            <CoverThumb source={feat.img} play time={feat.time} />
           </View>
-          <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 10 }]}>
-            31 mins
-          </ILText>
         </View>
-        <View
-          style={{
-            position: 'absolute',
-            top: 82,
-            left: '50%',
-            marginLeft: -28,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: G.cta,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
-        </View>
-        <View style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}>
-          <ILText
-            role="title"
-            color="#FFFFFF"
-            style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            Cybersecurity Is Not an IT Function. It Is a Business Responsibility.
-          </ILText>
-          <ILText role="bodySm" color="rgba(255,255,255,0.7)" style={{ marginTop: 6, fontSize: 12 }}>
-            Board perspective · Security & Risk
-          </ILText>
-        </View>
-      </View>
+      ) : null}
+      {feat ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
+          {feat.who} · {feat.tag}
+        </ILText>
+      ) : null}
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           More in your track
@@ -1279,35 +1345,17 @@ function CasesEnrolled({ onMark }) {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {CASES_MORE_ENR.map((item) => (
-            <WhiteCard key={item.title} style={{ width: 220, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
-              <View style={{ height: 110, backgroundColor: G.dark }}>
-                <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    bottom: 10,
-                    backgroundColor: '#111',
-                    borderRadius: 6,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                    {item.time}
-                  </ILText>
-                </View>
+          {more.map((item) => (
+            <WhiteCard key={item.title} style={{ width: 240, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
+              <View style={{ aspectRatio: 16 / 9 }}>
+                <CoverThumb source={item.img} play time={item.time} />
               </View>
               <View style={{ padding: 12 }}>
                 <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
                   {item.tag}
                 </ILText>
-                <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={3}>
-                  {item.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
-                  {item.meta}
+                <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={2}>
+                  {item.who}
                 </ILText>
               </View>
             </WhiteCard>
@@ -1506,8 +1554,8 @@ function StoriesEnrolled({ onHow }) {
         </ILText>
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden' }}>
-        <View style={{ height: 160, backgroundColor: G.dark }}>
-          <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.6 }} resizeMode="cover" />
+        <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+          <CoverThumb source={STORY_FEATURED_ENR.img} play time={STORY_FEATURED_ENR.time} />
           <View
             style={{
               position: 'absolute',
@@ -1523,28 +1571,13 @@ function StoriesEnrolled({ onHow }) {
               NEW THIS WEEK
             </ILText>
           </View>
-          <View
-            style={{
-              position: 'absolute',
-              right: 14,
-              bottom: 14,
-              backgroundColor: '#111',
-              borderRadius: 6,
-              paddingHorizontal: 6,
-              paddingVertical: 2,
-            }}
-          >
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-              3:40
-            </ILText>
-          </View>
         </View>
         <View style={{ padding: 16 }}>
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
-            What changed after my first 30 days
+            {STORY_FEATURED_ENR.title}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            Anjali K. · Product
+            {STORY_FEATURED_ENR.who}
           </ILText>
         </View>
       </WhiteCard>
@@ -1561,23 +1594,8 @@ function StoriesEnrolled({ onHow }) {
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
           {STORIES_FUNC_ENR.map((item) => (
             <WhiteCard key={item.title} style={{ width: 200, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
-              <View style={{ height: 110, backgroundColor: G.dark }}>
-                <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
-                <View
-                  style={{
-                    position: 'absolute',
-                    right: 10,
-                    bottom: 10,
-                    backgroundColor: '#111',
-                    borderRadius: 6,
-                    paddingHorizontal: 6,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                    {item.time}
-                  </ILText>
-                </View>
+              <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                <CoverThumb source={item.img} play time={item.time} />
               </View>
               <View style={{ padding: 12 }}>
                 <ILText role="label" color={G.ink} style={{ fontSize: 13 }} numberOfLines={3}>

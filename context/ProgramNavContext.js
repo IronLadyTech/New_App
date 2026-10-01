@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from './AuthContext';
 import { PAYMENT_STATUS, getProgramEntry } from '../constants/programs';
@@ -38,6 +38,14 @@ export function ProgramNavProvider({ children }) {
   const [program, setProgramState] = useState('lep');
   const [section, setSection] = useState('Journey');
   const [stageOverride, setStageOverride] = useState(null);
+
+  // A new demo journey (picked after Seat held) starts from its own program and stage.
+  const journey = `${profile?.labProgram || ''}:${profile?.labState || ''}`;
+  useEffect(() => {
+    setPicked(false);
+    setStageOverride(null);
+    setSection('Journey');
+  }, [journey]);
 
   const shown = picked ? program : deriveHomeProgram(profile);
 

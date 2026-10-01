@@ -29,9 +29,11 @@ import {
   PROGRAM_PATH,
   REELS,
 } from './guestData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 export default function GuestProgramsScreen() {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { findRegistration, goProgram } = useGuestActions();
   const [filter, setFilter] = useState('All');
   const drills = useMemo(
@@ -42,12 +44,12 @@ export default function GuestProgramsScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <GuestHeader />
+      <GuestHeader floating />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 18,
+          paddingTop: headerPad + 18,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >

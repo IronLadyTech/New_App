@@ -9,7 +9,9 @@ function LearnRoot(props) {
   const Screen =
     program === 'lep'
       ? require('../screens/lep/LepLearnScreen').default
-      : require('../screens/learn/LearnLibrary').default;
+      : program === '100bm'
+        ? require('../screens/learn/BmLearnScreen').default
+        : require('../screens/learn/LearnLibrary').default;
   return <Screen {...props} />;
 }
 

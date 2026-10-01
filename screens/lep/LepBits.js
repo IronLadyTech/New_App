@@ -1,9 +1,8 @@
 import React from 'react';
 import { Image, Pressable, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
-import ILLogoMark from '../../components/il/ILLogoMark';
+import GlassHeader from '../../components/il/GlassHeader';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { FACE } from './lepData';
@@ -11,78 +10,15 @@ import { FACE } from './lepData';
 export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../guest/GuestBits';
 export { GuestBackBar } from '../guest/GuestBits';
 
-export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile }) {
-  const insets = useSafeAreaInsets();
+export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false }) {
   return (
-    <View
-      style={{
-        backgroundColor: G.page,
-        paddingTop: Math.max(insets.top, 8),
-        paddingHorizontal: 20,
-        paddingBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <ILLogoMark size={32} />
-        <ILText
-          role="wordmark"
-          color={G.ink}
-          style={[af, { marginLeft: 10, fontFamily: IL_FONTS.display, fontSize: 14, lineHeight: 16 }]}
-        >
-          Iron Lady
-        </ILText>
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <CircleBtn name="search" onPress={onSearch} label="Search" />
-        <View style={{ width: 8 }} />
-        <CircleBtn name="notifications-none" onPress={onNotifications} label="Notifications" badge />
-        <View style={{ width: 8 }} />
-        <Pressable onPress={onProfile} accessibilityRole="button" accessibilityLabel="Profile">
-          <Image
-            source={photoUrl ? { uri: photoUrl } : FACE}
-            style={{ width: 36, height: 36, borderRadius: 18 }}
-          />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function CircleBtn({ name, onPress, label, badge }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: G.white,
-        borderWidth: 1,
-        borderColor: G.line,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <MaterialIcons name={name} size={16} color={G.ink} />
-      {badge ? (
-        <View
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            width: 8,
-            height: 8,
-            borderRadius: 4,
-            backgroundColor: G.cta,
-          }}
-        />
-      ) : null}
-    </Pressable>
+    <GlassHeader
+      onSearch={onSearch}
+      onNotifications={onNotifications}
+      onProfile={onProfile}
+      photo={photoUrl ? { uri: photoUrl } : FACE}
+      floating={floating}
+    />
   );
 }
 
@@ -100,6 +36,57 @@ export function DarkHero({ children, style }) {
       ]}
     >
       {children}
+    </View>
+  );
+}
+
+export function CoverThumb({ source, height, play, time, radius = 0 }) {
+  return (
+    <View
+      style={{
+        height: height === '100%' || height == null ? undefined : height,
+        flex: height === '100%' || height == null ? 1 : undefined,
+        width: '100%',
+        borderRadius: radius,
+        overflow: 'hidden',
+        backgroundColor: G.dark,
+      }}
+    >
+      <Image source={source} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
+      {play ? (
+        <View
+          style={{
+            position: 'absolute',
+            right: 10,
+            bottom: 10,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: G.cta,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialIcons name="play-arrow" size={18} color="#FFFFFF" />
+        </View>
+      ) : null}
+      {time ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: 10,
+            bottom: 10,
+            backgroundColor: 'rgba(17,55,68,0.88)',
+            borderRadius: 6,
+            paddingHorizontal: 7,
+            paddingVertical: 3,
+          }}
+        >
+          <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
+            {time}
+          </ILText>
+        </View>
+      ) : null}
     </View>
   );
 }

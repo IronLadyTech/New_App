@@ -411,20 +411,23 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           accessibilityLabel="Continue to my journey"
           style={({ pressed }) => ({
             marginTop: 24,
+            width: '100%',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            paddingVertical: 12,
-            opacity: pressed ? 0.7 : 1,
+            paddingVertical: 15,
+            borderRadius: 999,
+            backgroundColor: INK,
+            opacity: pressed ? 0.9 : 1,
           })}
         >
-          <ILText role="label" color={INK} style={{ fontSize: 13.5, lineHeight: 18 }}>
+          <ILText role="label" color="#FFFFFF" style={{ fontSize: 15, lineHeight: 20 }}>
             Continue to my journey
           </ILText>
           <MaterialIcons
             name="arrow-forward"
-            size={16}
-            color={INK}
+            size={18}
+            color="#FFFFFF"
             style={{ marginLeft: 8 }}
           />
         </Pressable>

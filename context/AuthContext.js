@@ -14,6 +14,7 @@ import { subscribeToUser } from '../services/firestore';
 const GUEST_KEY = 'il_guest_mode';
 const LAB_LEP_KEY = 'il_lab_lep';
 const LAB_JOURNEY_KEY = 'il_lab_journey';
+const DEMO_KEY = 'il_demo';
 const AuthContext = createContext(null);
 
 function parseLabJourney(raw, legacyLep) {
@@ -65,6 +66,10 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [guestMode, setGuestMode] = useState(false);
   const [labJourney, setLabJourney] = useState(null);
+  // Set when a flow was opened from the journey picker, so the demo flow bar shows.
+  const [demo, setDemo] = useState(false);
+  // Sign-in screen the demo flow bar jumped to (null = start at phone login).
+  const [authEntry, setAuthEntry] = useState(null);
   const [preview, setPreview] = useState(false);
   const previewRef = useRef(false);
   const onboardedRef = useRef(false);
@@ -81,12 +86,14 @@ export function AuthProvider({ children }) {
       AsyncStorage.getItem(GUEST_KEY),
       AsyncStorage.getItem(LAB_JOURNEY_KEY),
       AsyncStorage.getItem(LAB_LEP_KEY),
+      AsyncStorage.getItem(DEMO_KEY),
     ])
-      .then(([guest, journey, legacyLep]) => {
+      .then(([guest, journey, legacyLep, demoFlag]) => {
         if (cancelled) return;
         const lab = parseLabJourney(journey, legacyLep);
         setLabJourney(lab);
         setGuestMode(guest === '1' && !lab);
+        setDemo(demoFlag === '1');
       })
       .catch(() => {});
 
@@ -144,7 +151,8 @@ export function AuthProvider({ children }) {
     setProfile(null);
     setGuestMode(false);
     setLabJourney(null);
-    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
+    setDemo(false);
+    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]);
   }, []);
 
   const enterPreview = useCallback(() => {
@@ -157,10 +165,13 @@ export function AuthProvider({ children }) {
     setInitializing(false);
   }, []);
 
-  const enterGuest = useCallback(async (firstName) => {
+  const enterGuest = useCallback(async (firstName, { demo: fromDemo = false } = {}) => {
     setLabJourney(null);
     setGuestMode(true);
+    setDemo(fromDemo);
     await AsyncStorage.setItem(GUEST_KEY, '1');
+    if (fromDemo) await AsyncStorage.setItem(DEMO_KEY, '1');
+    else await AsyncStorage.removeItem(DEMO_KEY);
     await AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY]);
     if (firstName) {
       await AsyncStorage.setItem('il_guest_name', firstName);
@@ -183,18 +194,32 @@ export function AuthProvider({ children }) {
     leavePreview();
     setLabJourney(null);
     setGuestMode(false);
+    setDemo(false);
+    await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]);
+  }, []);
+
+  /** Demo only: back to a sign-in step (phone, OTP, batch…) while keeping the flow bar. */
+  const enterAuthDemo = useCallback(async (route) => {
+    leavePreview();
+    setLabJourney(null);
+    setGuestMode(false);
+    setDemo(true);
+    setAuthEntry(route || null);
     await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
+    await AsyncStorage.setItem(DEMO_KEY, '1');
   }, []);
 
   const enterJourneyPreview = useCallback(async (program, state) => {
     const next = {
-      program: 'lep',
+      program: ['lep', '100bm', 'mbw'].includes(program) ? program : 'lep',
       state: state === 'enrolled' ? 'enrolled' : 'registered',
     };
     leavePreview();
     setGuestMode(false);
     setLabJourney(next);
+    setDemo(true);
     await AsyncStorage.setItem(LAB_JOURNEY_KEY, JSON.stringify(next));
+    await AsyncStorage.setItem(DEMO_KEY, '1');
     await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY]);
   }, []);
 
@@ -243,6 +268,9 @@ export function AuthProvider({ children }) {
       role: resolvedProfile?.role || (guestMode ? 'guest' : 'student'),
       isAuthenticated: !!firebaseUser || preview || !!labJourney,
       isPreview: preview,
+      demo,
+      authEntry,
+      journey: labJourney,
       isGuest: guestMode && !firebaseUser && !preview && !labJourney,
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
         resolvedProfile?.role
@@ -255,6 +283,7 @@ export function AuthProvider({ children }) {
       enterAuthFromGuest,
       enterLepPreview,
       enterJourneyPreview,
+      enterAuthDemo,
       exitToLogin,
       patchProfile,
       setError,
@@ -266,6 +295,8 @@ export function AuthProvider({ children }) {
       guestMode,
       labJourney,
       preview,
+      demo,
+      authEntry,
       initializing,
       error,
       logout,
