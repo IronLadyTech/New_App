@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,10 +14,25 @@ import { subscribeToUser } from '../services/firestore';
 const GUEST_KEY = 'il_guest_mode';
 const AuthContext = createContext(null);
 
+const PREVIEW_PROFILE = {
+  displayName: 'Ananya',
+  role: 'student',
+  ilGuideOnboarded: true,
+  programs: ['lep', '100bm', 'mbw'],
+  programAccess: {
+    lep: { paymentStatus: 'paid' },
+    '100bm': { paymentStatus: 'register' },
+    mbw: { paymentStatus: 'register' },
+  },
+};
+
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [guestMode, setGuestMode] = useState(false);
+  const [preview, setPreview] = useState(false);
+  const previewRef = useRef(false);
+  const onboardedRef = useRef(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
 
@@ -35,7 +51,7 @@ export function AuthProvider({ children }) {
     const unsubAuth = subscribeToAuth(async (user) => {
       setFirebaseUser(user);
       if (!user) {
-        setProfile(null);
+        if (!previewRef.current) setProfile(null);
         setInitializing(false);
         return;
       }
@@ -45,7 +61,10 @@ export function AuthProvider({ children }) {
       }
       try {
         const p = await fetchUserProfile(user.uid);
-        setProfile(p);
+        setProfile({
+          ...p,
+          ilGuideOnboarded: p?.ilGuideOnboarded === true || onboardedRef.current,
+        });
       } catch (e) {
         setError(e.message);
       } finally {
@@ -63,17 +82,34 @@ export function AuthProvider({ children }) {
     if (!firebaseUser?.uid) return undefined;
     const unsub = subscribeToUser(
       firebaseUser.uid,
-      (data) => setProfile(data),
+      (data) =>
+        setProfile((prev) => ({
+          ...data,
+          ilGuideOnboarded:
+            data?.ilGuideOnboarded === true ||
+            prev?.ilGuideOnboarded === true ||
+            onboardedRef.current,
+        })),
       (err) => setError(err.message)
     );
     return unsub;
   }, [firebaseUser?.uid]);
 
   const logout = useCallback(async () => {
+    previewRef.current = false;
+    setPreview(false);
     await authLogOut();
     setProfile(null);
     setGuestMode(false);
     await AsyncStorage.removeItem(GUEST_KEY);
+  }, []);
+
+  const enterPreview = useCallback(() => {
+    previewRef.current = true;
+    setGuestMode(false);
+    setPreview(true);
+    setProfile(PREVIEW_PROFILE);
+    setInitializing(false);
   }, []);
 
   const enterGuest = useCallback(async (firstName) => {
@@ -89,13 +125,19 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem(GUEST_KEY);
   }, []);
 
+  const patchProfile = useCallback((partial) => {
+    if (partial?.ilGuideOnboarded === true) onboardedRef.current = true;
+    setProfile((prev) => (prev ? { ...prev, ...partial } : { ...partial }));
+  }, []);
+
   const value = useMemo(
     () => ({
-      user: firebaseUser,
+      user: firebaseUser || (preview ? { uid: 'preview' } : null),
       profile,
       role: profile?.role || (guestMode ? 'guest' : 'student'),
-      isAuthenticated: !!firebaseUser,
-      isGuest: guestMode && !firebaseUser,
+      isAuthenticated: !!firebaseUser || preview,
+      isPreview: preview,
+      isGuest: guestMode && !firebaseUser && !preview,
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
         profile?.role
       ),
@@ -103,18 +145,23 @@ export function AuthProvider({ children }) {
       error,
       logout,
       enterGuest,
+      enterPreview,
       enterAuthFromGuest,
+      patchProfile,
       setError,
     }),
     [
       firebaseUser,
       profile,
       guestMode,
+      preview,
       initializing,
       error,
       logout,
       enterGuest,
+      enterPreview,
       enterAuthFromGuest,
+      patchProfile,
     ]
   );
 

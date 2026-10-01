@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -168,12 +168,24 @@ export default function LiquidTabBar({ items, activeIndex, onPress, page = 'tran
     ],
   }));
 
-  const nameStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: clamp(cx.value - 44, 22, Math.max(22, widthSV.value - 110)) }],
-  }));
+  const selectAt = (x) => {
+    'worklet';
+    const idx = nearestIndex(x, slotSV.value, countSV.value);
+    const target = slotCenter(idx, slotSV.value);
+    smear.value = withSpring(0, TRAIL);
+    cx.value = withSpring(target, LEAD);
+    groove.value = withSpring(target, TRAIL);
+    runOnJS(setNearest)(idx);
+    runOnJS(snapTo)(idx);
+  };
+
+  const tap = Gesture.Tap().onEnd((e, success) => {
+    if (!success) return;
+    selectAt(e.x);
+  });
 
   const pan = Gesture.Pan()
-    .minDistance(0)
+    .minDistance(12)
     .onBegin((e) => {
       drag.value = 1;
       pressX.value = e.x;
@@ -190,18 +202,14 @@ export default function LiquidTabBar({ items, activeIndex, onPress, page = 'tran
     })
     .onEnd((e) => {
       drag.value = 0;
-      const tapped = Math.abs(e.translationX) < 8 && Math.abs(e.translationY) < 8;
-      const idx = nearestIndex(tapped ? pressX.value : cx.value, slotSV.value, countSV.value);
-      const target = slotCenter(idx, slotSV.value);
-      smear.value = withSpring(0, TRAIL);
-      cx.value = withSpring(target, LEAD);
-      groove.value = withSpring(target, TRAIL);
-      runOnJS(setNearest)(idx);
-      runOnJS(snapTo)(idx);
+      selectAt(e.x);
     })
     .onFinalize(() => {
       drag.value = 0;
     });
+
+  const dockGesture =
+    Platform.OS === 'web' ? Gesture.Tap().enabled(false) : Gesture.Exclusive(pan, tap);
 
   return (
     <View
@@ -215,8 +223,8 @@ export default function LiquidTabBar({ items, activeIndex, onPress, page = 'tran
         backgroundColor: page,
       }}
     >
-      <GestureDetector gesture={pan}>
-        <Animated.View pointerEvents="box-none" style={{ height: svgH, overflow: 'visible' }}>
+      <GestureDetector gesture={dockGesture} touchAction="auto">
+        <Animated.View collapsable={false} style={{ height: svgH, overflow: 'visible' }}>
           <BlurView
             pointerEvents="none"
             intensity={Platform.OS === 'ios' ? 36 : 22}
@@ -271,15 +279,25 @@ export default function LiquidTabBar({ items, activeIndex, onPress, page = 'tran
               flexDirection: 'row',
             }}
           >
-            {items.map((item, index) => (
-              <TabIcon
-                key={item.key}
-                item={item}
-                index={index}
-                cx={cx}
-                slotSV={slotSV}
-              />
-            ))}
+            {items.map((item, index) => {
+              const icon = (
+                <TabIcon item={item} index={index} cx={cx} slotSV={slotSV} />
+              );
+              if (Platform.OS !== 'web') {
+                return <React.Fragment key={item.key}>{icon}</React.Fragment>;
+              }
+              return (
+                <Pressable
+                  key={item.key}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  onPress={() => snapTo(index)}
+                  style={{ flex: 1 }}
+                >
+                  {icon}
+                </Pressable>
+              );
+            })}
           </View>
 
           <Animated.View
@@ -319,29 +337,6 @@ export default function LiquidTabBar({ items, activeIndex, onPress, page = 'tran
             ))}
           </Animated.View>
 
-          <Animated.Text
-            pointerEvents="none"
-            numberOfLines={1}
-            style={[
-              af,
-              {
-                position: 'absolute',
-                top: BAR_TOP + PILL_H - 22,
-                width: 88,
-                textAlign: 'center',
-                color: '#F5F2E8',
-                fontSize: 12,
-                lineHeight: 15,
-                letterSpacing: 0.2,
-                fontFamily: IL_FONTS.semibold,
-                backgroundColor: 'transparent',
-              },
-              nameStyle,
-            ]}
-          >
-            {items[nearest]?.label || ''}
-          </Animated.Text>
-
         </Animated.View>
       </GestureDetector>
     </View>
@@ -369,8 +364,24 @@ function TabIcon({ item, index, cx, slotSV }) {
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
     >
       <Animated.View style={iconStyle}>
-        <TabGlyph name={item.outline} pack={item.pack} size={22} color="rgba(245,242,232,0.78)" />
+        <TabGlyph name={item.outline} pack={item.pack} size={20} color="rgba(245,242,232,0.78)" />
       </Animated.View>
+      <Text
+        numberOfLines={1}
+        style={[
+          af,
+          {
+            marginTop: 2,
+            fontSize: 9,
+            lineHeight: 11,
+            color: 'rgba(245,242,232,0.92)',
+            fontFamily: IL_FONTS.semibold,
+            textAlign: 'center',
+          },
+        ]}
+      >
+        {item.label}
+      </Text>
     </View>
   );
 }

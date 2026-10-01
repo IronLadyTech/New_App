@@ -23,11 +23,12 @@ const JUMPS = [
   { label: 'Seat held', route: 'SeatHeld' },
   { label: 'Guest start', route: 'GuestStart' },
   { label: 'Guest · Home', guest: true },
+  { label: '100BM and MBW screens', preview: true },
 ];
 
 export default function ScreenLab({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { enterGuest } = useAuth();
+  const { enterGuest, enterPreview } = useAuth();
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
@@ -69,6 +70,10 @@ export default function ScreenLab({ navigation }) {
               onPress={() => {
                 if (item.guest) {
                   enterGuest();
+                  return;
+                }
+                if (item.preview) {
+                  enterPreview();
                   return;
                 }
                 item.prep?.();

@@ -12,7 +12,7 @@ import { markILGuideOnboarded } from '../services/ilGuide';
 const DISMISS_KEY = (uid, surface, id) => `ilguide:dismiss:${uid}:${surface}:${id}`;
 
 export function useILGuideWhisper(surface) {
-  const { user, profile, isStaff } = useAuth();
+  const { user, profile, isStaff, patchProfile } = useAuth();
   const { enrolledPrograms, progressByProgram, tasksByProgram, subsByProgram } =
     usePrograms();
   const { visibleAnnouncements, upcomingEventList } = useCourses();
@@ -115,15 +115,24 @@ export function useILGuideWhisper(surface) {
   }, [user?.uid, whisper?.id, surface]);
 
   const completeOnboard = useCallback(async () => {
+    patchProfile({ ilGuideOnboarded: true });
     if (!user?.uid) return;
-    await markILGuideOnboarded(user.uid);
+    try {
+      await markILGuideOnboarded(user.uid);
+    } catch {
+      // Local cache is optional. The in-memory flag already opens the app.
+    }
     try {
       await updateUserProfile(user.uid, { ilGuideOnboarded: true });
     } catch {
-      // Local flag is enough for UX if Firestore write fails
+      // Firestore can reject the write. The session still continues.
     }
-    await dismiss();
-  }, [user?.uid, dismiss]);
+    try {
+      await dismiss();
+    } catch {
+      // Dismiss only hides the whisper. The profile flag already closed the gate.
+    }
+  }, [user?.uid, dismiss, patchProfile]);
 
   return {
     whisper,

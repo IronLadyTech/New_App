@@ -12,9 +12,12 @@ import {
   SUBMISSION_STATUS,
 } from '../../constants/programs';
 import { submissionsByTaskId } from '../../services/programs';
+import { useAuth } from '../../context/AuthContext';
+import ILHeader from '../../components/il/ILHeader';
 
 export default function ProgramTasksScreen({ route, navigation }) {
   const { programId, title } = route.params;
+  const { profile } = useAuth();
   const { tasksByProgram, subsByProgram, progressByProgram } = usePrograms();
 
   const tasks = tasksByProgram[programId] || [];
@@ -26,6 +29,13 @@ export default function ProgramTasksScreen({ route, navigation }) {
 
   return (
     <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
+      <ILHeader
+        photoUrl={profile?.photoURL}
+        insetTop={false}
+        onProfile={() => navigation.getParent()?.navigate('Profile')}
+        onNotifications={() => navigation.getParent()?.navigate('Engage')}
+        onSearch={() => {}}
+      />
       <View className="px-4 pb-2 pt-2">
         <TouchableOpacity
           onPress={() => navigation.goBack()}
