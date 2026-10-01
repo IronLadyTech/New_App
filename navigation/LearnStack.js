@@ -1,18 +1,25 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useProgramNav } from '../context/ProgramNavContext';
 
 const Stack = createNativeStackNavigator();
+
+function LearnRoot(props) {
+  const { program } = useProgramNav();
+  const Screen =
+    program === 'lep'
+      ? require('../screens/lep/LepLearnScreen').default
+      : require('../screens/learn/LearnLibrary').default;
+  return <Screen {...props} />;
+}
 
 export default function LearnStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name="LepLearn"
-        getComponent={() => require('../screens/lep/LepLearnScreen').default}
-      />
+      <Stack.Screen name="LepLearn" component={LearnRoot} />
       <Stack.Screen
         name="Programs"
-        getComponent={() => require('../screens/learn/ProgramsScreen').default}
+        getComponent={() => require('../screens/learn/LearnLibrary').default}
       />
       <Stack.Screen
         name="ProgramTasks"

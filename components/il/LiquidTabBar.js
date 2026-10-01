@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, Platform, Pressable, View } from 'react-native';
+import { Animated, PanResponder, Platform, Text, View } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -333,15 +333,29 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
                 accessibilityRole="tab"
                 accessibilityLabel={item.label}
                 accessibilityState={{ selected: index === safeIndex }}
-                style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: 1 - smoothstep(0.6, 0.92, p),
-                  transform: [{ translateY: -8 * Math.sin(Math.PI * p) }],
-                }}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 9 }}
               >
-                <TabGlyph name={item.outline} pack={item.pack} size={22} color={ICON_DIM} />
+                <View
+                  style={{
+                    opacity: 1 - smoothstep(0.6, 0.92, p),
+                    transform: [{ translateY: -8 * Math.sin(Math.PI * p) }],
+                  }}
+                >
+                  <TabGlyph name={item.outline} pack={item.pack} size={20} color={ICON_DIM} />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    marginTop: 3,
+                    fontSize: 11,
+                    lineHeight: 13,
+                    textAlign: 'center',
+                    color: index === hover ? NAME : ICON_DIM,
+                    fontFamily: index === hover ? IL_FONTS.semibold : IL_FONTS.medium,
+                  }}
+                >
+                  {item.label}
+                </Text>
               </View>
             );
           })}
@@ -380,32 +394,6 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
             >
               <TabGlyph name={items[hover]?.icon} pack={items[hover]?.pack} size={22} color="#FFFFFF" />
             </Animated.View>
-            <Animated.Text
-              pointerEvents="none"
-              numberOfLines={1}
-              style={{
-                position: 'absolute',
-                top: BAR_TOP + PILL_H - 24,
-                width: 108,
-                marginLeft: -54,
-                textAlign: 'center',
-                color: NAME,
-                fontSize: 13,
-                lineHeight: 16,
-                fontFamily: IL_FONTS.semibold,
-                letterSpacing: 0.2,
-                transform: [{ translateX: beadX }],
-                ...(Platform.OS === 'web'
-                  ? { textShadow: '0 1px 2px rgba(0,0,0,0.45)' }
-                  : {
-                      textShadowColor: 'rgba(0,0,0,0.45)',
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: 2,
-                    }),
-              }}
-            >
-              {items[hover]?.label || ''}
-            </Animated.Text>
           </>
         ) : null}
       </View>

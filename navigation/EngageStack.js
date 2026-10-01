@@ -1,18 +1,25 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useProgramNav } from '../context/ProgramNavContext';
+import EngageHome from '../screens/engage/EngageHome';
 import LepEngageScreen from '../screens/lep/LepEngageScreen';
 import { LepEventTicketScreen } from '../screens/lep/LepFlowScreens';
 
 const Stack = createNativeStackNavigator();
 
+function EngageRoot(props) {
+  const { program } = useProgramNav();
+  return program === 'lep' ? <LepEngageScreen {...props} /> : <EngageHome {...props} />;
+}
+
 export default function EngageStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="LepEngage" component={LepEngageScreen} />
+      <Stack.Screen name="LepEngage" component={EngageRoot} />
       <Stack.Screen name="EventTicket" component={LepEventTicketScreen} />
       <Stack.Screen
         name="Feed"
-        getComponent={() => require('../screens/engage/FeedScreen').default}
+        getComponent={() => require('../screens/engage/EngageHome').default}
       />
       <Stack.Screen
         name="PostDetail"

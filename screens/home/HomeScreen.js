@@ -15,8 +15,19 @@ import ILHeader from '../../components/il/ILHeader';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { useProgramNav } from '../../context/ProgramNavContext';
+import ProgramHomes from './ProgramHomes';
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen(props) {
+  const { program, stage } = useProgramNav();
+  return program === '100bm' || program === 'mbw' || program === 'all' ? (
+    <ProgramHomes program={program} stage={stage} />
+  ) : (
+    <LegacyHome {...props} />
+  );
+}
+
+function LegacyHome({ navigation }) {
   const { profile, role } = useAuth();
   const {
     visibleAnnouncements,
