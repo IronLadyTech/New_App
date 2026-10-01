@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -47,11 +48,26 @@ function labProfile({ program, state }) {
   };
 }
 
+const PREVIEW_PROFILE = {
+  displayName: 'Ananya',
+  role: 'student',
+  ilGuideOnboarded: true,
+  programs: ['lep', '100bm', 'mbw'],
+  programAccess: {
+    lep: { paymentStatus: 'paid' },
+    '100bm': { paymentStatus: 'register' },
+    mbw: { paymentStatus: 'register' },
+  },
+};
+
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [guestMode, setGuestMode] = useState(false);
   const [labJourney, setLabJourney] = useState(null);
+  const [preview, setPreview] = useState(false);
+  const previewRef = useRef(false);
+  const onboardedRef = useRef(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
 
@@ -77,7 +93,7 @@ export function AuthProvider({ children }) {
     const unsubAuth = subscribeToAuth(async (user) => {
       setFirebaseUser(user);
       if (!user) {
-        setProfile(null);
+        if (!previewRef.current) setProfile(null);
         setInitializing(false);
         return;
       }
@@ -87,7 +103,10 @@ export function AuthProvider({ children }) {
       }
       try {
         const p = await fetchUserProfile(user.uid);
-        setProfile(p);
+        setProfile({
+          ...p,
+          ilGuideOnboarded: p?.ilGuideOnboarded === true || onboardedRef.current,
+        });
       } catch (e) {
         setError(e.message);
       } finally {
@@ -105,18 +124,37 @@ export function AuthProvider({ children }) {
     if (!firebaseUser?.uid) return undefined;
     const unsub = subscribeToUser(
       firebaseUser.uid,
-      (data) => setProfile(data),
+      (data) =>
+        setProfile((prev) => ({
+          ...data,
+          ilGuideOnboarded:
+            data?.ilGuideOnboarded === true ||
+            prev?.ilGuideOnboarded === true ||
+            onboardedRef.current,
+        })),
       (err) => setError(err.message)
     );
     return unsub;
   }, [firebaseUser?.uid]);
 
   const logout = useCallback(async () => {
+    previewRef.current = false;
+    setPreview(false);
     await authLogOut();
     setProfile(null);
     setGuestMode(false);
     setLabJourney(null);
     await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
+  }, []);
+
+  const enterPreview = useCallback(() => {
+    previewRef.current = true;
+    setGuestMode(false);
+    setLabJourney(null);
+    AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY]).catch(() => {});
+    setPreview(true);
+    setProfile(PREVIEW_PROFILE);
+    setInitializing(false);
   }, []);
 
   const enterGuest = useCallback(async (firstName) => {
@@ -134,7 +172,15 @@ export function AuthProvider({ children }) {
     await AsyncStorage.removeItem(GUEST_KEY);
   }, []);
 
+  const leavePreview = () => {
+    if (!previewRef.current) return;
+    previewRef.current = false;
+    setPreview(false);
+    setProfile(null);
+  };
+
   const exitToLogin = useCallback(async () => {
+    leavePreview();
     setLabJourney(null);
     setGuestMode(false);
     await AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY]);
@@ -145,6 +191,7 @@ export function AuthProvider({ children }) {
       program: 'lep',
       state: state === 'enrolled' ? 'enrolled' : 'registered',
     };
+    leavePreview();
     setGuestMode(false);
     setLabJourney(next);
     await AsyncStorage.setItem(LAB_JOURNEY_KEY, JSON.stringify(next));
@@ -155,6 +202,11 @@ export function AuthProvider({ children }) {
     (state) => enterJourneyPreview('lep', state),
     [enterJourneyPreview]
   );
+
+  const patchProfile = useCallback((partial) => {
+    if (partial?.ilGuideOnboarded === true) onboardedRef.current = true;
+    setProfile((prev) => (prev ? { ...prev, ...partial } : { ...partial }));
+  }, []);
 
   const resolvedProfile = useMemo(() => {
     if (!labJourney) return profile;
@@ -185,12 +237,13 @@ export function AuthProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      user: firebaseUser,
+      user: firebaseUser || (preview ? { uid: 'preview' } : null),
       accountProfile: profile,
       profile: resolvedProfile,
       role: resolvedProfile?.role || (guestMode ? 'guest' : 'student'),
-      isAuthenticated: !!firebaseUser || !!labJourney,
-      isGuest: guestMode && !firebaseUser && !labJourney,
+      isAuthenticated: !!firebaseUser || preview || !!labJourney,
+      isPreview: preview,
+      isGuest: guestMode && !firebaseUser && !preview && !labJourney,
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
         resolvedProfile?.role
       ),
@@ -198,10 +251,12 @@ export function AuthProvider({ children }) {
       error,
       logout,
       enterGuest,
+      enterPreview,
       enterAuthFromGuest,
       enterLepPreview,
       enterJourneyPreview,
       exitToLogin,
+      patchProfile,
       setError,
     }),
     [
@@ -210,14 +265,17 @@ export function AuthProvider({ children }) {
       resolvedProfile,
       guestMode,
       labJourney,
+      preview,
       initializing,
       error,
       logout,
       enterGuest,
+      enterPreview,
       enterAuthFromGuest,
       enterLepPreview,
       enterJourneyPreview,
       exitToLogin,
+      patchProfile,
     ]
   );
 

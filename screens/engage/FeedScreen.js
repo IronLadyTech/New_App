@@ -12,10 +12,15 @@ import { COLORS } from '../../constants';
 import ILGuideWhisper from '../../components/ILGuideWhisper';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import ILHeader from '../../components/il/ILHeader';
+import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { useProgramRoutes } from '../../context/ProgramNavContext';
 
 export default function FeedScreen({ navigation }) {
   const { posts, loading, error, likePost } = useEngagement();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const routes = useProgramRoutes();
+  const permissionBlocked = /permission/i.test(error || '');
   const {
     whisper: ilWhisper,
     loading: ilLoading,
@@ -27,12 +32,22 @@ export default function FeedScreen({ navigation }) {
     return <LoadingState message="Loading community…" />;
   }
 
-  if (error && posts.length === 0) {
+  if (error && posts.length === 0 && !permissionBlocked) {
     return <ErrorState message={error} />;
   }
 
+  const circle =
+    routes.program === 'mbw' ? 'Your MBW circle' : 'Your 100BM cohort';
+
   return (
-    <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
+    <SafeAreaView className="flex-1" style={{ backgroundColor: IL_BRAND.cream }} edges={['top']}>
+      <ILHeader
+        photoUrl={profile?.photoURL}
+        insetTop={false}
+        onProfile={() => navigation.getParent()?.navigate('Profile')}
+        onNotifications={() => navigation.navigate('Leaderboard')}
+        onSearch={() => navigation.getParent()?.navigate('Learn')}
+      />
       <View className="flex-row items-center justify-between px-4 pb-2 pt-2">
         <View>
           <Text className="text-2xl font-bold text-ink-950">Engage</Text>
@@ -68,13 +83,29 @@ export default function FeedScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16, paddingTop: 8, flexGrow: 1 }}
         ListEmptyComponent={
-          <EmptyState
-            icon="chatbubbles-outline"
-            title="No posts yet"
-            message="Be the first to start a discussion."
-            actionLabel="Create post"
-            onAction={() => navigation.navigate('CreatePost')}
-          />
+          <View>
+            <TouchableOpacity
+              onPress={() => routes.openMyProgram(routes.program === 'mbw' ? 'mbw' : '100bm', 'Cohort')}
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderRadius: 18,
+                padding: 16,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: '700', color: IL_BRAND.ink }}>{circle}</Text>
+              <Text style={{ marginTop: 6, color: IL_BRAND.muted }}>
+                Open your cohort, the WA group and this week’s share.
+              </Text>
+            </TouchableOpacity>
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="No posts yet"
+              message="Be the first to start a discussion."
+              actionLabel="Create post"
+              onAction={() => navigation.navigate('CreatePost')}
+            />
+          </View>
         }
         renderItem={({ item }) => (
           <PostCard

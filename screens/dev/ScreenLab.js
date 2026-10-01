@@ -26,11 +26,12 @@ const JUMPS = [
   { label: 'Guest · Home', guest: true },
   { label: 'LEP · Registered home', lep: 'registered' },
   { label: 'LEP · Enrolled home', lep: 'enrolled' },
+  { label: '100BM and MBW screens', preview: true },
 ];
 
 export default function ScreenLab({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { enterGuest, enterJourneyPreview } = useAuth();
+  const { enterGuest, enterJourneyPreview, enterPreview } = useAuth();
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
@@ -76,6 +77,10 @@ export default function ScreenLab({ navigation }) {
                 }
                 if (item.lep) {
                   enterJourneyPreview('lep', item.lep);
+                  return;
+                }
+                if (item.preview) {
+                  enterPreview();
                   return;
                 }
                 item.prep?.();

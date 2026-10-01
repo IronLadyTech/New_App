@@ -10,12 +10,17 @@ import SeatHeldScreen from '../../screens/auth/SeatHeldScreen';
 import JourneyPickerScreen from '../../screens/auth/JourneyPickerScreen';
 import { useAuth } from '../../context/AuthContext';
 
-export default function LandingGate({ profile }) {
+export default function LandingGate({ profile, forcedClosed }) {
   const { completeOnboard } = useILGuideWhisper(IL_GUIDE_SURFACES.ONBOARD);
   const { enterJourneyPreview } = useAuth();
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
-  if (!profile || profile.ilGuideOnboarded) return null;
+  const [closed, setClosed] = React.useState(false);
+  const leave = () => {
+    setClosed(true);
+    completeOnboard();
+  };
+  if (forcedClosed || closed || !profile || profile.ilGuideOnboarded) return null;
 
   const programs = getEnrolledPrograms(profile);
   const wrap = (node) => (
@@ -26,7 +31,7 @@ export default function LandingGate({ profile }) {
   if (programs.length >= 2) {
     return wrap(
       <AccountFoundScreen
-        onDone={completeOnboard}
+        onDone={leave}
         route={{
           params: {
             phone: profile.phoneNumber,
@@ -49,7 +54,7 @@ export default function LandingGate({ profile }) {
         route={{ params: { name: profile?.displayName?.split(' ')[0] } }}
         onPick={async (flow) => {
           await enterJourneyPreview(flow.program, flow.state);
-          completeOnboard();
+          leave();
         }}
       />
     );

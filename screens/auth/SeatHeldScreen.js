@@ -146,6 +146,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     if (typeof onContinue === 'function') {
       onContinue();
     }
+    if (navigation?.canGoBack?.()) navigation.goBack();
   };
 
   return (
