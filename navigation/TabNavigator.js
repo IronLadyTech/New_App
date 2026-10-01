@@ -1,55 +1,53 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import HomeScreen from '../screens/home/HomeScreen';
-import LearnStack from './LearnStack';
-import EngageStack from './EngageStack';
-import ProfileStack from './ProfileStack';
-import { COLORS } from '../constants';
+import ILTabBar from '../components/il/ILTabBar';
 
 const Tab = createBottomTabNavigator();
-
-const ICONS = {
-  Home: { focused: 'home', idle: 'home-outline' },
-  Learn: { focused: 'book', idle: 'book-outline' },
-  Engage: { focused: 'people', idle: 'people-outline' },
-  Profile: { focused: 'person', idle: 'person-outline' },
-};
 
 export default function TabNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      tabBar={(props) => <ILTabBar {...props} />}
+      screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.brand,
-        tabBarInactiveTintColor: COLORS.muted,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#eceef2',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          position: 'absolute',
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarIcon: ({ focused, color, size }) => {
-          const set = ICONS[route.name] || ICONS.Home;
-          return (
-            <Ionicons
-              name={focused ? set.focused : set.idle}
-              size={size}
-              color={color}
-            />
-          );
-        },
-      })}
+        safeAreaInsets: { bottom: 0 },
+      }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learn" component={LearnStack} />
-      <Tab.Screen name="Engage" component={EngageStack} />
-      <Tab.Screen name="Profile" component={ProfileStack} />
+      <Tab.Screen
+        name="Home"
+        getComponent={() => require('../screens/home/HomeScreen').default}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name="MyProgram"
+        getComponent={() => require('../screens/program/MyProgramScreen').default}
+        options={{ tabBarLabel: 'My Program' }}
+      />
+      <Tab.Screen
+        name="Learn"
+        getComponent={() => require('./LearnStack').default}
+        options={{ tabBarLabel: 'Learn' }}
+      />
+      <Tab.Screen
+        name="Engage"
+        getComponent={() => require('./EngageStack').default}
+        options={{ tabBarLabel: 'Engage' }}
+      />
+      <Tab.Screen
+        name="Profile"
+        getComponent={() => require('./ProfileStack').default}
+        options={{
+          tabBarButton: () => null,
+          tabBarItemStyle: { display: 'none' },
+        }}
+      />
     </Tab.Navigator>
   );
 }

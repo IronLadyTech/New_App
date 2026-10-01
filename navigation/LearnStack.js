@@ -1,26 +1,39 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import ProgramsScreen from '../screens/learn/ProgramsScreen';
-import ProgramTasksScreen from '../screens/learn/ProgramTasksScreen';
-import TaskSubmitScreen from '../screens/learn/TaskSubmitScreen';
-import CatalogScreen from '../screens/learn/CatalogScreen';
-import CourseDetailScreen from '../screens/learn/CourseDetailScreen';
-import LessonPlayerScreen from '../screens/learn/LessonPlayerScreen';
-import QuizScreen from '../screens/learn/QuizScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function LearnStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Programs" component={ProgramsScreen} />
-      <Stack.Screen name="ProgramTasks" component={ProgramTasksScreen} />
-      <Stack.Screen name="TaskSubmit" component={TaskSubmitScreen} />
-      {/* Legacy generic course screens (optional) */}
-      <Stack.Screen name="Catalog" component={CatalogScreen} />
-      <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
-      <Stack.Screen name="LessonPlayer" component={LessonPlayerScreen} />
-      <Stack.Screen name="Quiz" component={QuizScreen} />
+      <Stack.Screen
+        name="Programs"
+        getComponent={() => require('../screens/learn/ProgramsScreen').default}
+      />
+      <Stack.Screen
+        name="ProgramTasks"
+        getComponent={() => require('../screens/learn/ProgramTasksScreen').default}
+      />
+      <Stack.Screen
+        name="TaskSubmit"
+        getComponent={() => require('../screens/learn/TaskSubmitScreen').default}
+      />
+      <Stack.Screen
+        name="Catalog"
+        getComponent={() => require('../screens/learn/CatalogScreen').default}
+      />
+      <Stack.Screen
+        name="CourseDetail"
+        getComponent={() => require('../screens/learn/CourseDetailScreen').default}
+      />
+      <Stack.Screen
+        name="LessonPlayer"
+        getComponent={() => require('../screens/learn/LessonPlayerScreen').default}
+      />
+      <Stack.Screen
+        name="Quiz"
+        getComponent={() => require('../screens/learn/QuizScreen').default}
+      />
     </Stack.Navigator>
   );
 }

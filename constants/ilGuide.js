@@ -16,9 +16,12 @@ export const IL_GUIDE_JOBS = {
 };
 
 /**
- * FastAPI IL Guide service base URL.
- * Set EXPO_PUBLIC_IL_GUIDE_API_URL when the backend is deployed.
+ * Primary: Firebase callable `ilGuideWhisper` on lmsironlady (no extra host).
+ * Optional fallback: self-hosted FastAPI URL.
  */
+export const IL_GUIDE_USE_FIREBASE =
+  process.env.EXPO_PUBLIC_IL_GUIDE_USE_FIREBASE !== 'false';
+
 export const IL_GUIDE_API_URL =
   process.env.EXPO_PUBLIC_IL_GUIDE_API_URL || '';
 

@@ -31,13 +31,21 @@ export function friendlyAuthError(error) {
     'auth/weak-password': 'Password must be at least 6 characters.',
     'auth/network-request-failed':
       'Network error. Check your internet connection.',
-    'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.',
     'auth/operation-not-allowed':
       'Email/Password sign-in is disabled in the Firebase console.',
     'auth/configuration-not-found':
       'Firebase Auth is not set up. Enable Email/Password in the Firebase console.',
     'auth/app-not-authorized':
       'This app is not authorized for this Firebase API key. Add the app in Firebase Console or relax API key restrictions.',
+    'auth/invalid-phone-number': 'Enter a valid mobile number with country code.',
+    'auth/missing-phone-number': 'Mobile number is required.',
+    'auth/invalid-verification-code': 'That code is incorrect. Try again.',
+    'auth/code-expired': 'That code expired. Request a new one.',
+    'auth/too-many-requests':
+      'Too many attempts. Wait a few minutes and try again.',
+    'auth/captcha-check-failed':
+      'Security check failed. Close and reopen the app, then try again.',
+    'auth/quota-exceeded': 'SMS quota exceeded. Try email sign-in instead.',
   };
   if (map[code]) return map[code];
 

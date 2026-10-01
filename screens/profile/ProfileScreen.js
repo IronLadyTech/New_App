@@ -6,6 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import { usePrograms } from '../../context/ProgramsContext';
 import ProgressBar from '../../components/ProgressBar';
 import { BADGE_DEFS, COLORS } from '../../constants';
+import { PAYMENT_STATUS } from '../../constants/programs';
+import { programPaymentStatus } from '../../utils/programAccess';
 import { refreshMyAccess } from '../../services/functions';
 
 function Row({ icon, label, onPress, danger }) {
@@ -37,6 +39,10 @@ export default function ProfileScreen({ navigation }) {
 
   const earnedBadges = BADGE_DEFS.filter(
     (b) => (profile?.points || 0) >= b.minPoints
+  );
+
+  const needsPayment = enrolledPrograms.some(
+    (p) => programPaymentStatus(profile, p.id) === PAYMENT_STATUS.REGISTER
   );
 
   const onLogout = () => {
@@ -122,6 +128,18 @@ export default function ProfileScreen({ navigation }) {
           )}
         </View>
 
+        <Row
+          icon="receipt-outline"
+          label="Orders & receipts"
+          onPress={() => navigation.navigate('Orders')}
+        />
+        {needsPayment ? (
+          <Row
+            icon="card-outline"
+            label="Complete enrolment · pay balance"
+            onPress={() => navigation.navigate('PaymentEnrollment')}
+          />
+        ) : null}
         <Row
           icon="ribbon-outline"
           label="Certificates & achievements"

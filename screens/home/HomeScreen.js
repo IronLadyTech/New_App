@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../../context/AuthContext';
 import { useCourses } from '../../context/CoursesContext';
 import { usePrograms } from '../../context/ProgramsContext';
@@ -10,12 +10,20 @@ import LoadingState from '../../components/LoadingState';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import ILGuideWhisper from '../../components/ILGuideWhisper';
+import EventCard from '../../components/EventCard';
+import ILHeader from '../../components/il/ILHeader';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { IL_BRAND } from '../../constants/ironLadyBrand';
 
 export default function HomeScreen({ navigation }) {
   const { profile, role } = useAuth();
-  const { announcements, loading: coursesLoading, error } = useCourses();
+  const {
+    visibleAnnouncements,
+    upcomingEventList,
+    loading: coursesLoading,
+    error,
+  } = useCourses();
   const {
     enrolledPrograms,
     progressByProgram,
@@ -41,12 +49,24 @@ export default function HomeScreen({ navigation }) {
     return <LoadingState message="Loading your dashboard…" />;
   }
 
-  if (error && !announcements.length && !enrolledPrograms.length) {
+  if (
+    error &&
+    !visibleAnnouncements.length &&
+    !upcomingEventList.length &&
+    !enrolledPrograms.length
+  ) {
     return <ErrorState message={error} />;
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: IL_BRAND.cream }}>
+      <StatusBar style="dark" />
+      <ILHeader
+        photoUrl={profile?.photoURL}
+        onProfile={() => navigation.navigate('Profile')}
+        onNotifications={() => {}}
+        onSearch={() => {}}
+      />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
@@ -136,17 +156,33 @@ export default function HomeScreen({ navigation }) {
           })
         )}
 
-        <Text className="mb-3 mt-4 text-lg font-semibold text-ink-900">
+        <Text className="mb-3 mt-6 text-lg font-semibold text-ink-900">
+          Upcoming events
+        </Text>
+        {upcomingEventList.length === 0 ? (
+          <View className="mb-4 rounded-2xl border border-dashed border-ink-200 bg-white p-4">
+            <Text className="text-sm text-ink-500">
+              No upcoming events. CX publishes sessions to the events
+              collection on the web LMS.
+            </Text>
+          </View>
+        ) : (
+          upcomingEventList.map((event) => (
+            <EventCard key={event.id} event={event} />
+          ))
+        )}
+
+        <Text className="mb-3 mt-2 text-lg font-semibold text-ink-900">
           Announcements
         </Text>
-        {announcements.length === 0 ? (
+        {visibleAnnouncements.length === 0 ? (
           <View className="rounded-2xl border border-dashed border-ink-200 bg-white p-4">
             <Text className="text-sm text-ink-500">
               No announcements yet. CX publishes to the announcements collection.
             </Text>
           </View>
         ) : (
-          announcements.map((a) => (
+          visibleAnnouncements.map((a) => (
             <View
               key={a.id}
               className="mb-2 rounded-2xl border border-ink-100 bg-white p-4"
@@ -159,6 +195,6 @@ export default function HomeScreen({ navigation }) {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -5,8 +5,10 @@ import {
   IL_GUIDE_JOBS,
   IL_GUIDE_QUOTATIONS,
   IL_GUIDE_SURFACES,
+  IL_GUIDE_USE_FIREBASE,
 } from '../constants/ilGuide';
 import { programLabel } from '../utils/ilGuideContext';
+import { fetchILGuideWhisperFromCloud } from './functions';
 
 const LAST_KEY = (uid, surface) => `ilguide:last:${uid}:${surface}`;
 
@@ -159,10 +161,21 @@ export async function fetchILGuideWhisper(context) {
   }
 
   let result = null;
-  try {
-    result = await callApi(endpoint, context);
-  } catch {
-    result = null;
+
+  if (IL_GUIDE_USE_FIREBASE) {
+    try {
+      result = await fetchILGuideWhisperFromCloud(context);
+    } catch {
+      result = null;
+    }
+  }
+
+  if (!result && IL_GUIDE_API_URL) {
+    try {
+      result = await callApi(endpoint, context);
+    } catch {
+      result = null;
+    }
   }
 
   if (!result) {

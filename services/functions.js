@@ -83,4 +83,21 @@ export async function fetchLessonAsset(taskId) {
   }
 }
 
+/** IL Guide whisper — Firebase Cloud Function on lmsironlady. */
+export async function fetchILGuideWhisperFromCloud(context) {
+  try {
+    const { data } = await call('ilGuideWhisper', { context });
+    if (!data?.message) return null;
+    return {
+      id: data.id || `cloud-${Date.now()}`,
+      message: data.message,
+      job: data.job || 'nudge',
+    };
+  } catch (err) {
+    if (err?.code === 'functions/permission-denied') return null;
+    console.warn('IL Guide cloud:', err?.message || err);
+    return null;
+  }
+}
+
 export { formatCallableError };
