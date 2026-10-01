@@ -19,6 +19,7 @@ import {
   WhiteCard,
 } from './GuestBits';
 import { useGuestActions } from './useGuestActions';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 const DRILLS = [
   { emoji: '🎤', title: 'Power Pitch', meta: '3 min · Pitch', tag: 'Pitch' },
@@ -42,6 +43,7 @@ const PRINCIPLES = [
 
 export default function GuestLearnScreen() {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { findRegistration } = useGuestActions();
   const [filter, setFilter] = useState('All');
   const drills = useMemo(
@@ -52,12 +54,12 @@ export default function GuestLearnScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <GuestHeader />
+      <GuestHeader floating />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingTop: headerPad + 16,
           paddingBottom: Math.max(insets.bottom, 16) + 12,
         }}
       >

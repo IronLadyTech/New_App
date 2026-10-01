@@ -8,11 +8,9 @@ import FirstLoginWelcomeScreen from '../../screens/auth/FirstLoginWelcomeScreen'
 import ChooseBatchDateScreen from '../../screens/auth/ChooseBatchDateScreen';
 import SeatHeldScreen from '../../screens/auth/SeatHeldScreen';
 import JourneyPickerScreen from '../../screens/auth/JourneyPickerScreen';
-import { useAuth } from '../../context/AuthContext';
 
 export default function LandingGate({ profile, forcedClosed }) {
   const { completeOnboard } = useILGuideWhisper(IL_GUIDE_SURFACES.ONBOARD);
-  const { enterJourneyPreview } = useAuth();
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
   const [closed, setClosed] = React.useState(false);
@@ -52,10 +50,7 @@ export default function LandingGate({ profile, forcedClosed }) {
     return wrap(
       <JourneyPickerScreen
         route={{ params: { name: profile?.displayName?.split(' ')[0] } }}
-        onPick={async (flow) => {
-          await enterJourneyPreview(flow.program, flow.state);
-          leave();
-        }}
+        onPick={leave}
       />
     );
   }

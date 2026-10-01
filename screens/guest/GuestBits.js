@@ -5,6 +5,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
+import { GlassBackBar } from '../../components/il/GlassHeader';
 
 export function Page({ children }) {
   return <View style={{ flex: 1, backgroundColor: G.page }}>{children}</View>;
@@ -411,47 +412,8 @@ export function PillBtn({ label, onPress, tone = 'red', style }) {
   );
 }
 
-export function GuestBackBar({ title, sub, onBack, right }) {
-  return (
-    <View
-      style={{
-        backgroundColor: G.page,
-        paddingHorizontal: 16,
-        paddingBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-      }}
-    >
-      <Pressable
-        onPress={onBack}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: G.white,
-          borderWidth: 1,
-          borderColor: G.line,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <MaterialIcons name="arrow-back" size={18} color={G.ink} />
-      </Pressable>
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <ILText role="label" color={G.ink} numberOfLines={1} style={{ fontSize: 14 }}>
-          {title}
-        </ILText>
-        {sub ? (
-          <ILText role="bodySm" color={G.meta} numberOfLines={1} style={{ fontSize: 12, marginTop: 1 }}>
-            {sub}
-          </ILText>
-        ) : null}
-      </View>
-      {right || null}
-    </View>
-  );
+export function GuestBackBar(props) {
+  return <GlassBackBar {...props} />;
 }
 
 /** MBW hero: thin ring, red arc Q1→Q2, Q nodes, Playfair “1 year”. */

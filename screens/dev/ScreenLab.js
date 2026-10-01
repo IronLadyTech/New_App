@@ -26,6 +26,8 @@ const JUMPS = [
   { label: 'Guest · Home', guest: true },
   { label: 'LEP · Registered home', lep: 'registered' },
   { label: 'LEP · Enrolled home', lep: 'enrolled' },
+  { label: '100BM · Registered home', bm: 'registered' },
+  { label: '100BM · Enrolled home', bm: 'enrolled' },
   { label: '100BM and MBW screens', preview: true },
 ];
 
@@ -77,6 +79,10 @@ export default function ScreenLab({ navigation }) {
                 }
                 if (item.lep) {
                   enterJourneyPreview('lep', item.lep);
+                  return;
+                }
+                if (item.bm) {
+                  enterJourneyPreview('100bm', item.bm);
                   return;
                 }
                 if (item.preview) {

@@ -1,3 +1,5 @@
+import { COVER } from '../lep/lepData';
+
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 
@@ -71,29 +73,67 @@ export const TOPICS = [
 
 export const EPISODES = [
   {
-    title: "The 'Remote Factory Girl' – who rules manufacturing boardrooms now",
+    title: 'The One Notch Up: A Global CEO’s Blueprint for Leadership',
+    person: 'Simon Newman · Co-Founder & Chairman, Iron Lady',
+    min: '46 min',
+    img: COVER.speaks06,
+    featured: true,
+  },
+  {
+    title: "The ‘Remote Factory Girl’ — who rules manufacturing boardrooms now",
     person: 'Priyanka Singla · manufacturing leader',
     min: '61 min',
+    img: COVER.speaks05,
   },
   {
     title: 'From Invisible to Unstoppable | Inside the mind of a global technology leader',
     person: 'Charu Sharma · global technology leader',
     min: '44 min',
+    img: COVER.speaks04c,
   },
   {
     title: '“My Work Will Speak for Me” — the biggest myth she broke after 21 years',
     person: 'Mohini Hanwate · Global Quality Lead',
     min: '36 min',
+    img: COVER.speaks04m,
   },
   {
     title: 'From invisible legal head to global board member',
     person: 'Lakshmi Nayak · board member, global MNC',
     min: '72 min',
+    img: COVER.speaks02,
   },
   {
     title: 'The 11×11 Mission: building a healthcare ecosystem',
     person: 'Pushpalatha · healthcare entrepreneur',
     min: '74 min',
+    img: COVER.speaks01,
+  },
+];
+
+export const CSUITE_HOME = [
+  { title: 'From chaos to cyber resilience', who: 'Priyanka Sunder · Cybersecurity', tag: 'C-suite', img: COVER.priyanka },
+  { title: 'Pygmalion Effect in Management', who: 'Kamini Chawla · Leadership', tag: 'C-suite', img: COVER.kamini },
+  { title: 'Print isn’t dying. It’s evolving.', who: 'Rekha Sharma · Media', tag: 'C-suite', img: COVER.rekha },
+  { title: 'Technology isn’t a cost. It’s a growth multiplier.', who: 'Radhika Sharma · Technology', tag: 'C-suite', img: COVER.radhika },
+  { title: 'What is your 20-mile march?', who: 'Suma Bhat · Product', tag: 'C-suite', img: COVER.suma },
+  { title: 'Clarity is a business strategy', who: 'Varsha Fulzele · Delivery', tag: 'C-suite', img: COVER.varsha },
+  { title: 'Stop jumping to solutions', who: 'Smriti Mishra · Product', tag: 'C-suite', img: COVER.smriti },
+  { title: 'Turn people insight into impact', who: 'Meghna Makkar · HR', tag: 'C-suite', img: COVER.meghna },
+  { title: 'Human API & program management', who: 'Divya Mona · Programs', tag: 'C-suite', img: COVER.divya },
+  { title: 'AI accelerates. Governance protects.', who: 'Poornima George · AI', tag: 'C-suite', img: COVER.poornima },
+];
+
+export const COMMUNITY_VIDEOS = [
+  {
+    title: 'Walk to the Board 2026 · Bold Steps. Big Stories. Bigger Leaders.',
+    meta: '1,000+ women · 6 cities · recap',
+    img: HERO,
+  },
+  {
+    title: '“My work will speak” — the myth Mohini broke in 21 years',
+    meta: 'Mohini Hanwate · Global Quality Lead',
+    img: COVER.speaks04m,
   },
 ];
 

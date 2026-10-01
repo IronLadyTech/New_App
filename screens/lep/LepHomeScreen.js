@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
 import {
   CheckRow,
+  CoverThumb,
   DarkHero,
   GuideFace,
   LepHeader,
@@ -26,6 +27,7 @@ import { useLepNav } from './useLepNav';
 import {
   DUE_WEEK,
   ENR_PRACTICE,
+  COVER,
   FACE,
   GET_READY,
   HERO,
@@ -33,6 +35,7 @@ import {
   REG_PRACTICE,
   ROLES,
 } from './lepData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 export default function LepHomeScreen() {
   const { profile } = useAuth();
@@ -41,12 +44,14 @@ export default function LepHomeScreen() {
 
 function Shell({ children }) {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { profile } = useAuth();
   const nav = useLepNav();
   return (
     <Page>
       <StatusBar style="dark" />
       <LepHeader
+        floating
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
@@ -55,7 +60,7 @@ function Shell({ children }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 8,
+          paddingTop: headerPad + 8,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >
@@ -375,51 +380,12 @@ function RegisteredHome() {
         contentContainerStyle={{ paddingHorizontal: 20 }}
       >
         {[
-          { title: 'Voices of the Iron Lady Army', sub: 'Cohort stories & mindset', time: '3:45' },
-          { title: 'Meera: From promotion to boardroom', sub: 'Promotion playbook', time: '2:18' },
+          { title: 'From Invisible to Unstoppable', sub: 'Charu Sharma · technology', time: '3:45', img: COVER.speaks04c },
+          { title: 'From Factory Floors to the Boardroom', sub: 'Priyanka Singla · manufacturing', time: '2:18', img: COVER.speaks05 },
         ].map((clip) => (
           <View key={clip.title} style={{ width: 228, marginRight: 12 }}>
-            <View style={{ height: 140, borderRadius: 18, overflow: 'hidden' }}>
-              <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: 'rgba(17,55,68,0.55)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
-                </View>
-              </View>
-              <View
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  bottom: 10,
-                  backgroundColor: 'rgba(17,55,68,0.72)',
-                  borderRadius: 8,
-                  paddingHorizontal: 7,
-                  paddingVertical: 3,
-                }}
-              >
-                <ILText role="label" color="#FFFFFF" style={{ fontSize: 11 }}>
-                  {clip.time}
-                </ILText>
-              </View>
+            <View style={{ aspectRatio: 16 / 9, borderRadius: 18, overflow: 'hidden', backgroundColor: G.dark }}>
+              <CoverThumb source={clip.img} play time={clip.time} />
             </View>
             <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
               {clip.title}

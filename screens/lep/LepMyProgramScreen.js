@@ -21,11 +21,26 @@ import {
   WhiteCard,
 } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { CIRCLE, COHORT_WEEK, FACE, PHASES, PHASE_TASKS, SESSIONS_DONE, SESSIONS_UP } from './lepData';
+import {
+  CIRCLE,
+  COHORT_WEEK,
+  FACE,
+  PHASES,
+  PHASE_TASKS,
+  PRE_PROGRAM_TASKS,
+  SESSIONS_DONE,
+  SESSIONS_UP,
+} from './lepData';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+
+// Registered = partial payment = partial unlock. Everything after these stays locked.
+const REG_OPEN_PHASES = 3;
+const REG_OPEN_TASKS = 3;
 
 export default function LepMyProgramScreen() {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
   const [prog, setProg] = useState('LEP');
@@ -35,6 +50,7 @@ export default function LepMyProgramScreen() {
     <Page>
       <StatusBar style="dark" />
       <LepHeader
+        floating
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
@@ -42,6 +58,7 @@ export default function LepMyProgramScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+        paddingTop: headerPad + 4,
           paddingHorizontal: 20,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
@@ -54,169 +71,223 @@ export default function LepMyProgramScreen() {
           color={G.ink}
           style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 32, lineHeight: 38 }}
         >
-          {enrolled ? 'Leadership Essentials program' : 'Your next step'}
+          Leadership Essentials program
         </ILText>
 
-        {!enrolled ? (
-          <EmptyBody onSee={nav.goEnroll} />
+        {enrolled ? (
+          <View style={{ marginTop: 18 }}>
+            <FilterBar items={['All', 'LEP', '100BM']} value={prog} onChange={setProg} />
+          </View>
+        ) : null}
+        <View style={{ marginTop: 18 }}>
+          <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
+        </View>
+        {tab === 'Journey' ? (
+          <JourneyBody locked={!enrolled} />
+        ) : !enrolled ? (
+          <LockedTab tab={tab} onEnroll={nav.goEnroll} />
+        ) : tab === 'Sessions' ? (
+          <SessionsBody />
         ) : (
-          <>
-            <View style={{ marginTop: 18 }}>
-              <FilterBar items={['All', 'LEP', '100BM']} value={prog} onChange={setProg} />
-            </View>
-            <View style={{ marginTop: 18 }}>
-              <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
-            </View>
-            {tab === 'Journey' ? <JourneyBody /> : tab === 'Sessions' ? <SessionsBody /> : <CohortBody />}
-          </>
+          <CohortBody />
         )}
       </ScrollView>
     </Page>
   );
 }
 
-function EmptyBody({ onSee }) {
+function LockRow({ title, meta, last }) {
   return (
-    <>
-      <WhiteCard
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: G.line,
+        opacity: 0.6,
+      }}
+    >
+      <View
         style={{
-          marginTop: 20,
-          borderRadius: 22,
-          padding: 16,
-          flexDirection: 'row',
+          width: 24,
+          height: 24,
+          borderRadius: 12,
+          backgroundColor: G.mutedFill,
           alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: G.dark,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="workspace-premium" size={22} color="#FFFFFF" />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <ILText role="label" color={G.ink}>
-            Masterclass (MC) · completed
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-            4 of the 27 principles · recording and certificate saved
-          </ILText>
-        </View>
-        <MaterialIcons name="chevron-right" size={20} color={G.meta} />
-      </WhiteCard>
-
-      <View style={{ marginTop: 28, backgroundColor: G.dark, borderRadius: 28, padding: 20 }}>
-        <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
-          Where most Masterclass women go next
-        </ILText>
-        <ILText
-          role="display"
-          color="#FFFFFF"
-          style={{ marginTop: 12, fontFamily: IL_FONTS.display, fontSize: 28, lineHeight: 34 }}
-        >
-          Leadership Essentials program (LEP)
-        </ILText>
-        <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
-          All 27 principles in one month — a 2-day workshop, then four weeks of practice with your batch. Your program, sessions and batch will live right here.
-        </ILText>
-        <View style={{ marginTop: 18 }}>
-          <RedCta label="See LEP →" onPress={onSee} />
-        </View>
+        <MaterialIcons name="lock" size={13} color={G.meta} />
       </View>
-
-      <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 18 }}>
-        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-          WHAT YOU’LL SEE HERE ONCE YOU JOIN
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <ILText role="label" color={G.ink}>
+          {title}
         </ILText>
-        {[
-          { icon: 'timeline', title: 'Your journey, phase by phase' },
-          { icon: 'event', title: 'Your live sessions and recordings' },
-          { icon: 'groups', title: 'Your batch and WA group' },
-        ].map((row) => (
-          <View key={row.title} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
-            <MaterialIcons name={row.icon} size={18} color={G.cta} />
-            <ILText role="label" color={G.ink} style={{ marginLeft: 10 }}>
-              {row.title}
-            </ILText>
-          </View>
-        ))}
-      </WhiteCard>
-    </>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+          {meta}
+        </ILText>
+      </View>
+      <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+    </View>
   );
 }
 
-function JourneyBody() {
+function UnlockRest({ onEnroll }) {
+  return (
+    <View style={{ marginTop: 22, backgroundColor: G.dark, borderRadius: 24, padding: 20 }}>
+      <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+        ENROLLMENT PENDING
+      </ILText>
+      <ILText
+        role="display"
+        color="#FFFFFF"
+        style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 30 }}
+      >
+        Unlock Phases {String(REG_OPEN_PHASES + 1).padStart(2, '0')}–11
+      </ILText>
+      <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
+        Your seat is held with a part payment. Day 1, Day 2, the four practice weeks and your certificate open the
+        day your balance is paid.
+      </ILText>
+      <View style={{ marginTop: 18 }}>
+        <RedCta label="Complete enrollment →" onPress={onEnroll} />
+      </View>
+    </View>
+  );
+}
+
+function JourneyBody({ locked = false }) {
   const nav = useLepNav();
+  const tasks = locked ? PRE_PROGRAM_TASKS : PHASE_TASKS;
   return (
     <>
       <View style={{ marginTop: 18 }}>
-        <ProgressDark
-          kicker="Batch 42 · your progress"
-          title="Phase 4 of 11"
-          percent={36}
-          foot="Day 2 — Strategies and Tactics · 2 of 6 tasks done"
-        />
+        {locked ? (
+          <ProgressDark
+            kicker="Batch 42 · starts Sat 20 Sep"
+            title="Phase 1 of 11"
+            percent={5}
+            foot={`Registered · ${REG_OPEN_PHASES} phases open now · the rest unlock on enrollment`}
+          />
+        ) : (
+          <ProgressDark
+            kicker="Batch 42 · your progress"
+            title="Phase 4 of 11"
+            percent={36}
+            foot="Day 2 — Strategies and Tactics · 2 of 6 tasks done"
+          />
+        )}
       </View>
       <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 22 }}>
         This phase
       </ILText>
       <ILText role="bodySm" color={G.meta}>
-        Day 2 · Strategies and Tactics
+        {locked ? 'Phase 01 · Pre-Program Preparation' : 'Day 2 · Strategies and Tactics'}
       </ILText>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {PHASE_TASKS.map((item, i) => (
-          <CheckRow
-            key={item.id}
-            item={{ title: item.title, meta: item.kind, done: item.done }}
-            last={i === PHASE_TASKS.length - 1}
-            onPress={item.task === 'assignment' ? nav.goAssignment : nav.goPhase}
-          />
-        ))}
+        {tasks.map((item, i) =>
+          locked && i >= REG_OPEN_TASKS ? (
+            <LockRow key={item.id} title={item.title} meta={`${item.kind} · after enrollment`} last={i === tasks.length - 1} />
+          ) : (
+            <CheckRow
+              key={item.id}
+              item={{ title: item.title, meta: item.kind, done: item.done }}
+              last={i === tasks.length - 1}
+              onPress={item.task === 'assignment' ? nav.goAssignment : nav.goPhase}
+            />
+          )
+        )}
       </WhiteCard>
 
       <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
         All 11 phases
       </ILText>
       <ILText role="bodySm" color={G.meta}>
-        From Moodle · phase by phase
+        {locked ? `From Moodle · ${REG_OPEN_PHASES} open before enrollment` : 'From Moodle · phase by phase'}
       </ILText>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        {PHASES.map((p, i) => (
-          <Pressable
-            key={p.n}
-            onPress={nav.goPhase}
-            style={{
-              flexDirection: 'row',
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              borderTopWidth: i ? 1 : 0,
-              borderTopColor: G.line,
-            }}
-          >
-            <MaterialIcons
-              name={p.done ? 'check-circle' : p.now ? 'radio-button-checked' : 'radio-button-unchecked'}
-              size={22}
-              color={p.done || p.now ? G.ink : '#C8C4B6'}
-            />
-            <View style={{ marginLeft: 12, flex: 1 }}>
-              <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-                Phase {p.n}
-              </ILText>
-              <ILText role="label" color={G.ink} style={{ marginTop: 2 }}>
-                {p.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                {p.sub}
-              </ILText>
-            </View>
-          </Pressable>
-        ))}
+        {PHASES.map((p, i) => {
+          const shut = locked && i >= REG_OPEN_PHASES;
+          const done = !locked && p.done;
+          const now = locked ? i === 0 : p.now;
+          return (
+            <Pressable
+              key={p.n}
+              onPress={shut ? nav.goEnroll : nav.goPhase}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderTopWidth: i ? 1 : 0,
+                borderTopColor: G.line,
+                opacity: shut ? 0.6 : 1,
+              }}
+            >
+              <MaterialIcons
+                name={shut ? 'lock' : done ? 'check-circle' : now ? 'radio-button-checked' : 'radio-button-unchecked'}
+                size={22}
+                color={shut ? G.meta : done || now ? G.ink : '#C8C4B6'}
+              />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
+                  Phase {p.n}
+                </ILText>
+                <ILText role="label" color={G.ink} style={{ marginTop: 2 }}>
+                  {p.title}
+                </ILText>
+                <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                  {p.sub}
+                </ILText>
+              </View>
+              {shut ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
+            </Pressable>
+          );
+        })}
       </WhiteCard>
+
+      {locked ? <UnlockRest onEnroll={nav.goEnroll} /> : null}
+    </>
+  );
+}
+
+function LockedTab({ tab, onEnroll }) {
+  const copy =
+    tab === 'Sessions'
+      ? {
+          title: 'Live sessions open on enrollment',
+          body: 'Day 1 & Day 2 (Sat 20 – Sun 21 Sep), the weekly handholding sessions and every recording appear here once your balance is paid.',
+        }
+      : {
+          title: 'Your batch opens on enrollment',
+          body: 'Batch 42, your Thursday Community Circle and the WA group open here the day your enrollment completes.',
+        };
+  return (
+    <>
+      <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: G.mutedFill,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialIcons name="lock-outline" size={20} color={G.meta} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <ILText role="label" color={G.ink}>
+            {copy.title}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
+            {copy.body}
+          </ILText>
+        </View>
+      </WhiteCard>
+      <UnlockRest onEnroll={onEnroll} />
     </>
   );
 }

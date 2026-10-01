@@ -57,6 +57,13 @@ export const SUBMISSION_STATUS = {
   COMPLETED: 'completed',
 };
 
+/** Registration fee per program (INR), used until Zoho writes the real amount. */
+export const REGISTRATION_FEE = {
+  lep: 2999,
+  '100bm': 10000,
+  mbw: 8999,
+};
+
 export const PAYMENT_STATUS = {
   UNPAID: 'unpaid',
   REGISTER: 'register',

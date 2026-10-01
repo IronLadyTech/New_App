@@ -1,6 +1,25 @@
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
 
+export const COVER = {
+  priyanka: require('../../assets/il/portraits/priyanka-sunder.png'),
+  kamini: require('../../assets/il/portraits/kamini-chawla.png'),
+  suma: require('../../assets/il/portraits/suma-bhat.png'),
+  rekha: require('../../assets/il/portraits/rekha-sharma.png'),
+  radhika: require('../../assets/il/portraits/radhika-sharma.png'),
+  meghna: require('../../assets/il/portraits/meghna-makkar.png'),
+  varsha: require('../../assets/il/portraits/varsha-fulzele.png'),
+  smriti: require('../../assets/il/portraits/smriti-mishra.png'),
+  divya: require('../../assets/il/portraits/divya-mona.png'),
+  poornima: require('../../assets/il/portraits/poornima-george.png'),
+  speaks01: require('../../assets/il/portraits/speaks-01-pushpa.jpg'),
+  speaks02: require('../../assets/il/portraits/speaks-02-lakshmi.jpg'),
+  speaks04c: require('../../assets/il/portraits/speaks-04-charu.jpg'),
+  speaks04m: require('../../assets/il/portraits/speaks-04-mohini.jpg'),
+  speaks05: require('../../assets/il/portraits/speaks-05-priyanka.jpg'),
+  speaks06: require('../../assets/il/portraits/speaks-06-simon.jpg'),
+};
+
 export const ROLES = ['Technology', 'Marketing', 'Finance', 'HR', 'Founder', 'Other'];
 
 export const REG_PRACTICE = [
@@ -75,6 +94,15 @@ export const PHASE_TASKS = [
   { id: 't5', title: 'Day 2 Assignment', kind: 'Assignment · due Thu', done: false, task: 'assignment' },
 ];
 
+/** Phase 01 tasks a registered (part-paid) participant sees; the first few are open. */
+export const PRE_PROGRAM_TASKS = [
+  { id: 'p1', title: 'VIA Survey', kind: 'Form · ~15 min', done: true },
+  { id: 'p2', title: 'Upload 3 photographs', kind: 'Upload', done: false },
+  { id: 'p3', title: 'CoDeSeF', kind: 'Reading', done: false },
+  { id: 'p4', title: 'NSDC registration', kind: 'Form', done: false },
+  { id: 'p5', title: 'Program Orientation video', kind: 'Video · Phase 02', done: false },
+];
+
 export const SESSIONS_UP = [
   {
     id: 's1',
@@ -121,17 +149,17 @@ export const LEARN_CHIPS_REG = ['For you', 'Principles', 'Case studies', 'Events
 export const LEARN_CHIPS_ENR = ['For you', 'Principles', 'Case studies', 'Events', 'Community stories'];
 
 export const PRINCIPLES_OPEN = [
-  { n: '01', title: 'Purpose', sub: 'Name the goal that scares you', state: 'Watched' },
-  { n: '02', title: 'Being', sub: 'How you show up before you speak', state: 'Watched' },
-  { n: '03', title: 'Declaration', sub: 'Say it so the room has to hear it', state: 'Start' },
-  { n: '04', title: 'Trust', sub: 'The Anatomy of Boardroom Voice & Cadence', state: 'Resume' },
+  { n: '01', title: 'Ask for what you want', min: '12 min', track: 'Foundation', state: 'Watched' },
+  { n: '02', title: 'Own the room before you speak', min: '14 min', track: 'Foundation', state: 'Watched' },
+  { n: '03', title: 'The shameless speech', min: '22 min', track: 'Foundation', state: 'Resume' },
+  { n: '04', title: 'Build your board of advocates', min: '16 min', track: 'Foundation', state: 'Start' },
 ];
 
 export const PRINCIPLES_LOCKED = [
-  { n: '05', title: 'Visibility' },
-  { n: '06', title: 'Network' },
-  { n: '07', title: 'Negotiation' },
-  { n: '08', title: 'Political savvy' },
+  { n: '05', title: 'Negotiate from the seat you want', min: '18 min', track: 'Influence' },
+  { n: '06', title: 'Turn visibility into sponsorship', min: '20 min', track: 'Influence' },
+  { n: '07', title: 'The unflinching no', min: '15 min', track: 'Influence' },
+  { n: '08', title: 'Read the room’s real agenda', min: '17 min', track: 'Influence' },
 ];
 
 export const LEARN_CONTINUE = [
@@ -144,19 +172,30 @@ export const LEARN_CONTINUE = [
     open: true,
   },
   {
-    tag: 'EXECUTIVE',
+    tag: 'C-SUITE · PRIYANKA SUNDER',
     title: 'Cybersecurity as a board function',
     left: '',
     pct: 0,
     cta: 'Unlocks upon enrollment',
     open: false,
+    img: COVER.priyanka,
   },
 ];
 
 export const LEARN_FRESH = [
   { title: 'Architecting Sovereign Authority', meta: 'IL Guide · 16 mins · Open principle', open: true },
-  { title: "The ‘Remote Factory Girl’", meta: '21 mins · Enrolled only', open: false },
-  { title: 'From Invisible to Unstoppable', meta: '12 mins · Enrolled only', open: false },
+  {
+    title: 'From Factory Floors to the Boardroom',
+    meta: 'Priyanka Singla · 21 mins · Enrolled only',
+    open: false,
+    img: COVER.speaks05,
+  },
+  {
+    title: 'From Invisible to Unstoppable',
+    meta: 'Charu Sharma · 12 mins · Enrolled only',
+    open: false,
+    img: COVER.speaks04c,
+  },
 ];
 
 export const LEARN_EVENT_REG = {
@@ -175,25 +214,29 @@ export const LEARN_CITIES_ENR = ['Bengaluru', 'Pune', 'Mumbai', 'Delhi NCR', 'Hy
 
 export const LEARN_CONTINUE_ENR = [
   {
-    tag: 'PRINCIPLE 04',
-    title: 'The Anatomy of Boardroom Voice & Cadence',
+    tag: 'C-SUITE · TECHNOLOGY',
+    title: 'From chaos to cyber resilience',
+    who: 'Priyanka Sunder',
     left: '8m left',
     pct: 65,
     cta: 'Resume',
+    img: COVER.priyanka,
   },
   {
-    tag: 'EXECUTIVE CASE',
-    title: 'Unflinching Negotiation & Compensation',
+    tag: 'C-SUITE · LEADERSHIP',
+    title: 'Pygmalion Effect in Management',
+    who: 'Kamini Chawla',
     left: '',
     pct: 35,
     cta: 'Resume',
+    img: COVER.kamini,
   },
 ];
 
 export const LEARN_FRESH_ENR = [
-  { title: 'Architecting Sovereign Alliance', meta: 'By IL Guide & Global Leadership', time: '16 mins', neu: true },
-  { title: 'The 4 Invisible Rules of Mauritius', meta: 'Finance mastery for non-finance', time: '21 mins', neu: true },
-  { title: 'Decisive Responses to Executive Pushback', meta: 'Scripted mental models for live rooms', time: '12 mins', neu: false },
+  { title: 'What is your 20-mile march?', meta: 'Suma Bhat · Product leader', time: '16 mins', neu: true, img: COVER.suma },
+  { title: 'Clarity is a business strategy', meta: 'Varsha Fulzele · Delivery lead', time: '21 mins', neu: true, img: COVER.varsha },
+  { title: 'Turn people insight into impact', meta: 'Meghna Makkar · HR & analytics', time: '12 mins', neu: false, img: COVER.meghna },
 ];
 
 export const LEARN_EVENT_ENR = {
@@ -209,37 +252,113 @@ export const LEARN_EVENT_ENR = {
 export const LEARN_WHISPER_ENR = 'Tell me your city and I’ll show you events near you.';
 
 export const PRINCIPLES_FOUND_ENR = [
-  { n: '01', title: 'Purpose', min: '14 min', state: 'DONE' },
-  { n: '02', title: 'Being', min: '11 min', state: 'DONE' },
+  { n: '01', title: 'Ask for what you want', min: '12 min', state: 'DONE' },
+  { n: '02', title: 'Own the room before you speak', min: '14 min', state: 'DONE' },
   { n: '03', title: 'The shameless speech', min: '22 min', state: 'DONE' },
   { n: '04', title: 'Build your board of advocates', min: '16 min', state: 'DONE' },
 ];
 
 export const PRINCIPLES_INFLUENCE_ENR = [
-  { n: '10', title: 'Negotiating from the seat you want', min: '18 min · in progress', state: 'Resume', hot: true },
+  { n: '10', title: 'Negotiate from the seat you want', min: '18 min · in progress', state: 'Resume', hot: true },
   { n: '11', title: 'Turn visibility into sponsorship', min: '20 min', state: 'Start' },
   { n: '12', title: 'The unflinching no', min: '15 min', state: 'Start' },
+  { n: '13', title: 'Read the room’s real agenda', min: '17 min', state: 'Start' },
 ];
 
 export const PRINCIPLES_COMMAND_ENR = [
-  { n: '19', title: 'Command the room', min: '19 min', state: 'Opens Day 2' },
+  { n: '19', title: 'Speak to a board, not a boss', min: '21 min', state: 'Opens Day 2' },
+  { n: '20', title: 'Carry a P&L like a mandate', min: '19 min', state: 'Opens Day 2' },
   { n: '21', title: 'Choose the fight worth having', min: '16 min', state: 'Opens Day 2' },
 ];
 
-export const CASES_MORE_ENR = [
+export const CASES_ENR = [
   {
-    tag: 'MEDIA',
-    title: "Print Isn't Dying, It's Evolving From Volume To Value.",
-    meta: 'Media & Publishing · Strategy shift',
-    time: '26 mins',
+    fn: 'Technology',
+    tag: 'CYBER',
+    title: 'From chaos to cyber resilience',
+    who: 'Priyanka Sunder',
+    time: '31 mins',
+    img: COVER.priyanka,
+    featured: true,
   },
   {
+    fn: 'Technology',
+    tag: 'TECH',
+    title: "Technology isn’t a cost. It’s a growth multiplier.",
+    who: 'Radhika Sharma',
+    time: '24 mins',
+    img: COVER.radhika,
+  },
+  {
+    fn: 'Technology',
+    tag: 'AI',
+    title: 'AI accelerates innovation. Governance protects everything.',
+    who: 'Poornima George',
+    time: '22 mins',
+    img: COVER.poornima,
+  },
+  {
+    fn: 'Technology',
+    tag: 'PRODUCT',
+    title: 'What is your 20-mile march?',
+    who: 'Suma Bhat',
+    time: '18 mins',
+    img: COVER.suma,
+  },
+  {
+    fn: 'Finance',
+    tag: 'DELIVERY',
+    title: 'Clarity is not only a soft skill, it’s a business strategy',
+    who: 'Varsha Fulzele',
+    time: '20 mins',
+    img: COVER.varsha,
+    featured: true,
+  },
+  {
+    fn: 'Finance',
+    tag: 'PRODUCT',
+    title: 'Stop jumping to solutions',
+    who: 'Smriti Mishra',
+    time: '19 mins',
+    img: COVER.smriti,
+  },
+  {
+    fn: 'Marketing',
+    tag: 'MEDIA',
+    title: "Print isn’t dying. It’s evolving from volume to value.",
+    who: 'Rekha Sharma',
+    time: '26 mins',
+    img: COVER.rekha,
+    featured: true,
+  },
+  {
+    fn: 'Marketing',
     tag: 'LEADERSHIP',
     title: 'Pygmalion Effect in Management',
-    meta: 'Team Leadership · A-game',
+    who: 'Kamini Chawla',
     time: '18 mins',
+    img: COVER.kamini,
+  },
+  {
+    fn: 'Founder',
+    tag: 'PEOPLE',
+    title: 'Turn people insight into business impact',
+    who: 'Meghna Makkar',
+    time: '21 mins',
+    img: COVER.meghna,
+    featured: true,
+  },
+  {
+    fn: 'Founder',
+    tag: 'PROGRAMS',
+    title: 'Human API & program management',
+    who: 'Divya Mona',
+    time: '17 mins',
+    img: COVER.divya,
   },
 ];
+
+export const CASES_MORE_ENR = CASES_ENR.filter((c) => !c.featured);
 
 export const EVENT_ROOMS_ENR = [
   { dow: 'THU', day: '18', title: 'Community Circle', meta: '8–9 PM · Closed-door triad', cta: 'Add', solid: true },
@@ -253,9 +372,26 @@ export const EVENT_NEAR_ENR = [
 ];
 
 export const STORIES_FUNC_ENR = [
-  { title: 'Team lead to VP in 18 months', who: 'Meera R. · Fintech', time: '4:15' },
-  { title: 'The meeting I stopped apologising in', who: 'Disha P. · Platform', time: '3:20' },
+  {
+    title: 'From Factory Floors to the Boardroom',
+    who: 'Priyanka Singla · Manufacturing',
+    time: '4:15',
+    img: COVER.speaks05,
+  },
+  {
+    title: 'The 11×11 Mission',
+    who: 'Pushpalatha M.S · Healthcare',
+    time: '3:20',
+    img: COVER.speaks01,
+  },
 ];
+
+export const STORY_FEATURED_ENR = {
+  title: 'From Invisible to Unstoppable',
+  who: 'Charu Sharma · Global technology leader',
+  time: '3:40',
+  img: COVER.speaks04c,
+};
 
 export const COHORT_WEEK = [
   { icon: 'campaign', title: '12 women shared their Shameless Pitch', meta: 'Week 2 task · add yours before Sunday' },
@@ -274,25 +410,55 @@ export const LEARN_CASES_LOCKED = [
 ];
 
 export const LEARN_EVENTS_OPEN = [
-  { title: 'Walk to the Board 2026', meta: 'Open to every member · Aug 2026' },
-  { title: 'Bengaluru chapter meetup', meta: 'Sat 26 Sep · 10:00 AM · in person' },
-  { title: 'Iron Lady Speaks live', meta: 'Online · open to every member' },
+  { mon: 'APR', day: '19', title: 'Walk to the Board', meta: '7 cities · 6:30 PM · In person' },
+  { mon: 'SEP', day: '27', title: 'Bengaluru Chapter meetup', meta: 'Sat 27 Sep · 6 PM · Indiranagar' },
+  { mon: 'OCT', day: '04', title: 'Iron Lady Speaks · live recording', meta: 'Sat 4 Oct · 11 AM · Zoom' },
 ];
 
 export const LEARN_EVENTS_LOCKED = [
-  { title: 'Thursday Community Circle', meta: 'Cohort room · Thu 8–9 PM' },
-  { title: 'Day 1 & Day 2', meta: 'LEP Batch 42 · locked until enrollment' },
-  { title: 'Private batch group', meta: 'Opens when your seat is confirmed' },
+  { icon: 'groups', title: 'Thursday Community Circle', meta: 'Weekly · 8–9 PM · Closed-door triad' },
+  { icon: 'event', title: 'Day 1 & Day 2', meta: 'Sat 20 – Sun 21 Sep · 9 AM–7 PM IST' },
+  { icon: 'forum', title: 'Private batch group', meta: 'Your 48 batchmates' },
 ];
 
 export const PODCASTS = [
   {
-    title: '“My Work Will Speak for Me” — The Biggest Myth She Broke',
-    meta: 'Ep 3 · 28 min',
+    title: 'The One Notch Up',
+    who: 'Simon Newman',
+    meta: 'Ep 6 · 31 min',
+    img: COVER.speaks06,
     featured: true,
   },
-  { title: 'From Invisible Legal Head to Global Board', meta: 'Ep 2 · 22 min' },
-  { title: 'The One Notch Up: A Global CEO’s Blueprint', meta: 'Ep 1 · 31 min' },
+  {
+    title: 'From Factory Floors to the Boardroom',
+    who: 'Priyanka Singla',
+    meta: 'Ep 5 · 28 min',
+    img: COVER.speaks05,
+  },
+  {
+    title: 'From Invisible to Unstoppable',
+    who: 'Charu Sharma',
+    meta: 'Ep 4 · 22 min',
+    img: COVER.speaks04c,
+  },
+  {
+    title: 'The Strategic Side of Quality',
+    who: 'Mohini Hanwate',
+    meta: 'Ep 4 · 36 min',
+    img: COVER.speaks04m,
+  },
+  {
+    title: 'Two Caps, One Woman',
+    who: 'Lakshmi S Nayak',
+    meta: 'Ep 2 · 22 min',
+    img: COVER.speaks02,
+  },
+  {
+    title: 'The 11×11 Mission',
+    who: 'Pushpalatha M.S',
+    meta: 'Ep 1 · 31 min',
+    img: COVER.speaks01,
+  },
 ];
 
 export const ENGAGE_EVENTS_REG = [
@@ -301,8 +467,18 @@ export const ENGAGE_EVENTS_REG = [
 ];
 
 export const ARMY_STORIES = [
-  { title: 'Meera: Team Lead to VP in 18 months', meta: 'Fintech & Strategy', time: '4:15' },
-  { title: 'What Changed After My First 30 Days', meta: 'Mindset & Voice', time: '3:40' },
+  {
+    title: 'From Factory Floors to the Boardroom',
+    meta: 'Priyanka Singla · Manufacturing',
+    time: '4:15',
+    img: COVER.speaks05,
+  },
+  {
+    title: 'From Invisible to Unstoppable',
+    meta: 'Charu Sharma · Technology',
+    time: '3:40',
+    img: COVER.speaks04c,
+  },
 ];
 
 export const CIRCLES_LOCKED = [

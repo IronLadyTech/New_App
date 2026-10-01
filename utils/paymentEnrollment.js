@@ -1,4 +1,4 @@
-import { PAYMENT_STATUS, getProgramEntry } from '../constants/programs';
+import { PAYMENT_STATUS, getProgramEntry, REGISTRATION_FEE } from '../constants/programs';
 import { getEnrolledPrograms, programPaymentStatus } from './programAccess';
 
 function formatInr(amount) {
@@ -54,7 +54,11 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
   const payStatus = programPaymentStatus(profile, pid);
 
   const registrationFee =
-    access.registrationFee ?? access.registrationAmount ?? profile?.registrationFee ?? 2999;
+    access.registrationFee ??
+    access.registrationAmount ??
+    profile?.registrationFee ??
+    REGISTRATION_FEE[pid] ??
+    REGISTRATION_FEE.lep;
   // Until Zoho writes real balance, show ₹1 test amount (matches server default).
   const programBalance =
     access.programBalance ??
@@ -115,7 +119,7 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
     headline,
     subline,
     registrationFee,
-    registrationFeeLabel: formatInr(registrationFee) || '₹ 2,999',
+    registrationFeeLabel: formatInr(registrationFee) || formatInr(REGISTRATION_FEE.lep),
     programBalance,
     programBalanceLabel: formatInr(programBalance) || '₹ 1',
     registrationPaidLabel: regPaidLabel,

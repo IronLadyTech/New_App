@@ -41,14 +41,12 @@ export default function GuestChallengeHubScreen({ navigation }) {
                 width: 40,
                 height: 40,
                 borderRadius: 20,
-                backgroundColor: G.white,
-                borderWidth: 1,
-                borderColor: G.line,
+                backgroundColor: 'rgba(245,242,232,0.12)',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <MaterialIcons name="share" size={18} color={G.ink} />
+              <MaterialIcons name="share" size={18} color="#F5F2E8" />
             </Pressable>
           }
         />

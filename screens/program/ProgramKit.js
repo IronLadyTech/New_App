@@ -10,6 +10,7 @@ import ILText from '../../components/il/ILText';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
 export function firstName(profile) {
   const raw = profile?.displayName || profile?.name || profile?.email || '';
@@ -19,12 +20,14 @@ export function firstName(profile) {
 
 export function ProgramPage({ children }) {
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const { profile } = useAuth();
   const navigation = useNavigation();
   return (
     <View style={{ flex: 1, backgroundColor: IL_BRAND.cream }}>
       <StatusBar style="dark" />
       <ILHeader
+        floating
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile')}
         onNotifications={() => navigation.navigate('Engage')}
@@ -33,6 +36,7 @@ export function ProgramPage({ children }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+        paddingTop: headerPad + 4,
           paddingHorizontal: IL_SPACE.page,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}

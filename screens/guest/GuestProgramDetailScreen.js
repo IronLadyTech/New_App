@@ -21,7 +21,7 @@ import {
   fillAbs,
 } from './GuestBits';
 import { useGuestActions } from './useGuestActions';
-import { FACE, HERO } from './guestData';
+import { COVER, FACE, HERO } from './guestData';
 
 const META = {
   mc: { title: 'Masterclass (MC)', sub: 'Start here · two live evenings' },
@@ -476,9 +476,9 @@ function BmBody({ onFind }) {
                     justifyContent: 'center',
                   }}
                 >
-                  <StatNum color="#FFFFFF" size={12}>
+                  <StepNum color="#FFFFFF" size={12}>
                     {n}
-                  </StatNum>
+                  </StepNum>
                 </View>
                 <ILText
                   role="bodySm"
@@ -531,9 +531,9 @@ function BmBody({ onFind }) {
                     borderColor: G.line,
                   }}
                 >
-                  <StatNum color={n === 1 ? '#FFFFFF' : G.ink} size={18}>
+                  <StepNum color={n === 1 ? '#FFFFFF' : G.ink} size={18}>
                     {n}
-                  </StatNum>
+                  </StepNum>
                   <ILText
                     role="label"
                     color={n === 1 ? '#FFFFFF' : G.ink}
@@ -630,13 +630,14 @@ function BmBody({ onFind }) {
 
         <Section title="Your champions" />
         <Champion name="Rekha Nagaraj" role="National 100 Board Members Champion, Iron Lady" />
-        <Champion name="Charu Sharma" role="National Board Readiness Leader, Iron Lady" />
+        <Champion name="Charu Sharma" role="National Board Readiness Leader, Iron Lady" photo={COVER.speaks04c} />
 
         <Section title="From the boardroom" />
         <PodcastRow
           kicker="Iron Lady Speaks · 72 min"
           title="From invisible legal head to global board member"
           person="Lakshmi Nayak · senior director and board member, global MNC"
+          img={COVER.speaks02}
         />
 
         <FindCta
@@ -1030,7 +1031,7 @@ function AdvisorNote() {
   );
 }
 
-function Champion({ name, role }) {
+function Champion({ name, role, photo }) {
   return (
     <WhiteCard
       style={{
@@ -1041,7 +1042,7 @@ function Champion({ name, role }) {
         alignItems: 'center',
       }}
     >
-      <Image source={FACE} style={{ width: 44, height: 44, borderRadius: 22 }} />
+      <Image source={photo || FACE} style={{ width: 44, height: 44, borderRadius: 22 }} />
       <View style={{ marginLeft: 12, flex: 1 }}>
         <ILText role="label" color={G.ink}>
           {name}
@@ -1054,7 +1055,7 @@ function Champion({ name, role }) {
   );
 }
 
-function PodcastRow({ kicker, title, person }) {
+function PodcastRow({ kicker, title, person, img }) {
   return (
     <WhiteCard
       style={{
@@ -1065,6 +1066,11 @@ function PodcastRow({ kicker, title, person }) {
         alignItems: 'center',
       }}
     >
+      {img ? (
+        <View style={{ width: 72, height: 40, borderRadius: 10, overflow: 'hidden', backgroundColor: G.dark, marginRight: 12 }}>
+          <Image source={img} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        </View>
+      ) : (
       <View
         style={{
           width: 44,
@@ -1078,6 +1084,7 @@ function PodcastRow({ kicker, title, person }) {
       >
         <MaterialIcons name="mic" size={22} color="#FFFFFF" />
       </View>
+      )}
       <View style={{ flex: 1 }}>
         <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 8 }]}>
           {kicker}

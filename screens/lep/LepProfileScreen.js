@@ -8,16 +8,88 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
-import { isLepEnrolled, lepFullName } from '../../utils/lepState';
+import { getActiveProgram, isLepEnrolled, lepFullName } from '../../utils/lepState';
+import { REGISTRATION_FEE } from '../../constants/programs';
 import { LepHeader, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { FACE } from './lepData';
 import { useMyReceipts } from '../../hooks/useMyReceipts';
+import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+
+/** Profile text per program and state, so 100BM and MBW stop showing LEP details. */
+const PROGRAM_PROFILE = {
+  lep: {
+    code: 'LEP',
+    title: 'Leadership Essentials Program',
+    short: 'Leadership Essentials',
+    reg: {
+      badges: [{ label: 'LEP Applicant', on: true }, { label: 'Masterclass Registered' }],
+      bhag: 'Calibrated for Leadership Excellence · Foundation principle active',
+      status: 'Seat reserved · Pending enrollment',
+      heading: 'Leadership Excellence Program',
+      body: 'Masterclass completed (4/4 Foundation Principles). Complete enrollment to unlock all 27 Principles, Private Cohort Triads & Thursday Circles.',
+      date: 'Sat 20 – Sun 21 September, 2026',
+      dateSub: '9:00 AM – 7:00 PM IST (Both days)',
+      certs: 'Certificates · 1 issued',
+    },
+    enr: {
+      badges: [{ label: 'LEP', on: true }, { label: '100BM' }],
+      bhag: 'Calibrated for Leadership Excellence Program · Review milestone scheduled at Day 45',
+      batch: 'MY BATCH',
+      heading: 'Sat 20 – Sun 21 Sep, 2026',
+      body: '9:00 AM – 7:00 PM IST (Both days) · Live Zoom',
+    },
+  },
+  '100bm': {
+    code: '100BM',
+    title: '100 Board Members',
+    short: '100 Board Members',
+    reg: {
+      badges: [{ label: '100BM Applicant', on: true }, { label: 'Onboarding preview' }],
+      bhag: 'Calibrated for 100 Board Members · Onboarding preview active',
+      status: 'Seat reserved · Pending enrollment',
+      heading: '100 Board Members',
+      body: 'Onboarding is open as a preview. Complete enrollment to unlock all 4 Phases, Practice Huddles and your cohort.',
+      date: 'Cohort of Oct 2026 · starts Sat 3 Oct',
+      dateSub: '~24 weeks online · weekly live Q&A',
+      certs: 'Onboarding certificate · 1 issued',
+    },
+    enr: {
+      badges: [{ label: '100BM', on: true }, { label: 'LEP', on: true }],
+      bhag: 'Board ambition carried through to Graduation · Phase 2 in progress',
+      batch: 'MY 100BM COHORT',
+      heading: 'Batch B · 3 Oct 2026 – 4 Apr 2027',
+      body: 'Weekly live Q&A · Thu 7:00 PM IST · online',
+    },
+  },
+  mbw: {
+    code: 'MBW',
+    title: 'Master of Business Warfare',
+    short: 'Master of Business Warfare',
+    reg: {
+      badges: [{ label: 'MBW Applicant', on: true }, { label: 'Preparation' }],
+      bhag: 'Calibrated for Master of Business Warfare · Preparation week 5 of 12',
+      status: 'Preparation · week 5 of 12',
+      heading: 'Master of Business Warfare',
+      body: 'Preparation week 5 of 12 — Orientation with Rajesh is done. The Q1 core session starts in eight weeks.',
+      date: 'Q1 core session · in 8 weeks',
+      dateSub: '1 year · 16 Impact Champions sessions + 4 with Suvarna',
+      certs: 'Certificates · 0 issued',
+    },
+    enr: {
+      badges: [{ label: 'MBW', on: true }, { label: 'LEP', on: true }],
+      bhag: 'Your C-Suite ambition · CXO by 2028',
+      batch: 'MY MBW YEAR',
+      heading: 'Q1 · Week 4 of 52',
+      body: 'Next: Session 2 · C-Suite Story Video · weekly WA-group deliverable',
+    },
+  },
+};
 
 const SETTINGS = [
   { icon: 'receipt-long', label: 'Orders & receipts', go: 'goOrders' },
   { icon: 'payments', label: 'Payment & enrollment', go: 'goEnroll' },
-  { icon: 'workspace-premium', label: 'Certificates · 1 issued', go: 'goCertificate' },
+  { icon: 'workspace-premium', label: 'Certificates', go: 'goCertificate', certs: true },
   { icon: 'insights', label: 'Your progress', go: 'goProgress' },
   { icon: 'notifications-none', label: 'Nudges & reminders', go: 'goNudges' },
   { icon: 'help-outline', label: 'Help & Support' },
@@ -28,10 +100,14 @@ const SETTINGS = [
 export default function LepProfileScreen() {
   const { profile, logout } = useAuth();
   const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const { orders, latest, signedIn } = useMyReceipts();
   const enrolled = isLepEnrolled(profile);
   const name = lepFullName(profile);
+  const program = PROGRAM_PROFILE[getActiveProgram(profile)] || PROGRAM_PROFILE.lep;
+  const copy = enrolled ? program.enr : program.reg;
+  const fee = `₹${(REGISTRATION_FEE[getActiveProgram(profile)] ?? REGISTRATION_FEE.lep).toLocaleString('en-IN')}`;
 
   const onLogout = () => {
     if (Platform.OS === 'web') {
@@ -47,10 +123,11 @@ export default function LepProfileScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <LepHeader photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={() => {}} />
+      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={() => {}} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+        paddingTop: headerPad + 4,
           paddingHorizontal: 20,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 24) + 24,
         }}
@@ -83,8 +160,11 @@ export default function LepProfileScreen() {
                 Iron Lady Army · since Sep 2026
               </ILText>
               <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                <Badge on>{enrolled ? 'LEP' : 'LEP Applicant'}</Badge>
-                <Badge on={enrolled}>{enrolled ? '100BM' : 'Masterclass Registered'}</Badge>
+                {copy.badges.map((b) => (
+                  <Badge key={b.label} on={b.on}>
+                    {b.label}
+                  </Badge>
+                ))}
               </View>
             </View>
           </View>
@@ -99,7 +179,9 @@ export default function LepProfileScreen() {
               ₹1 paid
             </ILText>
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
-              Programme balance · Leadership Essentials
+              {/* Name the program the saved payment was for, not the one being viewed. */}
+              Programme balance ·{' '}
+              {latest?.programTitle || latest?.description?.split(' — ')[0] || program.short}
               {latest?.transactionId && latest.transactionId !== 'Razorpay ₹1'
                 ? ` · ${latest.transactionId}`
                 : ''}
@@ -145,7 +227,7 @@ export default function LepProfileScreen() {
           ))}
           {!orders.length && !latest ? (
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
-              {signedIn ? 'No saved Razorpay receipt on this number yet.' : 'Open Payment & enrollment for the ₹2,999 registration receipt.'}
+              {signedIn ? 'No saved Razorpay receipt on this number yet.' : `Open Payment & enrollment for the ${fee} registration receipt.`}
             </ILText>
           ) : null}
         </WhiteCard>
@@ -185,9 +267,7 @@ export default function LepProfileScreen() {
             CXO by 2028 — Heading Enterprise Technology
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            {enrolled
-              ? 'Calibrated for Leadership Excellence Program · Review milestone scheduled at Day 45'
-              : 'Calibrated for Leadership Excellence · Foundation principle active'}
+            {copy.bhag}
           </ILText>
         </WhiteCard>
 
@@ -196,13 +276,13 @@ export default function LepProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcons name="event" size={16} color={G.ink} />
               <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                {enrolled ? 'MY BATCH' : 'ENROLLMENT STATUS'}
+                {enrolled ? copy.batch : 'ENROLLMENT STATUS'}
               </ILText>
             </View>
             {!enrolled ? (
               <View style={{ backgroundColor: G.pink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                 <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-                  Seat reserved · Pending enrollment
+                  {copy.status}
                 </ILText>
               </View>
             ) : (
@@ -214,19 +294,17 @@ export default function LepProfileScreen() {
             )}
           </View>
           <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 16, fontSize: 10 }]}>
-            LEP
+            {program.code}
           </ILText>
           <ILText
             role="title"
             color={G.ink}
             style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
           >
-            {enrolled ? 'Sat 20 – Sun 21 Sep, 2026' : 'Leadership Excellence Program'}
+            {copy.heading}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            {enrolled
-              ? '9:00 AM – 7:00 PM IST (Both days) · Live Zoom'
-              : 'Masterclass completed (4/4 Foundation Principles). Complete enrollment to unlock all 27 Principles, Private Cohort Triads & Thursday Circles.'}
+            {copy.body}
           </ILText>
           {!enrolled ? (
             <View
@@ -244,10 +322,10 @@ export default function LepProfileScreen() {
               <MaterialIcons name="schedule" size={16} color={G.ink} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <ILText role="label" color={G.ink}>
-                  Sat 20 – Sun 21 September, 2026
+                  {copy.date}
                 </ILText>
                 <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                  9:00 AM – 7:00 PM IST (Both days)
+                  {copy.dateSub}
                 </ILText>
               </View>
               <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
@@ -297,7 +375,7 @@ export default function LepProfileScreen() {
             </ILText>
           </View>
           <ILText role="label" color={G.ink} style={{ marginTop: 14 }}>
-            Leadership Essentials Program
+            {program.title}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
             {enrolled ? 'Paid in full' : 'Balance due'}
@@ -314,7 +392,7 @@ export default function LepProfileScreen() {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-                  ₹2,999
+                  {fee}
                 </ILText>
                 <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9, marginTop: 4 }]}>
                   PAID
@@ -350,7 +428,7 @@ export default function LepProfileScreen() {
             >
               <MaterialIcons name={row.icon} size={20} color={G.ink} />
               <ILText role="label" color={G.ink} style={{ flex: 1, marginLeft: 12 }}>
-                {row.label}
+                {row.certs ? copy.certs : row.label}
               </ILText>
               {row.extra ? (
                 <ILText role="bodySm" color={G.meta} style={{ marginRight: 6, fontSize: 12 }}>

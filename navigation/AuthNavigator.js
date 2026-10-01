@@ -5,13 +5,15 @@ import VerifyOtpScreen from '../screens/auth/VerifyOtpScreen';
 import FirstLoginWelcomeScreen from '../screens/auth/FirstLoginWelcomeScreen';
 import ChooseBatchDateScreen from '../screens/auth/ChooseBatchDateScreen';
 import SeatHeldScreen from '../screens/auth/SeatHeldScreen';
+import { useAuth } from '../context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
 export default function AuthNavigator() {
+  const { authEntry } = useAuth();
   return (
     <Stack.Navigator
-      initialRouteName="PhoneLogin"
+      initialRouteName={authEntry || 'PhoneLogin'}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
