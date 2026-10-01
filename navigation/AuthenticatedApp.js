@@ -8,7 +8,6 @@ import { CoursesProvider } from '../context/CoursesContext';
 import { EngagementProvider } from '../context/EngagementContext';
 import { ProgramsProvider } from '../context/ProgramsContext';
 import { ProgramNavProvider, useProgramNav } from '../context/ProgramNavContext';
-import { getProgramEntry } from '../constants/programs';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import ILText from '../components/il/ILText';
 
@@ -48,11 +47,7 @@ function AppNavBar({ onJump }) {
     if (nextStage) setStage(nextStage);
     if (section) setSection(section);
     if (tab === 'Learn') {
-      const entry = getProgramEntry(id);
-      navigation.navigate('Learn', {
-        screen: 'ProgramTasks',
-        params: { programId: id, title: entry?.title || 'Program' },
-      });
+      navigation.navigate('Learn', { screen: 'Programs' });
       return;
     }
     navigation.navigate(tab);

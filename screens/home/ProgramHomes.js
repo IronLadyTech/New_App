@@ -8,11 +8,14 @@ import {
   BarButton,
   CheckRow,
   DarkPanel,
+  GlanceGrid,
   LinkRow,
   PeopleRow,
+  PrepTask,
   ProgramPage,
   SectionLabel,
   SoftCard,
+  StreakRow,
   VideoCard,
   Whisper,
   firstName,
@@ -46,32 +49,10 @@ function StatusPill({ label }) {
   );
 }
 
-function Glance({ rows }) {
+function PracticeList({ items, onOpen, streak, note }) {
   return (
     <SoftCard>
-      <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10 }}>
-        At a glance
-      </ILText>
-      {rows.map(([label, value]) => (
-        <View
-          key={label}
-          style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}
-        >
-          <ILText role="bodySm" color={IL_BRAND.muted}>
-            {label}
-          </ILText>
-          <ILText role="label" style={{ flex: 1, textAlign: 'right', marginLeft: 12 }}>
-            {value}
-          </ILText>
-        </View>
-      ))}
-    </SoftCard>
-  );
-}
-
-function PracticeList({ items, onOpen }) {
-  return (
-    <SoftCard>
+      {streak ? <StreakRow streak={streak} note={note} /> : null}
       {items.map((item) => (
         <CheckRow key={item.title} {...item} onPress={() => onOpen(item.programId)} />
       ))}
@@ -115,14 +96,20 @@ function BmRegistered() {
       </SoftCard>
 
       <SoftCard>
-        <ILText role="label">18 women starting together</ILText>
-        <ILText role="bodySm" color={IL_BRAND.muted}>
-          Most are also finishing pre-program work.
-        </ILText>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <PeopleRow extra={18} onLight />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label">18 women starting together</ILText>
+            <ILText role="bodySm" color={IL_BRAND.muted}>
+              Most are also finishing pre-program work.
+            </ILText>
+          </View>
+        </View>
       </SoftCard>
 
-      <Glance
-        rows={[
+      <GlanceGrid
+        kicker="100 Board Members · at a glance"
+        cells={[
           ['Duration', '6 months'],
           ['Format', 'Weekly online + huddles'],
           ['Curriculum', 'Board readiness & pitching'],
@@ -144,16 +131,18 @@ function BmRegistered() {
       />
       <PracticeList
         onOpen={routes.openLearn}
+        streak="2-day streak"
+        note="Daily revision at 8:00 AM"
         items={[
           {
-            title: 'Stay your board ambition out loud',
+            title: 'Say your board ambition out loud once',
             detail: 'Daily revision · 1 min',
             done: true,
             programId: '100bm',
           },
           {
-            title: 'Milestone Table practice',
-            detail: 'Draft two milestones · 10 min',
+            title: 'Milestone Table practice — draft two milestones',
+            detail: 'Pre-program · 10 min',
             done: false,
             programId: '100bm',
           },
@@ -168,35 +157,43 @@ function BmRegistered() {
 
       <SectionLabel
         title="C-suite conversations"
-        sub="This week’s must-watch · 100BM"
+        sub="Leaders who sit at the top table"
         action="See all"
         onAction={openLearn}
       />
-      <VideoCard onPress={openLearn} />
+      <VideoCard onPress={openLearn} kicker="This week’s must-watch · 100BM" />
 
-      <SectionLabel title="Before your first session" sub="0 of 3" />
+      <SectionLabel
+        title="Before your first session"
+        sub="Three things Iron Lady needs from you — not your batch leader, you"
+        action="0 of 3"
+      />
       <SoftCard style={{ paddingVertical: 4 }}>
-        <CheckRow
+        <PrepTask
           title="Brand creation video"
           detail="Your Core Story, 2–3 minutes on camera"
-          onPress={openJourney}
+          action="Record"
+          onPress={openLearn}
         />
-        <CheckRow
+        <PrepTask
           title="Milestone Table practice"
-          detail="Draft the milestones you will present"
-          onPress={openJourney}
+          detail="Draft the milestones you will present at Onboarding"
+          action="Start"
+          onPress={openLearn}
         />
-        <CheckRow
+        <PrepTask
           title="Resume preparation"
           detail="Bring a current draft — you will rework it in Phase 1"
-          onPress={openJourney}
+          action="Upload"
+          last
+          onPress={openLearn}
         />
       </SoftCard>
 
       <LinkRow
         icon="flag"
         title="Your 100BM journey"
-        sub="Phases and practice sessions are in My Program"
+        sub="4 phases + Graduation · see them in My Program"
         onPress={openJourney}
       />
     </ProgramPage>
@@ -217,7 +214,10 @@ function BmEnrolled() {
         </ILText>
         <HeroTitle>Halfway through, {name}.</HeroTitle>
         <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 8 }}>
-          Foundation is done. Pitching and influencing is next.
+          Foundation is done. Pitching and influencing is next — it is the phase people talk about after Graduation.
+        </ILText>
+        <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10, marginTop: 14 }}>
+          This week
         </ILText>
         <StatusPill label="Weekly Q&A · Thu 7:00 PM IST" />
       </DarkPanel>
@@ -230,7 +230,7 @@ function BmEnrolled() {
       </SoftCard>
 
       <Whisper
-        body="Winning Ways for Women with Indra Nooyi. See the moments before Phase 2 tests your pitch."
+        body="Your next watch is Winning Ways for Women with Indra Nooyi. See the top table before Phase 2 tests your pitch."
         action="Watch now →"
         onAction={openLearn}
       />
@@ -243,16 +243,18 @@ function BmEnrolled() {
       />
       <PracticeList
         onOpen={routes.openLearn}
+        streak="5-day streak"
+        note="Daily revision at 8:00 AM"
         items={[
           {
-            title: 'Say your SuperPower Statement out loud',
+            title: 'Say your SuperPower Statement out loud — under 20 seconds',
             detail: 'Daily revision · 2 min',
             done: true,
             programId: '100bm',
           },
           {
             title: 'Rehearse your ask out loud, twice',
-            detail: 'Practice · 10 min',
+            detail: 'Get ready for Phase 2 · 5 min',
             done: false,
             programId: '100bm',
           },
@@ -277,16 +279,19 @@ function BmEnrolled() {
         action="See all"
         onAction={openLearn}
       />
-      <VideoCard onPress={openLearn} />
+      <VideoCard onPress={openLearn} kicker="This week’s must-watch · 100BM" />
 
       <LinkRow
         icon="flag"
-        title="Phase 2 of 4 · Pitch & strategy"
+        title="Phase 2 of 4 · Pitch & Strategy"
         sub="Your phases and practice sessions are in My Program"
         onPress={openJourney}
       />
 
-      <SectionLabel title="Get ready for Phase 2" sub="A rehearsed pitch, not a written one" />
+      <SectionLabel
+        title="Get ready for Phase 2"
+        sub="Pitching and influencing rewards a rehearsed pitch, not a written one"
+      />
       <SoftCard style={{ paddingVertical: 4 }}>
         <CheckRow title="Rewatch your Milestone Table" done onPress={openLearn} />
         <CheckRow title="Rehearse your ask out loud, twice" onPress={openLearn} />
@@ -340,39 +345,42 @@ function MbwRegistered() {
         <PeopleRow extra={20} />
       </DarkPanel>
 
-      <Glance
-        rows={[
+      <GlanceGrid
+        kicker="Master of Business Warfare · at a glance"
+        cells={[
           ['Duration', '1 year · 52 weeks'],
-          ['Format', 'Weekly task in the WA group'],
+          ['Format', 'Weekly task in your WA group'],
           ['Sessions', '16 Impact Champions + 4 with Suvarna'],
           ['On completion', 'Graduation'],
         ]}
       />
 
       <Whisper
-        body="Eight weeks to your first core session. This week is LinkedIn connects — share your connection increase in the group by Sunday."
+        body={`Eight weeks to your first core session, ${name}. This week is LinkedIn connects — share your connection increase in the group by Sunday.`}
         action="Open this week →"
         onAction={openJourney}
       />
 
       <SectionLabel
         title="Today’s practice"
-        sub="1 of 3 done · about 25 min"
+        sub="1 of 3 done · about 15 min"
         action="Open checklist"
         onAction={openJourney}
       />
       <PracticeList
         onOpen={routes.openLearn}
+        streak="4-day streak"
+        note="Daily revision at 8:00 AM"
         items={[
-          { title: 'Mirror Work', detail: 'LEP ritual · 10 min', done: true, programId: 'mbw' },
+          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw' },
           {
             title: 'Send 5 connection requests to C-Suite leaders',
-            detail: 'This week · LinkedIn % connects · 10 min',
+            detail: 'This week · LinkedIn % connects · 5 min',
             done: false,
             programId: 'mbw',
           },
           {
-            title: 'Revise ERRC — one thing to eliminate',
+            title: 'Revise ERRC: one thing to eliminate today',
             detail: 'Daily revision · 2 min',
             done: false,
             programId: 'mbw',
@@ -380,16 +388,11 @@ function MbwRegistered() {
         ]}
       />
 
-      <SectionLabel
-        title="This week · Wk1–8"
-        sub="LinkedIn % connects"
-        action="See all"
-        onAction={openJourney}
-      />
+      <SectionLabel title="This week · Wk1–8" sub="One task, shared in your WA group" />
       <SoftCard>
-        <ILText role="label">Share the connection increase</ILText>
+        <ILText role="label">LinkedIn % connects</ILText>
         <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 4 }}>
-          Grow your connections this week, then share the increase in the group by Sunday.
+          Grow your connections this week, then share the increase in your WhatsApp group.
         </ILText>
         <BarButton
           label="Mark as shared in the group"
@@ -397,24 +400,27 @@ function MbwRegistered() {
         />
       </SoftCard>
 
-      <SectionLabel title="C-suite conversations" action="See all" onAction={openLearn} />
-      <VideoCard onPress={openLearn} />
+      <SectionLabel
+        title="C-suite conversations"
+        sub="Leaders who sit at the top table"
+        action="See all"
+        onAction={openLearn}
+      />
+      <VideoCard onPress={openLearn} kicker="This week’s must-watch · MBW" />
 
       <LinkRow
         icon="flag"
         title="Your MBW year"
-        sub="Prep weeks 01–12, then Q1–Q4 and Graduation, in My Program"
+        sub="Prep week 5 of 12 · preparation, Q1–Q4 and Graduation in My Program"
         onPress={openJourney}
       />
 
-      <SoftCard>
-        <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10 }}>
-          Your C-Suite Talk
-        </ILText>
-        <ILText role="label" style={{ marginTop: 6 }}>
-          Topic submitted · prep session 10 days before the talk
-        </ILText>
-      </SoftCard>
+      <LinkRow
+        icon="record-voice-over"
+        title="Your C-Suite Talk"
+        sub="Topic submitted · prep session 10 days before the talk"
+        onPress={openJourney}
+      />
     </ProgramPage>
   );
 }
@@ -433,7 +439,7 @@ function MbwEnrolled() {
         </ILText>
         <HeroTitle>A month in, {name}.</HeroTitle>
         <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 8 }}>
-          You are in and already one done. This quarter builds your C-Suite profile — your stories come next.
+          Resume and LinkedIn are done. This quarter builds your C-Suite profile — your stories come next.
         </ILText>
         <View style={{ flexDirection: 'row', marginTop: 16 }}>
           {['Q1', 'Q2', 'Q3', 'Q4'].map((q, i) => (
@@ -452,36 +458,41 @@ function MbwEnrolled() {
           ))}
         </View>
         <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 12 }}>
-          Next · Session 2 · C-Suite Story Video
+          Next: Session 2 · C-Suite Story
+        </ILText>
+        <ILText role="bodySm" color={IL_BRAND.mutedOnDark}>
+          After Wk4 · Video
         </ILText>
       </DarkPanel>
 
       <SoftCard>
         <ILText role="label">Preparation complete</ILText>
         <ILText role="bodySm" color={IL_BRAND.muted}>
-          12 weeks, both reviewed and your C-Suite Talk topic is in.
+          12 weeks, both sessions and your C-Suite Talk topic
         </ILText>
       </SoftCard>
 
       <Whisper
-        body="Week 4. Three stories of accomplishment go to your WA group this week — Session 2 turns one of them into your C-Suite Story profile."
+        body={`Week 4, ${name}. Three stories of accomplishment go to your WA group this week — Session 2 turns one of them into your C-Suite Story Video.`}
         action="Start my stories →"
         onAction={() => routes.openMyProgram('mbw', 'Cohort')}
       />
 
       <SectionLabel
         title="Today’s practice"
-        sub="1 of 3 done · about 20 min"
+        sub="1 of 3 done · about 15 min"
         action="Open checklist"
         onAction={openYear}
       />
       <PracticeList
         onOpen={routes.openLearn}
+        streak="6-day streak"
+        note="Daily revision at 8:00 AM"
         items={[
-          { title: 'Mirror Work', detail: 'LEP ritual · 10 min', done: true, programId: 'mbw' },
+          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw' },
           {
-            title: 'Write story 2 in three lines',
-            detail: 'Situation, action, result · 10 min',
+            title: 'Write story 2 in three lines: situation, action, result',
+            detail: 'This week · C-Suite Story · 10 min',
             done: false,
             programId: 'mbw',
           },
@@ -494,10 +505,11 @@ function MbwEnrolled() {
         ]}
       />
 
-      <SectionLabel title="This week · Wk4" sub="Share 3 stories of accomplishment" />
+      <SectionLabel title="This week · Wk4" sub="C-Suite Story" />
       <SoftCard>
-        <ILText role="bodySm" color={IL_BRAND.muted}>
-          Post each story in the WA group for review before Session 2.
+        <ILText role="label">Share 3 key stories of accomplishment</ILText>
+        <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 4 }}>
+          Posted in your WA group for review before Session 2.
         </ILText>
         <View style={{ flexDirection: 'row', marginTop: 12 }}>
           {['Story 1', 'Story 2', 'Story 3'].map((story, i) => (
@@ -517,16 +529,22 @@ function MbwEnrolled() {
                 color={i === 0 ? IL_BRAND.paidGreen : IL_BRAND.ink}
                 style={{ fontSize: 12 }}
               >
+                {i === 0 ? '✓  ' : ''}
                 {story}
               </ILText>
             </View>
           ))}
         </View>
-        <BarButton label="Continue story 2" onPress={() => routes.openMyProgram('mbw', 'Cohort')} />
+        <BarButton label="Continue story 2 →" onPress={() => routes.openMyProgram('mbw', 'Cohort')} />
       </SoftCard>
 
-      <SectionLabel title="C-suite conversations" action="See all" onAction={openLearn} />
-      <VideoCard onPress={openLearn} />
+      <SectionLabel
+        title="C-suite conversations"
+        sub="Leaders who sit at the top table"
+        action="See all"
+        onAction={openLearn}
+      />
+      <VideoCard onPress={openLearn} kicker="This week’s must-watch · MBW" />
 
       <LinkRow
         icon="flag"
@@ -537,7 +555,7 @@ function MbwEnrolled() {
       <LinkRow
         icon="groups"
         title="Your MBW WA group"
-        sub="24 senior women · share story 2 before Session 2"
+        sub="24 senior women · 3 stories shared today · review one before Session 2"
         onPress={routes.openEngage}
       />
 
@@ -549,7 +567,7 @@ function MbwEnrolled() {
           CXO by 2028
         </ILText>
         <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 6 }}>
-          From your C-Suite Talk · revisited at Graduation
+          From your B-HAG · revisited at Graduation
         </ILText>
       </DarkPanel>
     </ProgramPage>
@@ -621,6 +639,8 @@ function ComboHome() {
       />
       <PracticeList
         onOpen={routes.openLearn}
+        streak="3-day streak"
+        note="One daily revision, 8:00 AM"
         items={[
           { title: '5 Daily Rituals — morning check', detail: 'LEP ritual · 2 min', done: true, tag: 'LEP', programId: 'lep' },
           { title: 'Revise Principle 3 from the 27 Principles', detail: 'Daily revision · 2 min', done: true, tag: 'LEP', programId: 'lep' },
@@ -654,13 +674,16 @@ function ComboHome() {
 
       <DarkPanel>
         <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-          100 Board Members · registered · balance due 21 Sep
+          100 Board Members · registered
         </ILText>
-        <ILText role="title" color="#FFFFFF" style={{ marginTop: 8 }}>
+        <ILText role="label" color="#FFFFFF" style={{ marginTop: 8 }}>
+          Balance due 21 Sep
+        </ILText>
+        <ILText role="title" color="#FFFFFF" style={{ marginTop: 4 }}>
           Your 100BM seat is held
         </ILText>
         <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 6 }}>
-          Part payment received. Onboarding opens 3 Oct, while LEP’s weekly sessions are still running.
+          Part payment received · onboarding opens 3 Oct, while LEP’s weekly sessions are still running.
         </ILText>
         <BarButton label="Complete enrolment →" onPress={routes.openPayment} />
         <Pressable

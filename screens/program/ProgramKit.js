@@ -162,7 +162,7 @@ export function SoftCard({ children, style, onPress }) {
   );
 }
 
-export function SectionLabel({ title, sub, action, onAction }) {
+export function SectionLabel({ title, sub, action, onAction, eyebrow }) {
   return (
     <View
       style={{
@@ -173,6 +173,11 @@ export function SectionLabel({ title, sub, action, onAction }) {
       }}
     >
       <View style={{ flex: 1, paddingRight: 12 }}>
+        {eyebrow ? (
+          <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10, marginBottom: 4 }}>
+            {eyebrow}
+          </ILText>
+        ) : null}
         <ILText role="title">{title}</ILText>
         {sub ? (
           <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 2 }}>
@@ -191,7 +196,7 @@ export function SectionLabel({ title, sub, action, onAction }) {
   );
 }
 
-export function PhaseRow({ kicker, title, detail, state, onPress, last }) {
+export function PhaseRow({ kicker, title, detail, note, state, onPress, last }) {
   const now = state === 'now';
   const done = state === 'done';
   return (
@@ -224,6 +229,11 @@ export function PhaseRow({ kicker, title, detail, state, onPress, last }) {
         {detail ? (
           <ILText role="bodySm" color={IL_BRAND.muted}>
             {detail}
+          </ILText>
+        ) : null}
+        {note ? (
+          <ILText role="bodySm" color={IL_BRAND.dim} style={{ marginTop: 4 }}>
+            {note}
           </ILText>
         ) : null}
       </View>
@@ -411,14 +421,18 @@ export function LinkRow({ icon, title, sub, onPress }) {
 export function Whisper({ body, action, onAction }) {
   return (
     <SoftCard>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
-          IL Guide’s Whisper
-        </ILText>
-        <ILText role="bodySm" color={IL_BRAND.dim}>
-          Cohort Guide
-        </ILText>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <ILText role="label">IL Guide’s Whisper</ILText>
+          <ILText role="bodySm" color={IL_BRAND.dim}>
+            Cohort Guide
+          </ILText>
+        </View>
+        <MaterialIcons name="close" size={18} color={IL_BRAND.dim} />
       </View>
+      <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10, marginTop: 10 }}>
+        Curated with Rajesh
+      </ILText>
       <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginTop: 8 }}>
         {body}
       </ILText>
@@ -433,9 +447,13 @@ export function Whisper({ body, action, onAction }) {
   );
 }
 
-export function VideoCard({ onPress }) {
+export function VideoCard({ onPress, kicker = 'This week’s must-watch' }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={{ marginTop: 12 }}>
+    <View style={{ marginTop: 12 }}>
+      <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10, marginBottom: 8 }}>
+        {kicker}
+      </ILText>
+    <Pressable onPress={onPress} accessibilityRole="button">
       <View style={{ backgroundColor: IL_BRAND.forest, borderRadius: 22, padding: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View
@@ -490,10 +508,14 @@ export function VideoCard({ onPress }) {
         </View>
       </View>
     </Pressable>
+      <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 8 }}>
+        Counts toward today’s practice once you finish it
+      </ILText>
+    </View>
   );
 }
 
-export function PeopleRow({ extra }) {
+export function PeopleRow({ extra, onLight }) {
   const faces = [
     ['A', '#C94A38'],
     ['P', '#C9A24B'],
@@ -501,7 +523,7 @@ export function PeopleRow({ extra }) {
     ['S', '#5B6272'],
   ];
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: onLight ? 0 : 14 }}>
       {faces.map(([letter, color], index) => (
         <View
           key={letter}
@@ -514,7 +536,7 @@ export function PeopleRow({ extra }) {
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
-            borderColor: IL_BRAND.forest,
+            borderColor: onLight ? IL_BRAND.white : IL_BRAND.forest,
           }}
         >
           <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
@@ -528,16 +550,108 @@ export function PeopleRow({ extra }) {
           height: 32,
           borderRadius: 16,
           paddingHorizontal: 8,
-          backgroundColor: 'rgba(255,255,255,0.16)',
+          backgroundColor: onLight ? '#F3EFE8' : 'rgba(255,255,255,0.16)',
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
+        <ILText role="label" color={onLight ? IL_BRAND.ink : '#FFFFFF'} style={{ fontSize: 12 }}>
           +{extra}
         </ILText>
       </View>
     </View>
+  );
+}
+
+export function GlanceGrid({ kicker, cells }) {
+  return (
+    <SoftCard>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <MaterialIcons name="menu-book" size={14} color={IL_BRAND.red} />
+        <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10, marginLeft: 6 }}>
+          {kicker}
+        </ILText>
+      </View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, gap: 8 }}>
+        {cells.map(([label, value]) => (
+          <View
+            key={label}
+            style={{
+              width: '48%',
+              flexGrow: 1,
+              backgroundColor: '#F6F2EA',
+              borderRadius: 14,
+              padding: 12,
+            }}
+          >
+            <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10 }}>
+              {label}
+            </ILText>
+            <ILText role="label" style={{ marginTop: 4 }}>
+              {value}
+            </ILText>
+          </View>
+        ))}
+      </View>
+    </SoftCard>
+  );
+}
+
+export function StreakRow({ streak, note }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: '#FDECEC',
+          borderRadius: 999,
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+        }}
+      >
+        <MaterialIcons name="local-fire-department" size={14} color={IL_BRAND.red} />
+        <ILText role="label" color={IL_BRAND.red} style={{ fontSize: 12, marginLeft: 4 }}>
+          {streak}
+        </ILText>
+      </View>
+      <ILText role="bodySm" color={IL_BRAND.muted} style={{ flex: 1, textAlign: 'right', marginLeft: 8 }}>
+        {note}
+      </ILText>
+    </View>
+  );
+}
+
+export function PrepTask({ title, detail, action, onPress, last }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: IL_BRAND.line,
+      }}
+    >
+      <View style={{ flex: 1, paddingRight: 12 }}>
+        <ILText role="label">{title}</ILText>
+        <ILText role="bodySm" color={IL_BRAND.muted}>
+          {detail}
+        </ILText>
+      </View>
+      <ILText role="label" color={IL_BRAND.red}>
+        {action}
+      </ILText>
+    </Pressable>
   );
 }
 

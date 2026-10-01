@@ -37,8 +37,8 @@ const BM_PRE = [
 
 const BM_AHEAD = [
   ['later', 'Phase 1', 'Foundation', 'Board-member image, brand video, resume'],
-  ['later', 'Phase 2', 'Pitch & strategy', 'Pitching and influencing, and mid-level politics'],
-  ['later', 'Phase 3', 'Board ready', 'Strategic outlook, strategy review, mock interview'],
+  ['later', 'Phase 2', 'Pitch & Strategy', 'Pitching, influencing and mid-level politics'],
+  ['later', 'Phase 3', 'Board Ready', 'Strategic outlook, strategy review, mock interview'],
   ['later', 'Phase 4', 'Challenges', 'Walk to Board, LinkedIn video, Speak like a CEO'],
   ['later', 'Graduation', 'Your speech video', ''],
 ];
@@ -47,7 +47,7 @@ const MBW_PREP = [
   ['done', 'Session by Rajesh', 'Orientation Session', ''],
   ['done', 'Wk1–12', '27 Principles video', 'Submit 3 key learnings'],
   ['done', 'Wk1–11', 'C-Suite Talk — topic finalization', 'Submit your topic for review'],
-  ['done', 'Wk1–10', 'ERRC — watch video', '3 things you will change to maximize your time'],
+  ['done', 'Wk1–10', 'ERRC — watch video', '3 things you’ll change to maximise your time'],
   ['done', 'Wk1–9', 'LinkedIn update', 'Share your final updated profile'],
   ['now', 'Wk1–8 · this week', 'LinkedIn % connects', 'Share the connection increase'],
   ['later', 'Wk1–7', 'Objectives', 'Share key objectives in the group'],
@@ -61,24 +61,61 @@ const MBW_PREP = [
 ];
 
 const MBW_YEAR = [
-  ['done', 'Done', 'Preparation', 'Orientation (Rajesh), 12 weeks of prep, Preparation Session (Suvarna), C-Suite Talk prep'],
-  ['now', 'Week 4', 'Q1 · C-Suite profile', 'Wk1–12 · Sessions 1–4 · Strengthening your strengths with Suvarna'],
-  ['later', 'Next', 'Q2 · Pitch and strategy', 'Wk13–24 · Sessions 5–8 · Perception and drama with Suvarna'],
-  ['later', 'Later', 'Q3 · Business perspective', 'Wk25–36 · Sessions 9–12 · Influencing tactics with Suvarna'],
-  ['later', 'Later', 'Q4 · C-Suite game plan', 'Wk37–48 · Sessions 13–16 · C-Suite Game Plan with Suvarna'],
-  ['later', 'Later', 'Closure · Graduation', 'Closure Session, then Graduation · Wk49–52'],
+  [
+    'done',
+    'Done',
+    'Preparation',
+    'Orientation (Rajesh), 12 weeks of prep, Preparation Session (Suvarna), C-Suite Talk prep',
+    'Wk1–12 to Wk1–1',
+  ],
+  [
+    'now',
+    'Week 4',
+    'Q1 · C-Suite profile',
+    'C-Suite Resume, LinkedIn, C-Suite Story and video, bell curve, business language, Milestone Table, Video CV, apply for a C-Suite role, Super Power Table',
+    'Wk1–12 · Sessions 1–4 · Strengthening your strengths with Suvarna',
+  ],
+  [
+    'later',
+    'Next',
+    'Q2 · Pitch and strategy',
+    'Enemy and differentiation, pitch video, rejection practice, strategy draft, drama, ERRC delegation, LinkedIn challenge, C-Suite Talk practice',
+    'Wk13–24 · Sessions 5–8 · Deception/Drama with Suvarna',
+  ],
+  [
+    'later',
+    'Later',
+    'Q3 · Business perspective',
+    'Mock interview video, terrain, business language, LinkedIn video, energy centers, influencing role play, signalling, offence and defence',
+    'Wk25–36 · Sessions 9–12 · Influencing tactics with Suvarna',
+  ],
+  [
+    'later',
+    'Later',
+    'Q4 · C-Suite game plan',
+    'Repositioning, ERRC, bell curve game plan, projection, Delta 2 review, strategy, challenges, drama, apply for a C-Suite position',
+    'Wk37–48 · Sessions 13–16 · C-Suite Game Plan with Suvarna',
+  ],
+  [
+    'later',
+    'Later',
+    'Closure · Graduation',
+    'Closure Session, four weeks of graduation preparation, then Graduation',
+    'Wk49–52',
+  ],
 ];
 
 function PhaseList({ rows, onPress }) {
   return (
     <SoftCard style={{ padding: 0, overflow: 'hidden' }}>
-      {rows.map(([state, kicker, title, detail], index) => (
+      {rows.map(([state, kicker, title, detail, note], index) => (
         <PhaseRow
           key={`${kicker}-${title}`}
           state={state}
           kicker={kicker}
           title={title}
           detail={detail}
+          note={note}
           last={index === rows.length - 1}
           onPress={onPress}
         />
@@ -148,10 +185,10 @@ function BmJourney({ stage, routes }) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
         {[
           ['LinkedIn Optimization', true],
-          ['SuperPower Statement', true],
           ['ERRC Grid', true],
-          ['Imperfect Brand Video', false],
+          ['SuperPower Statement', true],
           ['Mock Interview', false],
+          ['Imperfect Brand Video', false],
           ['Walk to Board', false],
           ['+2 more', false],
         ].map(([label, done]) => (
@@ -316,8 +353,9 @@ function MbwJourney({ stage, routes }) {
   return (
     <>
       <SectionLabel
+        eyebrow="52 weeks"
         title="Your year"
-        sub="A weekly deliverable in your WA group. 16 Impact Champions sessions and 4 with Suvarna."
+        sub="A weekly deliverable in your WA group, 16 Impact Champions sessions and 4 with Suvarna."
       />
       <PhaseList rows={MBW_YEAR} onPress={() => routes.setSection('Sessions')} />
       <SectionLabel title="Your C-Suite profile" sub="3 of 7 built" />
@@ -328,8 +366,8 @@ function MbwJourney({ stage, routes }) {
           ['LinkedIn posts', true],
           ['C-Suite Story', false],
           ['Story video', false],
-          ['Video CV', false],
           ['Super Power Table', false],
+          ['Video CV', false],
         ].map(([label, done]) => (
           <Pill key={label} label={label} done={done} onPress={() => routes.openLearn('mbw')} />
         ))}
@@ -435,9 +473,9 @@ function MbwCohort({ routes }) {
       </DarkPanel>
       <SectionLabel title="This week’s deliverable" sub="Wk4 · C-Suite Story · shared in the group" />
       <SoftCard>
-        <ILText role="label">9 of 24 have shared their 3 stories</ILText>
+        <ILText role="label">You: 1 of 3</ILText>
         <ILText role="bodySm" color={IL_BRAND.muted}>
-          You: 1 of 3
+          9 of 24 have shared their 3 stories
         </ILText>
         <View style={{ height: 4, borderRadius: 2, backgroundColor: '#F3EFE8', marginTop: 12 }}>
           <View style={{ width: '33%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.red }} />
@@ -556,22 +594,61 @@ function MultiPrograms({ routes }) {
           </View>
         </SoftCard>
       </Pressable>
-      <SectionLabel title="How your two programs fit" sub="Sep – Oct" />
       <SoftCard>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
+            How your two programs fit
+          </ILText>
+          <ILText role="bodySm" color={IL_BRAND.muted}>
+            Sep – Oct
+          </ILText>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 }}>
+          {['15 Sep', '29 Sep', '13 Oct', '27 Oct'].map((date) => (
+            <ILText key={date} role="bodySm" color={IL_BRAND.dim} style={{ fontSize: 11 }}>
+              {date}
+            </ILText>
+          ))}
+        </View>
         {[
-          ['LEP', '62%', IL_BRAND.forest],
-          ['100BM', '28%', IL_BRAND.red],
-        ].map(([label, width, color]) => (
-          <View key={label} style={{ marginTop: 10 }}>
-            <ILText role="label">{label}</ILText>
-            <View style={{ height: 8, borderRadius: 4, backgroundColor: '#F3EFE8', marginTop: 6 }}>
-              <View style={{ width, height: 8, borderRadius: 4, backgroundColor: color }} />
+          ['LEP', 2, 5, IL_BRAND.forest],
+          ['100BM', 4, 6, IL_BRAND.red],
+        ].map(([label, before, span, color]) => (
+          <View key={label} style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+            <ILText role="label" style={{ width: 52 }}>
+              {label}
+            </ILText>
+            <View style={{ flex: 1, height: 8, borderRadius: 4, backgroundColor: '#F3EFE8', flexDirection: 'row' }}>
+              <View style={{ flex: before }} />
+              <View style={{ flex: span, borderRadius: 4, backgroundColor: color }} />
+              <View style={{ flex: Math.max(10 - before - span, 1) }} />
             </View>
           </View>
         ))}
-        <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 12 }}>
-          3–18 Oct: both running. One Today list, one daily revision and at most 2 reminders a day. After the LEP certificate, 100BM leads.
-        </ILText>
+        <View style={{ flexDirection: 'row', marginTop: 14, gap: 8 }}>
+          {[
+            ['LEP', 'Day 1 & 2', '20–21 Sep'],
+            ['100BM', 'Onboarding', '3 Oct'],
+            ['LEP', 'Certificate', '~18 Oct'],
+          ].map(([tag, title, when]) => (
+            <View key={title} style={{ flex: 1, backgroundColor: '#F6F2EA', borderRadius: 12, padding: 8 }}>
+              <ILText role="eyebrow" color={tag === '100BM' ? IL_BRAND.red : IL_BRAND.forest} style={{ fontSize: 9 }}>
+                {tag}
+              </ILText>
+              <ILText role="label" style={{ fontSize: 12, marginTop: 4 }}>
+                {title}
+              </ILText>
+              <ILText role="bodySm" color={IL_BRAND.muted} style={{ fontSize: 11 }}>
+                {when}
+              </ILText>
+            </View>
+          ))}
+        </View>
+        <View style={{ marginTop: 12, backgroundColor: '#FDECEC', borderRadius: 12, padding: 12 }}>
+          <ILText role="bodySm" color={IL_BRAND.ink}>
+            3–18 Oct: both running. One Today list, one daily revision and at most 2 reminders a day. After the LEP certificate, 100BM leads.
+          </ILText>
+        </View>
       </SoftCard>
       <LinkRow
         icon="workspace-premium"
