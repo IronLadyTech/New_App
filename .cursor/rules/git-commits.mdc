@@ -1,0 +1,24 @@
+---
+description: Concise git commits and pushes, with no Cursor or AI co-author trailer
+alwaysApply: true
+---
+
+# Git commits and pushes
+
+Apply this whenever you commit or push.
+
+- Commit only when the user asks. Push only when the user asks.
+- Subject line only, or one short sentence after it. Say why, in plain language.
+- No Co-authored-by trailer. No Cursor, Cursor Agent, or any AI co-author line.
+- No "Generated with", "Made with Cursor", or similar footers.
+- Do not pass `--trailer`, and do not append a trailer in the message body.
+
+```
+# Bad
+Add 100BM screens
+
+Co-authored-by: Cursor <cursoragent@cursor.com>
+
+# Good
+Add 100BM and MBW journey screens.
+```

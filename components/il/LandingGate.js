@@ -8,11 +8,16 @@ import FirstLoginWelcomeScreen from '../../screens/auth/FirstLoginWelcomeScreen'
 import ChooseBatchDateScreen from '../../screens/auth/ChooseBatchDateScreen';
 import SeatHeldScreen from '../../screens/auth/SeatHeldScreen';
 
-export default function LandingGate({ profile }) {
+export default function LandingGate({ profile, forcedClosed }) {
   const { completeOnboard } = useILGuideWhisper(IL_GUIDE_SURFACES.ONBOARD);
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
-  if (!profile || profile.ilGuideOnboarded) return null;
+  const [closed, setClosed] = React.useState(false);
+  const leave = () => {
+    setClosed(true);
+    completeOnboard();
+  };
+  if (forcedClosed || closed || !profile || profile.ilGuideOnboarded) return null;
 
   const programs = getEnrolledPrograms(profile);
   const wrap = (node) => (
@@ -23,7 +28,7 @@ export default function LandingGate({ profile }) {
   if (programs.length >= 2) {
     return wrap(
       <AccountFoundScreen
-        onDone={completeOnboard}
+        onDone={leave}
         route={{
           params: {
             phone: profile.phoneNumber,
@@ -44,7 +49,7 @@ export default function LandingGate({ profile }) {
     return wrap(
       <SeatHeldScreen
         route={{ params: { batch } }}
-        onContinue={completeOnboard}
+        onContinue={leave}
       />
     );
   }

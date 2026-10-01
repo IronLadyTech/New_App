@@ -9,6 +9,7 @@ import { BADGE_DEFS, COLORS } from '../../constants';
 import { PAYMENT_STATUS } from '../../constants/programs';
 import { programPaymentStatus } from '../../utils/programAccess';
 import { refreshMyAccess } from '../../services/functions';
+import ILHeader from '../../components/il/ILHeader';
 
 function Row({ icon, label, onPress, danger }) {
   return (
@@ -58,6 +59,13 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
+      <ILHeader
+        photoUrl={profile?.photoURL}
+        insetTop={false}
+        onProfile={() => {}}
+        onNotifications={() => navigation.getParent()?.navigate('Engage')}
+        onSearch={() => navigation.getParent()?.navigate('Learn')}
+      />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <Text className="text-2xl font-bold text-ink-950">Profile</Text>
 
