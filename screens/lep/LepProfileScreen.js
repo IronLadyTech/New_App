@@ -24,9 +24,9 @@ const PROGRAM_PROFILE = {
     short: 'Leadership Essentials',
     reg: {
       badges: [{ label: 'LEP Applicant', on: true }, { label: 'Masterclass Registered' }],
-      bhag: 'Calibrated for Leadership Excellence · Foundation principle active',
+      bhag: 'Calibrated for Leadership Essentials · Foundation principle active',
       status: 'Seat reserved · Pending enrollment',
-      heading: 'Leadership Excellence Program',
+      heading: 'Leadership Essentials Program',
       body: 'Masterclass completed (4/4 Foundation Principles). Complete enrollment to unlock all 27 Principles, Private Cohort Triads & Thursday Circles.',
       date: 'Sat 20 – Sun 21 September, 2026',
       dateSub: '9:00 AM – 7:00 PM IST (Both days)',
@@ -34,7 +34,7 @@ const PROGRAM_PROFILE = {
     },
     enr: {
       badges: [{ label: 'LEP', on: true }, { label: '100BM' }],
-      bhag: 'Calibrated for Leadership Excellence Program · Review milestone scheduled at Day 45',
+      bhag: 'Calibrated for Leadership Essentials Program · Review milestone scheduled at Day 45',
       batch: 'MY BATCH',
       heading: 'Sat 20 – Sun 21 Sep, 2026',
       body: '9:00 AM – 7:00 PM IST (Both days) · Live Zoom',

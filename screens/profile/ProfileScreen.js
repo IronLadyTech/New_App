@@ -63,7 +63,6 @@ export default function ProfileScreen({ navigation }) {
         photoUrl={profile?.photoURL}
         insetTop={false}
         onProfile={() => {}}
-        onNotifications={() => navigation.getParent()?.navigate('Engage')}
         onSearch={() => navigation.getParent()?.navigate('Learn')}
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>

@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -18,7 +9,8 @@ import { stashPhoneAuth } from '../../services/phoneAuthSession';
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from '../../components/il/ilShadow';
 import ILText from '../../components/il/ILText';
-import ILButton from '../../components/il/ILButton';
+import ILLogoMark from '../../components/il/ILLogoMark';
+import { useKeyboardRoom } from '../../hooks/useKeyboardRoom';
 
 const HERO = require('../../assets/il/suvarna-hero.jpg');
 const TEAL = '#112B32';
@@ -33,6 +25,7 @@ export default function PhoneLoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [local, setLocal] = useState('');
+  const { extra: keyboardRoom, scrollProps } = useKeyboardRoom();
   const [error, setError] = useState('');
 
   const onContinue = () => {
@@ -125,17 +118,28 @@ export default function PhoneLoginScreen({ navigation }) {
 
       <View
         style={{
-          paddingTop: insets.top + 22,
-          height: insets.top + 72,
+          paddingTop: insets.top + 10,
+          paddingBottom: 8,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 2,
         }}
       >
-        <ILText role="wordmark" color={IL_BRAND.white}>
-          Iron Lady
-        </ILText>
+        <ILLogoMark size={28} />
+        <Text
+          numberOfLines={1}
+          style={{
+            marginLeft: 10,
+            color: '#FFFFFF',
+            fontFamily: IL_FONTS.display,
+            fontSize: 20,
+            lineHeight: 26,
+            ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+          }}
+        >
+          {'Iron\u00A0Lady'}
+        </Text>
       </View>
 
       <KeyboardAvoidingView
@@ -143,12 +147,15 @@ export default function PhoneLoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          {...scrollProps}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingTop: Math.max(height * 0.26 - insets.top, 140),
-            paddingBottom: Math.max(insets.bottom, 20) + 16,
+            paddingTop: Math.max(Math.min(height * 0.08, 56), 16),
+            paddingBottom: Math.max(insets.bottom, 20) + 16 + keyboardRoom,
+            flexGrow: 1,
+            justifyContent: 'flex-end',
           }}
         >
           <ILText
@@ -270,12 +277,6 @@ export default function PhoneLoginScreen({ navigation }) {
               </ILText>
             ) : null}
 
-            <ILButton
-              label="Continue"
-              onPress={onContinue}
-              style={{ marginTop: 18, backgroundColor: CTA }}
-            />
-
             <ILText role="bodySm" color={IL_BRAND.muted} align="center" style={{ marginTop: 16 }}>
               We’ll send a 6-digit code. No password.
             </ILText>
@@ -305,6 +306,34 @@ export default function PhoneLoginScreen({ navigation }) {
               </Pressable>
             ) : null}
           </View>
+
+          <Pressable
+            onPress={onContinue}
+            accessibilityRole="button"
+            accessibilityLabel="Continue"
+            style={({ pressed }) => ({
+              marginTop: 16,
+              minHeight: 56,
+              borderRadius: 999,
+              backgroundColor: CTA,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.92 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: '#FFFFFF',
+                fontFamily: IL_FONTS.semibold,
+                fontSize: 16,
+                ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+              }}
+            >
+              Continue
+            </Text>
+            <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

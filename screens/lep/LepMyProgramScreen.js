@@ -10,9 +10,8 @@ import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled } from '../../utils/lepState';
 import {
-  CheckRow,
-  FilterBar,
   LepHeader,
+  ProgramFilter,
   LinkRow,
   Page,
   ProgressDark,
@@ -26,16 +25,16 @@ import {
   COHORT_WEEK,
   FACE,
   PHASES,
-  PHASE_TASKS,
-  PRE_PROGRAM_TASKS,
   SESSIONS_DONE,
   SESSIONS_UP,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import { PROGRAMS } from '../../constants/programs';
+import { coursePhases, currentPhaseId } from '../../constants/programCourseSlice';
+import ThisPhaseBlock from '../program/ThisPhaseBlock';
 
 // Registered = partial payment = partial unlock. Everything after these stays locked.
 const REG_OPEN_PHASES = 3;
-const REG_OPEN_TASKS = 3;
 
 export default function LepMyProgramScreen() {
   const { profile } = useAuth();
@@ -43,7 +42,6 @@ export default function LepMyProgramScreen() {
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
-  const [prog, setProg] = useState('LEP');
   const [tab, setTab] = useState('Journey');
 
   return (
@@ -74,22 +72,18 @@ export default function LepMyProgramScreen() {
           Leadership Essentials program
         </ILText>
 
-        {enrolled ? (
-          <View style={{ marginTop: 18 }}>
-            <FilterBar items={['All', 'LEP', '100BM']} value={prog} onChange={setProg} />
-          </View>
-        ) : null}
+        <View style={{ marginTop: 18 }}>
+          <ProgramFilter />
+        </View>
         <View style={{ marginTop: 18 }}>
           <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
         </View>
         {tab === 'Journey' ? (
           <JourneyBody locked={!enrolled} />
-        ) : !enrolled ? (
-          <LockedTab tab={tab} onEnroll={nav.goEnroll} />
         ) : tab === 'Sessions' ? (
-          <SessionsBody />
+          <SessionsBody preview={!enrolled} onEnroll={nav.goEnroll} />
         ) : (
-          <CohortBody />
+          <CohortBody preview={!enrolled} onEnroll={nav.goEnroll} />
         )}
       </ScrollView>
     </Page>
@@ -159,7 +153,8 @@ function UnlockRest({ onEnroll }) {
 
 function JourneyBody({ locked = false }) {
   const nav = useLepNav();
-  const tasks = locked ? PRE_PROGRAM_TASKS : PHASE_TASKS;
+  const phaseId = currentPhaseId(PROGRAMS.LEP, !locked);
+  const phases = coursePhases(PROGRAMS.LEP);
   return (
     <>
       <View style={{ marginTop: 18 }}>
@@ -179,42 +174,24 @@ function JourneyBody({ locked = false }) {
           />
         )}
       </View>
-      <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-        This phase
-      </ILText>
-      <ILText role="bodySm" color={G.meta}>
-        {locked ? 'Phase 01 · Pre-Program Preparation' : 'Day 2 · Strategies and Tactics'}
-      </ILText>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {tasks.map((item, i) =>
-          locked && i >= REG_OPEN_TASKS ? (
-            <LockRow key={item.id} title={item.title} meta={`${item.kind} · after enrollment`} last={i === tasks.length - 1} />
-          ) : (
-            <CheckRow
-              key={item.id}
-              item={{ title: item.title, meta: item.kind, done: item.done }}
-              last={i === tasks.length - 1}
-              onPress={item.task === 'assignment' ? nav.goAssignment : nav.goPhase}
-            />
-          )
-        )}
-      </WhiteCard>
+      <ThisPhaseBlock programId={PROGRAMS.LEP} phaseId={phaseId} style={{ marginTop: 22 }} />
 
       <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-        All 11 phases
+        Your phases
       </ILText>
       <ILText role="bodySm" color={G.meta}>
-        {locked ? `From Moodle · ${REG_OPEN_PHASES} open before enrollment` : 'From Moodle · phase by phase'}
+        {locked ? 'First phases open now · the rest unlock on enrollment' : 'Phase by phase from the LEP course'}
       </ILText>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        {PHASES.map((p, i) => {
-          const shut = locked && i >= REG_OPEN_PHASES;
-          const done = !locked && p.done;
-          const now = locked ? i === 0 : p.now;
+        {(phases.length ? phases : PHASES).map((p, i) => {
+          const shut = locked && (p.openRegistered === false || (p.openRegistered == null && i >= REG_OPEN_PHASES));
+          const now = p.id === phaseId;
+          const currentIndex = phases.findIndex((x) => x.id === phaseId);
+          const done = !locked && i < currentIndex;
           return (
             <Pressable
-              key={p.n}
-              onPress={shut ? nav.goEnroll : nav.goPhase}
+              key={p.id || p.n}
+              onPress={shut ? nav.goEnroll : () => nav.goCoursePhase(PROGRAMS.LEP, p.id || 'pre-program')}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -232,7 +209,7 @@ function JourneyBody({ locked = false }) {
               />
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-                  Phase {p.n}
+                  Phase {String(i + 1).padStart(2, '0')}
                 </ILText>
                 <ILText role="label" color={G.ink} style={{ marginTop: 2 }}>
                   {p.title}
@@ -252,47 +229,7 @@ function JourneyBody({ locked = false }) {
   );
 }
 
-function LockedTab({ tab, onEnroll }) {
-  const copy =
-    tab === 'Sessions'
-      ? {
-          title: 'Live sessions open on enrollment',
-          body: 'Day 1 & Day 2 (Sat 20 – Sun 21 Sep), the weekly handholding sessions and every recording appear here once your balance is paid.',
-        }
-      : {
-          title: 'Your batch opens on enrollment',
-          body: 'Batch 42, your Thursday Community Circle and the WA group open here the day your enrollment completes.',
-        };
-  return (
-    <>
-      <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            backgroundColor: G.mutedFill,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="lock-outline" size={20} color={G.meta} />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <ILText role="label" color={G.ink}>
-            {copy.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
-            {copy.body}
-          </ILText>
-        </View>
-      </WhiteCard>
-      <UnlockRest onEnroll={onEnroll} />
-    </>
-  );
-}
-
-function SessionsBody() {
+function SessionsBody({ preview = false, onEnroll }) {
   const nav = useLepNav();
   return (
     <>
@@ -305,51 +242,72 @@ function SessionsBody() {
             Live sessions for Batch 42
           </ILText>
         </View>
-        <LinkRow label="Add all to calendar" onPress={nav.goSchedule} />
+        {preview ? null : <LinkRow label="Add all to calendar" onPress={nav.goSchedule} />}
       </View>
-      {SESSIONS_UP.map((s) => (
-        <WhiteCard key={s.id} style={{ marginTop: 12, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-          <View
+      {SESSIONS_UP.map((s, i) => {
+        const shut = preview && i >= 2;
+        return (
+          <WhiteCard
+            key={s.id}
             style={{
-              width: 52,
-              borderRadius: 14,
-              backgroundColor: G.cta,
+              marginTop: 12,
+              borderRadius: 22,
+              padding: 16,
+              flexDirection: 'row',
               alignItems: 'center',
-              paddingVertical: 8,
+              opacity: shut ? 0.62 : 1,
             }}
           >
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
-              {s.mon}
-            </ILText>
-            <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}>
-              {s.day}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink}>
-              {s.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {s.meta}
-            </ILText>
-          </View>
-          <Pressable
-            onPress={nav.goCheckin}
-            style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
-          >
-            <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
-              {s.cta}
-            </ILText>
-          </Pressable>
-        </WhiteCard>
-      ))}
+            <View
+              style={{
+                width: 52,
+                borderRadius: 14,
+                backgroundColor: shut ? G.mutedFill : G.cta,
+                alignItems: 'center',
+                paddingVertical: 8,
+              }}
+            >
+              <ILText role="eyebrow" color={shut ? G.meta : '#FFFFFF'} style={[af, { fontSize: 9 }]}>
+                {s.mon}
+              </ILText>
+              <ILText
+                role="title"
+                color={shut ? G.ink : '#FFFFFF'}
+                style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}
+              >
+                {s.day}
+              </ILText>
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <ILText role="label" color={G.ink}>
+                {s.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+                {s.meta}
+              </ILText>
+            </View>
+            {shut ? (
+              <MaterialIcons name="lock-outline" size={18} color={G.meta} />
+            ) : (
+              <Pressable
+                onPress={preview ? onEnroll : nav.goCheckin}
+                style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
+              >
+                <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
+                  {s.cta}
+                </ILText>
+              </Pressable>
+            )}
+          </WhiteCard>
+        );
+      })}
       <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
         Done
       </ILText>
       <ILText role="bodySm" color={G.meta}>
         Recordings and check-ins · attendance counts toward the certificate
       </ILText>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
+      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
         {SESSIONS_DONE.map((s, i) => (
           <View
             key={s.title}
@@ -358,22 +316,28 @@ function SessionsBody() {
               paddingVertical: 14,
               borderTopWidth: i ? 1 : 0,
               borderTopColor: G.line,
+              flexDirection: 'row',
+              alignItems: 'center',
             }}
           >
-            <ILText role="label" color={G.ink}>
-              {s.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {s.meta}
-            </ILText>
+            <View style={{ flex: 1 }}>
+              <ILText role="label" color={G.ink}>
+                {s.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+                {s.meta}
+              </ILText>
+            </View>
+            {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
           </View>
         ))}
       </WhiteCard>
+      {preview ? <UnlockRest onEnroll={onEnroll} /> : null}
     </>
   );
 }
 
-function CohortBody() {
+function CohortBody({ preview = false, onEnroll }) {
   return (
     <>
       <View style={{ marginTop: 18, backgroundColor: G.dark, borderRadius: 28, padding: 20 }}>
@@ -423,7 +387,7 @@ function CohortBody() {
             <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12, marginRight: 6 }]}>
               WA group
             </ILText>
-            <MaterialIcons name="open-in-new" size={14} color="#FFFFFF" />
+            <MaterialIcons name={preview ? 'lock-outline' : 'open-in-new'} size={14} color="#FFFFFF" />
           </View>
         </View>
       </View>
@@ -484,7 +448,7 @@ function CohortBody() {
         </View>
       </WhiteCard>
 
-      <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
+      <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end', opacity: preview ? 0.62 : 1 }}>
         <View style={{ flex: 1 }}>
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
             This week in Batch 42
@@ -493,9 +457,9 @@ function CohortBody() {
             From your WA group
           </ILText>
         </View>
-        <LinkRow label="Open group" />
+        {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : <LinkRow label="Open group" />}
       </View>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
+      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
         {COHORT_WEEK.map((row, i) => (
           <View
             key={row.title}
@@ -508,7 +472,7 @@ function CohortBody() {
               borderTopColor: G.line,
             }}
           >
-            <MaterialIcons name={row.icon} size={18} color={G.cta} />
+            <MaterialIcons name={row.icon} size={18} color={preview ? G.meta : G.cta} />
             <View style={{ marginLeft: 12, flex: 1 }}>
               <ILText role="label" color={G.ink}>
                 {row.title}
@@ -517,9 +481,11 @@ function CohortBody() {
                 {row.meta}
               </ILText>
             </View>
+            {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
           </View>
         ))}
       </WhiteCard>
+      {preview ? <UnlockRest onEnroll={onEnroll} /> : null}
     </>
   );
 }

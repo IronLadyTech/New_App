@@ -23,19 +23,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Image,
-  ImageSourcePropType,
-  Keyboard,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  Vibration,
-  View,
-} from 'react-native';
+import { Image, ImageSourcePropType, Keyboard, Platform, StyleSheet, Text, TextInput, useWindowDimensions, Vibration, View } from 'react-native';
+import Pressable from '../../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   cancelAnimation,
@@ -102,9 +91,9 @@ export const OTP_THEMES: Record<'ivory' | 'noir' | 'teal', OtpTheme> = {
 
 export type OtpFonts = { heading: string; body: string; bodyBold: string };
 const DEFAULT_FONTS: OtpFonts = {
-  heading: 'GemunuLibre_700Bold',
-  body: 'FiraSans_400Regular',
-  bodyBold: 'FiraSans_600SemiBold',
+  heading: 'Manrope_700Bold',
+  body: 'Manrope_400Regular',
+  bodyBold: 'Manrope_600SemiBold',
 };
 
 /* ───────────────────────── Geometry ───────────────────────── */
@@ -227,12 +216,7 @@ const Slot = forwardRef<SlotHandle, SlotProps>(({ digit, active, filled, theme, 
     ],
   }));
   const digitStyle = useAnimatedStyle(() => ({
-    opacity: digit ? interpolate(dealIn.value, [0, 0.6, 1], [0, 1, 1]) : 0,
-    transform: [
-      { translateY: (1 - dealIn.value) * 26 },
-      { rotate: `${(1 - dealIn.value) * -14}deg` },
-      { scale: 0.7 + 0.3 * dealIn.value },
-    ],
+    opacity: digit ? interpolate(dealIn.value, [0, 0.35, 1], [0, 1, 1]) : 0,
   }));
   const backStyle = useAnimatedStyle(() => ({ opacity: faceDown.value }));
   const caretStyle = useAnimatedStyle(() => ({ opacity: blink.value }));
@@ -257,17 +241,37 @@ const Slot = forwardRef<SlotHandle, SlotProps>(({ digit, active, filled, theme, 
     >
       {active && <View pointerEvents="none" style={[styles.glow, { borderColor: theme.accentGlow }]} />}
       {active && <Animated.View style={[styles.caret, { backgroundColor: theme.accent }, caretStyle]} />}
-      <Animated.Text style={[styles.digit, { color: theme.digit, fontFamily: font, fontSize: Math.round(slotW * 0.58), lineHeight: Math.round(slotH * 0.62) }, digitStyle]}>
-        {digit || ''}
-      </Animated.Text>
-      <Svg pointerEvents="none" width={slotW + 8} height={slotH + 8} style={styles.spark}>
-        <AnimatedRect
-          x={4} y={4} width={slotW} height={slotH} rx={RADIUS}
-          fill="none" stroke={theme.accent} strokeWidth={4.2} strokeLinecap="round"
-          strokeDasharray={`${perim * 0.42} ${perim * 0.58}`}
-          animatedProps={sparkProps}
-        />
-      </Svg>
+      {/* Pinned to the card's centre: Android otherwise lets the digit ride up to the top edge. */}
+      <View pointerEvents="none" style={styles.digitBox}>
+        <Animated.Text
+          style={[
+            styles.digit,
+            {
+              color: theme.digit,
+              fontFamily: font,
+              fontSize: Math.round(slotW * 0.42),
+              lineHeight: Math.round(slotW * 0.42 * 1.3),
+              includeFontPadding: false,
+              textAlign: 'center',
+            },
+            digitStyle,
+          ]}
+        >
+          {digit || ''}
+        </Animated.Text>
+      </View>
+      {/* Overlay lives in an absolute View: Android ignores `position` on Svg itself and the
+          outline would take up space, pushing the digit to the top edge. */}
+      <View pointerEvents="none" style={styles.spark}>
+        <Svg width={slotW + 8} height={slotH + 8}>
+          <AnimatedRect
+            x={4} y={4} width={slotW} height={slotH} rx={RADIUS}
+            fill="none" stroke={theme.accent} strokeWidth={4.2} strokeLinecap="round"
+            strokeDasharray={`${perim * 0.42} ${perim * 0.58}`}
+            animatedProps={sparkProps}
+          />
+        </Svg>
+      </View>
       <Animated.View pointerEvents="none" style={[styles.back, { backgroundColor: theme.back }, backStyle]}>
         <View style={[styles.backInner, { borderColor: theme.backLine }]} />
       </Animated.View>
@@ -403,13 +407,15 @@ export function OtpSeal({
           />
         )}
       </Svg>
-      <Svg width={28} height={28} viewBox="0 0 24 24" style={styles.check}>
-        <AnimatedPath
-          d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#FFFFFF" strokeWidth={2.8}
-          strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[CHECK_LEN, CHECK_LEN]}
-          animatedProps={checkProps}
-        />
-      </Svg>
+      <View pointerEvents="none" style={styles.check}>
+        <Svg width={28} height={28} viewBox="0 0 24 24">
+          <AnimatedPath
+            d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#FFFFFF" strokeWidth={2.8}
+            strokeLinecap="round" strokeLinejoin="round" strokeDasharray={[CHECK_LEN, CHECK_LEN]}
+            animatedProps={checkProps}
+          />
+        </Svg>
+      </View>
     </Animated.View>
   );
 }
@@ -532,6 +538,7 @@ export default function OtpDeck({
 
       const result = onVerify(value).catch(() => false); // start the request now
 
+      // Embedded or not, play the full deck: fan → face down → stack → seal.
       // 1. four pivots, one point in space — a hand of cards
       slotRefs.current.forEach((s, i) => s?.fan(offsets[i] * 0.74, angles[i], i * 45));
       await sleep(560 + length * 45 + 260);
@@ -565,7 +572,7 @@ export default function OtpDeck({
         resetDeck(true);
       }
     },
-    [length, onVerify, offsets, angles, stackRot, swapText, theme.ok, resendAlpha, doneAlpha, resetDeck],
+    [length, onVerify, offsets, angles, stackRot, swapText, theme.ok, resendAlpha, doneAlpha, resetDeck, embedded],
   );
 
   const onChange = (raw: string) => {
@@ -782,14 +789,15 @@ const styles = StyleSheet.create({
   hiddenInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.011, color: 'transparent', outlineWidth: 0, outlineStyle: 'none' },
   slot: {
     borderRadius: RADIUS, borderWidth: 1.5,
-    alignItems: 'center', justifyContent: 'center', overflow: 'visible',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 6 },
   },
   glow: { position: 'absolute', top: -5.5, left: -5.5, right: -5.5, bottom: -5.5, borderRadius: RADIUS + 4, borderWidth: 4 },
   caret: { position: 'absolute', width: 2, height: 24, borderRadius: 2, zIndex: 3 },
-  digit: { fontSize: 34, lineHeight: 40 },
+  digit: { fontSize: 26, lineHeight: 32, textAlign: 'center' },
+  digitBox: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   spark: { position: 'absolute', top: -5, left: -5, zIndex: 4 },
-  back: { ...StyleSheet.absoluteFillObject, borderRadius: RADIUS - 1.5, padding: 6 },
+  back: { ...StyleSheet.absoluteFill, borderRadius: RADIUS - 1.5, padding: 6 },
   backInner: { flex: 1, borderWidth: 1.5, borderRadius: 9 },
   seal: {
     position: 'absolute', width: SLOT_W + 2, height: SLOT_H + 2,
@@ -801,9 +809,9 @@ const styles = StyleSheet.create({
   foot: { height: 62, width: '100%', marginTop: 4 },
   footEmbedded: { height: 78, marginTop: 16 },
   err: { position: 'absolute', top: -8, left: 0, right: 0, textAlign: 'center', fontSize: 12 },
-  resend: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  resend: { ...StyleSheet.absoluteFill, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   resendEmbedded: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  done: { ...StyleSheet.absoluteFillObject, alignItems: 'center', gap: 10 },
+  done: { ...StyleSheet.absoluteFill, alignItems: 'center', gap: 10 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
   pillDot: { width: 6, height: 6, borderRadius: 3 },
   pillText: { fontSize: 10.5, letterSpacing: 1.2 },

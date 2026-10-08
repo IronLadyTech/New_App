@@ -205,7 +205,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
     <SafeAreaView style={styles.screen} edges={['top']}>
       <IronLadyHeader
         onSearch={() => navigation.navigate('ProfileHome')}
-        onNotifications={() => navigation.navigate('ProfileHome')}
+        onNotifications={() => navigation.navigate('Home', { screen: 'Notifications' })}
         onProfile={() => navigation.navigate('ProfileHome')}
         photoUrl={profile?.photoURL}
       />

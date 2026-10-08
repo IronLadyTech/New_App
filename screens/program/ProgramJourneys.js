@@ -3,7 +3,13 @@ import { Pressable, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
-import { useProgramRoutes } from '../../context/ProgramNavContext';
+import { programStage, useProgramRoutes } from '../../context/ProgramNavContext';
+import { useAuth } from '../../context/AuthContext';
+import { getEnrolledProgramIds } from '../../utils/programAccess';
+import { useLepNav } from '../lep/useLepNav';
+import { PROGRAMS } from '../../constants/programs';
+import { coursePhases, currentPhaseId, isPhaseOpen } from '../../constants/programCourseSlice';
+import ThisPhaseBlock from './ThisPhaseBlock';
 import {
   BarButton,
   DarkPanel,
@@ -19,46 +25,6 @@ import {
   SessionRow,
   SoftCard,
 } from './ProgramKit';
-
-const BM_PHASES = [
-  ['done', 'Onboarding', 'Core story · milestone table', 'Brand video, Milestone Table and resume reviewed'],
-  ['done', 'Phase 1', 'Foundation', 'Board-member image, brand video, resume'],
-  ['now', 'Phase 2 · now', 'Pitch & strategy', 'Pitching and influencing, and mid-level politics'],
-  ['later', 'Phase 3', 'Board ready', 'Strategic outlook, strategy review, mock interview'],
-  ['later', 'Phase 4', 'Challenges', 'Walk to Board, LinkedIn video, Speak like a CEO'],
-  ['later', 'Graduation', 'Your speech video', ''],
-];
-
-const BM_PRE = [
-  ['now', 'Pre-program · now', 'Brand creation video', 'Your Core Story, 2–3 minutes on camera'],
-  ['later', 'Pre-program', 'Milestone Table practice', 'Draft the milestones you will present at Onboarding'],
-  ['later', 'Pre-program', 'Resume preparation', 'Bring a current draft — you will rework it in Phase 1'],
-];
-
-const BM_AHEAD = [
-  ['later', 'Phase 1', 'Foundation', 'Board-member image, brand video, resume'],
-  ['later', 'Phase 2', 'Pitch & Strategy', 'Pitching, influencing and mid-level politics'],
-  ['later', 'Phase 3', 'Board Ready', 'Strategic outlook, strategy review, mock interview'],
-  ['later', 'Phase 4', 'Challenges', 'Walk to Board, LinkedIn video, Speak like a CEO'],
-  ['later', 'Graduation', 'Your speech video', ''],
-];
-
-const MBW_PREP = [
-  ['done', 'Session by Rajesh', 'Orientation Session', ''],
-  ['done', 'Wk1–12', '27 Principles video', 'Submit 3 key learnings'],
-  ['done', 'Wk1–11', 'C-Suite Talk — topic finalization', 'Submit your topic for review'],
-  ['done', 'Wk1–10', 'ERRC — watch video', '3 things you’ll change to maximise your time'],
-  ['done', 'Wk1–9', 'LinkedIn update', 'Share your final updated profile'],
-  ['now', 'Wk1–8 · this week', 'LinkedIn % connects', 'Share the connection increase'],
-  ['later', 'Wk1–7', 'Objectives', 'Share key objectives in the group'],
-  ['later', 'Wk1–6', 'Resume updation', 'Share your final resume'],
-  ['later', 'Wk1–5', 'Mirror practice', 'Share a short video of your mirror practice'],
-  ['later', 'Session by Suvarna', 'Preparation Session', ''],
-  ['later', 'Wk1–4', 'Your commitment for the session', 'A short video on your commitment to growth'],
-  ['later', 'Wk1–3', 'LEP Rituals', 'Daily updates: Mirror Work, A-Game, Powerful Request'],
-  ['later', 'Wk1–2', 'LinkedIn post', '2 LinkedIn posts in the week'],
-  ['later', 'Wk1–1', 'Revisit and get ready', 'C-Suite Talk prep session — 10 days ahead'],
-];
 
 const MBW_YEAR = [
   [
@@ -105,82 +71,221 @@ const MBW_YEAR = [
   ],
 ];
 
-function PhaseList({ rows, onPress }) {
+function PhaseList({ rows, onPress, pressFor }) {
   return (
-    <SoftCard style={{ padding: 0, overflow: 'hidden' }}>
-      {rows.map(([state, kicker, title, detail, note], index) => (
-        <PhaseRow
-          key={`${kicker}-${title}`}
-          state={state}
-          kicker={kicker}
-          title={title}
-          detail={detail}
-          note={note}
-          last={index === rows.length - 1}
-          onPress={onPress}
-        />
-      ))}
-    </SoftCard>
+    <View style={{ marginTop: 12 }}>
+      {rows.map((row, index) => {
+        const [state, kicker, title, detail, note] = row;
+        const now = state === 'now';
+        return (
+          <View
+            key={`${kicker}-${title}`}
+            style={{
+              marginTop: index ? 10 : 0,
+              borderRadius: 22,
+              overflow: 'hidden',
+              backgroundColor: IL_BRAND.white,
+              borderWidth: now ? 1.5 : 0,
+              borderColor: now ? IL_BRAND.red : 'transparent',
+            }}
+          >
+            <PhaseRow
+              state={state}
+              kicker={kicker}
+              title={title}
+              detail={detail}
+              note={note}
+              last
+              onPress={pressFor ? pressFor(row) : onPress}
+            />
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function ProgressPanel({ kicker, right, title, percent, foot }) {
+  return (
+    <DarkPanel>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
+          {kicker}
+        </ILText>
+        <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 10 }}>
+          {right}
+        </ILText>
+      </View>
+      <ILText role="displaySm" color="#FFFFFF" style={{ marginTop: 8 }}>
+        {title}
+      </ILText>
+      <View
+        style={{
+          height: 4,
+          borderRadius: 2,
+          backgroundColor: 'rgba(255,255,255,0.16)',
+          marginTop: 14,
+          overflow: 'hidden',
+        }}
+      >
+        <View style={{ width: `${percent}%`, height: 4, backgroundColor: IL_BRAND.red, borderRadius: 2 }} />
+      </View>
+      <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 12 }}>
+        {foot}
+      </ILText>
+    </DarkPanel>
+  );
+}
+
+function EnrollCard({ title, body, onPress }) {
+  return (
+    <DarkPanel>
+      <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
+        Enrollment pending
+      </ILText>
+      <ILText role="displaySm" color="#FFFFFF" style={{ marginTop: 8 }}>
+        {title}
+      </ILText>
+      <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 8 }}>
+        {body}
+      </ILText>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        style={{
+          marginTop: 16,
+          backgroundColor: IL_BRAND.red,
+          borderRadius: 999,
+          paddingVertical: 14,
+          alignItems: 'center',
+        }}
+      >
+        <ILText role="label" color="#FFFFFF">
+          Complete enrollment →
+        </ILText>
+      </Pressable>
+    </DarkPanel>
+  );
+}
+
+function CoursePhaseList({ programId, enrolled, onLocked }) {
+  const nav = useLepNav();
+  const phaseId = currentPhaseId(programId, enrolled);
+  const phases = coursePhases(programId);
+  const nowIndex = phases.findIndex((p) => p.id === phaseId);
+  return (
+    <View style={{ marginTop: 12 }}>
+      {phases.map((p, i) => {
+        const shut = !isPhaseOpen(p, enrolled);
+        const now = p.id === phaseId;
+        const done = enrolled && i < nowIndex;
+        return (
+          <Pressable
+            key={p.id}
+            onPress={shut ? onLocked : () => nav.goCoursePhase(programId, p.id)}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: shut }}
+            style={{
+              marginTop: i ? 10 : 0,
+              borderRadius: 22,
+              backgroundColor: IL_BRAND.white,
+              borderWidth: now ? 1.5 : 0,
+              borderColor: now ? IL_BRAND.red : 'transparent',
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              opacity: shut ? 0.6 : 1,
+            }}
+          >
+            <MaterialIcons
+              name={shut ? 'lock' : done ? 'check-circle' : now ? 'play-circle-filled' : 'radio-button-unchecked'}
+              size={22}
+              color={shut ? IL_BRAND.dim : done ? IL_BRAND.paidGreen : now ? IL_BRAND.red : IL_BRAND.dim}
+            />
+            <View style={{ marginLeft: 12, flex: 1 }}>
+              <ILText role="eyebrow" color={now ? IL_BRAND.red : IL_BRAND.dim} style={{ fontSize: 10 }}>
+                {shut ? 'Locked · opens on enrollment' : done ? 'Done' : now ? 'Now' : 'Next'}
+              </ILText>
+              <ILText role="label" style={{ marginTop: 2 }}>
+                {p.title}
+              </ILText>
+              <ILText role="bodySm" color={IL_BRAND.muted}>
+                {p.sub}
+              </ILText>
+            </View>
+            <MaterialIcons
+              name={shut ? 'lock-outline' : 'chevron-right'}
+              size={18}
+              color={IL_BRAND.dim}
+            />
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
 function BmJourney({ stage, routes }) {
-  if (stage === 'registered') {
-    return (
-      <>
-        <DarkPanel>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-              Registered · pre-program
-            </ILText>
-            <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 10 }}>
-              0 of 3 done
-            </ILText>
-          </View>
-          <ILText role="displaySm" color="#FFFFFF" style={{ marginTop: 8 }}>
-            Before your first session
-          </ILText>
-          <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 8 }}>
-            Three things Iron Lady needs from you — not your batch leader. Onboarding opens once enrolment is complete.
-          </ILText>
-        </DarkPanel>
-        <PhaseList rows={BM_PRE} onPress={() => routes.openLearn('100bm')} />
-        <SectionLabel title="What’s ahead" sub="4 phases + Graduation" />
-        <PhaseList rows={BM_AHEAD} onPress={() => routes.openLearn('100bm')} />
-        <SoftCard>
-          <ILText role="bodySm" color={IL_BRAND.ink}>
-            Why this order matters. Foundation works from your Core Story and resume live in the room. Send both in before your cohort starts and the phase works for you, not on you.
-          </ILText>
-        </SoftCard>
-      </>
-    );
-  }
+  const registered = stage === 'registered';
+  const phaseId = currentPhaseId(PROGRAMS.BM100, !registered);
   return (
     <>
-      <DarkPanel>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-            Your progress
-          </ILText>
-          <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 10 }}>
-            1 of 4 phases
-          </ILText>
-        </View>
-        <ILText role="displaySm" color="#FFFFFF" style={{ marginTop: 8 }}>
-          Phase 2 of 4
-        </ILText>
-        <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: 14 }}>
-          <View style={{ width: '40%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.red }} />
-        </View>
-        <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 10 }}>
-          Pitch & strategy · Weekly Q&A Thu 7:00 PM IST
-        </ILText>
-      </DarkPanel>
+      {registered ? (
+        <ProgressPanel
+          kicker="Registered · pre-program"
+          right="1 of 6 open"
+          title="Onboarding"
+          percent={5}
+          foot="Part payment received · Onboarding is open now · Phases 1–4 unlock on enrollment"
+        />
+      ) : (
+        <ProgressPanel
+          kicker="Your progress"
+          right="40%"
+          title="Phase 2 of 4"
+          percent={40}
+          foot="Pitch & strategy · Weekly Q&A Thu 7:00 PM IST"
+        />
+      )}
+
+      <ThisPhaseBlock programId={PROGRAMS.BM100} phaseId={phaseId} style={{ marginTop: 22 }} />
+
       <SectionLabel
+        eyebrow="6 months"
         title="Your phases"
-        sub="Weekly online cohort work, each phase with pre, live and post activities"
+        sub={
+          registered
+            ? 'Onboarding is open now · the rest unlock on enrollment'
+            : 'Weekly online cohort work, each phase with pre, live and post activities'
+        }
       />
-      <PhaseList rows={BM_PHASES} onPress={() => routes.setSection('Sessions')} />
+      <CoursePhaseList programId={PROGRAMS.BM100} enrolled={!registered} onLocked={routes.openPayment} />
+
+      {registered ? (
+        <>
+          <SoftCard>
+            <ILText role="bodySm" color={IL_BRAND.ink}>
+              <ILText role="label">Why this order matters. </ILText>
+              Foundation works from your Core Story and resume live in the room. Send both in before your cohort starts and the phase works for you, not on you.
+            </ILText>
+          </SoftCard>
+          <EnrollCard
+            title="Unlock Phases 1–4"
+            body="Your seat is held with a part payment. Foundation, Pitch & Strategy, Board Ready, Challenges and Graduation open the day your balance is paid."
+            onPress={routes.openPayment}
+          />
+        </>
+      ) : (
+        <BmPractice routes={routes} />
+      )}
+    </>
+  );
+}
+
+function BmPractice({ routes }) {
+  return (
+    <>
       <SectionLabel title="Practice sessions" sub="3 of 9 complete" />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
         {[
@@ -255,6 +360,7 @@ function BmSessions({ routes }) {
 }
 
 function BmCohort({ routes }) {
+  const nav = useLepNav();
   return (
     <>
       <DarkPanel>
@@ -318,46 +424,80 @@ function BmCohort({ routes }) {
           Yours: Independent director by 2028
         </ILText>
       </SoftCard>
-      <ManagerCard onPress={routes.openEngage} />
+      <ManagerCard onPress={() => nav.goManager(PROGRAMS.BM100)} />
     </>
   );
 }
 
 function MbwJourney({ stage, routes }) {
+  const nav = useLepNav();
+  const enrolled = stage === 'enrolled';
   if (stage === 'registered') {
     return (
       <>
-        <DarkPanel>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-              Preparation · week 5 of 12
-            </ILText>
-            <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 10 }}>
-              8 weeks to Q1
-            </ILText>
-          </View>
-          <ILText role="displaySm" color="#FFFFFF" style={{ marginTop: 8 }}>
-            Your preparation
-          </ILText>
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: 14 }}>
-            <View style={{ width: '42%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.red }} />
-          </View>
-          <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 10 }}>
-            One task a week, shared in your WA group.
-          </ILText>
-        </DarkPanel>
-        <PhaseList rows={MBW_PREP} onPress={() => routes.openLearn('mbw')} />
+        <ProgressPanel
+          kicker="Preparation · week 5 of 12"
+          right="8 weeks to Q1"
+          title="Your preparation"
+          percent={42}
+          foot="One task a week, shared in your WA group · Quarters 1–4 unlock on enrollment"
+        />
+
+        <ThisPhaseBlock
+          programId={PROGRAMS.MBW}
+          phaseId={currentPhaseId(PROGRAMS.MBW, false)}
+          style={{ marginTop: 22 }}
+        />
+
+        <SectionLabel
+          eyebrow="52 weeks"
+          title="Your year"
+          sub="Pre-Preparation is open now · the four quarters unlock on enrollment"
+        />
+        <CoursePhaseList programId={PROGRAMS.MBW} enrolled={false} onLocked={routes.openPayment} />
+
+        <EnrollCard
+          title="Unlock Quarters 1–4"
+          body="Your seat is held with a part payment. The four quarters, 16 Impact Champions sessions, 4 with Suvarna and Graduation open the day your balance is paid."
+          onPress={routes.openPayment}
+        />
       </>
     );
   }
   return (
     <>
+      <ThisPhaseBlock
+        programId={PROGRAMS.MBW}
+        phaseId={currentPhaseId(PROGRAMS.MBW, true)}
+        style={{ marginTop: 22 }}
+      />
       <SectionLabel
         eyebrow="52 weeks"
         title="Your year"
         sub="A weekly deliverable in your WA group, 16 Impact Champions sessions and 4 with Suvarna."
       />
-      <PhaseList rows={MBW_YEAR} onPress={() => routes.setSection('Sessions')} />
+      <PhaseList
+        rows={MBW_YEAR}
+        pressFor={([, , title]) => {
+          if (title === 'Preparation') return () => nav.goCoursePhase(PROGRAMS.MBW, 'pre-preparation');
+          if (title.includes('Q1')) {
+            return enrolled ? () => nav.goCoursePhase(PROGRAMS.MBW, 'quarter-1') : routes.openPayment;
+          }
+          if (title.includes('Q2')) {
+            return enrolled ? () => nav.goCoursePhase(PROGRAMS.MBW, 'quarter-2') : routes.openPayment;
+          }
+          if (title.includes('Q3')) {
+            return enrolled ? () => nav.goCoursePhase(PROGRAMS.MBW, 'quarter-3') : routes.openPayment;
+          }
+          if (title.includes('Q4')) {
+            return enrolled ? () => nav.goCoursePhase(PROGRAMS.MBW, 'quarter-4') : routes.openPayment;
+          }
+          if (title.includes('Graduation') || title.includes('Closure')) {
+            return enrolled ? () => nav.goCoursePhase(PROGRAMS.MBW, 'graduation') : routes.openPayment;
+          }
+          return enrolled ? undefined : routes.openPayment;
+        }}
+      />
       <SectionLabel title="Your C-Suite profile" sub="3 of 7 built" />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 }}>
         {[
@@ -450,6 +590,7 @@ function MbwSessions({ routes }) {
 }
 
 function MbwCohort({ routes }) {
+  const nav = useLepNav();
   return (
     <>
       <DarkPanel>
@@ -480,7 +621,7 @@ function MbwCohort({ routes }) {
         <View style={{ height: 4, borderRadius: 2, backgroundColor: '#F3EFE8', marginTop: 12 }}>
           <View style={{ width: '33%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.red }} />
         </View>
-        <BarButton label="Share story 2 in the group" onPress={routes.openEngage} />
+        <BarButton label="Share story 2" onPress={() => nav.goCourseTask(PROGRAMS.MBW, 'q1-csuite-story')} />
       </SoftCard>
       <SectionLabel title="Your buddy" sub="For the practice weeks" />
       <SoftCard>
@@ -513,7 +654,7 @@ function MbwCohort({ routes }) {
           Recording in Sessions
         </ILText>
       </SoftCard>
-      <ManagerCard onPress={routes.openEngage} />
+      <ManagerCard onPress={() => nav.goManager(PROGRAMS.MBW)} />
     </>
   );
 }
@@ -550,50 +691,112 @@ function ManagerCard({ onPress }) {
   );
 }
 
+const PROGRAM_CARD = {
+  lep: {
+    title: 'Leadership Essentials program (LEP)',
+    enrolled: { kicker: 'Enrolled · live now', sub: 'Batch 42 · Phase 4 of 11 · Day 2 on Sun 21 Sep', pct: 36 },
+    registered: { kicker: 'Registered · starts 20 Sep', sub: 'Pre-program · CoDeSeF Sheet due Thu', pct: 8 },
+    completed: { kicker: 'Completed · certified', sub: 'All 27 principles · certificate in Profile', pct: 100 },
+  },
+  '100bm': {
+    title: '100 Board Members (100BM)',
+    enrolled: { kicker: 'Enrolled · Phase 2 of 4', sub: 'Pitch & Strategy · Post-Session on Pitch due Thu', pct: 40 },
+    registered: { kicker: 'Registered · opens 3 Oct', sub: 'Pre-program · Brand creation video by 2 Oct', pct: 12 },
+  },
+  mbw: {
+    title: 'Master of Business Warfare (MBW)',
+    enrolled: { kicker: 'Enrolled · Q1 · Week 4 of 52', sub: 'C-Suite Profile · C-Suite Story due Thu', pct: 18 },
+    registered: { kicker: 'Registered · Preparation week 5 of 12', sub: 'Quarters 1–4 unlock on enrollment', pct: 42 },
+  },
+};
+
+const STATE_RANK = { enrolled: 0, registered: 1, completed: 2 };
+
+/** The member's programs with their real stage, the one that needs her first on top. */
+function usePrograms() {
+  const { profile } = useAuth();
+  const lab = PROGRAM_CARD[profile?.labProgram] ? profile.labProgram : null;
+  const ids = getEnrolledProgramIds(profile);
+  if (lab) ids.add(lab);
+  if (!ids.size) ['lep', '100bm'].forEach((id) => ids.add(id));
+  if (lab && lab !== 'lep') ids.add('lep');
+  return [...ids]
+    .filter((id) => PROGRAM_CARD[id])
+    .map((id) => {
+      // A 100BM or MBW journey comes after LEP, so LEP shows as finished there.
+      const state = id === 'lep' && lab && lab !== 'lep' ? 'completed' : programStage(profile, id);
+      return { id, state };
+    })
+    .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state]);
+}
+
+function ProgramCard({ id, state, lead, onPress }) {
+  const card = PROGRAM_CARD[id];
+  const copy = card[state] || card.enrolled;
+  const Shell = lead ? DarkPanel : SoftCard;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button">
+      <Shell>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <ILText role="eyebrow" color={lead ? IL_BRAND.redSoft : IL_BRAND.red} style={{ fontSize: 10 }}>
+            {copy.kicker}
+          </ILText>
+          <MaterialIcons name="chevron-right" size={22} color={lead ? '#FFFFFF' : IL_BRAND.dim} />
+        </View>
+        <ILText role="title" color={lead ? '#FFFFFF' : undefined} style={{ marginTop: 8 }}>
+          {card.title}
+        </ILText>
+        <ILText role="bodySm" color={lead ? IL_BRAND.mutedOnDark : IL_BRAND.muted} style={{ marginTop: 6 }}>
+          {copy.sub}
+        </ILText>
+        <View
+          style={{
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: lead ? 'rgba(255,255,255,0.16)' : '#F3EFE8',
+            marginTop: 12,
+          }}
+        >
+          <View
+            style={{
+              width: `${copy.pct}%`,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: state === 'registered' ? IL_BRAND.gold : state === 'completed' ? IL_BRAND.paidGreen : IL_BRAND.red,
+            }}
+          />
+        </View>
+      </Shell>
+    </Pressable>
+  );
+}
+
 function MultiPrograms({ routes }) {
+  const programs = usePrograms();
+  const combo =
+    programs.some((p) => p.id === 'lep' && p.state === 'enrolled') &&
+    programs.some((p) => p.id === '100bm' && p.state === 'registered');
   return (
     <>
       <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 12 }}>
         The one that needs you first is on top. Tap a program for its journey, sessions and cohort.
       </ILText>
-      <Pressable onPress={() => routes.setProgram('lep')} accessibilityRole="button">
-        <DarkPanel>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-              Enrolled · live now
-            </ILText>
-            <MaterialIcons name="chevron-right" size={22} color="#FFFFFF" />
-          </View>
-          <ILText role="title" color="#FFFFFF" style={{ marginTop: 8 }}>
-            Leadership Essentials program (LEP)
-          </ILText>
-          <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 6 }}>
-            Batch 42 · Phase 4 of 11 · Day 2 on Sun 21 Sep
-          </ILText>
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.16)', marginTop: 12 }}>
-            <View style={{ width: '36%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.red }} />
-          </View>
-        </DarkPanel>
-      </Pressable>
-      <Pressable onPress={() => routes.setProgram('100bm')} accessibilityRole="button">
-        <SoftCard>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
-              Registered · opens 3 Oct
-            </ILText>
-            <MaterialIcons name="chevron-right" size={22} color={IL_BRAND.dim} />
-          </View>
-          <ILText role="title" style={{ marginTop: 8 }}>
-            100 Board Members (100BM)
-          </ILText>
-          <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 6 }}>
-            Pre-program · Brand creation video by 2 Oct
-          </ILText>
-          <View style={{ height: 4, borderRadius: 2, backgroundColor: '#F3EFE8', marginTop: 12 }}>
-            <View style={{ width: '12%', height: 4, borderRadius: 2, backgroundColor: IL_BRAND.gold }} />
-          </View>
-        </SoftCard>
-      </Pressable>
+      {programs.map((p, i) => (
+        <ProgramCard key={p.id} {...p} lead={i === 0} onPress={() => routes.setProgram(p.id)} />
+      ))}
+      {combo ? <ComboTimeline /> : null}
+      <LinkRow
+        icon="workspace-premium"
+        title="Carried over"
+        sub="Masterclass (MC) · completed · certificate in Profile"
+        onPress={routes.openCertificates}
+      />
+    </>
+  );
+}
+
+function ComboTimeline() {
+  return (
       <SoftCard>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
@@ -650,13 +853,6 @@ function MultiPrograms({ routes }) {
           </ILText>
         </View>
       </SoftCard>
-      <LinkRow
-        icon="workspace-premium"
-        title="Carried over"
-        sub="Masterclass (MC) · completed · certificate in Profile"
-        onPress={routes.openCertificates}
-      />
-    </>
   );
 }
 

@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useProgramNav } from '../../context/ProgramNavContext';
 import { DateBadge, PeopleRow, ProgramPage, SoftCard } from '../program/ProgramKit';
+import { CoverThumb } from '../lep/LepBits';
+import { ARMY_STORIES, PODCASTS } from '../lep/lepData';
+import { CSUITE_HOME } from '../guest/guestData';
+import { useLepNav } from '../lep/useLepNav';
 
 const CIRCLES = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 const INDUSTRIES = ['Finance', 'Technology', 'Marketing'];
@@ -32,48 +36,94 @@ function RedButton({ label, icon, onPress }) {
   );
 }
 
-function StoryCard({ time, title, topic }) {
+function StoryCard({ story, last, onPress }) {
   return (
-    <View style={{ flex: 1, marginRight: 8 }}>
-      <View
-        style={{
-          height: 110,
-          borderRadius: 16,
-          backgroundColor: IL_BRAND.cardDark,
-          justifyContent: 'flex-end',
-          padding: 8,
-        }}
-      >
-        <View
-          style={{
-            position: 'absolute',
-            alignSelf: 'center',
-            top: 34,
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: 'rgba(255,255,255,0.92)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="play-arrow" size={22} color={IL_BRAND.ink} />
-        </View>
-        <ILText role="bodySm" color="#FFFFFF" style={{ fontSize: 11, alignSelf: 'flex-end' }}>
-          {time}
-        </ILText>
+    <Pressable onPress={onPress} style={{ flex: 1, marginRight: last ? 0 : 10 }}>
+      <View style={{ height: 110 }}>
+        <CoverThumb source={story.img} height={110} radius={16} play time={story.time} />
       </View>
-      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }}>
-        {title}
+      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
+        {story.title}
       </ILText>
       <ILText role="bodySm" color={IL_BRAND.muted}>
-        {topic}
+        {story.meta}
       </ILText>
+    </Pressable>
+  );
+}
+
+function ArmyStories({ onWatch }) {
+  return (
+    <View style={{ flexDirection: 'row', marginTop: 12 }}>
+      {ARMY_STORIES.map((story, i) => (
+        <StoryCard
+          key={story.title}
+          story={story}
+          last={i === ARMY_STORIES.length - 1}
+          onPress={() => onWatch?.({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
+        />
+      ))}
     </View>
   );
 }
 
-function EnrolledEngage({ navigation }) {
+function CsuiteVideos({ onWatch }) {
+  return (
+    <>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 22 }}>
+        <ILText role="title">The C-suite experience</ILText>
+        <ILText role="bodySm" color={IL_BRAND.muted}>
+          {CSUITE_HOME.length} videos
+        </ILText>
+      </View>
+      <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 4 }}>
+        Learn from women at the top table
+      </ILText>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginTop: 12, marginHorizontal: -IL_SPACE.page }}
+      >
+        <View style={{ flexDirection: 'row', paddingHorizontal: IL_SPACE.page }}>
+          {CSUITE_HOME.map((c) => (
+            <Pressable
+              key={c.title}
+              onPress={() => onWatch?.({ assetKey: c.assetKey, title: c.title, sub: c.who })}
+              style={{ width: 220, marginRight: 12 }}
+            >
+              <View style={{ height: 124 }}>
+                <CoverThumb source={c.img} height={124} radius={16} play />
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    left: 10,
+                    backgroundColor: IL_BRAND.red,
+                    borderRadius: 999,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 9 }}>
+                    C-suite
+                  </ILText>
+                </View>
+              </View>
+              <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
+                {c.title}
+              </ILText>
+              <ILText role="bodySm" color={IL_BRAND.muted}>
+                {c.who}
+              </ILText>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+function EnrolledEngage({ navigation, onWatch }) {
   const [added, setAdded] = useState(false);
   const [industry, setIndustry] = useState(null);
   return (
@@ -192,16 +242,12 @@ function EnrolledEngage({ navigation }) {
         </View>
       </SoftCard>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 22 }}>
-        <ILText role="title">Stories from the Army</ILText>
-        <ILText role="bodySm" color={IL_BRAND.muted}>
-          Confidential
-        </ILText>
-      </View>
-      <View style={{ flexDirection: 'row', marginTop: 12 }}>
-        <StoryCard time="4:15" title="Meera: team lead to VP in 18 months" topic="Fintech Strategy" />
-        <StoryCard time="3:40" title="What changed after my first 30 days" topic="Mindset & Voice" />
-      </View>
+      <ILText role="title" style={{ marginTop: 22 }}>
+        Stories from the Army
+      </ILText>
+      <ArmyStories onWatch={onWatch} />
+
+      <CsuiteVideos onWatch={onWatch} />
 
       <SoftCard>
         <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
@@ -256,49 +302,38 @@ function EnrolledEngage({ navigation }) {
   );
 }
 
-function Episode({ title, meta }) {
+function Episode({ ep, onPress }) {
   return (
-    <View style={{ width: 200, marginRight: 12 }}>
-      <View
-        style={{
-          height: 110,
-          borderRadius: 16,
-          backgroundColor: IL_BRAND.cardDark,
-          padding: 10,
-          justifyContent: 'space-between',
-        }}
-      >
-        <View style={{ alignSelf: 'flex-start', backgroundColor: IL_BRAND.red, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+    <Pressable onPress={onPress} style={{ width: 200, marginRight: 12 }}>
+      <View style={{ height: 110 }}>
+        <CoverThumb source={ep.img} height={110} radius={16} play />
+        <View
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            backgroundColor: IL_BRAND.red,
+            borderRadius: 999,
+            paddingHorizontal: 8,
+            paddingVertical: 2,
+          }}
+        >
           <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 9 }}>
             Free
           </ILText>
         </View>
-        <View
-          style={{
-            alignSelf: 'center',
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: 'rgba(255,255,255,0.92)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="play-arrow" size={22} color={IL_BRAND.ink} />
-        </View>
-        <View />
       </View>
-      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }}>
-        {title}
+      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
+        {ep.title}
       </ILText>
       <ILText role="bodySm" color={IL_BRAND.muted}>
-        {meta}
+        {ep.who} · {ep.meta}
       </ILText>
-    </View>
+    </Pressable>
   );
 }
 
-function RegisteredEngage({ navigation }) {
+function RegisteredEngage({ navigation, onWatch }) {
   return (
     <>
       <View style={{ marginTop: 8 }}>
@@ -322,9 +357,13 @@ function RegisteredEngage({ navigation }) {
         </ILText>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-        <Episode title="“My Work Will Speak for Me” — The Biggest Myth" meta="Ep 3 · 28 min" />
-        <Episode title="The One Notch Up: A Global CEO’s Blueprint" meta="Ep 1 · 22 min" />
-        <Episode title="From Invisible Legal Head to Global" meta="Ep 2 · 31 min" />
+        {PODCASTS.map((ep) => (
+          <Episode
+            key={ep.title}
+            ep={ep}
+            onPress={() => onWatch?.({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
+          />
+        ))}
       </ScrollView>
 
       <ILText role="title" style={{ marginTop: 22 }}>
@@ -364,10 +403,7 @@ function RegisteredEngage({ navigation }) {
           Free access
         </ILText>
       </View>
-      <View style={{ flexDirection: 'row', marginTop: 12 }}>
-        <StoryCard time="4:15" title="Meera: team lead to VP in 18 months" topic="Fintech & Strategy" />
-        <StoryCard time="3:40" title="What changed after my first 30 days" topic="Mindset & Voice" />
-      </View>
+      <ArmyStories onWatch={onWatch} />
 
       <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10, marginTop: 22 }}>
         In-program circles · enrolled members only
@@ -407,12 +443,14 @@ function RegisteredEngage({ navigation }) {
 
 export default function EngageHome({ navigation }) {
   const { stage } = useProgramNav();
+  const nav = useLepNav();
+  const onWatch = (params) => nav.goWatch(params);
   return (
     <ProgramPage>
       {stage === 'registered' ? (
-        <RegisteredEngage navigation={navigation} />
+        <RegisteredEngage navigation={navigation} onWatch={onWatch} />
       ) : (
-        <EnrolledEngage navigation={navigation} />
+        <EnrolledEngage navigation={navigation} onWatch={onWatch} />
       )}
     </ProgramPage>
   );

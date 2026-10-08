@@ -5,7 +5,6 @@ export default function GuestHeader({ floating = false }) {
   return (
     <GlassHeader
       onSearch={() => {}}
-      onNotifications={() => {}}
       showProfile={false}
       floating={floating}
     />

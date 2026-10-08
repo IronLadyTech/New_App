@@ -33,6 +33,10 @@ export default function EngageStack() {
         name="Leaderboard"
         getComponent={() => require('../screens/engage/LeaderboardScreen').default}
       />
+      <Stack.Screen
+        name="Watch"
+        getComponent={() => require('../screens/program/WatchScreen').default}
+      />
     </Stack.Navigator>
   );
 }

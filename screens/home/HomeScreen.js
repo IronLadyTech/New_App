@@ -20,8 +20,11 @@ import ProgramHomes from './ProgramHomes';
 
 export default function HomeScreen(props) {
   const { program, stage } = useProgramNav();
-  return program === '100bm' || program === 'mbw' || program === 'all' ? (
-    <ProgramHomes program={program} stage={stage} />
+  const { profile } = useAuth();
+  const homeProgram = profile?.labProgram || program;
+  const homeStage = profile?.labState || stage;
+  return homeProgram === '100bm' || homeProgram === 'mbw' || homeProgram === 'all' ? (
+    <ProgramHomes program={homeProgram} stage={homeStage} />
   ) : (
     <LegacyHome {...props} />
   );
@@ -75,7 +78,6 @@ function LegacyHome({ navigation }) {
       <ILHeader
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile')}
-        onNotifications={() => {}}
         onSearch={() => {}}
       />
       <ScrollView

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable as RNPressable, ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ import {
   fillAbs,
 } from './GuestBits';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import Pressable from '../../components/il/Press';
 import { useGuestActions } from './useGuestActions';
 import { CoverThumb } from '../lep/LepBits';
 import { CSUITE_HOME, EPISODES, HERO, WINS } from './guestData';
@@ -30,7 +31,7 @@ const CITIES = ['Bengaluru', 'Mumbai', 'Pune', 'Hyderabad'];
 export default function GuestEngageScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
-  const { findRegistration } = useGuestActions();
+  const { findRegistration, goWatch } = useGuestActions();
   const [tab, setTab] = useState('Podcast');
   const [city, setCity] = useState('Bengaluru');
 
@@ -124,9 +125,9 @@ export default function GuestEngageScreen() {
           ))}
         </View>
 
-        {tab === 'Podcast' ? <PodcastPane /> : null}
+        {tab === 'Podcast' ? <PodcastPane goWatch={goWatch} /> : null}
         {tab === 'Events' ? <EventsPane city={city} setCity={setCity} /> : null}
-        {tab === 'C-suite' ? <CsuitePane /> : null}
+        {tab === 'C-suite' ? <CsuitePane goWatch={goWatch} /> : null}
 
         <FindCta
           title="78,000 women, one door in"
@@ -138,7 +139,7 @@ export default function GuestEngageScreen() {
   );
 }
 
-function PodcastPane() {
+function PodcastPane({ goWatch }) {
   return (
     <>
         <View style={{ marginTop: 28 }}>
@@ -189,6 +190,13 @@ function PodcastPane() {
             </View>
             <View style={{ padding: 16, backgroundColor: G.dark }}>
               <Pressable
+                onPress={() =>
+                  goWatch?.({
+                    assetKey: EPISODES[0].assetKey,
+                    title: EPISODES[0].title,
+                    sub: EPISODES[0].person,
+                  })
+                }
                 style={{
                   backgroundColor: G.cta,
                   borderRadius: 999,
@@ -208,8 +216,9 @@ function PodcastPane() {
 
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingVertical: 6 }}>
             {EPISODES.slice(1).map((e, i) => (
-              <View
+              <Pressable
                 key={e.title}
+                onPress={() => goWatch?.({ assetKey: e.assetKey, title: e.title, sub: e.person })}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -246,7 +255,7 @@ function PodcastPane() {
                 >
                   <MaterialIcons name="play-arrow" size={18} color={G.ink} />
                 </View>
-              </View>
+              </Pressable>
             ))}
           </WhiteCard>
           <ILText
@@ -399,7 +408,7 @@ function EventsPane({ city, setCity }) {
   );
 }
 
-function CsuitePane() {
+function CsuitePane({ goWatch }) {
   return (
     <>
       <View style={{ marginTop: 28 }}>
@@ -409,19 +418,25 @@ function CsuitePane() {
         </ILText>
 
         {CSUITE_HOME.map((c) => (
-          <WhiteCard key={c.title} style={{ marginTop: 10, borderRadius: 20, overflow: 'hidden' }}>
-            <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-              <CoverThumb source={c.img} play time={c.tag} />
-            </View>
-            <View style={{ padding: 14 }}>
-              <ILText role="label" color={G.ink} style={{ fontSize: 14, lineHeight: 19 }}>
-                {c.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                {c.who}
-              </ILText>
-            </View>
-          </WhiteCard>
+          <Pressable
+            key={c.title}
+            onPress={() => goWatch?.({ assetKey: c.assetKey, title: c.title, sub: c.who })}
+            style={{ marginTop: 10 }}
+          >
+            <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }}>
+              <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                <CoverThumb source={c.img} play time={c.tag} />
+              </View>
+              <View style={{ padding: 14 }}>
+                <ILText role="label" color={G.ink} style={{ fontSize: 14, lineHeight: 19 }}>
+                  {c.title}
+                </ILText>
+                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+                  {c.who}
+                </ILText>
+              </View>
+            </WhiteCard>
+          </Pressable>
         ))}
       </View>
     </>

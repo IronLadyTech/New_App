@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -130,7 +131,7 @@ const HEAD = {
     Events: {
       title: 'Events',
       badge: 'PUBLIC OPEN',
-      sub: 'Chapter meetups are open to every member. Cohort rooms open once your seat is confirmed.',
+      sub: 'Chapter meetups, your weekly Q&A, intensives and practice huddles — all in one place.',
     },
   },
   enrolled: {
@@ -1021,38 +1022,36 @@ function EventsPane({ enrolled, onEnroll, onCal, onTicket }) {
   return (
     <>
       <View style={{ marginTop: 22 }}>
-        <SectionHead title="Your cohort rooms" accent={enrolled ? 'Open' : 'Locked'} />
+        <SectionHead title="Your cohort rooms" accent="Your batch" />
       </View>
       {COHORT_ROOMS.map((r) => (
         <WhiteCard
           key={r.title}
-          style={{ marginTop: 10, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', opacity: enrolled ? 1 : 0.75 }}
+          style={{ marginTop: 10, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' }}
         >
           <View
             style={{
               width: 44,
               height: 44,
               borderRadius: 14,
-              backgroundColor: enrolled ? G.pink : G.mutedFill,
+              backgroundColor: G.pink,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <MaterialIcons name={enrolled ? r.icon : 'lock-outline'} size={20} color={enrolled ? G.cta : G.meta} />
+            <MaterialIcons name={r.icon} size={20} color={G.cta} />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <ILText role="label" color={G.ink}>
               {r.title}
             </ILText>
-            <ILText role="bodySm" color={enrolled ? G.meta : G.cta} style={{ marginTop: 2, fontSize: 12 }} numberOfLines={1}>
-              {enrolled ? r.meta : 'Opens once your 100BM seat is confirmed'}
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }} numberOfLines={1}>
+              {r.meta}
             </ILText>
           </View>
-          {enrolled ? (
-            <Pressable onPress={onCal} hitSlop={6}>
-              <MaterialIcons name="event" size={18} color={G.ink} />
-            </Pressable>
-          ) : null}
+          <Pressable onPress={onCal || onTicket} hitSlop={6}>
+            <MaterialIcons name="event" size={18} color={G.ink} />
+          </Pressable>
         </WhiteCard>
       ))}
 
@@ -1071,16 +1070,6 @@ function EventsPane({ enrolled, onEnroll, onCal, onTicket }) {
           Board members on how they got the call — open to every member.
         </ILText>
       </WhiteCard>
-
-      {enrolled ? null : (
-        <GateCard
-          kicker="ENROLLMENT PENDING"
-          title="Open your cohort rooms"
-          body="Weekly Q&A, confidential intensives and practice huddles with your 100BM cohort."
-          cta="Complete enrollment"
-          onPress={onEnroll}
-        />
-      )}
     </>
   );
 }

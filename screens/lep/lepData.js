@@ -1,5 +1,9 @@
+import { PREWORK_THUMBS } from '../../constants/preworkThumbs';
+
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
+
+export { PREWORK_THUMBS };
 
 export const COVER = {
   priyanka: require('../../assets/il/portraits/priyanka-sunder.png'),
@@ -23,39 +27,69 @@ export const COVER = {
 export const ROLES = ['Technology', 'Marketing', 'Finance', 'HR', 'Founder', 'Other'];
 
 export const REG_PRACTICE = [
-  { id: 'p1', title: 'Watch the 27 Principles video', meta: 'Pre-work · 14 min', done: true },
-  { id: 'p2', title: 'Revise Principle 1 from the 27 Principles', meta: 'Daily revision · 2 min', done: true },
-  {
-    id: 'p3',
-    title: 'Power Pitch — say who you are in 30 seconds',
-    meta: 'Challenge · Day 1 of 3 · 15 min',
-    done: false,
-  },
-  { id: 'p4', title: 'Watch today’s message from IL Guide', meta: 'Video · 3 min', done: false },
+  { id: 'p1', title: 'Watch the 27 Principles video', meta: 'Pre-work · 14 min', done: true, programId: 'lep', practiceId: 'lep-principles-video' },
+  { id: 'p2', title: '5 Daily Rituals — morning check', meta: 'Ritual · 18 min', done: false, programId: 'lep', practiceId: 'lep-rituals' },
+  { id: 'p3', title: 'Power Pitch — say who you are in 30 seconds', meta: 'Challenge · 15 min', done: false, programId: 'lep', practiceId: 'lep-power-pitch' },
+  { id: 'p4', title: 'A-Game Self Awareness — Beliefs', meta: 'Pre-read · 5 min', done: false, programId: 'lep', taskId: 'lep-day1-beliefs' },
 ];
 
 export const ENR_PRACTICE = [
-  { id: 'e1', title: 'Daily ritual — morning principle', meta: 'Ritual · 8:00 AM · 5 min', done: true },
-  { id: 'e2', title: 'Revise Principle 1 from the 27 Principles', meta: 'Daily revision · 2 min', done: true },
-  { id: 'e3', title: 'Watch The Shameless Pitch', meta: 'Pre-work · 22 min', done: false },
-  { id: 'e4', title: 'Open your Get ready checklist', meta: 'Checklist · 3 min', done: false },
+  { id: 'e1', title: 'Revise Principle 3 from the 27 Principles', meta: 'Daily revision · 2 min', done: true, programId: 'lep', practiceId: 'lep-principle' },
+  { id: 'e2', title: 'Watch The Shameless Speech', meta: 'Pre-work · 22 min', done: false, programId: 'lep', practiceId: 'lep-shameless' },
+  { id: 'e3', title: 'Tick one item on your Get ready checklist', meta: 'Checklist · 1 min', done: false, programId: 'lep', practiceId: 'lep-get-ready' },
+  { id: 'e4', title: 'Fill the ERRC Table', meta: 'Day 1 framework · 10 min', done: false, programId: 'lep', taskId: 'lep-day1-errc' },
 ];
+
+/** "2 of 8 done · about 50 min" — counted from the list so it never drifts. */
+export function practiceSummary(items) {
+  const done = items.filter((i) => i.done).length;
+  const mins = items.reduce((sum, i) => sum + (Number((i.meta.match(/(\d+)\s*min/) || [])[1]) || 0), 0);
+  return `${done} of ${items.length} done · about ${mins} min`;
+}
 
 export const DUE_WEEK = [
-  { id: 'd1', title: 'Day 1 Assignment', meta: 'LEP · Assignment', due: 'Due Thu', icon: 'assignment' },
-  { id: 'd2', title: 'Fill the CoDeSeF sheet', meta: 'LEP · Form', due: 'Due Fri', icon: 'edit-note' },
-  { id: 'd3', title: 'SuperPower Statement', meta: '100BM · Practice drill', due: 'Due Sun', icon: 'my-location' },
+  { title: 'Fill the CoDeSeF Sheet', tag: 'LEP', kind: 'Form · pre-program', due: 'Due Thu', urgent: true, icon: 'edit-note', taskId: 'lep-prep-codesef-sheet' },
+  { title: 'Complete NSDC Registration', tag: 'LEP', kind: 'Link · pre-program', due: 'Due Fri', icon: 'how-to-reg', taskId: 'lep-prep-nsdc' },
+  { title: 'Program Access Essentials', tag: 'LEP', kind: 'Checklist · orientation', due: 'Before Sat', icon: 'checklist', taskId: 'lep-orientation-access' },
 ];
 
+/** Registered home — today's BHAG message (27 Principles preview). */
+export const TODAY_MESSAGE = {
+  title: 'Your BHAG',
+  sub: 'Principle 01 · Ask for what you want',
+  hint: 'Name the goal big enough to scare you',
+  duration: '12 min',
+  assetKey: 'lep-principles-video-preview',
+  thumb: PREWORK_THUMBS['lep-principles-video'],
+};
+
 export const PREWORK = [
-  { n: '01', title: 'The 27 Principles', sub: 'Mental models for unflinching leadership', min: '14m', done: true },
-  { n: '02', title: 'The 5 Rituals of Iron Ladies', sub: 'Daily energetic mastery', min: '18m', done: true },
+  {
+    n: '01',
+    title: 'The 27 Principles',
+    sub: 'Mental models for unflinching leadership',
+    min: '14m',
+    done: true,
+    practiceId: 'lep-principles-video',
+    thumb: PREWORK_THUMBS['lep-principles-video'],
+  },
+  {
+    n: '02',
+    title: 'The 5 Rituals of Iron Ladies',
+    sub: 'Daily energetic mastery',
+    min: '18m',
+    done: true,
+    practiceId: 'lep-rituals',
+    thumb: PREWORK_THUMBS['lep-rituals'],
+  },
   {
     n: '03',
     title: 'The Shameless Speech',
     sub: 'Unlearning boardroom modesty and anchoring in unapologetic authority.',
     min: '22 mins',
     done: false,
+    practiceId: 'lep-shameless',
+    thumb: PREWORK_THUMBS['lep-shameless'],
   },
 ];
 
@@ -149,10 +183,10 @@ export const LEARN_CHIPS_REG = ['For you', 'Principles', 'Case studies', 'Events
 export const LEARN_CHIPS_ENR = ['For you', 'Principles', 'Case studies', 'Events', 'Community stories'];
 
 export const PRINCIPLES_OPEN = [
-  { n: '01', title: 'Ask for what you want', min: '12 min', track: 'Foundation', state: 'Watched' },
-  { n: '02', title: 'Own the room before you speak', min: '14 min', track: 'Foundation', state: 'Watched' },
-  { n: '03', title: 'The shameless speech', min: '22 min', track: 'Foundation', state: 'Resume' },
-  { n: '04', title: 'Build your board of advocates', min: '16 min', track: 'Foundation', state: 'Start' },
+  { n: '01', title: 'Ask for what you want', min: '12 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
+  { n: '02', title: 'Own the room before you speak', min: '14 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
+  { n: '03', title: 'The shameless speech', min: '22 min', track: 'Foundation', state: 'Resume', practiceId: 'lep-shameless' },
+  { n: '04', title: 'Build your board of advocates', min: '16 min', track: 'Foundation', state: 'Start', practiceId: 'lep-principles-video' },
 ];
 
 export const PRINCIPLES_LOCKED = [
@@ -170,6 +204,7 @@ export const LEARN_CONTINUE = [
     pct: 65,
     cta: 'Resume →',
     open: true,
+    practiceId: 'lep-principles-video',
   },
   {
     tag: 'C-SUITE · PRIYANKA SUNDER',
@@ -179,22 +214,28 @@ export const LEARN_CONTINUE = [
     cta: 'Unlocks upon enrollment',
     open: false,
     img: COVER.priyanka,
+    assetKey: 'csuite:priyanka',
+    who: 'Priyanka Sunder',
   },
 ];
 
 export const LEARN_FRESH = [
-  { title: 'Architecting Sovereign Authority', meta: 'IL Guide · 16 mins · Open principle', open: true },
+  { title: 'Architecting Sovereign Authority', meta: 'IL Guide · 16 mins · Open principle', open: true, practiceId: 'lep-principles-video' },
   {
     title: 'From Factory Floors to the Boardroom',
     meta: 'Priyanka Singla · 21 mins · Enrolled only',
     open: false,
     img: COVER.speaks05,
+    assetKey: 'podcast:priyanka',
+    who: 'Priyanka Singla',
   },
   {
     title: 'From Invisible to Unstoppable',
     meta: 'Charu Sharma · 12 mins · Enrolled only',
     open: false,
     img: COVER.speaks04c,
+    assetKey: 'podcast:charu',
+    who: 'Charu Sharma',
   },
 ];
 
@@ -280,6 +321,7 @@ export const CASES_ENR = [
     time: '31 mins',
     img: COVER.priyanka,
     featured: true,
+    assetKey: 'csuite:priyanka',
   },
   {
     fn: 'Technology',
@@ -288,6 +330,7 @@ export const CASES_ENR = [
     who: 'Radhika Sharma',
     time: '24 mins',
     img: COVER.radhika,
+    assetKey: 'csuite:radhika',
   },
   {
     fn: 'Technology',
@@ -296,6 +339,7 @@ export const CASES_ENR = [
     who: 'Poornima George',
     time: '22 mins',
     img: COVER.poornima,
+    assetKey: 'csuite:poornima',
   },
   {
     fn: 'Technology',
@@ -304,6 +348,7 @@ export const CASES_ENR = [
     who: 'Suma Bhat',
     time: '18 mins',
     img: COVER.suma,
+    assetKey: 'csuite:suma',
   },
   {
     fn: 'Finance',
@@ -313,6 +358,7 @@ export const CASES_ENR = [
     time: '20 mins',
     img: COVER.varsha,
     featured: true,
+    assetKey: 'csuite:varsha',
   },
   {
     fn: 'Finance',
@@ -321,6 +367,7 @@ export const CASES_ENR = [
     who: 'Smriti Mishra',
     time: '19 mins',
     img: COVER.smriti,
+    assetKey: 'csuite:smriti',
   },
   {
     fn: 'Marketing',
@@ -330,6 +377,7 @@ export const CASES_ENR = [
     time: '26 mins',
     img: COVER.rekha,
     featured: true,
+    assetKey: 'csuite:rekha',
   },
   {
     fn: 'Marketing',
@@ -338,6 +386,7 @@ export const CASES_ENR = [
     who: 'Kamini Chawla',
     time: '18 mins',
     img: COVER.kamini,
+    assetKey: 'csuite:kamini',
   },
   {
     fn: 'Founder',
@@ -347,6 +396,7 @@ export const CASES_ENR = [
     time: '21 mins',
     img: COVER.meghna,
     featured: true,
+    assetKey: 'csuite:meghna',
   },
   {
     fn: 'Founder',
@@ -355,6 +405,7 @@ export const CASES_ENR = [
     who: 'Divya Mona',
     time: '17 mins',
     img: COVER.divya,
+    assetKey: 'csuite:divya',
   },
 ];
 
@@ -428,36 +479,42 @@ export const PODCASTS = [
     meta: 'Ep 6 · 31 min',
     img: COVER.speaks06,
     featured: true,
+    assetKey: 'podcast:simon',
   },
   {
     title: 'From Factory Floors to the Boardroom',
     who: 'Priyanka Singla',
     meta: 'Ep 5 · 28 min',
     img: COVER.speaks05,
+    assetKey: 'podcast:priyanka',
   },
   {
     title: 'From Invisible to Unstoppable',
     who: 'Charu Sharma',
     meta: 'Ep 4 · 22 min',
     img: COVER.speaks04c,
+    assetKey: 'podcast:charu',
   },
   {
     title: 'The Strategic Side of Quality',
     who: 'Mohini Hanwate',
     meta: 'Ep 4 · 36 min',
     img: COVER.speaks04m,
+    assetKey: 'podcast:mohini',
   },
   {
     title: 'Two Caps, One Woman',
     who: 'Lakshmi S Nayak',
     meta: 'Ep 2 · 22 min',
     img: COVER.speaks02,
+    assetKey: 'podcast:lakshmi',
   },
   {
     title: 'The 11×11 Mission',
     who: 'Pushpalatha M.S',
     meta: 'Ep 1 · 31 min',
     img: COVER.speaks01,
+    assetKey: 'podcast:pushpa',
   },
 ];
 
@@ -472,12 +529,14 @@ export const ARMY_STORIES = [
     meta: 'Priyanka Singla · Manufacturing',
     time: '4:15',
     img: COVER.speaks05,
+    assetKey: 'army:factory-floor',
   },
   {
     title: 'From Invisible to Unstoppable',
     meta: 'Charu Sharma · Technology',
     time: '3:40',
     img: COVER.speaks04c,
+    assetKey: 'army:invisible',
   },
 ];
 
@@ -517,40 +576,6 @@ export const SCHEDULE_ITEMS = [
     title: 'Day 1 Assignment',
     meta: 'LEP · due 7:00 PM',
     day: 'THU 24',
-  },
-];
-
-export const NOTICES = [
-  {
-    kind: 'attention',
-    icon: 'assignment-late',
-    title: 'Day 1 Assignment is due tomorrow',
-    meta: 'LEP · submit before 11:59 AM Thu',
-    action: 'Open assignment',
-    go: 'Assignment',
-    ago: '2h',
-  },
-  {
-    kind: 'attention',
-    icon: 'videocam',
-    title: 'Day 2 starts in 2 hours',
-    meta: 'Join link is live at 6:20 PM',
-    action: 'Add to calendar',
-    ago: '2h',
-  },
-  {
-    kind: 'guide',
-    icon: 'local-fire-department',
-    title: 'Four active days this week',
-    meta: 'One more and you close the week strong',
-    ago: '8:00 AM',
-  },
-  {
-    kind: 'guide',
-    icon: 'chat-bubble-outline',
-    title: 'Your facilitator left feedback',
-    meta: 'On your Day 1 Assignment',
-    ago: 'Yesterday',
   },
 ];
 

@@ -3,6 +3,7 @@ import { Image, Pressable, ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
@@ -21,7 +22,8 @@ import {
   fillAbs,
 } from './GuestBits';
 import { useGuestActions } from './useGuestActions';
-import { COVER, FACE, HERO } from './guestData';
+import { FACE } from './guestData';
+import { COVER } from '../lep/lepData';
 
 const META = {
   mc: { title: 'Masterclass (MC)', sub: 'Start here · two live evenings' },
@@ -72,32 +74,17 @@ function McBody({ onFind }) {
     ['04', 'The art of negotiation', 'You get what you negotiate for — not just what you deserve.'],
   ];
   return (
-    <Pad style={{ paddingTop: 8 }}>
-      <KickerPill>Live · twice every week</KickerPill>
-      <Headline lines={['Two evenings.', 'A different career.']} accentLast />
-      <ILText role="body" color={G.meta} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
-        The live on-ramp to the Iron Lady method. Four of the 27 principles, practised in the room — not just heard.
-      </ILText>
-      <View style={{ marginTop: 18, borderRadius: 20, overflow: 'hidden', height: 180 }}>
-        <Image source={HERO} style={fillAbs} resizeMode="cover" />
-        <LinearGradient colors={['transparent', 'rgba(10,32,40,0.85)']} style={fillAbs} />
-        <ILText
-          role="title"
-          color="#FFFFFF"
-          style={{
-            position: 'absolute',
-            left: 16,
-            right: 16,
-            bottom: 16,
-            fontFamily: IL_FONTS.displayItalic,
-            fontSize: 18,
-            lineHeight: 24,
-          }}
-        >
-          “Knowledge alone is not enough.”
+    <View>
+      <View style={{ backgroundColor: G.dark, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 28 }}>
+        <KickerPill>Live · twice every week</KickerPill>
+        <Headline light lines={['Two evenings.', 'A different career.']} accentLast />
+        <ILText role="body" color="rgba(255,255,255,0.78)" style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
+          The live on-ramp to the Iron Lady method. Four of the 27 principles, practised in the room — not just heard.
         </ILText>
+        <McArt />
       </View>
 
+      <Pad>
       <Section title="Pick your two evenings" sub="Same content, two slots every week" />
       <View
         style={{
@@ -154,7 +141,86 @@ function McBody({ onFind }) {
       />
       <RedCta label="See Masterclass dates" onPress={onFind} />
       <AdvisorNote />
-    </Pad>
+      </Pad>
+    </View>
+  );
+}
+
+function Sunset({ fill, day, time }) {
+  return (
+    <View style={{ alignItems: 'center', marginRight: 10 }}>
+      <Svg width={56} height={32}>
+        <Path d="M6 28 A22 22 0 0 1 50 28 Z" fill={fill} />
+        <Path d="M0 29 H56" stroke={G.ink} strokeWidth={1.5} strokeLinecap="round" />
+      </Svg>
+      <ILText role="label" color={G.ink} style={[af, { marginTop: 4, fontSize: 12 }]}>
+        {day}
+      </ILText>
+      <ILText role="bodySm" color={G.meta} style={[af, { fontSize: 10 }]}>
+        {time}
+      </ILText>
+    </View>
+  );
+}
+
+function McArt() {
+  const steps = [
+    ['01', 'BHAG', 26],
+    ['02', 'Brand', 42],
+    ['03', 'Pitch', 58],
+    ['04', 'Ask', 74],
+  ];
+  return (
+    <View style={{ marginTop: 18, borderRadius: 20, overflow: 'hidden' }}>
+      <LinearGradient colors={['#FFF6EC', '#F8D6D4']} style={fillAbs} />
+      <View style={{ padding: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+          <Sunset fill={G.cta} day="Tue" time="7 PM" />
+          <Sunset fill="#F28B6B" day="Wed" time="6:30 PM" />
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', marginLeft: 6 }}>
+            {steps.map(([n, label, h], i) => (
+              <View key={n} style={{ flex: 1, alignItems: 'center', marginLeft: i ? 3 : 0 }}>
+                {i === steps.length - 1 ? (
+                  <Svg width={18} height={22} style={{ marginBottom: 2 }}>
+                    <Path d="M3 22 V2" stroke={G.ink} strokeWidth={1.5} />
+                    <Path d="M3 2 L16 7 L3 12 Z" fill={G.cta} />
+                  </Svg>
+                ) : null}
+                <View
+                  style={{
+                    width: '100%',
+                    height: h,
+                    borderTopLeftRadius: 8,
+                    borderTopRightRadius: 8,
+                    backgroundColor: G.dark,
+                    opacity: 0.55 + i * 0.15,
+                    alignItems: 'center',
+                    paddingTop: 5,
+                  }}
+                >
+                  <StatNum color="#FFFFFF" size={11}>
+                    {n}
+                  </StatNum>
+                </View>
+                <ILText role="bodySm" color={G.ink} style={[af, { marginTop: 4, fontSize: 10 }]}>
+                  {label}
+                </ILText>
+              </View>
+            ))}
+          </View>
+        </View>
+        <ILText
+          role="title"
+          color={G.ink}
+          style={{ marginTop: 14, fontFamily: IL_FONTS.displayItalic, fontSize: 18, lineHeight: 24 }}
+        >
+          “Knowledge alone is not enough.”
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+          Two evenings · four principles, practised live
+        </ILText>
+      </View>
+    </View>
   );
 }
 
@@ -682,54 +748,59 @@ function MbwBody({ onFind }) {
           align="center"
           style={{ marginTop: 16, fontSize: 13, lineHeight: 19 }}
         >
-          A year-long strategy circle for senior women heading to the C-suite — four in-person sessions, one closed cohort.
+          A year-long strategy circle for senior women heading to the C-suite — four quarters, one closed cohort.
         </ILText>
       </View>
 
       <Pad>
         <Section title="For women who already lead" />
         <ILText role="body" color={G.meta} style={{ marginTop: 8, fontSize: 15, lineHeight: 22 }}>
-          Not a workshop — a strategy circle. Four powerful in-person sessions across a year, built around positioning, timing and the moves only a room of peers can pressure-test.
+          Not a workshop — a strategy circle. Four quarters across a year, built around positioning, timing and the moves only a room of peers can pressure-test.
         </ILText>
 
-        <Section title="Your year" sub="Four in-person sessions, one each quarter" />
+        <Section title="Your year" sub="Four quarters · 52 weeks" />
         <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 12 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {['Q1', 'Q2', 'Q3', 'Q4'].map((q, i) => (
-              <View key={q} style={{ width: '50%', padding: 4 }}>
+            {[
+              { q: 'Q1', title: 'C-Suite profile', weeks: 'Wk 1–12' },
+              { q: 'Q2', title: 'Pitch and strategy', weeks: 'Wk 13–24' },
+              { q: 'Q3', title: 'Business perspective', weeks: 'Wk 25–36' },
+              { q: 'Q4', title: 'C-Suite game plan', weeks: 'Wk 37–48' },
+            ].map((row, i) => (
+              <View key={row.q} style={{ width: '50%', padding: 4 }}>
                 <View
                   style={{
                     borderRadius: 16,
                     padding: 14,
-                    minHeight: 88,
+                    minHeight: 96,
                     backgroundColor: i === 0 ? G.dark : G.white,
                     borderWidth: i === 0 ? 0 : 1,
                     borderColor: G.line,
                   }}
                 >
-                  <QuarterNum color={i === 0 ? '#FFFFFF' : G.ink} size={26}>
-                    {q}
+                  <QuarterNum color={i === 0 ? '#FFFFFF' : G.ink} size={28}>
+                    {row.q}
                   </QuarterNum>
                   <ILText
                     role="body"
                     color={i === 0 ? '#FFFFFF' : G.ink}
                     style={{ marginTop: 6, fontFamily: IL_FONTS.medium, fontSize: 13, lineHeight: 17 }}
                   >
-                    In-person session
+                    {row.title}
                   </ILText>
                   <ILText
                     role="bodySm"
                     color={i === 0 ? 'rgba(255,255,255,0.7)' : G.meta}
                     style={{ fontSize: 11 }}
                   >
-                    In person
+                    {row.weeks}
                   </ILText>
                 </View>
               </View>
             ))}
           </View>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, paddingHorizontal: 4, fontSize: 12, lineHeight: 18 }}>
-            One year, four rooms, no weekly modules to keep up with — each session is built around what you bring to it, not a syllabus you scroll through.
+            One year in four quarters — profile, pitch, perspective, then the C-suite game plan.
           </ILText>
         </WhiteCard>
 

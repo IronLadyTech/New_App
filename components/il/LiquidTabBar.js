@@ -102,6 +102,26 @@ function dockPath(width, cx, v) {
   ].join(' ');
 }
 
+const GlassBlur = React.memo(function GlassBlur() {
+  if (Platform.OS === 'web') return null;
+  return (
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 48 : 32}
+      tint="dark"
+      style={{
+        position: 'absolute',
+        left: SIDE,
+        right: SIDE,
+        top: BAR_TOP,
+        height: PILL_H,
+        borderRadius: PILL_H / 2,
+        overflow: 'hidden',
+        backgroundColor: GLASS,
+      }}
+    />
+  );
+});
+
 function GlassDock({ width, height, d }) {
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height }}>
@@ -121,20 +141,7 @@ function GlassDock({ width, height, d }) {
           }}
         />
       ) : (
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 48 : 32}
-          tint="dark"
-          style={{
-            position: 'absolute',
-            left: SIDE,
-            right: SIDE,
-            top: BAR_TOP,
-            height: PILL_H,
-            borderRadius: PILL_H / 2,
-            overflow: 'hidden',
-            backgroundColor: GLASS,
-          }}
-        />
+        <GlassBlur />
       )}
       <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0 }}>
         <Path
@@ -215,17 +222,24 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
     return e.nativeEvent.locationX;
   };
 
+  const hoverRef = useRef(safeIndex);
+
   const slideTo = (x) => {
     const min = SIDE + slotRef.current * 0.5;
     const max = widthRef.current - SIDE - slotRef.current * 0.5;
     const next = clamp(x, min, max);
     beadX.setValue(next);
-    setHover(nearestIndex(next, slotRef.current, countRef.current));
+    const index = nearestIndex(next, slotRef.current, countRef.current);
+    if (index !== hoverRef.current) {
+      hoverRef.current = index;
+      setHover(index);
+    }
   };
 
   const snapTo = (index) => {
     const item = itemsRef.current[index];
     const target = slotCenter(index, slotRef.current);
+    hoverRef.current = index;
     setHover(index);
     Animated.spring(beadX, {
       toValue: target,
@@ -268,10 +282,12 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
       motion.current.lastX = next;
       beadX.setValue(next);
       setFrame({ cx: next, v: 0 });
+      hoverRef.current = safeIndex;
       setHover(safeIndex);
       placed.current = true;
       return;
     }
+    hoverRef.current = safeIndex;
     setHover(safeIndex);
     Animated.spring(beadX, {
       toValue: next,

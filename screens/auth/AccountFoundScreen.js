@@ -39,7 +39,6 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
       <StatusBar style="dark" />
       <ILHeader
         onProfile={() => navigation.navigate('Profile')}
-        onNotifications={() => {}}
         onSearch={() => {}}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>

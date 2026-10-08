@@ -34,7 +34,7 @@ import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 export default function GuestProgramsScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
-  const { findRegistration, goProgram } = useGuestActions();
+  const { findRegistration, goProgram, goDrill } = useGuestActions();
   const [filter, setFilter] = useState('All');
   const drills = useMemo(
     () => (filter === 'All' ? DRILLS : DRILLS.filter((d) => d.tag === filter)),
@@ -115,7 +115,7 @@ export default function GuestProgramsScreen() {
             onPress={() => goProgram(p.id)}
             style={{ marginTop: 16, borderRadius: 24, overflow: 'hidden', minHeight: 280 }}
           >
-            <Image source={HERO} style={fillAbs} resizeMode="cover" />
+            <Image source={p.img || HERO} style={fillAbs} resizeMode="cover" />
             <LinearGradient
               colors={
                 p.id === 'lep'
@@ -244,8 +244,10 @@ export default function GuestProgramsScreen() {
           </ScrollView>
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingVertical: 4, paddingHorizontal: 4 }}>
             {drills.map((d, i) => (
-              <View
+              <Pressable
                 key={d.title}
+                onPress={() => goDrill(d.id)}
+                accessibilityRole="button"
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -267,7 +269,7 @@ export default function GuestProgramsScreen() {
                 <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
                   Start →
                 </ILText>
-              </View>
+              </Pressable>
             ))}
           </WhiteCard>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 12 }}>

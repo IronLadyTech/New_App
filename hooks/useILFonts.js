@@ -5,6 +5,7 @@ import {
   PlayfairDisplay_500Medium,
   PlayfairDisplay_600SemiBold,
   PlayfairDisplay_600SemiBold_Italic,
+  PlayfairDisplay_700Bold,
 } from '@expo-google-fonts/playfair-display';
 import {
   Manrope_400Regular,
@@ -26,6 +27,7 @@ export function useILFonts() {
     PlayfairDisplay_500Medium,
     PlayfairDisplay_600SemiBold,
     PlayfairDisplay_600SemiBold_Italic,
+    PlayfairDisplay_700Bold,
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,

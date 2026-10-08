@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -230,9 +231,9 @@ export function ActionLabel({ children }) {
 
 export const fillAbs = { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 };
 
-const tabular = { fontVariant: ['tabular-nums'] };
+const tabular = { fontVariant: ['lining-nums', 'tabular-nums'] };
 
-/** Big proof figures — Playfair 600, lining/tabular, as in the approval mockups. */
+/** Big proof figures — Playfair 700, lining/tabular, as in the approval mockups. */
 export function StatNum({ children, color = G.ink, size = 26, style }) {
   return (
     <ILText
@@ -241,7 +242,7 @@ export function StatNum({ children, color = G.ink, size = 26, style }) {
       style={[
         tabular,
         {
-          fontFamily: IL_FONTS.display,
+          fontFamily: IL_FONTS.displayBold,
           fontSize: size,
           lineHeight: size + 4,
           letterSpacing: -0.5,
@@ -254,7 +255,7 @@ export function StatNum({ children, color = G.ink, size = 26, style }) {
   );
 }
 
-/** Principle / step indices (01, 02) — Playfair 600 roman, as in the MC grid. */
+/** Principle / step indices (01, 02) — Playfair 700 roman, as in the MC grid. */
 export function StepNum({ children, color = G.cta, size = 20, style }) {
   return (
     <ILText
@@ -263,7 +264,7 @@ export function StepNum({ children, color = G.cta, size = 20, style }) {
       style={[
         tabular,
         {
-          fontFamily: IL_FONTS.display,
+          fontFamily: IL_FONTS.displayBold,
           fontSize: size,
           lineHeight: size + 4,
           letterSpacing: -0.3,
@@ -276,7 +277,7 @@ export function StepNum({ children, color = G.cta, size = 20, style }) {
   );
 }
 
-/** Q1–Q4 — Playfair 600 italic. */
+/** Q1–Q4 — Playfair 700 roman so Q does not read as O. */
 export function QuarterNum({ children, color = G.ink, size = 24, style }) {
   return (
     <ILText
@@ -285,10 +286,10 @@ export function QuarterNum({ children, color = G.ink, size = 24, style }) {
       style={[
         tabular,
         {
-          fontFamily: IL_FONTS.displayItalic,
+          fontFamily: IL_FONTS.displayBold,
           fontSize: size,
           lineHeight: size + 4,
-          letterSpacing: -0.4,
+          letterSpacing: 0,
         },
         style,
       ]}
@@ -418,7 +419,7 @@ export function GuestBackBar(props) {
 
 /** MBW hero: thin ring, red arc Q1→Q2, Q nodes, Playfair “1 year”. */
 export function YearRing({ size = 216 }) {
-  const node = 30;
+  const node = 36;
   const stroke = 2.5;
   const c = size / 2;
   const r = (size - node) / 2 - 2;
@@ -479,9 +480,9 @@ export function YearRing({ size = 216 }) {
                 af,
                 {
                   fontFamily: IL_FONTS.display,
-                  fontSize: 9,
-                  lineHeight: 11,
-                  letterSpacing: 0.2,
+                  fontSize: 11,
+                  lineHeight: 13,
+                  letterSpacing: 0,
                 },
               ]}
             >
@@ -508,7 +509,7 @@ export function YearRing({ size = 216 }) {
           color="rgba(255,255,255,0.62)"
           style={{ marginTop: 4, fontSize: 11, lineHeight: 14 }}
         >
-          4 sessions · in person
+          4 quarters
         </ILText>
       </View>
     </View>

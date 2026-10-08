@@ -1,13 +1,20 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import Pressable from '../../components/il/Press';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
 import { useProgramRoutes } from '../../context/ProgramNavContext';
+import { PROGRAMS } from '../../constants/programs';
+import { useLepNav } from '../lep/useLepNav';
+import { useCourseDemo } from '../../context/CourseDemoContext';
+import { isItemDone } from '../../constants/practice';
 import {
   BarButton,
   CheckRow,
   DarkPanel,
+  DueWeek,
   GlanceGrid,
   LinkRow,
   PeopleRow,
@@ -29,7 +36,49 @@ function HeroTitle({ children }) {
   );
 }
 
-function StatusPill({ label }) {
+function HeroChip({ label }) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        backgroundColor: 'rgba(255,255,255,0.10)',
+        borderRadius: 999,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+      }}
+    >
+      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: IL_BRAND.red, marginRight: 8 }} />
+      <ILText role="label" color="#FFFFFF" style={{ fontSize: 12, lineHeight: 16 }}>
+        {label}
+      </ILText>
+    </View>
+  );
+}
+
+function StatusPill({ label, icon }) {
+  if (icon) {
+    return (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          alignSelf: 'flex-start',
+          marginTop: 16,
+          backgroundColor: 'rgba(255,255,255,0.10)',
+          borderRadius: 999,
+          paddingHorizontal: 12,
+          paddingVertical: 7,
+        }}
+      >
+        <MaterialIcons name={icon} size={14} color={IL_BRAND.redSoft} />
+        <ILText role="bodySm" color="#FFFFFF" style={{ marginLeft: 6 }}>
+          {label}
+        </ILText>
+      </View>
+    );
+  }
   return (
     <View
       style={{
@@ -49,16 +98,48 @@ function StatusPill({ label }) {
   );
 }
 
-function PracticeList({ items, onOpen, streak, note }) {
+function PracticeList({ items, streak, note }) {
+  const nav = useLepNav();
+  const { isDone } = useCourseDemo();
   return (
     <SoftCard>
       {streak ? <StreakRow streak={streak} note={note} /> : null}
-      {items.map((item) => (
-        <CheckRow key={item.title} {...item} onPress={() => onOpen(item.programId)} />
+      {items.map((item, i) => (
+        <CheckRow
+          key={item.title}
+          {...item}
+          done={isItemDone(item, isDone)}
+          last={i === items.length - 1}
+          onPress={() => nav.goPracticeItem(item)}
+        />
       ))}
     </SoftCard>
   );
 }
+
+const BM_PREP = [
+  {
+    taskId: 'bm100-onb-brand-video',
+    icon: 'videocam',
+    title: 'Brand creation video',
+    detail: 'Your Core Story, 2–3 minutes on camera',
+    action: 'Record',
+  },
+  {
+    taskId: 'bm100-wk1-1',
+    icon: 'show-chart',
+    title: 'Milestone Table practice',
+    detail: 'Draft the milestones you will present at Onboarding',
+    action: 'Start',
+  },
+  {
+    taskId: 'bm100-onb-resume',
+    icon: 'description',
+    title: 'Resume preparation',
+    detail: 'Bring a current draft — you will rework it in Phase 1',
+    action: 'Upload',
+  },
+];
 
 function BmRegistered() {
   const { profile } = useAuth();
@@ -66,36 +147,48 @@ function BmRegistered() {
   const name = firstName(profile);
   const openJourney = () => routes.openMyProgram('100bm', 'Journey');
   const openLearn = () => routes.openLearn('100bm');
+  const nav = useLepNav();
+  const { isDone } = useCourseDemo();
+  const prep = BM_PREP.map((p) => ({ ...p, done: isDone(PROGRAMS.BM100, p.taskId) }));
+  const prepDone = prep.filter((p) => p.done).length;
   return (
     <ProgramPage>
       <DarkPanel>
-        <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-          100 Board Members
-        </ILText>
+        <HeroChip label="100 Board Members" />
         <HeroTitle>Good morning, {name}.</HeroTitle>
-        <ILText role="bodySm" color={IL_BRAND.mutedOnDark} style={{ marginTop: 8 }}>
+        <ILText role="body" color={IL_BRAND.redSoft} style={{ marginTop: 6 }}>
           Every board seat starts with one bold move — you already made it.
         </ILText>
-        <StatusPill label="Registered · part payment received" />
+        <StatusPill icon="verified" label="Registered · part payment received" />
       </DarkPanel>
 
-      <SoftCard>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+      <SoftCard onPress={routes.openPayment}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#FDECEC',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name="payments" size={20} color={IL_BRAND.red} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
             <ILText role="label">Balance due 21 Sep</ILText>
-            <ILText role="bodySm" color={IL_BRAND.muted}>
+            <ILText role="bodySm" color={IL_BRAND.muted} numberOfLines={1}>
               Batch details open once the seat is paid.
             </ILText>
           </View>
-          <Pressable onPress={routes.openPayment} accessibilityRole="button">
-            <ILText role="label" color={IL_BRAND.red}>
-              Pay balance →
-            </ILText>
-          </Pressable>
+          <ILText role="label" color={IL_BRAND.red} accessibilityLabel="Pay balance">
+            Pay balance →
+          </ILText>
         </View>
       </SoftCard>
 
-      <SoftCard>
+      <SoftCard style={{ backgroundColor: '#FAF7EF' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <PeopleRow extra={18} onLight />
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -130,7 +223,6 @@ function BmRegistered() {
         onAction={openJourney}
       />
       <PracticeList
-        onOpen={routes.openLearn}
         streak="2-day streak"
         note="Daily revision at 8:00 AM"
         items={[
@@ -139,18 +231,21 @@ function BmRegistered() {
             detail: 'Daily revision · 1 min',
             done: true,
             programId: '100bm',
+            practiceId: 'bm-ambition',
           },
           {
             title: 'Milestone Table practice — draft two milestones',
             detail: 'Pre-program · 10 min',
             done: false,
             programId: '100bm',
+            taskId: 'bm100-wk1-1',
           },
           {
             title: 'Watch today’s message from IL Guide',
             detail: 'Video · 3 min',
             done: false,
             programId: '100bm',
+            practiceId: 'bm-guide-message',
           },
         ]}
       />
@@ -166,29 +261,11 @@ function BmRegistered() {
       <SectionLabel
         title="Before your first session"
         sub="Three things Iron Lady needs from you — not your batch leader, you"
-        action="0 of 3"
+        badge={`${prepDone} of ${prep.length}`}
       />
-      <SoftCard style={{ paddingVertical: 4 }}>
-        <PrepTask
-          title="Brand creation video"
-          detail="Your Core Story, 2–3 minutes on camera"
-          action="Record"
-          onPress={openLearn}
-        />
-        <PrepTask
-          title="Milestone Table practice"
-          detail="Draft the milestones you will present at Onboarding"
-          action="Start"
-          onPress={openLearn}
-        />
-        <PrepTask
-          title="Resume preparation"
-          detail="Bring a current draft — you will rework it in Phase 1"
-          action="Upload"
-          last
-          onPress={openLearn}
-        />
-      </SoftCard>
+      {prep.map((p) => (
+        <PrepTask key={p.taskId} {...p} onPress={() => nav.goCourseTask(PROGRAMS.BM100, p.taskId)} />
+      ))}
 
       <LinkRow
         icon="flag"
@@ -203,6 +280,7 @@ function BmRegistered() {
 function BmEnrolled() {
   const { profile } = useAuth();
   const routes = useProgramRoutes();
+  const nav = useLepNav();
   const name = firstName(profile);
   const openJourney = () => routes.openMyProgram('100bm', 'Journey');
   const openLearn = () => routes.openLearn('100bm');
@@ -220,6 +298,23 @@ function BmEnrolled() {
           This week
         </ILText>
         <StatusPill label="Weekly Q&A · Thu 7:00 PM IST" />
+        <Pressable
+          onPress={() => routes.openMyProgram('100bm', 'Sessions')}
+          accessibilityRole="button"
+          accessibilityLabel="Join Thursday’s Q&A"
+          style={({ pressed }) => ({
+            marginTop: 16,
+            backgroundColor: '#ED1D24',
+            borderRadius: 999,
+            paddingVertical: 14,
+            alignItems: 'center',
+            opacity: pressed ? 0.92 : 1,
+          })}
+        >
+          <ILText role="label" color="#FFFFFF">
+            Join Thursday’s Q&A →
+          </ILText>
+        </Pressable>
       </DarkPanel>
 
       <SoftCard>
@@ -242,7 +337,6 @@ function BmEnrolled() {
         onAction={openJourney}
       />
       <PracticeList
-        onOpen={routes.openLearn}
         streak="5-day streak"
         note="Daily revision at 8:00 AM"
         items={[
@@ -251,24 +345,60 @@ function BmEnrolled() {
             detail: 'Daily revision · 2 min',
             done: true,
             programId: '100bm',
+            practiceId: 'bm-superpower',
           },
           {
             title: 'Rehearse your ask out loud, twice',
             detail: 'Get ready for Phase 2 · 5 min',
             done: false,
             programId: '100bm',
+            practiceId: 'bm-ask',
           },
           {
             title: 'Imperfect Brand Video',
             detail: 'Practice drill · 15 min',
             done: false,
             programId: '100bm',
+            taskId: 'bm100-wk2',
           },
           {
             title: 'Weekly Q&A · Thu 7:00 PM IST',
             detail: 'Live session · add a question before you join',
             done: false,
             programId: '100bm',
+            practiceId: 'bm-qa',
+          },
+        ]}
+      />
+
+      <DueWeek
+        sub="Phase 2 · Pitch & strategy"
+        onSchedule={nav.goSchedule}
+        items={[
+          {
+            title: 'Post-Session on Pitch',
+            tag: '100BM',
+            kind: 'Video · record your pitch',
+            due: 'Due Thu',
+            urgent: true,
+            icon: 'videocam',
+            onPress: () => nav.goCourseTask(PROGRAMS.BM100, 'bm100-wk11'),
+          },
+          {
+            title: 'Pre-Session on Mid Level Politics',
+            tag: '100BM',
+            kind: 'Form · strategy problem statement',
+            due: 'Due Sat',
+            icon: 'edit-note',
+            onPress: () => nav.goCourseTask(PROGRAMS.BM100, 'bm100-wk12'),
+          },
+          {
+            title: 'Session 4 — Pitching and Influencing',
+            tag: '100BM',
+            kind: 'Video · submit from the session',
+            due: 'By 12 Oct',
+            icon: 'mic',
+            onPress: () => nav.goCourseTask(PROGRAMS.BM100, 'bm100-wk10'),
           },
         ]}
       />
@@ -349,7 +479,7 @@ function MbwRegistered() {
         kicker="Master of Business Warfare · at a glance"
         cells={[
           ['Duration', '1 year · 52 weeks'],
-          ['Format', 'Weekly task in your WA group'],
+          ['Format', 'Weekly task'],
           ['Sessions', '16 Impact Champions + 4 with Suvarna'],
           ['On completion', 'Graduation'],
         ]}
@@ -368,22 +498,23 @@ function MbwRegistered() {
         onAction={openJourney}
       />
       <PracticeList
-        onOpen={routes.openLearn}
         streak="4-day streak"
         note="Daily revision at 8:00 AM"
         items={[
-          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw' },
+          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw', practiceId: 'mbw-mirror-work' },
           {
             title: 'Send 5 connection requests to C-Suite leaders',
             detail: 'This week · LinkedIn % connects · 5 min',
             done: false,
             programId: 'mbw',
+            taskId: 'mbw-linkedin-connects',
           },
           {
             title: 'Revise ERRC: one thing to eliminate today',
             detail: 'Daily revision · 2 min',
             done: false,
             programId: 'mbw',
+            practiceId: 'mbw-errc',
           },
         ]}
       />
@@ -428,6 +559,7 @@ function MbwRegistered() {
 function MbwEnrolled() {
   const { profile } = useAuth();
   const routes = useProgramRoutes();
+  const nav = useLepNav();
   const name = firstName(profile);
   const openYear = () => routes.openMyProgram('mbw', 'Journey');
   const openLearn = () => routes.openLearn('mbw');
@@ -485,22 +617,55 @@ function MbwEnrolled() {
         onAction={openYear}
       />
       <PracticeList
-        onOpen={routes.openLearn}
         streak="6-day streak"
         note="Daily revision at 8:00 AM"
         items={[
-          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw' },
+          { title: 'Mirror Work', detail: 'LEP ritual · 5 min', done: true, programId: 'mbw', practiceId: 'mbw-mirror-work' },
           {
             title: 'Write story 2 in three lines: situation, action, result',
             detail: 'This week · C-Suite Story · 10 min',
             done: false,
             programId: 'mbw',
+            taskId: 'q1-csuite-story',
           },
           {
             title: 'Say one accomplishment in business language',
             detail: 'Daily revision · 2 min',
             done: false,
             programId: 'mbw',
+            practiceId: 'mbw-business-language',
+          },
+        ]}
+      />
+
+      <DueWeek
+        sub="Q1 · Week 4 · C-Suite profile"
+        onSchedule={nav.goSchedule}
+        items={[
+          {
+            title: 'C-Suite Story',
+            tag: 'MBW',
+            kind: 'Form · 3 accomplishment stories',
+            due: 'Due Thu',
+            urgent: true,
+            icon: 'edit-note',
+            onPress: () => nav.goCourseTask(PROGRAMS.MBW, 'q1-csuite-story'),
+          },
+          {
+            title: 'LinkedIn Posts (×2)',
+            tag: 'MBW',
+            kind: 'Post · share both links',
+            due: 'Due Fri',
+            icon: 'post-add',
+            onPress: () => nav.goCourseTask(PROGRAMS.MBW, 'q1-linkedin-posts'),
+          },
+          {
+            title: 'C-Suite Story Video',
+            tag: 'MBW',
+            kind: 'Video · after Session 2',
+            due: 'Due Sun',
+            icon: 'videocam',
+            onPress: () => nav.goCourseTask(PROGRAMS.MBW, 'q1-story-video'),
           },
         ]}
       />
@@ -535,7 +700,7 @@ function MbwEnrolled() {
             </View>
           ))}
         </View>
-        <BarButton label="Continue story 2 →" onPress={() => routes.openMyProgram('mbw', 'Cohort')} />
+        <BarButton label="Continue story 2 →" onPress={() => nav.goCourseTask(PROGRAMS.MBW, 'q1-csuite-story')} />
       </SoftCard>
 
       <SectionLabel
@@ -577,6 +742,7 @@ function MbwEnrolled() {
 function ComboHome() {
   const { profile } = useAuth();
   const routes = useProgramRoutes();
+  const nav = useLepNav();
   const name = firstName(profile);
   return (
     <ProgramPage>
@@ -638,39 +804,54 @@ function ComboHome() {
         onAction={() => routes.openMyProgram('lep', 'Journey')}
       />
       <PracticeList
-        onOpen={routes.openLearn}
         streak="3-day streak"
         note="One daily revision, 8:00 AM"
         items={[
-          { title: '5 Daily Rituals — morning check', detail: 'LEP ritual · 2 min', done: true, tag: 'LEP', programId: 'lep' },
-          { title: 'Revise Principle 3 from the 27 Principles', detail: 'Daily revision · 2 min', done: true, tag: 'LEP', programId: 'lep' },
-          { title: 'Watch The Shameless Speech', detail: 'Pre-work · 22 min', done: false, tag: 'LEP', programId: 'lep' },
+          { title: '5 Daily Rituals — morning check', detail: 'LEP ritual · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-rituals' },
+          { title: 'Revise Principle 3 from the 27 Principles', detail: 'Daily revision · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-principle' },
+          { title: 'Watch The Shameless Speech', detail: 'Pre-work · 22 min', done: false, tag: 'LEP', programId: 'lep', practiceId: 'lep-shameless' },
           {
             title: 'Draft two milestones for your Milestone Table',
             detail: 'Pre-program · 10 min',
             done: false,
             tag: '100BM',
             programId: '100bm',
+            taskId: 'bm100-wk1-1',
           },
         ]}
       />
 
-      <SectionLabel
-        title="Due this week"
+      <DueWeek
         sub="Across your programs"
-        action="See schedule"
-        onAction={() => routes.openMyProgram('lep', 'Sessions')}
+        onSchedule={() => routes.openMyProgram('lep', 'Sessions')}
+        items={[
+          {
+            title: 'Day 1 Assignment',
+            tag: 'LEP',
+            kind: 'Assignment',
+            due: 'Due Thu',
+            urgent: true,
+            icon: 'assignment',
+            onPress: () => nav.goCourseTask(PROGRAMS.LEP, 'lep-day1-assignment'),
+          },
+          {
+            title: 'Fill the CoDeSeF Sheet',
+            tag: 'LEP',
+            kind: 'Form',
+            due: 'Due Fri',
+            icon: 'edit-note',
+            onPress: () => nav.goCourseTask(PROGRAMS.LEP, 'lep-prep-codesef-sheet'),
+          },
+          {
+            title: 'Brand creation video',
+            tag: '100BM',
+            kind: 'Pre-program · your Core Story',
+            due: 'By 2 Oct',
+            icon: 'videocam',
+            onPress: () => nav.goCourseTask(PROGRAMS.BM100, 'bm100-wk1-4'),
+          },
+        ]}
       />
-      <SoftCard style={{ paddingVertical: 4 }}>
-        <CheckRow title="Day 1 Assignment" detail="Due Thu" tag="LEP" onPress={() => routes.openLearn('lep')} />
-        <CheckRow title="Fill the CoDeSeF Sheet" detail="Due Fri" tag="LEP" onPress={() => routes.openLearn('lep')} />
-        <CheckRow
-          title="Brand creation video"
-          detail="Pre-program · your Core Story · by 2 Oct"
-          tag="100BM"
-          onPress={() => routes.openMyProgram('100bm', 'Journey')}
-        />
-      </SoftCard>
 
       <DarkPanel>
         <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>

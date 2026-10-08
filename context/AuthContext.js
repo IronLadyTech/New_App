@@ -241,11 +241,12 @@ export function AuthProvider({ children }) {
     return {
       ...(profile || {}),
       ...lab,
+      programs: [pid],
+      program: pid,
       phoneNumber: profile?.phoneNumber || profile?.phone || lab.phoneNumber,
       email: profile?.email,
       photoURL: profile?.photoURL,
       programAccess: {
-        ...(profile?.programAccess || {}),
         [pid]: {
           ...live,
           ...(lab.programAccess?.[pid] || {}),
