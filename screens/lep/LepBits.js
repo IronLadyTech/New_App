@@ -1,16 +1,19 @@
 import React from 'react';
-import { Image, Pressable, View } from 'react-native';
+import { Image, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
+import Svg, { Circle } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import GlassHeader from '../../components/il/GlassHeader';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { FACE } from './lepData';
+import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
 
 export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../guest/GuestBits';
 export { GuestBackBar } from '../guest/GuestBits';
 
-export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false }) {
+export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false, scrollY, inert }) {
   return (
     <GlassHeader
       onSearch={onSearch}
@@ -18,6 +21,8 @@ export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floa
       onProfile={onProfile}
       photo={photoUrl ? { uri: photoUrl } : FACE}
       floating={floating}
+      scrollY={scrollY}
+      inert={inert}
     />
   );
 }
@@ -107,6 +112,36 @@ export function SoftChip({ children, onDark, icon }) {
       {icon ? <MaterialIcons name={icon} size={12} color={onDark ? G.pink : G.cta} style={{ marginRight: 6 }} /> : null}
       <ILText role="eyebrow" color={onDark ? G.pink : G.cta} style={[af, { fontSize: 10, letterSpacing: 0.8 }]}>
         {children}
+      </ILText>
+    </View>
+  );
+}
+
+/** Weekday streak: red arc = days you opened the app or finished a practice. */
+export function WeekRing({ done = 4, total = 5, size = 56 }) {
+  const stroke = 4.5;
+  const c = size / 2;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const frac = Math.max(0, Math.min(1, done / total));
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle cx={c} cy={c} r={r} stroke={G.line} strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={c}
+          cy={c}
+          r={r}
+          stroke={G.cta}
+          strokeWidth={stroke}
+          fill="none"
+          strokeDasharray={`${circ * frac} ${circ}`}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${c} ${c})`}
+        />
+      </Svg>
+      <ILText role="display" color={G.cta} style={{ fontFamily: IL_FONTS.display, fontSize: 16, lineHeight: 20 }}>
+        {done}/{total}
       </ILText>
     </View>
   );
@@ -220,6 +255,22 @@ export function CheckRow({ item, last, onPress }) {
         ) : null}
       </View>
     </Pressable>
+  );
+}
+
+export function ProgramFilter({ dark }) {
+  const { program, setProgram } = useProgramNav();
+  const current = PROGRAM_FILTERS.find((f) => f.id === program)?.label || 'All';
+  return (
+    <FilterBar
+      items={PROGRAM_FILTERS.map((f) => f.label)}
+      value={current}
+      onChange={(label) => {
+        const hit = PROGRAM_FILTERS.find((f) => f.label === label);
+        if (hit) setProgram(hit.id);
+      }}
+      dark={dark}
+    />
   );
 }
 

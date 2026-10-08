@@ -11,7 +11,6 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
-import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
 import OtpDeck from '../../src/components/otp/OtpDeck';
@@ -79,11 +78,6 @@ export default function VerifyOtpScreen({ navigation, route }) {
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
       <StatusBar style="dark" />
-      <ILHeader
-        onSearch={() => {}}
-        onNotifications={() => {}}
-        onProfile={() => {}}
-      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -93,6 +87,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 16,
+            paddingTop: Math.max(insets.top, 8) + 6,
             paddingBottom: Math.max(insets.bottom, 18) + 12,
           }}
         >

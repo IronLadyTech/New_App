@@ -43,6 +43,11 @@ export default function AuthNavigator() {
         name="Signup"
         getComponent={() => require('../screens/auth/SignupScreen').default}
       />
+      <Stack.Screen
+        name="Notifications"
+        options={{ gestureEnabled: true }}
+        getComponent={() => require('../screens/notifications/NotificationsScreen').default}
+      />
       {__DEV__ ? (
         <Stack.Screen
           name="ScreenLab"

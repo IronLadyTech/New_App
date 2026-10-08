@@ -1,9 +1,11 @@
-import React from 'react';
-import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Animated, Image, Platform, StyleSheet, Text, View } from 'react-native';
+import Pressable from './Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILLogoMark from './ILLogoMark';
 import ILText from './ILText';
@@ -16,6 +18,26 @@ const CORAL = '#ED1D24';
 const PILL_H = 56;
 const SIDE = 16;
 const GAP_TOP = 6;
+
+/**
+ * Bell default: climb to the navigator that owns Notifications. In the member app that is
+ * the Home tab's stack, so from other tabs it goes through Home.
+ */
+function openNotifications(navigation) {
+  let nav = navigation;
+  while (nav) {
+    const names = nav.getState?.()?.routeNames || [];
+    if (names.includes('Notifications')) {
+      nav.navigate('Notifications');
+      return;
+    }
+    if (names.includes('MyProgram') && names.includes('Home')) {
+      nav.navigate('Home', { screen: 'Notifications' });
+      return;
+    }
+    nav = nav.getParent?.();
+  }
+}
 
 /** Space a floating header covers, so scroll content can start below it. */
 export function useGlassHeaderPad() {
@@ -85,10 +107,85 @@ function Glass() {
   );
 }
 
+const PILL_SHADOW =
+  Platform.OS === 'web'
+    ? { boxShadow: '0 10px 24px rgba(17,55,68,0.22)' }
+    : {
+        shadowColor: '#113744',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 14,
+        elevation: 10,
+      };
+
+function ProfileFace({ photo, onPress, size = 36 }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Profile">
+      {photo ? (
+        <Image
+          source={photo}
+          style={{ width: size, height: size, borderRadius: size / 2, borderWidth: 1.5, borderColor: CREAM }}
+        />
+      ) : (
+        <View
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: 'rgba(245,242,232,0.16)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialIcons name="person" size={20} color={CREAM} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+function BrandMark() {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <ILLogoMark size={32} />
+      <Text
+        numberOfLines={1}
+        style={{
+          marginLeft: 10,
+          color: CREAM,
+          fontFamily: IL_FONTS.display,
+          fontSize: 16,
+          lineHeight: 20,
+          flexShrink: 0,
+          includeFontPadding: false,
+        }}
+      >
+        {'Iron\u00A0Lady'}
+      </Text>
+    </View>
+  );
+}
+
+function HeaderActions({ onSearch, onNotifications, onProfile, photo, showSearch, showProfile }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
+      <GhostIcon name="notifications-none" onPress={onNotifications} label="Notifications" badge />
+      {showProfile ? (
+        <View style={{ marginLeft: 6 }}>
+          <ProfileFace photo={photo} onPress={onProfile} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /**
  * Top header as a floating glass pill: logo + wordmark, search, bell, profile.
  * `floating` lays it over the page so content scrolls underneath it; pair it with
  * `useGlassHeaderPad()` as the scroll content's top padding.
+ * Pass `scrollY` to melt: full pill → face chip → gone. Used only where the
+ * caller opts in (LEP registered home).
  */
 export default function GlassHeader({
   onSearch,
@@ -99,16 +196,46 @@ export default function GlassHeader({
   showProfile = true,
   floating = false,
   insetTop = true,
+  scrollY,
+  inert = false,
 }) {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const bell = onNotifications || (() => openNotifications(navigation));
   const top = insetTop ? Math.max(insets.top, 8) : 8;
+  const melting = !!scrollY;
+  const [barW, setBarW] = useState(0);
+
+  const pillW =
+    melting && barW > 0
+      ? scrollY.interpolate({ inputRange: [0, 48], outputRange: [barW, 52], extrapolate: 'clamp' })
+      : '100%';
+  const pillH = melting
+    ? scrollY.interpolate({ inputRange: [0, 48], outputRange: [PILL_H, 36], extrapolate: 'clamp' })
+    : PILL_H;
+  const pillR = melting
+    ? scrollY.interpolate({ inputRange: [0, 48], outputRange: [PILL_H / 2, 18], extrapolate: 'clamp' })
+    : PILL_H / 2;
+  const chromeOp = melting
+    ? scrollY.interpolate({ inputRange: [0, 28], outputRange: [1, 0], extrapolate: 'clamp' })
+    : 1;
+  const wrapOp = melting
+    ? scrollY.interpolate({ inputRange: [56, 118], outputRange: [1, 0], extrapolate: 'clamp' })
+    : 1;
+  const wrapY = melting
+    ? scrollY.interpolate({ inputRange: [56, 118], outputRange: [0, -18], extrapolate: 'clamp' })
+    : 0;
+
+  const Pill = melting ? Animated.View : View;
+  const Wrap = melting ? Animated.View : View;
 
   return (
-    <View
-      pointerEvents="box-none"
+    <Wrap
+      pointerEvents={inert ? 'none' : 'box-none'}
       style={[
         { paddingTop: top + GAP_TOP, paddingHorizontal: SIDE, paddingBottom: floating ? 0 : 10 },
         floating && { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, elevation: 30 },
+        melting && { opacity: wrapOp, transform: [{ translateY: wrapY }] },
       ]}
     >
       {floating ? (
@@ -121,22 +248,25 @@ export default function GlassHeader({
         />
       ) : null}
       <View
-        style={{
-          height: PILL_H,
-          borderRadius: PILL_H / 2,
-          overflow: 'hidden',
-          borderWidth: 1,
-          borderColor: GLASS_EDGE,
-          ...(Platform.OS === 'web'
-            ? { boxShadow: '0 10px 24px rgba(17,55,68,0.22)' }
-            : {
-                shadowColor: '#113744',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.22,
-                shadowRadius: 14,
-                elevation: 10,
-              }),
+        onLayout={(e) => {
+          if (!melting) return;
+          const w = e.nativeEvent.layout.width;
+          if (w > 0 && Math.abs(w - barW) > 1) setBarW(w);
         }}
+      >
+      <Pill
+        style={[
+          {
+            height: melting ? pillH : PILL_H,
+            borderRadius: melting ? pillR : PILL_H / 2,
+            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: GLASS_EDGE,
+            alignSelf: melting ? 'flex-end' : 'stretch',
+            ...PILL_SHADOW,
+          },
+          melting ? { width: pillW } : null,
+        ]}
       >
         <Glass />
         <View
@@ -149,56 +279,51 @@ export default function GlassHeader({
             paddingRight: 8,
           }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <ILLogoMark size={32} />
-            <ILText
-              role="wordmark"
-              color={CREAM}
-              style={{ marginLeft: 10, fontFamily: IL_FONTS.display, fontSize: 15, lineHeight: 18 }}
-            >
-              Iron Lady
-            </ILText>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
-            <GhostIcon
-              name="notifications-none"
-              onPress={onNotifications}
-              label="Notifications"
-              badge
-            />
-            {showProfile ? (
-            <Pressable
-              onPress={onProfile}
-              accessibilityRole="button"
-              accessibilityLabel="Profile"
-              style={{ marginLeft: 6 }}
-            >
-              {photo ? (
-                <Image
-                  source={photo}
-                  style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: CREAM }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: 'rgba(245,242,232,0.16)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <MaterialIcons name="person" size={20} color={CREAM} />
+          {melting ? (
+            <>
+              <Animated.View
+                pointerEvents="box-none"
+                style={{
+                  position: 'absolute',
+                  left: 12,
+                  right: 52,
+                  top: 0,
+                  bottom: 0,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  opacity: chromeOp,
+                }}
+              >
+                <BrandMark />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
+                  <GhostIcon name="notifications-none" onPress={bell} label="Notifications" badge />
                 </View>
-              )}
-            </Pressable>
-            ) : null}
-          </View>
+              </Animated.View>
+              {showProfile ? (
+                <View style={{ marginLeft: 'auto' }}>
+                  <ProfileFace photo={photo} onPress={onProfile} />
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <BrandMark />
+              <HeaderActions
+                onSearch={onSearch}
+                onNotifications={bell}
+                onProfile={onProfile}
+                photo={photo}
+                showSearch={showSearch}
+                showProfile={showProfile}
+              />
+            </>
+          )}
         </View>
+      </Pill>
       </View>
-    </View>
+    </Wrap>
   );
 }
 

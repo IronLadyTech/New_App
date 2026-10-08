@@ -10,13 +10,13 @@ import { useNavigation } from '@react-navigation/native';
 import { GuestBackBar } from '../guest/GuestBits';
 import { Page, ProgressDark, RedCta, Seal, SoftChip, WhisperCard, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
+import { PROGRAMS } from '../../constants/programs';
+import { coursePhases } from '../../constants/programCourseSlice';
 import { lepFirstName } from '../../utils/lepState';
 import { useAuth } from '../../context/AuthContext';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import {
   FACE,
-  NOTICES,
-  PHASES,
   QUIZ_Q,
   ROAD,
   SCHEDULE_DAYS,
@@ -118,86 +118,6 @@ export function LepScheduleScreen() {
   );
 }
 
-export function LepNotificationsScreen() {
-  const nav = useLepNav();
-  const attention = NOTICES.filter((n) => n.kind === 'attention');
-  const guide = NOTICES.filter((n) => n.kind === 'guide');
-  return (
-    <Shell
-      title="Notifications"
-      sub="2 need attention"
-      right={
-        <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
-          Mark all read
-        </ILText>
-      }
-    >
-      <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginTop: 8 }]}>
-        Needs attention
-      </ILText>
-      <WhiteCard style={{ marginTop: 10, borderRadius: 22, overflow: 'hidden' }}>
-        {attention.map((n, i) => (
-          <NoticeRow key={n.title} item={n} last={i === attention.length - 1} onPress={() => n.go === 'Assignment' && nav.goAssignment()} />
-        ))}
-      </WhiteCard>
-      <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10, marginTop: 22 }]}>
-        From IL Guide
-      </ILText>
-      <WhiteCard style={{ marginTop: 10, borderRadius: 22, overflow: 'hidden' }}>
-        {guide.map((n, i) => (
-          <NoticeRow key={n.title} item={n} last={i === guide.length - 1} />
-        ))}
-      </WhiteCard>
-    </Shell>
-  );
-}
-
-function NoticeRow({ item, last, onPress }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: G.line,
-      }}
-    >
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: G.pink,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <MaterialIcons name={item.icon} size={18} color={G.cta} />
-      </View>
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="label" color={G.ink} style={{ flex: 1 }}>
-            {item.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 11 }}>
-            {item.ago}
-          </ILText>
-        </View>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-          {item.meta}
-        </ILText>
-        {item.action ? (
-          <ILText role="label" color={G.cta} style={[af, { marginTop: 8, fontSize: 12 }]}>
-            {item.action}
-          </ILText>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}
-
 export function LepGuideChatScreen() {
   const nav = useLepNav();
   const insets = useSafeAreaInsets();
@@ -293,17 +213,17 @@ export function LepPhaseDetailScreen() {
       <ILText role="bodySm" color={G.meta}>
         Phase by phase, from Moodle
       </ILText>
-      {PHASES.map((p) => (
-        <Pressable key={p.n} onPress={p.n === '04' ? nav.goAssignment : undefined}>
+      {coursePhases(PROGRAMS.LEP).map((p, i) => (
+        <Pressable key={p.id} onPress={() => nav.goCoursePhase(PROGRAMS.LEP, p.id)}>
           <WhiteCard style={{ marginTop: 10, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
             <MaterialIcons
-              name={p.done ? 'check-circle' : p.now ? 'radio-button-checked' : 'radio-button-unchecked'}
+              name={i === 3 ? 'radio-button-checked' : i < 3 ? 'check-circle' : 'radio-button-unchecked'}
               size={22}
-              color={p.done || p.now ? G.ink : '#C8C4B6'}
+              color={i <= 3 ? G.ink : '#C8C4B6'}
             />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <ILText role="label" color={G.ink}>
-                {p.n} {p.title}
+                {String(i + 1).padStart(2, '0')} {p.title}
               </ILText>
               <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
                 {p.sub}

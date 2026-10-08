@@ -10,6 +10,7 @@ import GuestChallengeDayScreen from '../screens/guest/GuestChallengeDayScreen';
 import GuestChallengeBonusScreen from '../screens/guest/GuestChallengeBonusScreen';
 import GuestChallengeCompleteScreen from '../screens/guest/GuestChallengeCompleteScreen';
 import GuestChallengeDoneScreen from '../screens/guest/GuestChallengeDoneScreen';
+import GuestDrillScreen from '../screens/guest/GuestDrillScreen';
 import GuestTabBar from '../components/il/GuestTabBar';
 
 const Tab = createBottomTabNavigator();
@@ -34,6 +35,7 @@ function GuestTabs() {
       tabBar={(props) => <GuestTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        freezeOnBlur: true,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',
@@ -60,6 +62,15 @@ export default function GuestNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="GuestTabs" component={GuestTabs} />
       <Stack.Screen name="ProgramDetail" component={GuestProgramDetailScreen} />
+      <Stack.Screen name="GuestDrill" component={GuestDrillScreen} />
+      <Stack.Screen
+        name="Notifications"
+        getComponent={() => require('../screens/notifications/NotificationsScreen').default}
+      />
+      <Stack.Screen
+        name="Watch"
+        getComponent={() => require('../screens/program/WatchScreen').default}
+      />
     </Stack.Navigator>
   );
 }

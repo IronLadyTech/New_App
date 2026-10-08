@@ -45,7 +45,6 @@ export default function FeedScreen({ navigation }) {
         photoUrl={profile?.photoURL}
         insetTop={false}
         onProfile={() => navigation.getParent()?.navigate('Profile')}
-        onNotifications={() => navigation.navigate('Leaderboard')}
         onSearch={() => navigation.getParent()?.navigate('Learn')}
       />
       <View className="flex-row items-center justify-between px-4 pb-2 pt-2">

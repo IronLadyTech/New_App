@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';

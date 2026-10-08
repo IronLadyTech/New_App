@@ -1,11 +1,5 @@
 import React, { useRef, useState } from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Image, ScrollView, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -27,6 +21,7 @@ import {
 } from './GuestBits';
 import { CoverThumb } from '../lep/LepBits';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import Pressable from '../../components/il/Press';
 import { useGuestActions } from './useGuestActions';
 import {
   CHALLENGE_DAYS,
@@ -36,6 +31,7 @@ import {
   EPISODES,
   FACE,
   HERO,
+  MC_COVER,
   HOME_SLIDES,
   QOTD,
   STORIES,
@@ -59,8 +55,7 @@ export default function GuestHomeScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const { width } = useWindowDimensions();
-  const { findRegistration, goProgram, goChallenge, goEngage, previewRegisteredHome, previewEnrolledHome } =
-    useGuestActions();
+  const { findRegistration, goProgram, goDrill, goChallenge, goEngage, goWatch } = useGuestActions();
   const [slide, setSlide] = useState(0);
   const pager = useRef(null);
   const cardW = width - 40;
@@ -143,7 +138,7 @@ export default function GuestHomeScreen() {
             {HOME_SLIDES.map((s) => (
               <View key={s.program} style={{ width: cardW }}>
                 <View style={{ borderRadius: 24, overflow: 'hidden', height: 360 }}>
-                  <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  <Image source={s.img || HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                   <LinearGradient
                     colors={['rgba(17,55,68,0.35)', 'rgba(10,32,40,0.94)']}
                     style={fillAbs}
@@ -414,7 +409,7 @@ export default function GuestHomeScreen() {
           <SectionHead title="Start here" accent="Free" />
           <WhiteCard onPress={() => goProgram('mc')} style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
             <View style={{ height: 160 }}>
-              <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={MC_COVER} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               <View
                 style={{
                   position: 'absolute',
@@ -527,7 +522,11 @@ export default function GuestHomeScreen() {
           </ILText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
             {CSUITE_HOME.map((c) => (
-              <View key={c.title} style={{ width: 220, marginRight: 12 }}>
+              <Pressable
+                key={c.title}
+                onPress={() => goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
+                style={{ width: 220, marginRight: 12 }}
+              >
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
                   <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                     <CoverThumb source={c.img} play time={c.tag} />
@@ -541,7 +540,7 @@ export default function GuestHomeScreen() {
                     </ILText>
                   </View>
                 </WhiteCard>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
         </View>
@@ -591,7 +590,16 @@ export default function GuestHomeScreen() {
               </ILText>
             </View>
           </View>
-          <Pressable onPress={goEngage} style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden' }}>
+          <Pressable
+            onPress={() =>
+              goWatch({
+                assetKey: EPISODES[0].assetKey,
+                title: EPISODES[0].title,
+                sub: EPISODES[0].person,
+              })
+            }
+            style={{ marginTop: 14, borderRadius: 18, overflow: 'hidden' }}
+          >
             <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
               <CoverThumb source={EPISODES[0].img} play time={`Latest · ${EPISODES[0].min}`} />
             </View>
@@ -606,47 +614,6 @@ export default function GuestHomeScreen() {
           </Pressable>
         </View>
 
-        <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingVertical: 4 }}>
-          {EPISODES.filter((e) => !e.featured).slice(0, 4).map((e, i) => (
-            <View
-              key={e.title}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                borderTopWidth: i ? 1 : 0,
-                borderTopColor: G.line,
-              }}
-            >
-              <View style={{ width: 72, height: 40, borderRadius: 8, overflow: 'hidden', backgroundColor: G.dark }}>
-                <CoverThumb source={e.img} />
-              </View>
-              <View style={{ flex: 1, marginHorizontal: 12 }}>
-                <ILText role="label" color={G.ink} numberOfLines={2} style={{ fontSize: 13, lineHeight: 18 }}>
-                  {e.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 11 }}>
-                  {e.person.split(' · ')[0]} · {e.min}
-                </ILText>
-              </View>
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: G.line,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="play-arrow" size={16} color={G.ink} />
-              </View>
-            </View>
-          ))}
-        </WhiteCard>
-
         <View style={{ marginTop: 28 }}>
           <SectionHead title="Must try" />
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
@@ -656,6 +623,7 @@ export default function GuestHomeScreen() {
             {DRILLS.map((d) => (
               <WhiteCard
                 key={d.title}
+                onPress={() => goDrill(d.id)}
                 style={{ width: 140, marginRight: 10, borderRadius: 18, padding: 14 }}
               >
                 <PinkDisc name={d.icon} size={36} />
@@ -680,7 +648,11 @@ export default function GuestHomeScreen() {
           </ILText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
             {COMMUNITY_VIDEOS.map((v) => (
-              <View key={v.title} style={{ width: 240, marginRight: 12 }}>
+              <Pressable
+                key={v.title}
+                onPress={() => goWatch({ assetKey: v.assetKey, title: v.title, sub: v.meta })}
+                style={{ width: 240, marginRight: 12 }}
+              >
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
                   <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                     <CoverThumb source={v.img} play />
@@ -696,7 +668,7 @@ export default function GuestHomeScreen() {
                     ) : null}
                   </View>
                 </WhiteCard>
-              </View>
+              </Pressable>
             ))}
           </ScrollView>
         </View>
@@ -899,39 +871,6 @@ export default function GuestHomeScreen() {
           body="Tell us the number you registered with, or the email, and we will connect this device to your record."
           onPress={findRegistration}
         />
-
-        {__DEV__ ? (
-          <WhiteCard style={{ marginTop: 16, borderRadius: 20, padding: 16 }}>
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, letterSpacing: 1.2 }]}>
-              Dev · preview homes
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}>
-              Open the LEP homes without OTP. Log out from Profile to come back here.
-            </ILText>
-            <Pressable
-              onPress={previewRegisteredHome}
-              style={{ marginTop: 14, backgroundColor: G.dark, borderRadius: 999, paddingVertical: 14, alignItems: 'center' }}
-            >
-              <ILText role="label" color="#FFFFFF">
-                Registered home
-              </ILText>
-            </Pressable>
-            <Pressable
-              onPress={previewEnrolledHome}
-              style={{
-                marginTop: 10,
-                backgroundColor: G.cta,
-                borderRadius: 999,
-                paddingVertical: 14,
-                alignItems: 'center',
-              }}
-            >
-              <ILText role="label" color="#FFFFFF">
-                Enrolled home
-              </ILText>
-            </Pressable>
-          </WhiteCard>
-        ) : null}
       </ScrollView>
     </Page>
   );

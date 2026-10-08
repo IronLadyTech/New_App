@@ -1,10 +1,10 @@
 import React from 'react';
-import { Alert, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Platform, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
-import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
 import { BATCHES } from './ChooseBatchDateScreen';
@@ -48,7 +48,7 @@ function MoneyRow({ label, detail, amount, status, paid }) {
           role="title"
           color={INK}
           style={{
-            fontFamily: IL_FONTS.display,
+            fontFamily: IL_FONTS.displayBold,
             fontSize: 16,
             lineHeight: 21,
             letterSpacing: -0.2,
@@ -152,17 +152,11 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
       <StatusBar style="dark" />
-      <ILHeader
-        photoUrl={profile?.photoURL}
-        onSearch={() => {}}
-        onNotifications={() => {}}
-        onProfile={() => {}}
-      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingTop: Math.max(insets.top, 12) + 8,
           paddingBottom: Math.max(insets.bottom, 16) + 28,
         }}
       >
@@ -378,7 +372,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             <BatchLine
               tag="Then"
               title="Weekly sessions for four weeks"
-              note="Tuesday evening and Saturday morning, ending with certification"
+              note="Ending with certification"
               last
             />
           </View>

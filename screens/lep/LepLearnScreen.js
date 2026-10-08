@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -70,7 +71,7 @@ export default function LepLearnScreen() {
               <PillRow items={chips} value={chip} onChange={setChip} />
             </ScrollView>
             {chip === 'Principles' ? (
-              <PrinciplesEnrolled onResume={nav.goPhase} />
+              <PrinciplesEnrolled onResume={() => nav.goCoursePhase('lep', 'day-1')} />
             ) : chip === 'Case studies' ? (
               <CasesEnrolled onMark={nav.goMyProgram} />
             ) : chip === 'Events' ? (
@@ -88,13 +89,19 @@ export default function LepLearnScreen() {
               <PillRow items={chips} value={chip} onChange={setChip} />
             </ScrollView>
             {chip === 'Principles' ? (
-              <PrinciplesPane onEnroll={nav.goEnroll} />
+              <PrinciplesPane onEnroll={nav.goEnroll} onPractice={nav.goPractice} />
             ) : chip === 'Case studies' ? (
-              <CasesPane onEnroll={nav.goEnroll} />
+              <CasesPane onEnroll={nav.goEnroll} onWatch={nav.goWatch} />
             ) : chip === 'Events' ? (
               <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
             ) : (
-              <ForYouPane enrolled={false} onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
+              <ForYouPane
+                enrolled={false}
+                onEnroll={nav.goEnroll}
+                onTicket={nav.goTicket}
+                onPractice={nav.goPractice}
+                onWatch={nav.goWatch}
+              />
             )}
           </>
         )}
@@ -122,7 +129,7 @@ const REG_HEAD = {
   Events: {
     title: 'Events',
     badge: 'OPEN TO ALL',
-    sub: 'Chapter meetups and open sessions are open to every member. Cohort rooms open when you enroll.',
+    sub: 'Chapter meetups, open sessions and your cohort dates — all in one place.',
   },
 };
 
@@ -159,20 +166,36 @@ function RegisteredHead({ chip }) {
   );
 }
 
-function ForYouPane({ enrolled, onEnroll, onTicket }) {
+function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
+  const openWatch = (item) => {
+    if (item.practiceId) onPractice?.('lep', item.practiceId);
+    else if (item.assetKey) onWatch?.({ assetKey: item.assetKey, title: item.title, sub: item.who || item.meta });
+  };
+
   return (
     <>
-      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+      <Pressable
+        onPress={() =>
+          onWatch?.({
+            assetKey: 'csuite:radhika',
+            title: "Technology isn't a cost. It's a growth multiplier.",
+            sub: 'Radhika Sharma · Technology',
+          })
+        }
+        style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}
+      >
         <View style={{ aspectRatio: 16 / 9 }}>
           <CoverThumb source={COVER.radhika} height="100%" play />
         </View>
-      </View>
+      </Pressable>
       <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
         PICKED FOR WOMEN IN TECHNOLOGY IN BENGALURU
       </ILText>
-      <ILText role="label" color={G.cta} style={{ marginTop: 6, fontSize: 13 }}>
-        Start watch →
-      </ILText>
+      <Pressable onPress={() => onPractice?.('lep', 'lep-principles-video')}>
+        <ILText role="label" color={G.cta} style={{ marginTop: 6, fontSize: 13 }}>
+          Start watch →
+        </ILText>
+      </Pressable>
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent="1 in progress" />
@@ -180,7 +203,11 @@ function ForYouPane({ enrolled, onEnroll, onTicket }) {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
           {LEARN_CONTINUE.map((item) => (
-            <ContinueCard key={item.title} item={item} />
+            <ContinueCard
+              key={item.title}
+              item={item}
+              onPress={() => (item.open ? openWatch(item) : onEnroll?.())}
+            />
           ))}
         </View>
       </ScrollView>
@@ -190,8 +217,9 @@ function ForYouPane({ enrolled, onEnroll, onTicket }) {
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
         {LEARN_FRESH.map((item, i) => (
-          <View
+          <Pressable
             key={item.title}
+            onPress={() => (item.open ? openWatch(item) : onEnroll?.())}
             style={{
               paddingHorizontal: 14,
               paddingVertical: 14,
@@ -228,7 +256,7 @@ function ForYouPane({ enrolled, onEnroll, onTicket }) {
               </ILText>
             </View>
             <MaterialIcons name={item.open ? 'bookmark-border' : 'lock'} size={16} color={G.meta} />
-          </View>
+          </Pressable>
         ))}
       </WhiteCard>
 
@@ -333,9 +361,10 @@ function ForYouPane({ enrolled, onEnroll, onTicket }) {
   );
 }
 
-function ContinueCard({ item }) {
+function ContinueCard({ item, onPress }) {
   return (
     <WhiteCard
+      onPress={onPress}
       style={{
         width: 240,
         marginRight: 12,
@@ -511,7 +540,7 @@ function NumberRow({ item, locked, onPress }) {
   );
 }
 
-function PrinciplesPane({ onEnroll }) {
+function PrinciplesPane({ onEnroll, onPractice }) {
   return (
     <>
       <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 18 }}>
@@ -538,7 +567,11 @@ function PrinciplesPane({ onEnroll }) {
         <SectionHead title="Open to you" accent="4 principles" />
       </View>
       {PRINCIPLES_OPEN.map((p) => (
-        <NumberRow key={p.n} item={p} />
+        <NumberRow
+          key={p.n}
+          item={p}
+          onPress={() => p.practiceId && onPractice?.('lep', p.practiceId)}
+        />
       ))}
 
       <View style={{ marginTop: 26 }}>
@@ -575,7 +608,8 @@ function PrinciplesPane({ onEnroll }) {
   );
 }
 
-function CasesPane({ onEnroll }) {
+function CasesPane({ onEnroll, onWatch }) {
+  const featured = CASES_ENR.find((c) => c.featured);
   const locked = CASES_ENR.filter((c) => !c.featured).map((c) => ({
     tag: c.tag,
     title: c.title,
@@ -583,11 +617,21 @@ function CasesPane({ onEnroll }) {
   }));
   return (
     <>
-      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+      <Pressable
+        onPress={() =>
+          featured &&
+          onWatch?.({
+            assetKey: featured.assetKey,
+            title: featured.title,
+            sub: `${featured.who} · Cybersecurity`,
+          })
+        }
+        style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}
+      >
         <View style={{ aspectRatio: 16 / 9 }}>
           <CoverThumb source={COVER.priyanka} play time="31 mins" />
         </View>
-      </View>
+      </Pressable>
       <View style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
           <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
@@ -729,18 +773,18 @@ function EventsPane({ onEnroll, onTicket }) {
       ))}
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Cohort rooms" accent="Locked" />
+        <SectionHead title="Cohort rooms" accent="Your batch" />
       </View>
       {LEARN_EVENTS_LOCKED.map((e) => (
         <WhiteCard
           key={e.title}
+          onPress={onTicket}
           style={{
             marginTop: 10,
             borderRadius: 18,
             padding: 14,
             flexDirection: 'row',
             alignItems: 'center',
-            opacity: 0.72,
           }}
         >
           <View
@@ -748,12 +792,12 @@ function EventsPane({ onEnroll, onTicket }) {
               width: 44,
               height: 44,
               borderRadius: 12,
-              backgroundColor: G.mutedFill,
+              backgroundColor: G.pink,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <MaterialIcons name={e.icon} size={18} color={G.ink} />
+            <MaterialIcons name={e.icon} size={18} color={G.cta} />
           </View>
           <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
             <ILText role="label" color={G.ink} style={{ fontSize: 15 }}>
@@ -763,15 +807,9 @@ function EventsPane({ onEnroll, onTicket }) {
               {e.meta}
             </ILText>
           </View>
-          <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+          <MaterialIcons name="chevron-right" size={18} color={G.meta} />
         </WhiteCard>
       ))}
-
-      <GateCard
-        title="Your seat is held"
-        body="Complete enrollment by 15 Sep to keep it and open every cohort room."
-        onPress={onEnroll}
-      />
     </>
   );
 }

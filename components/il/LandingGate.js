@@ -22,7 +22,18 @@ export default function LandingGate({ profile, forcedClosed }) {
 
   const programs = getEnrolledPrograms(profile);
   const wrap = (node) => (
-    <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 40 }}>
+    <View
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 40,
+        elevation: 50,
+        backgroundColor: '#F7F6E4',
+      }}
+    >
       {node}
     </View>
   );

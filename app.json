@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "LMS App",
+    "name": "Iron Lady",
     "slug": "lms-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "lmsapp",
@@ -13,8 +13,9 @@
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
-        "backgroundColor": "#1a78f5",
+        "backgroundColor": "#ED1D24",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -29,12 +30,27 @@
       "expo-secure-store",
       "expo-video",
       [
-        "expo-notifications",
+        "expo-audio",
         {
-          "color": "#1a78f5"
+          "microphonePermission": "Allow Iron Lady to record your Power Pitch."
         }
       ],
-      "expo-font"
+      [
+        "expo-notifications",
+        {
+          "color": "#ED1D24",
+          "icon": "./assets/icon.png"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ED1D24",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ]
     ]
   }
 }

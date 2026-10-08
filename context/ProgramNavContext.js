@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from './AuthContext';
-import { PAYMENT_STATUS, getProgramEntry } from '../constants/programs';
+import { PAYMENT_STATUS } from '../constants/programs';
 import { getEnrolledProgramIds, programPaymentStatus } from '../utils/programAccess';
 
 const ProgramNavContext = createContext(null);
@@ -15,6 +15,7 @@ export const PROGRAM_FILTERS = [
 
 export function deriveHomeProgram(profile) {
   if (!profile) return 'lep';
+  if (profile.labProgram) return profile.labProgram;
   const ids = getEnrolledProgramIds(profile);
   const lepPaid = ids.has('lep') && programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.PAID;
   const bmRegistered =
@@ -26,6 +27,9 @@ export function deriveHomeProgram(profile) {
 }
 
 export function programStage(profile, programId) {
+  if (profile?.labProgram === programId && (profile?.labState === 'enrolled' || profile?.labState === 'registered')) {
+    return profile.labState;
+  }
   if (programId !== '100bm' && programId !== 'mbw') return 'enrolled';
   return programPaymentStatus(profile, programId) === PAYMENT_STATUS.REGISTER
     ? 'registered'
@@ -42,9 +46,11 @@ export function ProgramNavProvider({ children }) {
   // A new demo journey (picked after Seat held) starts from its own program and stage.
   const journey = `${profile?.labProgram || ''}:${profile?.labState || ''}`;
   useEffect(() => {
+    const [prog] = journey.split(':');
     setPicked(false);
     setStageOverride(null);
     setSection('Journey');
+    if (prog) setProgramState(prog);
   }, [journey]);
 
   const shown = picked ? program : deriveHomeProgram(profile);
@@ -52,6 +58,7 @@ export function ProgramNavProvider({ children }) {
   const setProgram = useCallback((id) => {
     setPicked(true);
     setProgramState(id);
+    setSection('Journey');
   }, []);
 
   const value = useMemo(
@@ -75,6 +82,11 @@ export function useProgramNav() {
   return ctx;
 }
 
+/** Null outside the signed-in app (guest and sign-in screens). */
+export function useProgramNavMaybe() {
+  return useContext(ProgramNavContext);
+}
+
 export function useProgramRoutes() {
   const navigation = useNavigation();
   const nav = useProgramNav();
@@ -88,18 +100,16 @@ export function useProgramRoutes() {
     [nav, navigation]
   );
 
+  // Open the Learn tab itself: it shows the program's own Learn screen
+  // (100BM Learn, LEP Learn…), not the old Moodle task list.
   const openLearn = useCallback(
     (programId) => {
-      const entry = getProgramEntry(programId);
-      navigation.navigate('Learn', {
-        screen: 'ProgramTasks',
-        params: {
-          programId,
-          title: entry?.title || 'Program',
-        },
-      });
+      if (programId && typeof programId === 'string' && programId !== nav.program) {
+        nav.setProgram(programId);
+      }
+      navigation.navigate('Learn', { screen: 'LepLearn' });
     },
-    [navigation]
+    [nav, navigation]
   );
 
   const openPayment = useCallback(() => {

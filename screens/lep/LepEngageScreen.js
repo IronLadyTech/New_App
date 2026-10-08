@@ -1,5 +1,6 @@
 import React from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable as RNPressable, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,8 +12,58 @@ import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled } from '../../utils/lepState';
 import { CoverThumb, LepHeader, LinkRow, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, PODCASTS } from './lepData';
+import { CSUITE_HOME } from '../guest/guestData';
+import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, PODCASTS, PREWORK } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+
+function CsuiteVideos({ nav }) {
+  return (
+    <>
+      <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
+        <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
+          C-suite conversations
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+          {CSUITE_HOME.length} videos
+        </ILText>
+      </View>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+        Learn from women at the top table
+      </ILText>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        style={{ marginTop: 12, marginHorizontal: -20 }}
+      >
+        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
+          {CSUITE_HOME.map((c) => (
+            <Pressable
+              key={c.title}
+              onPress={() => nav.goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
+              style={{ width: 220, marginRight: 12 }}
+            >
+              <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
+                <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                  <CoverThumb source={c.img} play time={c.tag} />
+                </View>
+                <View style={{ padding: 12 }}>
+                  <ILText role="label" color={G.ink} style={{ fontSize: 13 }} numberOfLines={2}>
+                    {c.title}
+                  </ILText>
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }} numberOfLines={1}>
+                    {c.who}
+                  </ILText>
+                </View>
+              </WhiteCard>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </>
+  );
+}
 
 export default function LepEngageScreen() {
   const { profile } = useAuth();
@@ -183,6 +234,8 @@ function EnrolledEngage({ nav }) {
         </View>
       </WhiteCard>
 
+      <CsuiteVideos nav={nav} />
+
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'center' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           Stories from the Army
@@ -193,7 +246,11 @@ function EnrolledEngage({ nav }) {
       </View>
       <View style={{ flexDirection: 'row', marginTop: 12 }}>
         {ARMY_STORIES.map((story, i) => (
-          <WhiteCard key={story.title} style={{ flex: 1, marginRight: i === 0 ? 10 : 0, borderRadius: 20, overflow: 'hidden' }}>
+          <WhiteCard
+            key={story.title}
+            style={{ flex: 1, marginRight: i === 0 ? 10 : 0, borderRadius: 20, overflow: 'hidden' }}
+            onPress={() => nav.goWatch({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
+          >
             <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
               <CoverThumb source={story.img} play time={story.time} />
             </View>
@@ -271,36 +328,33 @@ function RegisteredEngage({ nav }) {
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           Iron Lady Speaks
         </ILText>
-        <LinkRow label="All episodes" />
+        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+          {PODCASTS.length} episodes · free
+        </ILText>
       </View>
-
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        <View style={{ aspectRatio: 16 / 9 }}>
-          <CoverThumb source={PODCASTS[0].img} play time={PODCASTS[0].meta} />
-        </View>
-        <View style={{ padding: 14 }}>
-          <SoftChip>Free</SoftChip>
-          <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
-            {PODCASTS[0].who}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-            {PODCASTS[0].title}
-          </ILText>
-        </View>
-      </WhiteCard>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+        Conversations with women who made the leap
+      </ILText>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {PODCASTS.slice(1).map((ep) => (
-            <WhiteCard key={ep.title} style={{ width: 240, marginRight: 12, borderRadius: 18, overflow: 'hidden' }}>
+          {PODCASTS.map((ep) => (
+            <WhiteCard
+              key={ep.assetKey}
+              style={{ width: 220, marginRight: 12, borderRadius: 18, overflow: 'hidden' }}
+              onPress={() => nav.goWatch({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
+            >
               <View style={{ aspectRatio: 16 / 9 }}>
-                <CoverThumb source={ep.img} play />
+                <CoverThumb source={ep.img} play time={ep.meta} />
               </View>
               <View style={{ padding: 12 }}>
                 <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
                   {ep.meta}
                 </ILText>
                 <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={2}>
+                  {ep.title}
+                </ILText>
+                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }} numberOfLines={1}>
                   {ep.who}
                 </ILText>
               </View>
@@ -352,59 +406,39 @@ function RegisteredEngage({ nav }) {
         </WhiteCard>
       ))}
 
-      <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          Stories from the Army
+          Prepare for Day 1
         </ILText>
-        <View style={{ backgroundColor: '#E8F6EE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-          <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-            Free Access
-          </ILText>
-        </View>
+        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+          3 essentials
+        </ILText>
       </View>
-      <View style={{ flexDirection: 'row', marginTop: 12 }}>
-        {ARMY_STORIES.map((story, i) => (
-          <WhiteCard key={story.title} style={{ flex: 1, marginRight: i === 0 ? 10 : 0, borderRadius: 20, overflow: 'hidden' }}>
-            <View style={{ height: 110, backgroundColor: G.dark, alignItems: 'center', justifyContent: 'center' }}>
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: 'rgba(255,255,255,0.18)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MaterialIcons name="play-arrow" size={20} color="#FFFFFF" />
-              </View>
-              <View
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  bottom: 10,
-                  backgroundColor: '#111',
-                  borderRadius: 6,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                }}
-              >
-                <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                  {story.time}
-                </ILText>
-              </View>
-            </View>
-            <View style={{ padding: 12 }}>
-              <ILText role="label" color={G.ink} style={{ fontSize: 13 }} numberOfLines={3}>
-                {story.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
-                {story.meta}
-              </ILText>
-            </View>
-          </WhiteCard>
-        ))}
-      </View>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+        Pre-work videos — not in the podcast library above
+      </ILText>
+      {PREWORK.map((item) => (
+        <WhiteCard
+          key={item.practiceId}
+          style={{ marginTop: 10, borderRadius: 18, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' }}
+          onPress={() => nav.goPractice('lep', item.practiceId)}
+        >
+          <View style={{ width: 88, height: 56, backgroundColor: G.dark }}>
+            <CoverThumb source={item.thumb} play time={item.min} />
+          </View>
+          <View style={{ flex: 1, paddingHorizontal: 12, paddingVertical: 10 }}>
+            <ILText role="label" color={G.ink} numberOfLines={1}>
+              {item.title}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }} numberOfLines={2}>
+              {item.sub}
+            </ILText>
+          </View>
+          <MaterialIcons name="chevron-right" size={20} color={G.meta} style={{ marginRight: 10 }} />
+        </WhiteCard>
+      ))}
+
+      <CsuiteVideos nav={nav} />
 
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'center' }}>
         <ILText role="eyebrow" color={G.meta} style={[af, { flex: 1, fontSize: 10, letterSpacing: 1 }]}>
@@ -446,11 +480,11 @@ function RegisteredEngage({ nav }) {
       <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', marginTop: 16, fontSize: 13 }}>
         Batches & live breakout circles locked.
       </ILText>
-      <Pressable onPress={nav.goEnroll}>
+      <RNPressable onPress={nav.goEnroll}>
         <ILText role="label" color={G.cta} style={{ textAlign: 'center', marginTop: 6 }}>
           Opens when your enrollment is complete →
         </ILText>
-      </Pressable>
+      </RNPressable>
     </>
   );
 }

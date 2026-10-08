@@ -1,16 +1,20 @@
-import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
-import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
-import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
+import { useProgramNav } from '../../context/ProgramNavContext';
+import { GuideFace, LepHeader, ProgramFilter } from '../lep/LepBits';
+import { COVER, HERO } from '../lep/lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+
+const PINK_TILE = '#FDECEC';
 
 export function firstName(profile) {
   const raw = profile?.displayName || profile?.name || profile?.email || '';
@@ -26,11 +30,10 @@ export function ProgramPage({ children }) {
   return (
     <View style={{ flex: 1, backgroundColor: IL_BRAND.cream }}>
       <StatusBar style="dark" />
-      <ILHeader
+      <LepHeader
         floating
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile')}
-        onNotifications={() => navigation.navigate('Engage')}
         onSearch={() => navigation.navigate('Learn')}
       />
       <ScrollView
@@ -48,40 +51,9 @@ export function ProgramPage({ children }) {
 }
 
 export function FilterPills() {
-  const { program, setProgram } = useProgramNav();
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: '#EFEADF',
-        borderRadius: 999,
-        padding: 4,
-        marginTop: 16,
-      }}
-    >
-      {PROGRAM_FILTERS.map((item) => {
-        const on = program === item.id;
-        return (
-          <Pressable
-            key={item.id}
-            onPress={() => setProgram(item.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            style={{
-              flex: 1,
-              minHeight: 36,
-              borderRadius: 999,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: on ? IL_BRAND.forest : 'transparent',
-            }}
-          >
-            <ILText role="label" color={on ? IL_BRAND.white : IL_BRAND.muted} style={{ fontSize: 13 }}>
-              {item.label}
-            </ILText>
-          </Pressable>
-        );
-      })}
+    <View style={{ marginTop: 16 }}>
+      <ProgramFilter />
     </View>
   );
 }
@@ -166,7 +138,7 @@ export function SoftCard({ children, style, onPress }) {
   );
 }
 
-export function SectionLabel({ title, sub, action, onAction, eyebrow }) {
+export function SectionLabel({ title, sub, action, onAction, eyebrow, badge }) {
   return (
     <View
       style={{
@@ -189,6 +161,21 @@ export function SectionLabel({ title, sub, action, onAction, eyebrow }) {
           </ILText>
         ) : null}
       </View>
+      {badge ? (
+        <View
+          style={{
+            backgroundColor: PINK_TILE,
+            borderRadius: 999,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            alignSelf: 'center',
+          }}
+        >
+          <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }} numberOfLines={1}>
+            {badge}
+          </ILText>
+        </View>
+      ) : null}
       {action ? (
         <Pressable onPress={onAction} accessibilityRole="button" hitSlop={8}>
           <ILText role="label" color={IL_BRAND.red} style={{ fontSize: 13 }}>
@@ -245,22 +232,44 @@ export function PhaseRow({ kicker, title, detail, note, state, onPress, last }) 
   );
 }
 
-export function CheckRow({ title, detail, done, tag, onPress }) {
+export function CheckRow({ title, detail, done, tag, onPress, last = true }) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
-      style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 12 }}
+      accessibilityState={{ checked: !!done }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: IL_BRAND.line,
+      }}
     >
-      <MaterialIcons
-        name={done ? 'check-circle' : 'radio-button-unchecked'}
-        size={22}
-        color={done ? IL_BRAND.paidGreen : IL_BRAND.dim}
-      />
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          borderWidth: done ? 0 : 1.5,
+          borderColor: '#C8C4B6',
+          backgroundColor: done ? IL_BRAND.forest : 'transparent',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {done ? <MaterialIcons name="check" size={15} color="#FFFFFF" /> : null}
+      </View>
       <View style={{ marginLeft: 12, flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-          <ILText role="label">{title}</ILText>
+          <ILText
+            role="label"
+            color={done ? IL_BRAND.muted : IL_BRAND.ink}
+            style={done ? { textDecorationLine: 'line-through' } : null}
+          >
+            {title}
+          </ILText>
           {tag ? (
             <View
               style={{
@@ -417,27 +426,32 @@ export function LinkRow({ icon, title, sub, onPress }) {
           </ILText>
         ) : null}
       </View>
-      <MaterialIcons name="chevron-right" size={22} color={IL_BRAND.dim} />
+      <MaterialIcons name="arrow-forward" size={20} color={IL_BRAND.red} />
     </Pressable>
   );
 }
 
 export function Whisper({ body, action, onAction }) {
+  const [open, setOpen] = useState(true);
+  if (!open) return null;
   return (
     <SoftCard>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <GuideFace size={44} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
           <ILText role="label">IL Guide’s Whisper</ILText>
           <ILText role="bodySm" color={IL_BRAND.dim}>
             Cohort Guide
           </ILText>
         </View>
-        <MaterialIcons name="close" size={18} color={IL_BRAND.dim} />
+        <Pressable onPress={() => setOpen(false)} hitSlop={10} accessibilityLabel="Dismiss whisper">
+          <MaterialIcons name="close" size={18} color={IL_BRAND.dim} />
+        </Pressable>
       </View>
-      <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10, marginTop: 10 }}>
+      <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10, marginTop: 12 }}>
         Curated with Rajesh
       </ILText>
-      <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginTop: 8 }}>
+      <ILText role="body" color={IL_BRAND.ink} style={{ marginTop: 6 }}>
         {body}
       </ILText>
       {action ? (
@@ -453,47 +467,75 @@ export function Whisper({ body, action, onAction }) {
 
 export function VideoCard({ onPress, kicker = 'This week’s must-watch' }) {
   return (
-    <View style={{ marginTop: 12 }}>
-      <ILText role="eyebrow" color={IL_BRAND.dim} style={{ fontSize: 10, marginBottom: 8 }}>
-        {kicker}
-      </ILText>
-    <Pressable onPress={onPress} accessibilityRole="button">
-      <View style={{ backgroundColor: IL_BRAND.forest, borderRadius: 22, padding: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Pressable onPress={onPress} accessibilityRole="button" style={{ marginTop: 12 }}>
+      <LinearGradient
+        colors={['#1F3A4A', IL_BRAND.forest]}
+        style={{ borderRadius: 24, padding: 16, overflow: 'hidden' }}
+      >
+        <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
+          {kicker}
+        </ILText>
+        <View style={{ marginTop: 12, aspectRatio: 16 / 10, borderRadius: 16, overflow: 'hidden' }}>
+          <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
           <View
             style={{
+              position: 'absolute',
+              left: 12,
+              top: 12,
               backgroundColor: IL_BRAND.red,
               borderRadius: 999,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
             }}
           >
             <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 9 }}>
               C-suite · must watch
             </ILText>
           </View>
-          <ILText role="bodySm" color={IL_BRAND.mutedOnDark}>
-            Live session
-          </ILText>
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                backgroundColor: IL_BRAND.red,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
+            </View>
+          </View>
+          <View
+            style={{
+              position: 'absolute',
+              right: 10,
+              bottom: 10,
+              backgroundColor: 'rgba(17,55,68,0.85)',
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+            }}
+          >
+            <ILText role="bodySm" color="#FFFFFF" style={{ fontSize: 11, lineHeight: 14 }}>
+              Live session
+            </ILText>
+          </View>
         </View>
-        <View
-          style={{
-            marginTop: 18,
-            width: 54,
-            height: 54,
-            borderRadius: 27,
-            backgroundColor: 'rgba(255,255,255,0.16)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            alignSelf: 'center',
-          }}
-        >
-          <MaterialIcons name="play-arrow" size={32} color="#FFFFFF" />
-        </View>
-        <ILText role="title" color="#FFFFFF" style={{ marginTop: 16 }}>
+        <ILText role="title" color="#FFFFFF" style={{ marginTop: 14 }}>
           Winning Ways for Women
         </ILText>
-        <ILText role="bodySm" color={IL_BRAND.mutedOnDark}>
+        <ILText role="bodySm" color="#FFFFFF" style={{ marginTop: 2 }}>
           Indra Nooyi · former CEO, PepsiCo
         </ILText>
         <View
@@ -501,52 +543,48 @@ export function VideoCard({ onPress, kicker = 'This week’s must-watch' }) {
             marginTop: 14,
             backgroundColor: IL_BRAND.red,
             borderRadius: 999,
-            alignSelf: 'flex-start',
-            paddingHorizontal: 16,
-            paddingVertical: 8,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
           <ILText role="label" color="#FFFFFF">
             Watch now
           </ILText>
+          <MaterialIcons name="play-arrow" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
         </View>
-      </View>
+        <ILText
+          role="bodySm"
+          color={IL_BRAND.mutedOnDark}
+          align="center"
+          style={{ marginTop: 10, fontSize: 12 }}
+        >
+          Counts toward today’s practice once you finish it
+        </ILText>
+      </LinearGradient>
     </Pressable>
-      <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 8 }}>
-        Counts toward today’s practice once you finish it
-      </ILText>
-    </View>
   );
 }
 
 export function PeopleRow({ extra, onLight }) {
-  const faces = [
-    ['A', '#C94A38'],
-    ['P', '#C9A24B'],
-    ['R', '#1A6B4A'],
-    ['S', '#5B6272'],
-  ];
+  const faces = [COVER.priyanka, COVER.kamini, COVER.suma, COVER.rekha];
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: onLight ? 0 : 14 }}>
-      {faces.map(([letter, color], index) => (
-        <View
-          key={letter}
+      {faces.map((src, index) => (
+        <Image
+          key={index}
+          source={src}
           style={{
             width: 32,
             height: 32,
             borderRadius: 16,
             marginLeft: index ? -8 : 0,
-            backgroundColor: color,
-            alignItems: 'center',
-            justifyContent: 'center',
+            backgroundColor: '#E8E2D6',
             borderWidth: 2,
             borderColor: onLight ? IL_BRAND.white : IL_BRAND.forest,
           }}
-        >
-          <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-            {letter}
-          </ILText>
-        </View>
+        />
       ))}
       <View
         style={{
@@ -633,7 +671,7 @@ export function StreakRow({ streak, note }) {
   );
 }
 
-export function PrepTask({ title, detail, action, onPress, last }) {
+export function PrepTask({ title, detail, action, onPress, icon, done }) {
   return (
     <Pressable
       onPress={onPress}
@@ -641,21 +679,109 @@ export function PrepTask({ title, detail, action, onPress, last }) {
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: IL_BRAND.line,
+        marginTop: 10,
+        padding: 14,
+        backgroundColor: IL_BRAND.white,
+        borderRadius: 20,
       }}
     >
+      {icon ? (
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            backgroundColor: done ? IL_BRAND.forest : PINK_TILE,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
+          }}
+        >
+          <MaterialIcons name={done ? 'check' : icon} size={20} color={done ? '#FFFFFF' : IL_BRAND.red} />
+        </View>
+      ) : null}
       <View style={{ flex: 1, paddingRight: 12 }}>
         <ILText role="label">{title}</ILText>
         <ILText role="bodySm" color={IL_BRAND.muted}>
           {detail}
         </ILText>
       </View>
-      <ILText role="label" color={IL_BRAND.red}>
-        {action}
+      <ILText role="label" color={done ? IL_BRAND.paidGreen : IL_BRAND.red}>
+        {done ? 'Done' : action}
       </ILText>
     </Pressable>
+  );
+}
+
+const TAG_TONE = {
+  LEP: ['#E7F0EA', IL_BRAND.paidGreen],
+  '100BM': [PINK_TILE, IL_BRAND.red],
+  MBW: ['#E6EEF2', IL_BRAND.forest],
+};
+
+/** Due this week: one row per deliverable, program tag + task kind, due day on the right (urgent = pink pill). */
+export function DueWeek({ items, sub = 'This week', onSchedule }) {
+  return (
+    <>
+      <SectionLabel title="Due this week" sub={sub} action={onSchedule ? 'See schedule' : null} onAction={onSchedule} />
+      <SoftCard style={{ paddingVertical: 2, paddingHorizontal: 14 }}>
+        {items.map((item, i) => {
+          const [tagBg, tagFg] = TAG_TONE[item.tag] || TAG_TONE.LEP;
+          return (
+            <Pressable
+              key={item.title}
+              onPress={item.onPress}
+              disabled={!item.onPress}
+              accessibilityRole={item.onPress ? 'button' : undefined}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 14,
+                borderTopWidth: i ? 1 : 0,
+                borderTopColor: IL_BRAND.line,
+              }}
+            >
+              <View
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  backgroundColor: PINK_TILE,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialIcons name={item.icon} size={19} color={IL_BRAND.red} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
+                <ILText role="label">{item.title}</ILText>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+                  <View style={{ backgroundColor: tagBg, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 6 }}>
+                    <ILText role="eyebrow" color={tagFg} style={{ fontSize: 9, letterSpacing: 0.4 }}>
+                      {item.tag}
+                    </ILText>
+                  </View>
+                  <ILText role="bodySm" color={IL_BRAND.muted} style={{ flexShrink: 1 }}>
+                    {item.kind}
+                  </ILText>
+                </View>
+              </View>
+              {item.urgent ? (
+                <View style={{ backgroundColor: PINK_TILE, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <ILText role="label" color={IL_BRAND.red} style={{ fontSize: 12 }}>
+                    {item.due}
+                  </ILText>
+                </View>
+              ) : (
+                <ILText role="bodySm" color={IL_BRAND.ink} style={{ fontSize: 12 }}>
+                  {item.due}
+                </ILText>
+              )}
+            </Pressable>
+          );
+        })}
+      </SoftCard>
+    </>
   );
 }
 

@@ -5,7 +5,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_BRAND, IL_FONTS } from '../../constants/ironLadyBrand';
-import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import ILButton from '../../components/il/ILButton';
 import { useAuth } from '../../context/AuthContext';
@@ -76,27 +75,19 @@ export default function FirstLoginWelcomeScreen({
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: IL_BRAND.cream }}>
-      <StatusBar style="dark" />
-      <ILHeader
-        photoUrl={profile?.photoURL}
-        onProfile={() => {}}
-        onNotifications={() => {}}
-        onSearch={() => {}}
-      />
-
-      <View style={{ flex: 1, backgroundColor: DARK }}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingHorizontal: 28,
-            paddingTop: 22,
-            paddingBottom: Math.max(insets.bottom, 16) + 12,
-            alignItems: 'center',
-          }}
-          showsVerticalScrollIndicator={false}
-        >
+    <View style={{ flex: 1, backgroundColor: DARK }}>
+      <StatusBar style="light" />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingHorizontal: 28,
+          paddingTop: Math.max(insets.top, 12) + 10,
+          paddingBottom: Math.max(insets.bottom, 16) + 12,
+          alignItems: 'center',
+        }}
+        showsVerticalScrollIndicator={false}
+      >
           <View
             style={{
               flexDirection: 'row',
@@ -328,7 +319,6 @@ export default function FirstLoginWelcomeScreen({
             </ILText>
           </View>
         </ScrollView>
-      </View>
     </View>
   );
 }

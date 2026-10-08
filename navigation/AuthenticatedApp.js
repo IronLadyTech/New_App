@@ -6,6 +6,7 @@ import LandingGate from '../components/il/LandingGate';
 import { CoursesProvider } from '../context/CoursesContext';
 import { EngagementProvider } from '../context/EngagementContext';
 import { ProgramsProvider } from '../context/ProgramsContext';
+import { CourseDemoProvider } from '../context/CourseDemoContext';
 import { ProgramNavProvider } from '../context/ProgramNavContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
@@ -16,6 +17,7 @@ export default function AuthenticatedApp() {
   return (
     <CoursesProvider>
       <ProgramsProvider>
+        <CourseDemoProvider>
         <EngagementProvider>
           <ProgramNavProvider>
             <View style={{ flex: 1 }}>
@@ -24,6 +26,7 @@ export default function AuthenticatedApp() {
             </View>
           </ProgramNavProvider>
         </EngagementProvider>
+        </CourseDemoProvider>
       </ProgramsProvider>
     </CoursesProvider>
   );

@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, Pressable, ScrollView, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, {
+  interpolate,
+  interpolateColor,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -20,6 +30,7 @@ import {
   Page,
   RedCta,
   SoftChip,
+  WeekRing,
   WhisperCard,
   WhiteCard,
 } from './LepBits';
@@ -27,15 +38,21 @@ import { useLepNav } from './useLepNav';
 import {
   DUE_WEEK,
   ENR_PRACTICE,
-  COVER,
   FACE,
   GET_READY,
   HERO,
   PREWORK,
   REG_PRACTICE,
+  practiceSummary,
   ROLES,
+  ARMY_STORIES,
+  TODAY_MESSAGE,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import { PROGRAMS } from '../../constants/programs';
+import { useCourseDemo } from '../../context/CourseDemoContext';
+import { isItemDone, practiceKey } from '../../constants/practice';
+import { DueWeek } from '../program/ProgramKit';
 
 export default function LepHomeScreen() {
   const { profile } = useAuth();
@@ -70,19 +87,64 @@ function Shell({ children }) {
   );
 }
 
+function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
+  const insets = useSafeAreaInsets();
+  const headerPad = useGlassHeaderPad();
+  const { profile } = useAuth();
+  const nav = useLepNav();
+  return (
+    <Page>
+      <StatusBar style="dark" />
+      <LepHeader
+        floating
+        photoUrl={profile?.photoURL}
+        onNotifications={nav.goNotifications}
+        onProfile={nav.goProfile}
+        scrollY={scrollY}
+        inert={headerGone}
+      />
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: false,
+          listener: (e) => onScrollY?.(e.nativeEvent.contentOffset.y),
+        })}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: headerPad + 8,
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
+        }}
+      >
+        {children}
+      </Animated.ScrollView>
+    </Page>
+  );
+}
+
 function RegisteredHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
+  const practice = useLivePractice(REG_PRACTICE);
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [headerGone, setHeaderGone] = useState(false);
   const [role, setRole] = useState('Technology');
   const [whisperOn, setWhisperOn] = useState(true);
 
   return (
-    <Shell>
+    <RegisteredShell
+      scrollY={scrollY}
+      headerGone={headerGone}
+      onScrollY={(y) => {
+        const gone = y > 110;
+        setHeaderGone((prev) => (prev === gone ? prev : gone));
+      }}
+    >
       <DarkHero>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <SoftChip onDark icon="fiber-manual-record">
-            Leadership Excellence
+            Leadership Essentials
           </SoftChip>
           <Image source={FACE} style={{ width: 36, height: 36, borderRadius: 18 }} />
         </View>
@@ -163,94 +225,41 @@ function RegisteredHome() {
       </WhiteCard>
 
       {whisperOn ? (
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-            <GuideFace size={40} />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <ILText role="label" color={G.ink}>
-                IL Guide’s Whisper
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                Cohort Guide
-              </ILText>
-            </View>
-            <Pressable onPress={() => setWhisperOn(false)} hitSlop={8}>
-              <MaterialIcons name="close" size={18} color={G.meta} />
-            </Pressable>
-          </View>
-          <ILText role="body" color={G.ink} style={{ marginTop: 12, fontSize: 16, lineHeight: 24 }}>
-            Nine days to Day 1, {name}. Start with the 27 Principles video — it’s the language the whole program speaks.
-          </ILText>
-          <Pressable onPress={nav.goLearn} style={{ marginTop: 12 }}>
-            <ILText role="label" color={G.cta}>
-              Start the video →
-            </ILText>
-          </Pressable>
-        </WhiteCard>
+        <InkWhisper
+          name={name}
+          onClose={() => setWhisperOn(false)}
+          onOpen={() => nav.goPractice('lep', 'lep-principles-video')}
+        />
       ) : null}
 
-      <Section title="Today’s practice" sub="2 of 4 done · about 20 min" action="Open checklist" onAction={nav.goToday} />
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, alignItems: 'center' }}>
-          <SoftChip icon="local-fire-department">2-day streak</SoftChip>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            Daily revision at 8:00 AM
-          </ILText>
-        </View>
-        {REG_PRACTICE.map((item, i) => (
-          <CheckRow key={item.id} item={item} last={i === REG_PRACTICE.length - 1} onPress={nav.goToday} />
-        ))}
-      </WhiteCard>
+      <PracticeDeck items={practice} onOpen={nav.goToday} onItem={nav.goPracticeItem} />
 
-      <Section title="Today’s message" sub="3 minutes from IL Guide" />
-      <Pressable onPress={nav.goGuide} style={{ marginTop: 12, height: 200, borderRadius: 24, overflow: 'hidden' }}>
-        <Image source={HERO} style={{ position: 'absolute', width: '100%', height: '100%' }} resizeMode="cover" />
-        <LinearGradient colors={['transparent', 'rgba(17,55,68,0.55)']} style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }} />
-        <View style={{ position: 'absolute', left: 16, top: 16 }}>
-          <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 }}>
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 10 }]}>
-              Today’s message
-            </ILText>
-          </View>
+      <Section title="Today’s message" sub="Principle 01 · Your BHAG" />
+      <WhiteCard
+        style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}
+        onPress={() =>
+          nav.goWatch({
+            assetKey: TODAY_MESSAGE.assetKey,
+            title: TODAY_MESSAGE.title,
+            sub: TODAY_MESSAGE.sub,
+          })
+        }
+      >
+        <View style={{ aspectRatio: 16 / 9 }}>
+          <CoverThumb source={TODAY_MESSAGE.thumb} play time={TODAY_MESSAGE.duration} />
         </View>
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 74,
-            alignItems: 'center',
-          }}
-        >
-          <View
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 28,
-              backgroundColor: G.cta,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
-          </View>
-        </View>
-        <View
-          style={{
-            position: 'absolute',
-            right: 14,
-            bottom: 14,
-            backgroundColor: 'rgba(17,55,68,0.72)',
-            borderRadius: 8,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-          }}
-        >
-          <ILText role="label" color="#FFFFFF" style={{ fontSize: 11 }}>
-            3:05
+        <View style={{ padding: 14 }}>
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+            FOUNDATION PRINCIPLE
+          </ILText>
+          <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 16 }}>
+            {TODAY_MESSAGE.title}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
+            {TODAY_MESSAGE.hint}
           </ILText>
         </View>
-      </Pressable>
+      </WhiteCard>
 
       <WhiteCard style={{ marginTop: 14, borderRadius: 22, overflow: 'hidden' }}>
         <View style={{ backgroundColor: G.cta, paddingHorizontal: 16, paddingVertical: 10 }}>
@@ -379,11 +388,12 @@ function RegisteredHome() {
         style={{ marginTop: 12, marginHorizontal: -20 }}
         contentContainerStyle={{ paddingHorizontal: 20 }}
       >
-        {[
-          { title: 'From Invisible to Unstoppable', sub: 'Charu Sharma · technology', time: '3:45', img: COVER.speaks04c },
-          { title: 'From Factory Floors to the Boardroom', sub: 'Priyanka Singla · manufacturing', time: '2:18', img: COVER.speaks05 },
-        ].map((clip) => (
-          <View key={clip.title} style={{ width: 228, marginRight: 12 }}>
+        {ARMY_STORIES.map((clip) => (
+          <Pressable
+            key={clip.title}
+            onPress={() => nav.goWatch({ assetKey: clip.assetKey, title: clip.title, sub: clip.meta })}
+            style={{ width: 228, marginRight: 12 }}
+          >
             <View style={{ aspectRatio: 16 / 9, borderRadius: 18, overflow: 'hidden', backgroundColor: G.dark }}>
               <CoverThumb source={clip.img} play time={clip.time} />
             </View>
@@ -391,9 +401,9 @@ function RegisteredHome() {
               {clip.title}
             </ILText>
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {clip.sub}
+              {clip.meta}
             </ILText>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
 
@@ -437,34 +447,8 @@ function RegisteredHome() {
         </ILText>
       </WhiteCard>
 
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons name="auto-awesome" size={16} color={G.cta} />
-          <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-            Your B-HAG (Big Hairy Audacious Goal)
-          </ILText>
-        </View>
-        <ILText
-          role="title"
-          color={G.ink}
-          style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-        >
-          CXO by 2028 · Heading Enterprise Technology
-        </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-          Calibrated during your initial leadership assessment
-        </ILText>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: G.cta, marginRight: 8 }} />
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              Primary LEP focus track
-            </ILText>
-          </View>
-          <LinkRow label="Refine it →" />
-        </View>
-      </WhiteCard>
-    </Shell>
+      <BhagCard nav={nav} />
+    </RegisteredShell>
   );
 }
 
@@ -472,6 +456,7 @@ function EnrolledHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
+  const practice = useLivePractice(ENR_PRACTICE);
 
   return (
     <Shell>
@@ -490,7 +475,7 @@ function EnrolledHome() {
           You’re all set, {name}.
         </ILText>
         <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-          Your seat in the boardroom is locked. 48 formidable women ready to rewrite their trajectory.
+          You’re in this batch. 48 women start together this Saturday.
         </ILText>
         <View
           style={{
@@ -523,69 +508,36 @@ function EnrolledHome() {
         />
       </View>
 
-      <Section title="Today’s practice" sub="2 of 4 done · 3-day streak · daily revision at 8:00 AM" action="Open checklist" onAction={nav.goToday} />
+      <Section title="Today’s practice" sub={practiceSummary(practice)} action="Open checklist" onAction={nav.goToday} />
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {ENR_PRACTICE.map((item, i) => (
-          <CheckRow
-            key={item.id}
-            item={item}
-            last={i === ENR_PRACTICE.length - 1}
-            onPress={item.id === 'e3' ? nav.goAssignment : nav.goToday}
-          />
-        ))}
-      </WhiteCard>
-
-      <Section title="Due this week" sub="Across your programs" action="See schedule" onAction={nav.goSchedule} />
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        {DUE_WEEK.map((item, i) => (
-          <Pressable
-            key={item.id}
-            onPress={item.id === 'd1' ? nav.goAssignment : nav.goSchedule}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              borderTopWidth: i ? 1 : 0,
-              borderTopColor: G.line,
-            }}
-          >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: G.pink,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name={item.icon} size={18} color={G.cta} />
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <ILText role="label" color={G.ink}>
-                {item.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                {item.meta}
-              </ILText>
-            </View>
-            <ILText role="label" color={G.cta} style={[af, { fontSize: 12 }]}>
-              {item.due}
-            </ILText>
-          </Pressable>
-        ))}
-      </WhiteCard>
-
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ width: 56, height: 56, alignItems: 'center', justifyContent: 'center' }}>
-          <ILText role="display" color={G.cta} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-            4/5
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, alignItems: 'center' }}>
+          <SoftChip icon="local-fire-department">3-day streak</SoftChip>
+          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+            Daily revision at 8:00 AM
           </ILText>
         </View>
-        <View style={{ flex: 1, marginLeft: 8 }}>
+        {practice.map((item, i) => (
+          <CheckRow key={item.id} item={item} last={i === practice.length - 1} onPress={() => nav.goPracticeItem(item)} />
+        ))}
+      </WhiteCard>
+
+      <DueWeek
+        sub="Before Day 1 · Sat 20 Sep"
+        onSchedule={nav.goSchedule}
+        items={DUE_WEEK.map((item) => ({
+          ...item,
+          onPress: () => nav.goCourseTask(PROGRAMS.LEP, item.taskId),
+        }))}
+      />
+
+      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+        <WeekRing done={4} total={5} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
           <ILText role="label" color={G.ink}>
             This week · 4 of 5 active days
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12, lineHeight: 17 }}>
+            Red ring = weekdays you opened the app or finished a practice. Friday is still open. Never resets.
           </ILText>
           <View style={{ flexDirection: 'row', marginTop: 8 }}>
             {['M', 'T', 'W', 'T', 'F'].map((d, i) => (
@@ -613,9 +565,13 @@ function EnrolledHome() {
       <Section title="Watch these 3 before Day 1" sub="Essential foundations curated by Rajesh & IL Guide" action="2 of 3 done" />
       {PREWORK.map((item) =>
         item.done ? (
-        <WhiteCard key={item.n} style={{ marginTop: 10, borderRadius: 20, overflow: 'hidden', flexDirection: 'row' }}>
+        <WhiteCard
+          key={item.n}
+          onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
+          style={{ marginTop: 10, borderRadius: 20, overflow: 'hidden', flexDirection: 'row' }}
+        >
           <View style={{ width: 96, height: 86, backgroundColor: G.dark }}>
-            <Image source={HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
+            <Image source={item.thumb || HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
             <View
               style={{
                 position: 'absolute',
@@ -653,7 +609,11 @@ function EnrolledHome() {
           </View>
         </WhiteCard>
         ) : (
-          <NextVideoCard key={item.n} item={item} />
+          <NextVideoCard
+            key={item.n}
+            item={item}
+            onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
+          />
         )
       )}
 
@@ -709,11 +669,11 @@ function EnrolledHome() {
   );
 }
 
-function NextVideoCard({ item }) {
+function NextVideoCard({ item, onPress }) {
   return (
-    <WhiteCard style={{ marginTop: 10, borderRadius: 22, padding: 12 }}>
+    <WhiteCard onPress={onPress} style={{ marginTop: 10, borderRadius: 22, padding: 12 }}>
       <View style={{ height: 180, borderRadius: 16, overflow: 'hidden', backgroundColor: G.dark }}>
-        <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        <Image source={item.thumb || HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
         <View
           style={{
             position: 'absolute',
@@ -821,6 +781,388 @@ function GlanceCell({ label, value }) {
         {value}
       </ILText>
     </View>
+  );
+}
+
+const DECK_SPRING = { damping: 17, stiffness: 95, mass: 0.9 };
+
+function useLivePractice(items) {
+  const { isDone } = useCourseDemo();
+  return items.map((item) => ({ ...item, done: isItemDone(item, isDone) }));
+}
+
+function PracticeDeck({ items, onOpen, onItem }) {
+  const [aside, setAside] = useState([]);
+  const leftover = items.filter((item) => !item.done);
+  const remaining = leftover.filter((item) => !aside.includes(item.id));
+  const stack = remaining.slice(0, 3);
+  const canRefresh = aside.length > 0;
+  const refresh = () => setAside([]);
+
+  return (
+    <WhiteCard style={{ marginTop: 22, borderRadius: 22, padding: 16, overflow: 'hidden' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+        <View style={{ flex: 1 }}>
+          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
+            Today’s practice
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+            {practiceSummary(items)}
+          </ILText>
+        </View>
+        <LinkRow label="Open checklist" onPress={onOpen} />
+      </View>
+      <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <SoftChip icon="local-fire-department">2-day streak</SoftChip>
+        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+          Daily revision at 8:00 AM
+        </ILText>
+      </View>
+
+      {remaining.length ? (
+        <View style={{ marginTop: 14, height: 208 }}>
+          {stack
+            .slice()
+            .reverse()
+            .map((item, paintI, arr) => {
+              const slot = arr.length - 1 - paintI;
+              return (
+                <DeckCard
+                  key={item.id}
+                  item={item}
+                  slot={slot}
+                  onPress={() => (onItem ? onItem(item) : onOpen())}
+                  onSkip={() => setAside((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]))}
+                />
+              );
+            })}
+        </View>
+      ) : (
+        <View style={{ marginTop: 18, paddingVertical: 18, alignItems: 'center' }}>
+          <MaterialIcons name="check-circle" size={22} color={G.ink} />
+          <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
+            {leftover.length ? 'That’s all for now.' : 'Today’s practice is done.'}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, textAlign: 'center' }}>
+            {leftover.length ? 'Swipe skipped the rest.' : 'The next card will wait for tomorrow.'}
+          </ILText>
+        </View>
+      )}
+      {canRefresh ? (
+        <Pressable
+          onPress={refresh}
+          accessibilityRole="button"
+          accessibilityLabel="Show skipped tasks again"
+          hitSlop={8}
+          style={({ pressed }) => ({
+            alignSelf: 'center',
+            marginTop: 12,
+            opacity: pressed ? 0.55 : 1,
+          })}
+        >
+          <MaterialIcons name="refresh" size={22} color={G.ink} />
+        </Pressable>
+      ) : null}
+    </WhiteCard>
+  );
+}
+
+function DeckCard({ item, slot, onPress, onSkip }) {
+  const place = useSharedValue(slot);
+  const dragX = useSharedValue(0);
+  const front = slot === 0;
+
+  useEffect(() => {
+    place.value = withSpring(slot, DECK_SPRING);
+  }, [place, slot]);
+
+  const skip = () => onSkip?.();
+
+  const pan = Gesture.Pan()
+    .enabled(front)
+    .activeOffsetX([-18, 18])
+    .failOffsetY([-14, 14])
+    .onUpdate((e) => {
+      dragX.value = e.translationX;
+    })
+    .onEnd((e) => {
+      const away = Math.abs(e.translationX) > 72 || Math.abs(e.velocityX) > 800;
+      if (!away) {
+        dragX.value = withSpring(0, DECK_SPRING);
+        return;
+      }
+      const dir = (e.translationX === 0 ? e.velocityX : e.translationX) >= 0 ? 1 : -1;
+      dragX.value = withTiming(dir * 460, { duration: 260 }, (finished) => {
+        if (finished) runOnJS(skip)();
+      });
+    });
+
+  const tap = Gesture.Tap()
+    .enabled(true)
+    .onEnd(() => {
+      runOnJS(onPress)();
+    });
+
+  const gesture = front ? Gesture.Exclusive(pan, tap) : Gesture.Tap().onEnd(() => runOnJS(onPress)());
+
+  const wrapStyle = useAnimatedStyle(() => {
+    const s = place.value;
+    const x = dragX.value;
+    return {
+      zIndex: Math.round(10 - s),
+      transform: [
+        { translateX: x },
+        { translateY: s * 14 },
+        { rotateZ: `${interpolate(x, [-220, 0, 220], [-10, 0, 10])}deg` },
+        { scale: 1 - s * 0.045 },
+      ],
+    };
+  });
+
+  const faceStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(place.value, [0, 1, 2], ['#113744', '#5C8188', '#D7E0DC']),
+  }));
+
+  const titleStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(place.value, [0, 1, 2], ['#F5F2E8', '#F5F2E8', '#113744']),
+  }));
+
+  const metaStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(place.value, [0, 1, 2], ['rgba(245,242,232,0.7)', 'rgba(245,242,232,0.78)', '#5A574F']),
+  }));
+
+  const eyeStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(place.value, [0, 1, 2], ['#F8D6D4', '#F8D6D4', '#113744']),
+  }));
+
+  return (
+    <GestureDetector gesture={gesture}>
+    <Reanimated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0 }, wrapStyle]}>
+      <Reanimated.View style={[{ borderRadius: 18, padding: 16, minHeight: 164 }, faceStyle]}>
+          <Reanimated.Text
+            style={[
+              af,
+              {
+                fontFamily: IL_FONTS.bold,
+                fontSize: 10,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              },
+              eyeStyle,
+            ]}
+          >
+            {slot === 0 ? 'Now' : `Next · ${slot + 1}`}
+          </Reanimated.Text>
+          <Reanimated.Text
+            style={[
+              {
+                marginTop: 8,
+                fontFamily: IL_FONTS.display,
+                fontSize: 22,
+                lineHeight: 28,
+              },
+              titleStyle,
+            ]}
+          >
+            {item.title}
+          </Reanimated.Text>
+          <Reanimated.Text
+            style={[
+              {
+                marginTop: 6,
+                fontFamily: IL_FONTS.regular,
+                fontSize: 13,
+                lineHeight: 18,
+              },
+              metaStyle,
+            ]}
+          >
+            {item.meta}
+          </Reanimated.Text>
+          {slot === 0 ? (
+            <Reanimated.Text
+              style={[
+                {
+                  marginTop: 16,
+                  fontFamily: IL_FONTS.semibold,
+                  fontSize: 14,
+                  lineHeight: 18,
+                },
+                titleStyle,
+              ]}
+            >
+              Start this task →
+            </Reanimated.Text>
+          ) : null}
+          {front ? (
+            <Reanimated.Text
+              style={[
+                {
+                  marginTop: 6,
+                  fontFamily: IL_FONTS.regular,
+                  fontSize: 12,
+                  lineHeight: 16,
+                },
+                metaStyle,
+              ]}
+            >
+              Swipe left or right to skip
+            </Reanimated.Text>
+          ) : null}
+        </Reanimated.View>
+    </Reanimated.View>
+    </GestureDetector>
+  );
+}
+
+function InkWhisper({ name, onClose, onOpen }) {
+  const full = `Nine days to Day 1, ${name}. Start with the 27 Principles video — it’s the language the whole program speaks.`;
+  const [n, setN] = useState(0);
+  const [blink, setBlink] = useState(true);
+  const done = n >= full.length;
+
+  useEffect(() => {
+    setN(0);
+    const type = setInterval(() => {
+      setN((prev) => {
+        if (prev >= full.length) {
+          clearInterval(type);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 32);
+    return () => clearInterval(type);
+  }, [full]);
+
+  useEffect(() => {
+    if (done) {
+      setBlink(false);
+      return undefined;
+    }
+    const pulse = setInterval(() => setBlink((v) => !v), 420);
+    return () => clearInterval(pulse);
+  }, [done]);
+
+  return (
+    <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+        <GuideFace size={40} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <ILText role="label" color={G.ink}>
+            IL Guide’s Whisper
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+            Cohort Guide
+          </ILText>
+        </View>
+        <Pressable onPress={onClose} hitSlop={8}>
+          <MaterialIcons name="close" size={18} color={G.meta} />
+        </Pressable>
+      </View>
+      <ILText role="body" color={G.ink} style={{ marginTop: 12, fontSize: 16, lineHeight: 24, minHeight: 72 }}>
+        {full.slice(0, n)}
+        {!done && blink ? (
+          <ILText role="body" color={G.cta} style={{ fontSize: 16, lineHeight: 24 }}>
+            |
+          </ILText>
+        ) : null}
+      </ILText>
+      <Pressable onPress={onOpen} style={{ marginTop: 12 }}>
+        <ILText role="label" color={G.cta}>
+          Start the video →
+        </ILText>
+      </Pressable>
+    </WhiteCard>
+  );
+}
+
+function BhagCard({ nav }) {
+  const demo = useCourseDemo();
+  const pKey = practiceKey('lep-bhag');
+  const saved = demo.getSubmission('lep', pKey);
+  const bhag = saved?.data?.note?.trim();
+
+  return (
+    <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <MaterialIcons name="auto-awesome" size={16} color={G.cta} />
+        <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
+          Your B-HAG (Big Hairy Audacious Goal)
+        </ILText>
+      </View>
+
+      {bhag ? (
+        <>
+          <ILText
+            role="title"
+            color={G.ink}
+            style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+          >
+            {bhag}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
+            Saved · your north star for every LEP conversation
+          </ILText>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: G.cta, marginRight: 8 }} />
+              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+                Primary LEP focus track
+              </ILText>
+            </View>
+            <LinkRow label="Refine it →" onPress={() => nav.goPractice('lep', 'lep-bhag')} />
+          </View>
+        </>
+      ) : (
+        <>
+          <ILText
+            role="title"
+            color={G.ink}
+            style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+          >
+            Name the goal big enough to scare you
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
+            Principle 01 · Ask for what you want — start with one sentence.
+          </ILText>
+          <View style={{ flexDirection: 'row', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
+            <Pressable
+              onPress={() =>
+                nav.goWatch({
+                  assetKey: TODAY_MESSAGE.assetKey,
+                  title: TODAY_MESSAGE.title,
+                  sub: TODAY_MESSAGE.sub,
+                })
+              }
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 999,
+                backgroundColor: G.mutedFill,
+              }}
+            >
+              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
+                Watch Principle 01
+              </ILText>
+            </Pressable>
+            <Pressable
+              onPress={() => nav.goPractice('lep', 'lep-bhag')}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 999,
+                backgroundColor: G.cta,
+              }}
+            >
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 13 }}>
+                Write my BHAG →
+              </ILText>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </WhiteCard>
   );
 }
 

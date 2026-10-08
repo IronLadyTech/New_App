@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
+import Pressable from './Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from './ilShadow';
@@ -36,7 +37,7 @@ export default function ILButton({
           justifyContent: 'center',
           opacity: disabled || loading ? 0.55 : pressed ? 0.92 : 1,
           backgroundColor: primary
-            ? IL_BRAND.red
+            ? '#ED1D24'
             : dark
               ? IL_BRAND.forest
               : 'transparent',

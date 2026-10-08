@@ -11,7 +11,9 @@ function LearnRoot(props) {
       ? require('../screens/lep/LepLearnScreen').default
       : program === '100bm'
         ? require('../screens/learn/BmLearnScreen').default
-        : require('../screens/learn/LearnLibrary').default;
+        : program === 'mbw'
+          ? require('../screens/learn/MbwLearnScreen').default
+          : require('../screens/learn/LearnLibrary').default;
   return <Screen {...props} />;
 }
 
@@ -28,6 +30,18 @@ export default function LearnStack() {
         getComponent={() => require('../screens/learn/ProgramTasksScreen').default}
       />
       <Stack.Screen
+        name="CoursePhase"
+        getComponent={() => require('../screens/program/CoursePhaseScreen').default}
+      />
+      <Stack.Screen
+        name="CourseTask"
+        getComponent={() => require('../screens/program/CourseTaskScreen').default}
+      />
+      <Stack.Screen
+        name="TaskDocument"
+        getComponent={() => require('../screens/program/TaskDocumentScreen').default}
+      />
+      <Stack.Screen
         name="TaskSubmit"
         getComponent={() => require('../screens/learn/TaskSubmitScreen').default}
       />
@@ -42,6 +56,10 @@ export default function LearnStack() {
       <Stack.Screen
         name="LessonPlayer"
         getComponent={() => require('../screens/learn/LessonPlayerScreen').default}
+      />
+      <Stack.Screen
+        name="Watch"
+        getComponent={() => require('../screens/program/WatchScreen').default}
       />
       <Stack.Screen
         name="Quiz"

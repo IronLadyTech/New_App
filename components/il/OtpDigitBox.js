@@ -53,12 +53,7 @@ export default function OtpDigitBox({ digit, active }) {
     ],
   }));
   const digitStyle = useAnimatedStyle(() => ({
-    opacity: digit ? interpolate(dealIn.value, [0, 0.6, 1], [0, 1, 1]) : 0,
-    transform: [
-      { translateY: (1 - dealIn.value) * 22 },
-      { rotate: `${(1 - dealIn.value) * -14}deg` },
-      { scale: 0.7 + 0.3 * dealIn.value },
-    ],
+    opacity: digit ? interpolate(dealIn.value, [0, 0.35, 1], [0, 1, 1]) : 0,
   }));
   const sparkProps = useAnimatedProps(() => ({
     strokeDashoffset: -spark.value * PERIM,
@@ -79,7 +74,7 @@ export default function OtpDigitBox({ digit, active }) {
           borderColor: active ? CTA : digit ? IL_BRAND.ink : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'visible',
+          overflow: 'hidden',
         },
         active
           ? {
@@ -112,7 +107,11 @@ export default function OtpDigitBox({ digit, active }) {
           {
             fontFamily: IL_FONTS.semibold,
             fontSize: 22,
+            lineHeight: 28,
             color: IL_BRAND.ink,
+            includeFontPadding: false,
+            textAlign: 'center',
+            textAlignVertical: 'center',
           },
           digitStyle,
         ]}

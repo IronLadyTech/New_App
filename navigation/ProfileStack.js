@@ -36,6 +36,10 @@ export default function ProfileStack() {
         name="OrderReceipt"
         getComponent={() => require('../screens/payment/OrderReceiptScreen').default}
       />
+      <Stack.Screen
+        name="Watch"
+        getComponent={() => require('../screens/program/WatchScreen').default}
+      />
     </Stack.Navigator>
   );
 }

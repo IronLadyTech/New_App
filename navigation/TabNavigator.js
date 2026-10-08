@@ -10,6 +10,7 @@ export default function TabNavigator() {
       tabBar={(props) => <ILTabBar {...props} />}
       screenOptions={{
         headerShown: false,
+        freezeOnBlur: true,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',

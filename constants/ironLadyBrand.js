@@ -1,17 +1,18 @@
 /** Iron Lady learner-app tokens — login HTML + MoM 24 Sep. */
+// Dark tones are the brand teal (#113744), the same as the LEP and guest screens.
 export const IL_BRAND = {
   cream: '#FAF7F2',
   creamCard: '#FAF7F2',
   ivory: '#FAF7F2',
-  navy: '#0F1B3D',
-  navyDeep: '#091126',
+  navy: '#113744',
+  navyDeep: '#0C2A33',
   coral: '#C94A38',
   coralHover: '#B23F2F',
   softCoral: '#F4A79C',
-  forest: '#0F1B3D',
-  forestMuted: '#091126',
-  hero: '#0F1B3D',
-  heroSoft: '#091126',
+  forest: '#113744',
+  forestMuted: '#0C2A33',
+  hero: '#113744',
+  heroSoft: '#0C2A33',
   ink: '#1A1F2E',
   muted: '#5B6272',
   mutedOnDark: '#C8C2B6',
@@ -35,6 +36,7 @@ export const IL_BRAND = {
 
 export const IL_FONTS = {
   display: 'PlayfairDisplay_600SemiBold',
+  displayBold: 'PlayfairDisplay_700Bold',
   displayMedium: 'PlayfairDisplay_500Medium',
   displayItalic: 'PlayfairDisplay_600SemiBold_Italic',
   displayItalicLight: 'PlayfairDisplay_400Regular_Italic',
