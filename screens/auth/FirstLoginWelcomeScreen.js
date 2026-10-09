@@ -1,5 +1,5 @@
-import React from 'react';
-import { Image, Platform, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { IL_BRAND, IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import ILButton from '../../components/il/ILButton';
 import { useAuth } from '../../context/AuthContext';
+import { formatCallableError, refreshMyAccess, updateMyWelcomeProfile } from '../../services/functions';
 
 const GUIDE = require('../../assets/il/il-guide-face.jpg');
 const DARK = '#102C32';
@@ -21,11 +22,27 @@ const SEAL_DISC = '#113744';
 const GLOW = 'rgba(235,193,102,0.35)';
 const CHIP_INK = '#F3EDE4';
 
-function Chip({ icon, label }) {
+/** Staff notes in Zoho are not a learner's answer. */
+function learnerValue(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  const v = text.toLowerCase().replace(/\s+/g, ' ');
+  if (
+    v.includes('check with the learner') ||
+    v.includes('please check') ||
+    ['n/a', 'na', 'none', 'nil', '-', '--', 'tbd', 'unknown', 'not available'].includes(v)
+  ) {
+    return '';
+  }
+  return text;
+}
+
+function Chip({ icon, label, onPress }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${label}, edit`}
+      onPress={onPress}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -52,14 +69,69 @@ export default function FirstLoginWelcomeScreen({
   navigation,
   route,
   onGoBatch,
+  onBack,
   onDone: onDoneProp,
 }) {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, user, isPreview, patchProfile, logout } = useAuth();
   const name =
     route?.params?.name ||
     profile?.displayName?.split(' ')[0] ||
     'Ananya';
+  const city = learnerValue(profile?.city);
+  const domain = learnerValue(profile?.domain);
+  const bhag = learnerValue(profile?.bhag);
+  const needsDetails = !city || !domain || !bhag;
+  const [editing, setEditing] = useState(null);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  const beginEdit = (key) => {
+    if (!user?.uid || user.uid === 'preview' || isPreview) return;
+    const current = key === 'city' ? city : key === 'domain' ? domain : bhag;
+    setEditing(key);
+    setDraft(current);
+    setSaveError('');
+  };
+
+  const saveEdit = async () => {
+    const value = draft.trim();
+    if (!editing || !value || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const result = await updateMyWelcomeProfile({ [editing]: value });
+      if (!result?.ok) {
+        setSaveError(result?.reason || 'Could not save to Zoho');
+        return;
+      }
+      patchProfile({ [editing]: value });
+      setEditing(null);
+    } catch (err) {
+      setSaveError(formatCallableError(err, 'Could not save to Zoho'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.uid || user.uid === 'preview' || isPreview) return undefined;
+    refreshMyAccess();
+    return undefined;
+  }, [user?.uid, isPreview]);
+
+  const goBack = () => {
+    if (typeof onBack === 'function') {
+      onBack();
+      return;
+    }
+    if (navigation?.canGoBack?.()) {
+      navigation.goBack();
+      return;
+    }
+    logout();
+  };
 
   const goBatch = () => {
     if (typeof onGoBatch === 'function') {
@@ -88,6 +160,24 @@ export default function FirstLoginWelcomeScreen({
         }}
         showsVerticalScrollIndicator={false}
       >
+          <View style={{ alignSelf: 'stretch', marginBottom: 14 }}>
+            <Pressable
+              onPress={goBack}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={10}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: IL_BRAND.white,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialIcons name="chevron-left" size={22} color={IL_BRAND.ink} />
+            </Pressable>
+          </View>
           <View
             style={{
               flexDirection: 'row',
@@ -253,20 +343,74 @@ export default function FirstLoginWelcomeScreen({
           >
             <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
               <View style={{ marginRight: 10 }}>
-                <Chip icon="place" label="Bengaluru" />
+                <Chip icon="place" label={city || 'Add your city'} onPress={() => beginEdit('city')} />
               </View>
-              <Chip icon="work-outline" label="Technology" />
+              <Chip icon="work-outline" label={domain || 'Add your field of work'} onPress={() => beginEdit('domain')} />
             </View>
             <View style={{ marginTop: 10 }}>
-              <Chip icon="flag" label="B-HAG: CXO by 2028" />
+              <Chip icon="flag" label={bhag ? `Goal: ${bhag}` : 'Add your 3-month goal'} onPress={() => beginEdit('bhag')} />
             </View>
+            {editing ? (
+              <View style={{ alignSelf: 'stretch', marginTop: 12 }}>
+                <TextInput
+                  value={draft}
+                  onChangeText={setDraft}
+                  placeholder={
+                    editing === 'city'
+                      ? 'Your city, for example Bengaluru'
+                      : editing === 'domain'
+                        ? 'Your field of work, for example Technology'
+                        : 'Your goal for the next 3 months'
+                  }
+                  placeholderTextColor="rgba(16,44,50,0.45)"
+                  autoFocus
+                  style={{
+                    backgroundColor: IL_BRAND.white,
+                    borderRadius: 14,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    fontSize: 15,
+                    color: IL_BRAND.ink,
+                  }}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={saveEdit}
+                  disabled={saving || !draft.trim()}
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: CTA,
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    alignItems: 'center',
+                    opacity: saving || !draft.trim() ? 0.5 : 1,
+                  }}
+                >
+                  <ILText role="label" color={IL_BRAND.white}>
+                    {saving ? 'Saving…' : 'Save'}
+                  </ILText>
+                </Pressable>
+                {saveError ? (
+                  <ILText
+                    role="bodySm"
+                    color={ROSE}
+                    align="center"
+                    style={{ marginTop: 8, fontSize: 12 }}
+                  >
+                    {saveError}
+                  </ILText>
+                ) : null}
+              </View>
+            ) : null}
             <ILText
               role="bodySm"
               color="rgba(232,168,160,0.72)"
               align="center"
               style={{ marginTop: 12, fontSize: 13 }}
             >
-              Pulled from your profile · Tap to adjust
+              {needsDetails
+                ? 'Tap a line to fill it in: your city, your field of work, and your goal for the next 3 months.'
+                : 'From your profile. Tap a line to update it.'}
             </ILText>
           </View>
 

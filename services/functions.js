@@ -32,6 +32,18 @@ export async function ensureZohoUserOnLogin(email, password) {
   return data;
 }
 
+/** Look up this mobile number in Zoho and open guest or program access. */
+export async function resolvePhoneAccess(phone) {
+  const { data } = await call('resolvePhoneAccess', { phone });
+  return data;
+}
+
+/** Save city, domain, or B-HAG onto this learner's Zoho Lead. */
+export async function updateMyWelcomeProfile(fields) {
+  const { data } = await call('updateMyWelcomeProfile', fields);
+  return data;
+}
+
 /** Pull this learner's entitlements from Zoho (throttled server-side). */
 export async function refreshMyAccess() {
   try {

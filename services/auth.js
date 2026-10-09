@@ -2,6 +2,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPhoneNumber,
+  signInWithCustomToken,
   signOut,
   updateProfile,
   onAuthStateChanged,
@@ -141,6 +142,12 @@ export async function ensureUserProfile(user, extras = {}) {
   };
   await setDoc(ref, profile);
   return profile;
+}
+
+export async function signInWithAccessToken(token) {
+  if (!token) throw new Error('Sign-in could not be completed.');
+  const credential = await signInWithCustomToken(auth, token);
+  return credential.user;
 }
 
 export async function sendPhoneOtp(phoneNumber, recaptchaVerifier) {

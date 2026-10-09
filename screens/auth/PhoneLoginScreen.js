@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
+import { formatCallableError, resolvePhoneAccess } from '../../services/functions';
 import { WHATSAPP_OTP_ENABLED, sendWhatsAppOtp } from '../../services/whatsappOtp';
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from '../../components/il/ilShadow';
@@ -26,33 +27,48 @@ export default function PhoneLoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [local, setLocal] = useState('');
+  const [checking, setChecking] = useState(false);
   const { extra: keyboardRoom, scrollProps } = useKeyboardRoom();
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
+  const busy = checking || sending;
+
   const onContinue = async () => {
-    if (sending) return;
+    if (busy) return;
     if (local.length < 10) {
       setError('Enter your 10-digit mobile number.');
       return;
     }
     setError('');
     const phone = `+91${local}`;
-    if (WHATSAPP_OTP_ENABLED) {
-      setSending(true);
-      try {
-        await sendWhatsAppOtp(phone);
-      } catch (e) {
-        setError(e.message);
+    setChecking(true);
+    try {
+      const access = await resolvePhoneAccess(phone);
+      if (!access?.ok) {
+        setError(access?.reason || 'Could not check this number.');
         return;
-      } finally {
-        setSending(false);
       }
-      stashPhoneAuth({ whatsapp: true }, phone);
-    } else {
-      stashPhoneAuth({ demo: true }, phone);
+      if (WHATSAPP_OTP_ENABLED) {
+        setSending(true);
+        try {
+          await sendWhatsAppOtp(phone);
+        } catch (e) {
+          setError(e.message);
+          return;
+        } finally {
+          setSending(false);
+        }
+        stashPhoneAuth({ whatsapp: true, access }, phone);
+      } else {
+        stashPhoneAuth({ demo: true, access }, phone);
+      }
+      navigation.navigate('VerifyOtp');
+    } catch (err) {
+      setError(formatCallableError(err, 'Could not check this number.'));
+    } finally {
+      setChecking(false);
     }
-    navigation.navigate('VerifyOtp');
   };
 
   return (
@@ -326,7 +342,7 @@ export default function PhoneLoginScreen({ navigation }) {
 
           <Pressable
             onPress={onContinue}
-            disabled={sending}
+            disabled={busy}
             accessibilityRole="button"
             accessibilityLabel="Continue"
             style={({ pressed }) => ({
@@ -337,7 +353,7 @@ export default function PhoneLoginScreen({ navigation }) {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: sending ? 0.7 : pressed ? 0.92 : 1,
+              opacity: busy ? 0.7 : pressed ? 0.92 : 1,
             })}
           >
             <Text
@@ -348,7 +364,7 @@ export default function PhoneLoginScreen({ navigation }) {
                 ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
               }}
             >
-              {sending ? 'Sending code…' : 'Continue'}
+              {sending ? 'Sending code…' : checking ? 'Checking…' : 'Continue'}
             </Text>
             <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </Pressable>

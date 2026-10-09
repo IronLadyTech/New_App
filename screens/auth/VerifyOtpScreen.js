@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
+import { signInWithAccessToken } from '../../services/auth';
 import {
   sendWhatsAppOtp,
   signInWithOtpToken,
@@ -68,6 +69,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
   const masked = useMemo(() => maskPhone(routePhone || phone), [routePhone, phone]);
   const [expected, setExpected] = useState(randomCode);
   const [message, setMessage] = useState('');
+  const [continueError, setContinueError] = useState('');
   const tokenRef = useRef(null);
 
   const onVerify = useCallback(
@@ -86,15 +88,27 @@ export default function VerifyOtpScreen({ navigation, route }) {
   );
 
   const onContinue = useCallback(async () => {
-    if (!live) {
-      navigation.replace('FirstLoginWelcome');
+    const access = peekPhoneAuth().confirmation?.access;
+    setContinueError('');
+    setMessage('');
+
+    if (live) {
+      try {
+        await signInWithOtpToken(tokenRef.current);
+      } catch (e) {
+        setContinueError(e.message || 'Sign-in failed. Request a new code.');
+      }
+      return;
+    }
+
+    if (!access || access.guest) {
+      navigation.replace('GuestStart');
       return;
     }
     try {
-      // Auth state flips to signed-in and AppNavigator swaps to the app.
-      await signInWithOtpToken(tokenRef.current);
-    } catch (e) {
-      setMessage(e.message || 'Sign-in failed. Request a new code.');
+      await signInWithAccessToken(access.token);
+    } catch (err) {
+      setContinueError(err?.message || 'Could not open your program.');
     }
   }, [live, navigation]);
 
@@ -216,6 +230,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
               onContinue={onContinue}
               onResend={onResend}
             />
+            {continueError ? (
+              <ILText role="bodySm" color={CTA} align="center" style={{ marginTop: 10 }}>
+                {continueError}
+              </ILText>
+            ) : null}
           </View>
           {message ? (
             <ILText role="bodySm" color={CTA} align="center" style={{ marginTop: 12 }}>
