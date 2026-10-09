@@ -117,7 +117,7 @@ function zohoLoginHint(zohoProvision) {
   return 'Invalid email or password. Use your registration email and the password from your Iron Lady welcome email.';
 }
 
-async function ensureUserProfile(user, extras = {}) {
+export async function ensureUserProfile(user, extras = {}) {
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return { id: snap.id, ...snap.data() };

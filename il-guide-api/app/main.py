@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .generator import generate_whisper
-from .schemas import WhisperRequest, WhisperResponse
+from .schemas import OtpSendRequest, OtpVerifyRequest, WhisperRequest, WhisperResponse
+from . import whatsapp_otp
 
 app = FastAPI(
     title="IL Guide API",
@@ -36,6 +37,7 @@ async def health():
         "llm": bool(settings.openai_api_key),
         "redis": bool(settings.redis_url),
         "rag": bool(settings.chroma_persist_dir),
+        "whatsappOtp": whatsapp_otp.is_configured(),
     }
 
 
@@ -70,3 +72,19 @@ async def event(
     _: None = Depends(verify_api_key),
 ):
     return await generate_whisper(body.context, "event")
+
+
+@app.post("/otp/send")
+async def otp_send(
+    body: OtpSendRequest,
+    _: None = Depends(verify_api_key),
+):
+    return await whatsapp_otp.send_otp(body.phone)
+
+
+@app.post("/otp/verify")
+async def otp_verify(
+    body: OtpVerifyRequest,
+    _: None = Depends(verify_api_key),
+):
+    return whatsapp_otp.verify_otp(body.phone, body.code)
