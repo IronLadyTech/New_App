@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,6 +10,11 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
+import {
+  sendWhatsAppOtp,
+  signInWithOtpToken,
+  verifyWhatsAppOtp,
+} from '../../services/whatsappOtp';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
@@ -57,23 +62,55 @@ function InfoRow({ icon, title, body }) {
 
 export default function VerifyOtpScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
-  const { phone } = peekPhoneAuth();
+  const { confirmation, phone } = peekPhoneAuth();
+  const live = !!confirmation?.whatsapp;
   const routePhone = route?.params?.phone;
   const masked = useMemo(() => maskPhone(routePhone || phone), [routePhone, phone]);
   const [expected, setExpected] = useState(randomCode);
+  const [message, setMessage] = useState('');
+  const tokenRef = useRef(null);
 
   const onVerify = useCallback(
-    async (code) => code === expected,
-    [expected]
+    async (code) => {
+      if (!live) return code === expected;
+      setMessage('');
+      try {
+        tokenRef.current = await verifyWhatsAppOtp(phone, code);
+        return true;
+      } catch (e) {
+        setMessage(e.message);
+        return false;
+      }
+    },
+    [live, expected, phone]
   );
 
-  const onContinue = useCallback(() => {
-    navigation.replace('FirstLoginWelcome');
-  }, [navigation]);
+  const onContinue = useCallback(async () => {
+    if (!live) {
+      navigation.replace('FirstLoginWelcome');
+      return;
+    }
+    try {
+      // Auth state flips to signed-in and AppNavigator swaps to the app.
+      await signInWithOtpToken(tokenRef.current);
+    } catch (e) {
+      setMessage(e.message || 'Sign-in failed. Request a new code.');
+    }
+  }, [live, navigation]);
 
-  const onResend = useCallback(() => {
-    setExpected(randomCode());
-  }, []);
+  const onResend = useCallback(async () => {
+    if (!live) {
+      setExpected(randomCode());
+      return;
+    }
+    setMessage('');
+    try {
+      await sendWhatsAppOtp(phone);
+      setMessage('New code sent on WhatsApp.');
+    } catch (e) {
+      setMessage(e.message);
+    }
+  }, [live, phone]);
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
@@ -147,9 +184,15 @@ export default function VerifyOtpScreen({ navigation, route }) {
               </ILText>
             </Pressable>
           </View>
-          <ILText role="label" color={IL_BRAND.ink} style={{ marginTop: 10, letterSpacing: 0.4 }}>
-            Demo code · {expected}
-          </ILText>
+          {live ? (
+            <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 10 }}>
+              Check WhatsApp for your 6-digit code.
+            </ILText>
+          ) : (
+            <ILText role="label" color={IL_BRAND.ink} style={{ marginTop: 10, letterSpacing: 0.4 }}>
+              Demo code · {expected}
+            </ILText>
+          )}
 
           <View
             style={[
@@ -174,6 +217,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
               onResend={onResend}
             />
           </View>
+          {message ? (
+            <ILText role="bodySm" color={CTA} align="center" style={{ marginTop: 12 }}>
+              {message}
+            </ILText>
+          ) : null}
 
           <View style={{ marginTop: 28 }}>
             <InfoRow

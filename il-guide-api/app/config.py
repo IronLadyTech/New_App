@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     port: int = 8080
     cors_origins: str = "*"
 
+    # WhatsApp Cloud API (Meta) — OTP via an approved authentication template
+    whatsapp_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    whatsapp_api_version: str = "v23.0"
+    whatsapp_otp_template: str = "login_otp"
+    whatsapp_otp_language: str = "en"
+
+    # Service account JSON (whole file contents) for minting Firebase custom tokens
+    firebase_service_account_json: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         if self.cors_origins.strip() == "*":

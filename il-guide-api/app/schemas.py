@@ -57,3 +57,12 @@ class WhisperResponse(BaseModel):
     job: Literal["onboard", "nudge", "recommend", "event"]
     source: Literal["llm", "fallback"] = "llm"
     rag_snippets: list[str] = Field(default_factory=list)
+
+
+class OtpSendRequest(BaseModel):
+    phone: str = Field(..., max_length=20)
+
+
+class OtpVerifyRequest(BaseModel):
+    phone: str = Field(..., max_length=20)
+    code: str = Field(..., max_length=8)
