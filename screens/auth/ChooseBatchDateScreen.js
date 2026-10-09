@@ -315,12 +315,20 @@ function CalendarPicker({ visible, onClose, onPick }) {
   );
 }
 
-export default function ChooseBatchDateScreen({ navigation, onLock }) {
+export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState(BATCHES[0].id);
   const [custom, setCustom] = useState(null);
   const [calOpen, setCalOpen] = useState(false);
   const batches = custom ? [custom, ...BATCHES] : BATCHES;
+
+  const goBack = () => {
+    if (typeof onBack === 'function') {
+      onBack();
+      return;
+    }
+    if (navigation?.canGoBack?.()) navigation.goBack();
+  };
 
   const lockSeat = () => {
     const batch = batches.find((b) => b.id === selected) || batches[0];
@@ -353,6 +361,23 @@ export default function ChooseBatchDateScreen({ navigation, onLock }) {
         }}
         style={{ flex: 1 }}
       >
+        <Pressable
+          onPress={goBack}
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          hitSlop={10}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: '#FFFFFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: 16,
+          }}
+        >
+          <MaterialIcons name="chevron-left" size={22} color="#1A1F2E" />
+        </Pressable>
         <View>
           <ILText
             role="eyebrow"

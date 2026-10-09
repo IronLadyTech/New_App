@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
+import { formatCallableError, resolvePhoneAccess } from '../../services/functions';
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from '../../components/il/ilShadow';
 import ILText from '../../components/il/ILText';
@@ -25,17 +26,30 @@ export default function PhoneLoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [local, setLocal] = useState('');
+  const [checking, setChecking] = useState(false);
   const { extra: keyboardRoom, scrollProps } = useKeyboardRoom();
   const [error, setError] = useState('');
 
-  const onContinue = () => {
+  const onContinue = async () => {
     if (local.length < 10) {
       setError('Enter your 10-digit mobile number.');
       return;
     }
     setError('');
-    stashPhoneAuth({ demo: true }, `+91${local}`);
-    navigation.navigate('VerifyOtp');
+    setChecking(true);
+    try {
+      const access = await resolvePhoneAccess(`+91${local}`);
+      if (!access?.ok) {
+        setError(access?.reason || 'Could not check this number.');
+        return;
+      }
+      stashPhoneAuth({ demo: true, access }, `+91${local}`);
+      navigation.navigate('VerifyOtp');
+    } catch (err) {
+      setError(formatCallableError(err, 'Could not check this number.'));
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -309,6 +323,7 @@ export default function PhoneLoginScreen({ navigation }) {
 
           <Pressable
             onPress={onContinue}
+            disabled={checking}
             accessibilityRole="button"
             accessibilityLabel="Continue"
             style={({ pressed }) => ({
@@ -330,7 +345,7 @@ export default function PhoneLoginScreen({ navigation }) {
                 ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
               }}
             >
-              Continue
+              {checking ? 'Checking…' : 'Continue'}
             </Text>
             <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </Pressable>

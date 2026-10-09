@@ -712,36 +712,53 @@ const PROGRAM_CARD = {
 
 const STATE_RANK = { enrolled: 0, registered: 1, completed: 2 };
 
-/** The member's programs with their real stage, the one that needs her first on top. */
+/** The member's programs first. Programs they are not in stay on the list, locked. */
 function usePrograms() {
   const { profile } = useAuth();
   const lab = PROGRAM_CARD[profile?.labProgram] ? profile.labProgram : null;
   const ids = getEnrolledProgramIds(profile);
   if (lab) ids.add(lab);
-  if (!ids.size) ['lep', '100bm'].forEach((id) => ids.add(id));
-  if (lab && lab !== 'lep') ids.add('lep');
-  return [...ids]
+  return ['lep', '100bm', 'mbw']
     .filter((id) => PROGRAM_CARD[id])
     .map((id) => {
-      // A 100BM or MBW journey comes after LEP, so LEP shows as finished there.
-      const state = id === 'lep' && lab && lab !== 'lep' ? 'completed' : programStage(profile, id);
-      return { id, state };
+      const locked = !ids.has(id);
+      const state = locked
+        ? 'locked'
+        : id === 'lep' && lab && lab !== 'lep'
+          ? 'completed'
+          : programStage(profile, id);
+      return { id, state, locked };
     })
-    .sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state]);
+    .sort((a, b) => {
+      if (a.locked !== b.locked) return a.locked ? 1 : -1;
+      return (STATE_RANK[a.state] ?? 9) - (STATE_RANK[b.state] ?? 9);
+    });
 }
 
-function ProgramCard({ id, state, lead, onPress }) {
+function ProgramCard({ id, state, lead, locked, onPress }) {
   const card = PROGRAM_CARD[id];
-  const copy = card[state] || card.enrolled;
-  const Shell = lead ? DarkPanel : SoftCard;
+  const copy = locked
+    ? { kicker: 'Locked', sub: 'Not linked to this number', pct: 0 }
+    : card[state] || card.enrolled;
+  const Shell = !locked && lead ? DarkPanel : SoftCard;
   return (
-    <Pressable onPress={onPress} accessibilityRole="button">
+    <Pressable
+      onPress={locked ? undefined : onPress}
+      disabled={locked}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: locked }}
+      style={{ opacity: locked ? 0.55 : 1 }}
+    >
       <Shell>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <ILText role="eyebrow" color={lead ? IL_BRAND.redSoft : IL_BRAND.red} style={{ fontSize: 10 }}>
             {copy.kicker}
           </ILText>
-          <MaterialIcons name="chevron-right" size={22} color={lead ? '#FFFFFF' : IL_BRAND.dim} />
+          <MaterialIcons
+            name={locked ? 'lock' : 'chevron-right'}
+            size={22}
+            color={!locked && lead ? '#FFFFFF' : IL_BRAND.dim}
+          />
         </View>
         <ILText role="title" color={lead ? '#FFFFFF' : undefined} style={{ marginTop: 8 }}>
           {card.title}
@@ -781,8 +798,13 @@ function MultiPrograms({ routes }) {
       <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 12 }}>
         The one that needs you first is on top. Tap a program for its journey, sessions and cohort.
       </ILText>
-      {programs.map((p, i) => (
-        <ProgramCard key={p.id} {...p} lead={i === 0} onPress={() => routes.setProgram(p.id)} />
+      {programs.map((p) => (
+        <ProgramCard
+          key={p.id}
+          {...p}
+          lead={!p.locked && p.id === programs.find((item) => !item.locked)?.id}
+          onPress={() => routes.setProgram(p.id)}
+        />
       ))}
       {combo ? <ComboTimeline /> : null}
       <LinkRow
