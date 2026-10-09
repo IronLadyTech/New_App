@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
+import { signInWithAccessToken } from '../../services/auth';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
@@ -61,14 +62,25 @@ export default function VerifyOtpScreen({ navigation, route }) {
   const routePhone = route?.params?.phone;
   const masked = useMemo(() => maskPhone(routePhone || phone), [routePhone, phone]);
   const [expected, setExpected] = useState(randomCode);
+  const [continueError, setContinueError] = useState('');
 
   const onVerify = useCallback(
     async (code) => code === expected,
     [expected]
   );
 
-  const onContinue = useCallback(() => {
-    navigation.replace('FirstLoginWelcome');
+  const onContinue = useCallback(async () => {
+    const access = peekPhoneAuth().confirmation?.access;
+    setContinueError('');
+    if (!access || access.guest) {
+      navigation.replace('GuestStart');
+      return;
+    }
+    try {
+      await signInWithAccessToken(access.token);
+    } catch (err) {
+      setContinueError(err?.message || 'Could not open your program.');
+    }
   }, [navigation]);
 
   const onResend = useCallback(() => {
@@ -173,6 +185,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
               onContinue={onContinue}
               onResend={onResend}
             />
+            {continueError ? (
+              <ILText role="bodySm" color={CTA} align="center" style={{ marginTop: 10 }}>
+                {continueError}
+              </ILText>
+            ) : null}
           </View>
 
           <View style={{ marginTop: 28 }}>

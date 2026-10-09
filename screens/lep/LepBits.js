@@ -9,6 +9,8 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { FACE } from './lepData';
 import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
+import { useAuth } from '../../context/AuthContext';
+import { lockedProgramIds } from '../../utils/programAccess';
 
 export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../guest/GuestBits';
 export { GuestBackBar } from '../guest/GuestBits';
@@ -260,14 +262,16 @@ export function CheckRow({ item, last, onPress }) {
 
 export function ProgramFilter({ dark }) {
   const { program, setProgram } = useProgramNav();
+  const { profile } = useAuth();
+  const locked = lockedProgramIds(profile);
   const current = PROGRAM_FILTERS.find((f) => f.id === program)?.label || 'All';
   return (
     <FilterBar
-      items={PROGRAM_FILTERS.map((f) => f.label)}
+      items={PROGRAM_FILTERS.map((f) => ({ label: f.label, locked: locked.has(f.id) }))}
       value={current}
       onChange={(label) => {
         const hit = PROGRAM_FILTERS.find((f) => f.label === label);
-        if (hit) setProgram(hit.id);
+        if (hit && !locked.has(hit.id)) setProgram(hit.id);
       }}
       dark={dark}
     />
@@ -284,21 +288,36 @@ export function FilterBar({ items, value, onChange, dark }) {
         padding: 4,
       }}
     >
-      {items.map((item) => {
+      {items.map((raw) => {
+        const item = typeof raw === 'string' ? raw : raw.label;
+        const locked = typeof raw === 'object' && raw.locked;
         const on = item === value;
         return (
           <Pressable
             key={item}
-            onPress={() => onChange(item)}
+            onPress={() => {
+              if (!locked) onChange(item);
+            }}
+            accessibilityState={{ disabled: locked, selected: on }}
             style={{
               flex: 1,
               minHeight: 36,
               borderRadius: 999,
               alignItems: 'center',
               justifyContent: 'center',
+              flexDirection: 'row',
               backgroundColor: on ? G.dark : 'transparent',
+              opacity: locked ? 0.45 : 1,
             }}
           >
+            {locked ? (
+              <MaterialIcons
+                name="lock"
+                size={12}
+                color={on ? '#FFFFFF' : G.meta}
+                style={{ marginRight: 4 }}
+              />
+            ) : null}
             <ILText role="label" color={on ? '#FFFFFF' : G.meta} style={[af, { fontSize: 13 }]}>
               {item}
             </ILText>

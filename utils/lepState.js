@@ -30,5 +30,8 @@ export function getLepState(profile) {
 }
 
 export function isLepEnrolled(profile) {
-  return getLepState(profile) === 'enrolled';
+  if (profile?.labProgram === 'lep' && (profile?.labState === 'enrolled' || profile?.labState === 'registered')) {
+    return profile.labState === 'enrolled';
+  }
+  return programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.PAID;
 }
