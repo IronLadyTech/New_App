@@ -4,6 +4,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
+import { useAuth } from '../../context/AuthContext';
+import { lockedProgramIds } from '../../utils/programAccess';
 import { getProgramEntry } from '../../constants/programs';
 import {
   DateBadge,
@@ -142,7 +144,7 @@ const LIBRARIES = {
 
 const CITIES = ['Mumbai', 'Pune', 'Bengaluru', 'Delhi NCR', 'Hyderabad'];
 
-function FilterRow({ value, onChange }) {
+function FilterRow({ value, onChange, lockedIds }) {
   return (
     <View
       style={{
@@ -155,21 +157,34 @@ function FilterRow({ value, onChange }) {
     >
       {PROGRAM_FILTERS.map((item) => {
         const on = value === item.id;
+        const locked = lockedIds.has(item.id);
         return (
           <Pressable
             key={item.id}
-            onPress={() => onChange(item.id)}
+            onPress={() => {
+              if (!locked) onChange(item.id);
+            }}
             accessibilityRole="button"
-            accessibilityState={{ selected: on }}
+            accessibilityState={{ selected: on, disabled: locked }}
             style={{
               flex: 1,
               minHeight: 36,
               borderRadius: 999,
               alignItems: 'center',
               justifyContent: 'center',
+              flexDirection: 'row',
               backgroundColor: on ? IL_BRAND.forest : 'transparent',
+              opacity: locked ? 0.45 : 1,
             }}
           >
+            {locked ? (
+              <MaterialIcons
+                name="lock"
+                size={12}
+                color={on ? '#FFFFFF' : IL_BRAND.muted}
+                style={{ marginRight: 4 }}
+              />
+            ) : null}
             <ILText role="label" color={on ? '#FFFFFF' : IL_BRAND.muted} style={{ fontSize: 13 }}>
               {item.label}
             </ILText>
@@ -240,6 +255,8 @@ function ContinueCard({ item, onPress }) {
 
 export default function LearnLibrary({ navigation }) {
   const { program, setProgram, stage } = useProgramNav();
+  const { profile } = useAuth();
+  const lockedIds = lockedProgramIds(profile);
   const [filter, setFilter] = useState(program === 'lep' || program === '100bm' || program === 'mbw' ? program : 'all');
   const [chip, setChip] = useState('For you');
   const [city, setCity] = useState('Pune');
@@ -253,6 +270,7 @@ export default function LearnLibrary({ navigation }) {
   }, [program]);
 
   const chooseFilter = (id) => {
+    if (lockedIds.has(id)) return;
     setFilter(id);
     setProgram(id);
   };
@@ -275,7 +293,7 @@ export default function LearnLibrary({ navigation }) {
         </ILText>
       </View>
 
-      <FilterRow value={filter} onChange={chooseFilter} />
+      <FilterRow value={filter} onChange={chooseFilter} lockedIds={lockedIds} />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }} contentContainerStyle={{ paddingRight: 8 }}>
         {CHIPS.map((item) => {

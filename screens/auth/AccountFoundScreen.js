@@ -9,7 +9,7 @@ import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import ILButton from '../../components/il/ILButton';
 
-export default function AccountFoundScreen({ navigation, route, onDone: onDoneProp }) {
+export default function AccountFoundScreen({ navigation, route, onDone: onDoneProp, onBack }) {
   const programs = route?.params?.programs || [
     {
       id: 'lep',
@@ -27,11 +27,20 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
     },
   ];
   const phone = route?.params?.phone || '';
+  const primary = programs.find((p) => p.primary) || programs[0];
   const onDone = onDoneProp || route?.params?.onDone;
 
-  const finish = () => {
-    if (typeof onDone === 'function') onDone();
+  const finish = (programId) => {
+    if (typeof onDone === 'function') onDone(programId || primary?.id);
     else if (navigation?.canGoBack?.()) navigation.goBack();
+  };
+
+  const goBack = () => {
+    if (typeof onBack === 'function') {
+      onBack();
+      return;
+    }
+    if (navigation?.canGoBack?.()) navigation.goBack();
   };
 
   return (
@@ -49,6 +58,23 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
           }}
           showsVerticalScrollIndicator={false}
         >
+          <Pressable
+            onPress={goBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={10}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: IL_BRAND.white,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: 4,
+            }}
+          >
+            <MaterialIcons name="chevron-left" size={22} color={IL_BRAND.ink} />
+          </Pressable>
           <ILText role="eyebrow" color={IL_BRAND.red} style={{ marginTop: 8 }}>
             Number verified{phone ? ` · ${phone}` : ''}
           </ILText>
@@ -63,7 +89,7 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
             {programs.map((p) => (
               <Pressable
                 key={p.id}
-                onPress={finish}
+                onPress={() => finish(p.id)}
                 style={[
                   {
                     backgroundColor: p.primary ? IL_BRAND.forest : IL_BRAND.white,
@@ -105,8 +131,8 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
           </View>
 
           <ILButton
-            label="Go to my LEP home"
-            onPress={finish}
+            label={primary?.meta ? `Go to my ${primary.meta} home` : 'Go to my home'}
+            onPress={() => finish(primary?.id)}
             style={{ marginTop: 22 }}
           />
           <ILText
@@ -119,7 +145,7 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
           </ILText>
 
           <Pressable
-            onPress={finish}
+            onPress={() => finish()}
             style={{
               marginTop: 18,
               backgroundColor: IL_BRAND.white,

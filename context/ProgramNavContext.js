@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from './AuthContext';
 import { PAYMENT_STATUS } from '../constants/programs';
-import { getEnrolledProgramIds, programPaymentStatus } from '../utils/programAccess';
+import { getEnrolledProgramIds, lockedProgramIds, programPaymentStatus } from '../utils/programAccess';
 
 const ProgramNavContext = createContext(null);
 
@@ -17,13 +17,15 @@ export function deriveHomeProgram(profile) {
   if (!profile) return 'lep';
   if (profile.labProgram) return profile.labProgram;
   const ids = getEnrolledProgramIds(profile);
+  const order = ['lep', '100bm', 'mbw'];
+  const owned = order.filter((id) => ids.has(id));
+  if (!owned.length) return 'lep';
   const lepPaid = ids.has('lep') && programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.PAID;
   const bmRegistered =
     ids.has('100bm') && programPaymentStatus(profile, '100bm') === PAYMENT_STATUS.REGISTER;
-  if (lepPaid && bmRegistered) return 'all';
-  if (ids.has('mbw') && !ids.has('lep')) return 'mbw';
-  if (ids.has('100bm') && !ids.has('lep')) return '100bm';
-  return 'lep';
+  if (owned.length > 1 && lepPaid && bmRegistered) return 'all';
+  const paid = owned.filter((id) => programPaymentStatus(profile, id) === PAYMENT_STATUS.PAID);
+  return paid[0] || owned[0];
 }
 
 export function programStage(profile, programId) {
@@ -56,10 +58,11 @@ export function ProgramNavProvider({ children }) {
   const shown = picked ? program : deriveHomeProgram(profile);
 
   const setProgram = useCallback((id) => {
+    if (lockedProgramIds(profile).has(id)) return;
     setPicked(true);
     setProgramState(id);
     setSection('Journey');
-  }, []);
+  }, [profile]);
 
   const value = useMemo(
     () => ({
@@ -90,26 +93,29 @@ export function useProgramNavMaybe() {
 export function useProgramRoutes() {
   const navigation = useNavigation();
   const nav = useProgramNav();
+  const { profile } = useAuth();
 
   const openMyProgram = useCallback(
     (programId, nextSection = 'Journey') => {
+      if (programId && lockedProgramIds(profile).has(programId)) return;
       nav.setProgram(programId);
       nav.setSection(nextSection);
       navigation.navigate('MyProgram');
     },
-    [nav, navigation]
+    [nav, navigation, profile]
   );
 
   // Open the Learn tab itself: it shows the program's own Learn screen
   // (100BM Learn, LEP Learn…), not the old Moodle task list.
   const openLearn = useCallback(
     (programId) => {
+      if (programId && lockedProgramIds(profile).has(programId)) return;
       if (programId && typeof programId === 'string' && programId !== nav.program) {
         nav.setProgram(programId);
       }
       navigation.navigate('Learn', { screen: 'LepLearn' });
     },
-    [nav, navigation]
+    [nav, navigation, profile]
   );
 
   const openPayment = useCallback(() => {

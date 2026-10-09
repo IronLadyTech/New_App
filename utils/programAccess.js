@@ -120,6 +120,16 @@ export function canAccessProgram(programIdOrCode, profile) {
   return getEnrolledProgramIds(profile).has(entry.id);
 }
 
+/** Programs on this account. Everything else stays visible but locked. */
+export function lockedProgramIds(profile) {
+  const ids = getEnrolledProgramIds(profile);
+  const lab = normalizeProgramId(profile?.labProgram);
+  if (lab) ids.add(lab);
+  const locked = new Set(['lep', '100bm', 'mbw'].filter((id) => !ids.has(id)));
+  if (!(ids.has('lep') && ids.has('100bm'))) locked.add('all');
+  return locked;
+}
+
 export function programPaymentStatus(profile, programId) {
   const perProgram = profile?.programAccess?.[programId]?.paymentStatus;
   if (perProgram) return normalizePaymentStatus(perProgram);
