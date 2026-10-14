@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -8,6 +8,12 @@ import { IL_BRAND, IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import ILButton from '../../components/il/ILButton';
 import { useAuth } from '../../context/AuthContext';
+import { PAYMENT_STATUS } from '../../constants/programs';
+import { fetchUserProfile } from '../../services/auth';
+import {
+  getEnrolledPrograms,
+  programPaymentStatus,
+} from '../../utils/programAccess';
 import { formatCallableError, refreshMyAccess, updateMyWelcomeProfile } from '../../services/functions';
 
 const GUIDE = require('../../assets/il/il-guide-face.jpg');
@@ -24,7 +30,7 @@ const CHIP_INK = '#F3EDE4';
 
 /** Staff notes in Zoho are not a learner's answer. */
 function learnerValue(value) {
-  const text = String(value || '').trim();
+  const text = String(value || '').trim().replace(/[,;\s]+$/, '');
   if (!text) return '';
   const v = text.toLowerCase().replace(/\s+/g, ' ');
   if (
@@ -35,6 +41,62 @@ function learnerValue(value) {
     return '';
   }
   return text;
+}
+
+function welcomeFields(source) {
+  if (!source || typeof source !== 'object') return { city: '', domain: '', bhag: '' };
+  return {
+    city: learnerValue(source.city || source.City || source.location || source.currentCity),
+    domain: learnerValue(
+      source.domain ||
+        source.Industry_Field_of_Work ||
+        source.fieldOfWork ||
+        source.workDomain ||
+        source.industry
+    ),
+    bhag: learnerValue(
+      source.bhag || source.Month_B_HAG || source.bHag || source.goal || source.threeMonthGoal
+    ),
+  };
+}
+
+function fieldsFromZoho(profile, data) {
+  const stored = welcomeFields(profile);
+  const live = [data, data?.profile, data?.user, data?.access].filter(Boolean).reduce(
+    (acc, bag) => {
+      const next = welcomeFields(bag);
+      return {
+        city: acc.city || next.city,
+        domain: acc.domain || next.domain,
+        bhag: acc.bhag || next.bhag,
+      };
+    },
+    { city: '', domain: '', bhag: '' }
+  );
+  // A Zoho read replaces what the app stored. An empty read keeps the stored value.
+  if (data && (data.ok === true || data.throttled === true)) {
+    return {
+      city: live.city || stored.city,
+      domain: live.domain || stored.domain,
+      bhag: live.bhag || stored.bhag,
+    };
+  }
+  return {
+    city: stored.city || live.city,
+    domain: stored.domain || live.domain,
+    bhag: stored.bhag || live.bhag,
+  };
+}
+
+function welcomeBadges(profile) {
+  return getEnrolledPrograms(profile)
+    .map((entry) => {
+      const payment = programPaymentStatus(profile, entry.id);
+      if (payment === PAYMENT_STATUS.UNPAID) return null;
+      const status = payment === PAYMENT_STATUS.PAID ? 'Enrolled' : 'Registered';
+      return `${status} · ${entry.title}`;
+    })
+    .filter(Boolean);
 }
 
 function Chip({ icon, label, onPress }) {
@@ -78,14 +140,22 @@ export default function FirstLoginWelcomeScreen({
     route?.params?.name ||
     profile?.displayName?.split(' ')[0] ||
     'Ananya';
-  const city = learnerValue(profile?.city);
-  const domain = learnerValue(profile?.domain);
-  const bhag = learnerValue(profile?.bhag);
+  const synced = fieldsFromZoho(profile);
+  const badges =
+    !user?.uid || user.uid === 'preview' || isPreview
+      ? ['Registered · Leadership Essentials Program']
+      : welcomeBadges(profile);
+  const city = synced.city;
+  const domain = synced.domain;
+  const bhag = synced.bhag;
   const needsDetails = !city || !domain || !bhag;
+  const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const editingRef = useRef(null);
+  editingRef.current = editing;
 
   const beginEdit = (key) => {
     if (!user?.uid || user.uid === 'preview' || isPreview) return;
@@ -102,7 +172,7 @@ export default function FirstLoginWelcomeScreen({
     setSaveError('');
     try {
       const result = await updateMyWelcomeProfile({ [editing]: value });
-      if (!result?.ok) {
+      if (result?.ok === false || result?.zoho === false) {
         setSaveError(result?.reason || 'Could not save to Zoho');
         return;
       }
@@ -115,11 +185,33 @@ export default function FirstLoginWelcomeScreen({
     }
   };
 
+  const syncFromZoho = useCallback(async () => {
+    if (!user?.uid || user.uid === 'preview' || isPreview || editingRef.current) return;
+    setSyncing(true);
+    try {
+      const data = await refreshMyAccess();
+      const fresh = await fetchUserProfile(user.uid).catch(() => null);
+      const next = fieldsFromZoho(fresh, data);
+      const patch = {};
+      if (next.city) patch.city = next.city;
+      if (next.domain) patch.domain = next.domain;
+      if (next.bhag) patch.bhag = next.bhag;
+      if (Object.keys(patch).length) patchProfile(patch);
+    } finally {
+      setSyncing(false);
+    }
+  }, [user?.uid, isPreview, patchProfile]);
+
   useEffect(() => {
-    if (!user?.uid || user.uid === 'preview' || isPreview) return undefined;
-    refreshMyAccess();
-    return undefined;
-  }, [user?.uid, isPreview]);
+    syncFromZoho();
+  }, [syncFromZoho]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncFromZoho();
+    });
+    return () => sub.remove();
+  }, [syncFromZoho]);
 
   const goBack = () => {
     if (typeof onBack === 'function') {
@@ -178,27 +270,43 @@ export default function FirstLoginWelcomeScreen({
               <MaterialIcons name="chevron-left" size={22} color={IL_BRAND.ink} />
             </Pressable>
           </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: 'rgba(232,168,160,0.55)',
-              backgroundColor: 'rgba(232,168,160,0.10)',
-              borderRadius: 999,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-            }}
-          >
-            <MaterialIcons name="school" size={13} color={ROSE} />
-            <ILText
-              role="eyebrow"
-              color={ROSE}
-              style={{ marginLeft: 7, fontSize: 10, letterSpacing: 0.8 }}
+          {badges.length ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                alignSelf: 'stretch',
+              }}
             >
-              Registered · Leadership Essentials program
-            </ILText>
-          </View>
+              {badges.map((label) => (
+                <View
+                  key={label}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(232,168,160,0.55)',
+                    backgroundColor: 'rgba(232,168,160,0.10)',
+                    borderRadius: 999,
+                    paddingHorizontal: 14,
+                    paddingVertical: 7,
+                    margin: 4,
+                    maxWidth: '100%',
+                  }}
+                >
+                  <MaterialIcons name="school" size={13} color={ROSE} />
+                  <ILText
+                    role="eyebrow"
+                    color={ROSE}
+                    style={{ marginLeft: 7, fontSize: 10, letterSpacing: 0.8, flexShrink: 1 }}
+                  >
+                    {label}
+                  </ILText>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <ILText
             role="display"
@@ -408,9 +516,11 @@ export default function FirstLoginWelcomeScreen({
               align="center"
               style={{ marginTop: 12, fontSize: 13 }}
             >
-              {needsDetails
-                ? 'Tap a line to fill it in: your city, your field of work, and your goal for the next 3 months.'
-                : 'From your profile. Tap a line to update it.'}
+              {syncing
+                ? 'Checking Zoho for your city, field of work, and 3-month goal.'
+                : needsDetails
+                  ? 'Your registration details appear here. Tap a line to update them.'
+                  : 'From Zoho. Tap a line to update it.'}
             </ILText>
           </View>
 
