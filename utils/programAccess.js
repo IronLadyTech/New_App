@@ -151,28 +151,43 @@ function primaryProgramId(profile) {
   return first || normalizeProgramId(profile?.program) || null;
 }
 
-/** Batch id for submissions and calendar filtering (Zoho → Firestore via refreshMyAccess). */
-export function learnerBatchId(profile, programId) {
-  const pid = programId || primaryProgramId(profile);
-  const fromAccess = pid ? profile?.programAccess?.[pid] : null;
-  return (
-    fromAccess?.batchId ||
-    profile?.batchId ||
-    profile?.batch ||
-    'default'
-  );
+function cleanBatchId(value) {
+  const id = String(value || '').trim();
+  if (!id || id === 'default' || id === '#batch') return null;
+  return id;
 }
 
-/** Human-readable batch for Profile and Home (e.g. "LEP Batch 42"). */
+function cleanBatchLabel(value) {
+  const name = String(value || '').trim();
+  if (!name || name === 'default' || name === '#batch') return null;
+  return name;
+}
+
+/** Zoho writes each program's batch on programAccess[programId]. */
+function batchAccess(profile, programId) {
+  const pid = normalizeProgramId(programId) || primaryProgramId(profile);
+  return { pid, access: pid ? profile?.programAccess?.[pid] || null : null };
+}
+
+function mayUseTopLevelBatch(profile, pid, programId) {
+  if (!programId) return true;
+  return !pid || pid === primaryProgramId(profile);
+}
+
+/** Batch id for submissions and calendar filtering (Zoho → Firestore via refreshMyAccess). */
+export function learnerBatchId(profile, programId) {
+  const { pid, access } = batchAccess(profile, programId);
+  const own = cleanBatchId(access?.batchId) || cleanBatchId(access?.batch);
+  if (own) return own;
+  if (!mayUseTopLevelBatch(profile, pid, programId)) return 'default';
+  return cleanBatchId(profile?.batchId) || cleanBatchId(profile?.batch) || 'default';
+}
+
+/** Human-readable batch for one program (Zoho programAccess, then that program's top-level batch). */
 export function learnerBatchLabel(profile, programId) {
-  const pid = programId || primaryProgramId(profile);
-  const fromAccess = pid ? profile?.programAccess?.[pid] : null;
-  const name =
-    fromAccess?.batchName ||
-    profile?.batchName ||
-    fromAccess?.batchId ||
-    profile?.batchId ||
-    profile?.batch;
-  if (!name || name === 'default') return null;
-  return String(name);
+  const { pid, access } = batchAccess(profile, programId);
+  const own = cleanBatchLabel(access?.zohoRawBatch) || cleanBatchLabel(access?.batchName) || cleanBatchLabel(access?.batch);
+  if (own) return own;
+  if (!mayUseTopLevelBatch(profile, pid, programId)) return null;
+  return cleanBatchLabel(profile?.batchName) || cleanBatchLabel(profile?.batch);
 }

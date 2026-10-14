@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform, Pressable, ScrollView, View } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,8 +9,11 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
-import { getActiveProgram, isLepEnrolled, lepFullName } from '../../utils/lepState';
-import { REGISTRATION_FEE } from '../../constants/programs';
+import { getActiveProgram, lepFullName } from '../../utils/lepState';
+import { PAYMENT_STATUS, REGISTRATION_FEE } from '../../constants/programs';
+import { learnerBatchId, programPaymentStatus } from '../../utils/programAccess';
+import { buildProgramBatchCard } from '../../utils/lepBatchHero';
+import { db } from '../../services/firebase';
 import { LepHeader, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { FACE } from './lepData';
@@ -97,16 +101,45 @@ const SETTINGS = [
   { icon: 'description', label: 'Terms' },
 ];
 
+function useProgramGroup(profile, programId) {
+  const batchId = learnerBatchId(profile, programId);
+  const id = batchId && batchId !== 'default' && /^[A-Za-z0-9_-]+$/.test(batchId) ? batchId : null;
+  const [group, setGroup] = useState(null);
+
+  useEffect(() => {
+    if (!id) {
+      setGroup(null);
+      return undefined;
+    }
+    let cancelled = false;
+    getDoc(doc(db, 'groups', id))
+      .then((snap) => {
+        if (!cancelled) setGroup(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGroup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return group;
+}
+
 export default function LepProfileScreen() {
   const { profile, logout } = useAuth();
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const { orders, latest, signedIn } = useMyReceipts();
-  const enrolled = isLepEnrolled(profile);
+  const programId = getActiveProgram(profile);
+  const enrolled = programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID;
   const name = lepFullName(profile);
-  const program = PROGRAM_PROFILE[getActiveProgram(profile)] || PROGRAM_PROFILE.lep;
+  const program = PROGRAM_PROFILE[programId] || PROGRAM_PROFILE.lep;
   const copy = enrolled ? program.enr : program.reg;
+  const group = useProgramGroup(profile, programId);
+  const batchCard = buildProgramBatchCard(profile, programId, group);
   const fee = `₹${(REGISTRATION_FEE[getActiveProgram(profile)] ?? REGISTRATION_FEE.lep).toLocaleString('en-IN')}`;
 
   const onLogout = () => {
@@ -276,7 +309,7 @@ export default function LepProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcons name="event" size={16} color={G.ink} />
               <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                {enrolled ? copy.batch : 'ENROLLMENT STATUS'}
+                {enrolled ? batchCard.eyebrow : 'ENROLLMENT STATUS'}
               </ILText>
             </View>
             {!enrolled ? (
@@ -285,13 +318,13 @@ export default function LepProfileScreen() {
                   {copy.status}
                 </ILText>
               </View>
-            ) : (
+            ) : batchCard.confirmed ? (
               <View style={{ backgroundColor: '#E8F6EE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                 <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
                   Confirmed
                 </ILText>
               </View>
-            )}
+            ) : null}
           </View>
           <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 16, fontSize: 10 }]}>
             {program.code}
@@ -301,11 +334,18 @@ export default function LepProfileScreen() {
             color={G.ink}
             style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
           >
-            {copy.heading}
+            {enrolled ? batchCard.heading || 'Batch not set in Zoho yet' : copy.heading}
           </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            {copy.body}
-          </ILText>
+          {enrolled && batchCard.body ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
+              {batchCard.body}
+            </ILText>
+          ) : null}
+          {!enrolled ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
+              {copy.body}
+            </ILText>
+          ) : null}
           {!enrolled ? (
             <View
               style={{
@@ -322,11 +362,13 @@ export default function LepProfileScreen() {
               <MaterialIcons name="schedule" size={16} color={G.ink} />
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <ILText role="label" color={G.ink}>
-                  {copy.date}
+                  {batchCard.heading || 'Your batch will show here once it is set in Zoho.'}
                 </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                  {copy.dateSub}
-                </ILText>
+                {batchCard.body ? (
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                    {batchCard.body}
+                  </ILText>
+                ) : null}
               </View>
               <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
                 Change date

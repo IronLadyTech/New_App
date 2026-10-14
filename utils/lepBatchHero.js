@@ -1,17 +1,10 @@
 import { getProgramEntry } from '../constants/programs';
-import { learnerBatchId, normalizeProgramId } from './programAccess';
+import { learnerBatchId, learnerBatchLabel, normalizeProgramId } from './programAccess';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_INDEX = Object.fromEntries(MONTHS.map((name, i) => [name.toLowerCase(), i]));
-
-function splitList(value) {
-  return String(value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
 
 function validDate(year, month, day) {
   const date = new Date(year, month - 1, day);
@@ -101,20 +94,35 @@ function positiveCount(...values) {
   return null;
 }
 
-function batchRawForProgram(profile, programId) {
-  const access = profile?.programAccess?.[programId] || {};
-  const direct = firstFilled(access.zohoRawBatch, access.batchName, access.batch);
-  if (direct) return direct;
-
-  const batches = splitList(profile?.batchName || profile?.batch);
-  if (batches.length === 1) return batches[0];
-
-  const programs = splitList(profile?.programs);
-  if (batches.length > 1 && programs.length === batches.length) {
-    const index = programs.findIndex((name) => normalizeProgramId(name) === programId);
-    if (index >= 0) return batches[index];
+function splitRange(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return [null, null];
+  const parts = value.split(/\s+[–—-]\s+/);
+  if (parts.length >= 2) {
+    return [parseOneDate(parts[0]) || parseOneDate(value), parseOneDate(parts[1])];
   }
-  return null;
+  const one = parseOneDate(value);
+  return one ? [one, null] : [null, null];
+}
+
+function formatRange(start, end) {
+  if (!start) return null;
+  const startDate = new Date(start.year, start.month - 1, start.day);
+  const startWd = WEEKDAYS_SHORT[startDate.getDay()];
+  if (!end) return `${startWd} ${start.day} ${MONTHS[start.month - 1]}, ${start.year}`;
+  const endDate = new Date(end.year, end.month - 1, end.day);
+  const endWd = WEEKDAYS_SHORT[endDate.getDay()];
+  if (start.year === end.year && start.month === end.month) {
+    return `${startWd} ${start.day} – ${endWd} ${end.day} ${MONTHS[start.month - 1]}, ${start.year}`;
+  }
+  if (start.year === end.year) {
+    return `${startWd} ${start.day} ${MONTHS[start.month - 1]} – ${endWd} ${end.day} ${MONTHS[end.month - 1]}, ${start.year}`;
+  }
+  return `${startWd} ${start.day} ${MONTHS[start.month - 1]} ${start.year} – ${endWd} ${end.day} ${MONTHS[end.month - 1]} ${end.year}`;
+}
+
+function batchRawForProgram(profile, programId) {
+  return learnerBatchLabel(profile, programId);
 }
 
 function realBatchId(profile, programId) {
@@ -126,10 +134,64 @@ function realBatchId(profile, programId) {
  * Enrolled LEP hero from the Zoho-synced profile and, when readable, the batch group.
  * Missing fields are left null so the screen can drop that line.
  */
+const BATCH_EYEBROW = {
+  lep: 'MY BATCH',
+  '100bm': 'MY 100BM COHORT',
+  mbw: 'MY MBW YEAR',
+};
+
+/**
+ * Profile batch card for one program. Uses that program's Zoho batch only.
+ * Missing dates and times stay null so the screen does not show another program's batch.
+ */
+export function buildProgramBatchCard(profile, programId, group) {
+  const pid = normalizeProgramId(programId) || 'lep';
+  const access = profile?.programAccess?.[pid] || {};
+  const raw = firstFilled(
+    access.zohoRawBatch,
+    access.batchName,
+    access.batchStart,
+    access.startDate,
+    group?.zohoRawBatch,
+    group?.rawBatch,
+    group?.startDate,
+    group?.date,
+    batchRawForProgram(profile, pid),
+    group?.name
+  );
+  const [start, end] = splitRange(raw);
+  const range = formatRange(start, end);
+  const named = raw && !parseBatchStart(raw) ? String(raw).trim() : null;
+  const time = formatClock(
+    firstFilled(
+      access.startTime,
+      access.batchStartTime,
+      access.sessionTime,
+      group?.startTime,
+      group?.time,
+      group?.sessionTime
+    )
+  );
+  const endTime = formatClock(firstFilled(access.endTime, access.batchEndTime, group?.endTime));
+  let body = null;
+  if (time && endTime && endTime !== time) {
+    body = `${time.replace(/ IST$/, '')} – ${endTime}`;
+  } else if (time) {
+    body = time;
+  }
+
+  return {
+    eyebrow: named || BATCH_EYEBROW[pid] || 'MY BATCH',
+    heading: range || named,
+    body,
+    confirmed: Boolean(range || named),
+  };
+}
+
 export function buildLepEnrolledHero(profile, group, now = new Date()) {
-  const programId = normalizeProgramId(group?.program) || 'lep';
+  const programId = 'lep';
   const entry = getProgramEntry(programId);
-  const access = profile?.programAccess?.[programId] || profile?.programAccess?.lep || {};
+  const access = profile?.programAccess?.lep || {};
 
   const batchRaw = batchRawForProgram(profile, programId);
   const start = [group?.zohoRawBatch, group?.rawBatch, group?.name, batchRaw]
