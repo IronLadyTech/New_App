@@ -13,6 +13,13 @@ service cloud.firestore {
     function isStaff() {
       return signedIn() && userDoc().data.role in ['teacher', 'admin'];
     }
+    // Admin CMS (/admin): PL and Admin edit, CEM views.
+    function cmsEditor() {
+      return signedIn() && userDoc().data.role in ['admin', 'superadmin', 'pl'];
+    }
+    function cmsViewer() {
+      return signedIn() && userDoc().data.role in ['admin', 'superadmin', 'pl', 'cem'];
+    }
 
     match /users/{uid} {
       allow read: if signedIn();
@@ -53,6 +60,23 @@ service cloud.firestore {
     match /announcements/{id} {
       allow read: if signedIn();
       allow write: if isStaff();
+    }
+
+    match /cms_notificationEvents/{id} {
+      allow read: if cmsViewer();
+      allow write: if cmsEditor();
+    }
+
+    // Participants see published content (task attachments, recordings).
+    match /cms_content/{id} {
+      allow read: if cmsViewer() || (signedIn() && resource.data.published == true);
+      allow write: if cmsEditor();
+    }
+
+    // ilGuide is read by the app; notificationPolicy by staff only.
+    match /cms_config/{name} {
+      allow read: if (name == 'ilGuide' && signedIn()) || cmsViewer();
+      allow write: if cmsEditor();
     }
   }
 }

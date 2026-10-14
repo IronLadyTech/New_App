@@ -44,6 +44,18 @@ export async function updateMyWelcomeProfile(fields) {
   return data;
 }
 
+/** Staff test: deliver CMS event to a learner (in-app row + optional FCM). Requires deployed function. */
+export async function sendParticipantNotificationTest({ targetUid, eventCode, title, body, go }) {
+  const { data } = await call('sendParticipantNotificationTest', {
+    targetUid,
+    eventCode,
+    title,
+    body,
+    go,
+  });
+  return data;
+}
+
 /** Pull this learner's entitlements from Zoho (throttled server-side). */
 export async function refreshMyAccess() {
   try {
@@ -104,6 +116,7 @@ export async function fetchILGuideWhisperFromCloud(context) {
       id: data.id || `cloud-${Date.now()}`,
       message: data.message,
       job: data.job || 'nudge',
+      taskId: data.taskId || null,
     };
   } catch (err) {
     if (err?.code === 'functions/permission-denied') return null;

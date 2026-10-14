@@ -92,6 +92,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
     setContinueError('');
     setMessage('');
 
+    if (!access || access.guest) {
+      navigation.replace('GuestStart');
+      return;
+    }
+
     if (live) {
       try {
         await signInWithOtpToken(tokenRef.current);
@@ -101,10 +106,6 @@ export default function VerifyOtpScreen({ navigation, route }) {
       return;
     }
 
-    if (!access || access.guest) {
-      navigation.replace('GuestStart');
-      return;
-    }
     try {
       await signInWithAccessToken(access.token);
     } catch (err) {

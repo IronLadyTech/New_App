@@ -5,6 +5,7 @@ import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area
 import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import DemoFlowBar from '../components/il/DemoFlowBar';
+import { bindRootNavigation } from '../utils/navigationFromGo';
 
 function AuthenticatedBranch() {
   const AuthenticatedApp = require('./AuthenticatedApp').default;
@@ -21,7 +22,10 @@ export default function AppNavigator() {
   const insets = useSafeAreaInsets();
   const navRef = useNavigationContainerRef();
   const [route, setRoute] = useState(null);
-  const track = () => setRoute(navRef.getCurrentRoute()?.name || null);
+  const track = () => {
+    bindRootNavigation(navRef);
+    setRoute(navRef.getCurrentRoute()?.name || null);
+  };
 
   const app = isAuthenticated ? (
     // A new demo flow remounts the app, so it opens fresh on Home.

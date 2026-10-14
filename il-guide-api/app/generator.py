@@ -7,9 +7,10 @@ import re
 import uuid
 from typing import Literal
 
+from .cms_config import il_guide_config
 from .config import settings
 from .fallback import generate_fallback, _pick_quote
-from .prompts import SYSTEM_PROMPT, job_instruction
+from .prompts import build_system_prompt, job_instruction
 from .rag import retrieve_curriculum_snippets
 from .rotation import get_last_message_id, set_last_message_id
 from .schemas import ParticipantContext, WhisperResponse
@@ -36,7 +37,9 @@ def _context_payload(ctx: ParticipantContext, job: Job, rag_snippets: list[str],
     return payload
 
 
-async def _call_openai(ctx: ParticipantContext, job: Job, rag_snippets: list[str]) -> str | None:
+async def _call_openai(
+    ctx: ParticipantContext, job: Job, rag_snippets: list[str], cfg: dict
+) -> str | None:
     if not settings.openai_api_key:
         return None
 
@@ -52,12 +55,12 @@ async def _call_openai(ctx: ParticipantContext, job: Job, rag_snippets: list[str
 
         client = AsyncOpenAI(api_key=settings.openai_api_key)
         response = await client.chat.completions.create(
-            model=settings.openai_model,
-            temperature=0.7,
+            model=cfg.get("model") or settings.openai_model,
+            temperature=float(cfg.get("temperature", 0.7)),
             max_tokens=180,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": build_system_prompt(cfg)},
                 {
                     "role": "user",
                     "content": (
@@ -86,14 +89,18 @@ def _message_id(job: Job, ctx: ParticipantContext) -> str:
 
 
 async def generate_whisper(ctx: ParticipantContext, endpoint_job: Job) -> WhisperResponse:
+    cfg = il_guide_config()
     job = resolve_job(ctx, endpoint_job)
+    jobs = cfg.get("jobs") or {}
+    if jobs.get(job) is False:
+        job = "nudge"
     last_id = get_last_message_id(ctx.participantId, ctx.surface)
 
     rag_snippets: list[str] = []
     if job == "recommend":
         rag_snippets = retrieve_curriculum_snippets(ctx)
 
-    llm_message = await _call_openai(ctx, job, rag_snippets)
+    llm_message = await _call_openai(ctx, job, rag_snippets, cfg)
     if llm_message:
         msg_id = _message_id(job, ctx)
         if msg_id == last_id:
@@ -112,10 +119,11 @@ async def generate_whisper(ctx: ParticipantContext, endpoint_job: Job) -> Whispe
     if result.id == last_id and result.id != "fallback":
         result = generate_fallback(ctx, job, last_id)
 
-    # Trim to spec: 1-3 sentences
+    # Trim to spec: 1-3 sentences (admin can lower or raise to 5)
+    max_sentences = min(5, max(1, int(cfg.get("maxSentences") or 3)))
     sentences = re.split(r"(?<=[.!?])\s+", result.message.strip())
-    if len(sentences) > 3:
-        result.message = " ".join(sentences[:3])
+    if len(sentences) > max_sentences:
+        result.message = " ".join(sentences[:max_sentences])
 
     set_last_message_id(ctx.participantId, ctx.surface, result.id)
     return result

@@ -1,0 +1,572 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Bootstrap owner — auth token email works even without a Firestore profile.
+    function isBootstrapSuperAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == 'ironladytech@gmail.com';
+    }
+
+    function userRole() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        : '';
+    }
+
+    function isGuest() {
+      return userRole() == 'guest';
+    }
+
+    function isBlockedUser() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.blocked == true;
+    }
+
+    function isSuperAdmin() {
+      return isBootstrapSuperAdmin() || userRole() == 'superadmin';
+    }
+
+    function isAdmin() {
+      return isBootstrapSuperAdmin() || userRole() in ['admin', 'superadmin'];
+    }
+
+    function isModerator() {
+      return isBootstrapSuperAdmin() || userRole() in ['moderator', 'admin', 'superadmin'];
+    }
+
+    function hasStaffAccess() {
+      return isModerator();
+    }
+
+    function hasAdminAccess() {
+      return isAdmin();
+    }
+
+    function canUseApp() {
+      return isSignedIn()
+        && !isGuest()
+        && (!isBlockedUser() || hasStaffAccess() || isBootstrapSuperAdmin());
+    }
+
+    function groupMemberIds(groupData) {
+      return groupData.keys().hasAny(['memberIds']) ? groupData.memberIds : [];
+    }
+
+    function isGroupMember(groupData) {
+      return request.auth.uid in groupMemberIds(groupData);
+    }
+
+    function moderatorLearnerBatchFieldsOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['batchId', 'batchName', 'program', 'updatedAt']);
+    }
+
+    function learnerMbwStatusOk() {
+      return !request.resource.data.keys().hasAny(['status'])
+        || request.resource.data.status in [
+          'unlocked', 'submitted', 'under_review',
+          'needs_improvement', 'rejected', 'completed'
+        ];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || hasStaffAccess());
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && !request.resource.data.keys().hasAny([
+          'lmsCredentialPassword', 'accessTier', 'paymentStatus', 'provisionedFromZoho'
+        ]);
+      allow update: if isSignedIn() && (
+          request.auth.uid == userId
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'role', 'blocked', 'lmsCredentialPassword', 'accessTier', 'paymentStatus', 'provisionedFromZoho'
+            ])
+          || isSuperAdmin()
+          || (isAdmin() && request.resource.data.role in ['student', 'moderator', 'admin']
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'lmsCredentialPassword', 'accessTier', 'paymentStatus', 'provisionedFromZoho'
+            ]))
+          || (hasAdminAccess() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blocked', 'updatedAt']))
+          || (hasStaffAccess() && moderatorLearnerBatchFieldsOnly())
+          || (request.auth.uid == userId && isBootstrapSuperAdmin())
+        );
+      allow delete: if isSuperAdmin();
+    }
+
+    // In-app notification inbox (push funnel + CMS-driven rows). Writes only via Admin SDK / Cloud Functions.
+    match /users/{userId}/notifications/{notificationId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']);
+      allow create, delete: if false;
+    }
+
+    match /courses/{courseId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    match /resources/{resourceId} {
+      allow read: if canUseApp()
+        && (hasStaffAccess() || resource.data.locked != true);
+      allow write: if hasAdminAccess();
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    match /payment_orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || hasStaffAccess()
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasAll(['uid', 'transactionId', 'amountPaise', 'status']);
+      allow update, delete: if hasStaffAccess();
+    }
+
+    match /razorpay_payments/{paymentId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || hasStaffAccess()
+      );
+      allow write: if false;
+    }
+
+    match /razorpay_orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.uid == request.auth.uid || hasStaffAccess()
+      );
+      allow write: if false;
+    }
+
+    match /activities/{activityId} {
+      allow read: if canUseApp() && (
+        resource.data.userId == request.auth.uid || hasStaffAccess()
+      );
+      allow create: if canUseApp() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /groups/{groupId} {
+      allow read: if canUseApp() && (hasStaffAccess() || isGroupMember(resource.data));
+      // CX moderators create/update batches; only admins delete cohorts.
+      allow create, update: if hasStaffAccess();
+      allow delete: if hasAdminAccess();
+
+      /*
+       * Session recordings — the video links themselves.
+       *
+       * These used to live in a `recordings` array on the batch document, and
+       * batch members can read that document, so a learner who had paid only
+       * the registration fee could read the links to every paid session in
+       * their cohort. Firestore cannot withhold a single field, so the links
+       * had to move somewhere learners cannot read at all.
+       *
+       * getLessonAsset reads this with admin privileges after checking that the
+       * learner has paid for the programme, and is the only route to a URL.
+       */
+      match /recordings/{recordingId} {
+        allow read, write: if hasStaffAccess();
+      }
+    }
+
+    function isBatchModerator(batchId) {
+      return hasStaffAccess()
+        && batchId is string
+        && batchId.size() > 0
+        && exists(/databases/$(database)/documents/groups/$(batchId))
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(batchId)).data.moderatorIds;
+    }
+
+    match /events/{eventId} {
+      allow read: if canUseApp();
+
+      // Admins manage global calendar. CX moderators may create/update/delete
+      // sessions only for batches they moderate (batchId required).
+      allow create: if hasAdminAccess()
+        || (isBatchModerator(request.resource.data.batchId)
+          && request.resource.data.keys().hasAll(['title', 'date', 'batchId', 'audience'])
+          && request.resource.data.audience == 'batch');
+
+      allow update: if hasAdminAccess()
+        || (isBatchModerator(resource.data.batchId)
+          && request.resource.data.batchId == resource.data.batchId
+          && request.resource.data.audience == 'batch');
+
+      allow delete: if hasAdminAccess()
+        || isBatchModerator(resource.data.batchId);
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    // Public guest enquiry form (no account required). Write-only for the public:
+    // create is allowed unauthenticated but strictly shape- and length-validated,
+    // and nobody without staff access can read anything back.
+    match /access_requests/{requestId} {
+      allow read, update, delete: if hasStaffAccess();
+      allow create: if request.resource.data.keys().hasOnly(
+            ['name', 'email', 'program', 'message', 'status', 'source', 'createdAt']
+          )
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')
+        && request.resource.data.email.size() <= 200
+        && request.resource.data.program is string
+        && request.resource.data.program.size() <= 40
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 2000
+        && request.resource.data.status == 'new'
+        && request.resource.data.source == 'lms_guest';
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if canUseApp() && (
+        resource.data.userId == request.auth.uid || hasStaffAccess()
+      );
+      allow create: if canUseApp()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'open';
+      allow update: if hasStaffAccess()
+        || (request.auth.uid == resource.data.userId
+          && resource.data.status != 'resolved'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subject', 'category', 'updatedAt']));
+      allow delete: if hasStaffAccess()
+        || (request.auth.uid == resource.data.userId && resource.data.status == 'open');
+
+      match /messages/{messageId} {
+        allow read: if canUseApp() && (
+          get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId == request.auth.uid
+          || hasStaffAccess()
+        );
+        allow create: if canUseApp() && (
+          get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId == request.auth.uid
+          || hasStaffAccess()
+        );
+        allow delete: if hasStaffAccess()
+          || get(/databases/$(database)/documents/tickets/$(ticketId)).data.userId == request.auth.uid;
+      }
+    }
+
+    match /learner_submissions/{submissionId} {
+      allow read: if canUseApp() && (
+        resource.data.learnerId == request.auth.uid || hasStaffAccess()
+      );
+      allow create: if canUseApp()
+        && request.resource.data.learnerId == request.auth.uid
+        && request.resource.data.isCorrect is bool
+        && request.resource.data.courseId is string;
+      // setDoc(merge:true) on an existing doc is evaluated as update.
+      allow update: if hasStaffAccess()
+        || (canUseApp()
+          && resource.data.learnerId == request.auth.uid
+          && request.resource.data.learnerId == request.auth.uid
+          && request.resource.data.isCorrect == resource.data.isCorrect
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['learnerId', 'courseId', 'problemId', 'isCorrect', 'timestamp', 'dateKey']));
+      allow delete: if hasStaffAccess();
+    }
+
+    match /attendance/{recordId} {
+      allow read: if canUseApp() && (
+        resource.data.learnerId == request.auth.uid || hasStaffAccess()
+      );
+      allow create: if hasStaffAccess()
+        || (canUseApp()
+          && request.resource.data.learnerId == request.auth.uid
+          && request.resource.data.status == 'present');
+      // setDoc(merge:true) re-sends identity fields — allow idempotent learner upserts.
+      allow update: if hasStaffAccess()
+        || (canUseApp()
+          && resource.data.learnerId == request.auth.uid
+          && request.resource.data.learnerId == request.auth.uid
+          && request.resource.data.courseId == resource.data.courseId
+          && request.resource.data.date == resource.data.date
+          && request.resource.data.status == 'present');
+      allow delete: if hasStaffAccess();
+    }
+
+    match /mbw_submissions/{submissionId} {
+      function isOwnMbwSubmissionId() {
+        return submissionId.size() > request.auth.uid.size() + 1
+          && submissionId[0:request.auth.uid.size()] == request.auth.uid
+          && submissionId[request.auth.uid.size():request.auth.uid.size() + 1] == '_';
+      }
+
+      function learnerClearingMbwReviewFields() {
+        return !request.resource.data.keys()
+          .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']);
+      }
+
+      function learnerMbwReviewHistoryOk() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewHistory'])
+          || (learnerClearingMbwReviewFields()
+              && request.resource.data.reviewHistory.size()
+                 >= resource.data.get('reviewHistory', []).size());
+      }
+
+      allow read: if canUseApp() && (
+        hasStaffAccess()
+        || (resource == null && isOwnMbwSubmissionId())
+        || resource.data.userId == request.auth.uid
+      );
+      allow create: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnMbwSubmissionId()
+          && request.resource.data.userId == request.auth.uid
+          && learnerMbwStatusOk());
+      allow update: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnMbwSubmissionId()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid
+          // A learner may never SET review fields, but must be able to CLEAR them
+          // on resubmit. So either the update leaves all review keys untouched, or
+          // it removes every one of them (none remain in the resulting doc).
+          && (!request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome'])
+              || !request.resource.data.keys()
+                   .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']))
+          && learnerMbwReviewHistoryOk()
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+              || learnerMbwStatusOk()));
+      allow delete: if hasStaffAccess();
+    }
+
+    /*
+     * Lesson media — the video links themselves.
+     *
+     * Learners must never read this collection. The links used to ship inside
+     * the client bundle, so anyone who signed up could read them out of the
+     * page and watch paid content; putting them in a learner-readable
+     * collection would recreate exactly that. getLessonAsset reads them with
+     * admin privileges after checking entitlement, and is the only route out.
+     *
+     * Staff read so the team can manage links for their batches.
+     */
+    match /lesson_media/{lessonId} {
+      allow read: if hasStaffAccess();
+      allow write: if hasStaffAccess();
+    }
+
+    /*
+     * Zoho sync failures. Written by Cloud Functions, which use the admin SDK
+     * and bypass these rules, and read only by the digest job. Closed to every
+     * client on purpose: the records pair a learner's email with an error, and
+     * nothing in the app has any reason to read them. Stated rather than left
+     * to the default deny, so a future catch-all rule cannot open them by
+     * accident.
+     */
+    match /sync_failures/{failureId} {
+      allow read, write: if false;
+    }
+
+    /*
+     * Sync state: the reconciler's watermark and the shared Zoho access token.
+     * Written by Cloud Functions through the admin SDK, which bypasses these
+     * rules. Closed to every client — the token grants CRM access, and nothing
+     * in the app has any reason to read either value.
+     */
+    match /sync_state/{docId} {
+      allow read, write: if false;
+    }
+
+    match /mbw_tasks/{taskId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    match /bm100_submissions/{submissionId} {
+      function isOwnBm100SubmissionId() {
+        return submissionId.size() > request.auth.uid.size() + 1
+          && submissionId[0:request.auth.uid.size()] == request.auth.uid
+          && submissionId[request.auth.uid.size():request.auth.uid.size() + 1] == '_';
+      }
+
+      function learnerClearingBm100ReviewFields() {
+        return !request.resource.data.keys()
+          .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']);
+      }
+
+      function learnerBm100ReviewHistoryOk() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewHistory'])
+          || (learnerClearingBm100ReviewFields()
+              && request.resource.data.reviewHistory.size()
+                 >= resource.data.get('reviewHistory', []).size());
+      }
+
+      allow read: if canUseApp() && (
+        hasStaffAccess()
+        || (resource == null && isOwnBm100SubmissionId())
+        || resource.data.userId == request.auth.uid
+      );
+      allow create: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnBm100SubmissionId()
+          && request.resource.data.userId == request.auth.uid
+          && learnerMbwStatusOk());
+      allow update: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnBm100SubmissionId()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid
+          // A learner may never SET review fields, but must be able to CLEAR them
+          // on resubmit. So either the update leaves all review keys untouched, or
+          // it removes every one of them (none remain in the resulting doc).
+          && (!request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome'])
+              || !request.resource.data.keys()
+                   .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']))
+          && learnerBm100ReviewHistoryOk()
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+              || learnerMbwStatusOk()));
+      allow delete: if hasStaffAccess();
+    }
+
+    match /bm100_tasks/{taskId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    // LEP mirrors bm100 exactly: a learner may only touch a submission whose id
+    // is prefixed with their own uid, may never set review fields, and may clear
+    // them only by removing every one of them on resubmit.
+    match /lep_submissions/{submissionId} {
+      function isOwnLepSubmissionId() {
+        return submissionId.size() > request.auth.uid.size() + 1
+          && submissionId[0:request.auth.uid.size()] == request.auth.uid
+          && submissionId[request.auth.uid.size():request.auth.uid.size() + 1] == '_';
+      }
+
+      function learnerClearingLepReviewFields() {
+        return !request.resource.data.keys()
+          .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']);
+      }
+
+      function learnerLepReviewHistoryOk() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['reviewHistory'])
+          || (learnerClearingLepReviewFields()
+              && request.resource.data.reviewHistory.size()
+                 >= resource.data.get('reviewHistory', []).size());
+      }
+
+      // Versions are added, never rewritten or removed: what was handed in stays.
+      function learnerLepVersionsAppendOnly() {
+        return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['versions'])
+          || (request.resource.data.versions is list
+              && request.resource.data.versions.size()
+                 >= resource.data.get('versions', []).size()
+              && request.resource.data.versions[0:resource.data.get('versions', []).size()]
+                 == resource.data.get('versions', []));
+      }
+
+      // Starting a review is the facilitator's step, not the learner's.
+      function learnerNotStartingLepReview() {
+        return !request.resource.data.keys().hasAny(['status'])
+          || request.resource.data.status != 'under_review';
+      }
+
+      // Once a review has started, the answer is frozen. Watch progress may still move.
+      function learnerLepUnderReviewUntouched() {
+        return resource.data.get('status', '') != 'under_review'
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+               'status', 'versions', 'submittedAt', 'templateData', 'textValue', 'linkValue',
+               'fileUrl', 'fileName', 'fileType', 'checkedItems', 'videoUrl', 'audioUrl'
+             ]);
+      }
+
+      allow read: if canUseApp() && (
+        hasStaffAccess()
+        || (resource == null && isOwnLepSubmissionId())
+        || resource.data.userId == request.auth.uid
+      );
+      allow create: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnLepSubmissionId()
+          && request.resource.data.userId == request.auth.uid
+          && learnerMbwStatusOk()
+          && learnerNotStartingLepReview()
+          && (!request.resource.data.keys().hasAny(['versions'])
+              || (request.resource.data.versions is list
+                  && request.resource.data.versions.size() <= 1)));
+      allow update: if hasStaffAccess()
+        || (canUseApp()
+          && isOwnLepSubmissionId()
+          && resource.data.userId == request.auth.uid
+          && request.resource.data.userId == request.auth.uid
+          && (!request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome'])
+              || !request.resource.data.keys()
+                   .hasAny(['reviewedBy', 'reviewedAt', 'feedback', 'reviewOutcome']))
+          && learnerLepReviewHistoryOk()
+          && learnerLepVersionsAppendOnly()
+          && learnerLepUnderReviewUntouched()
+          && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+              || (learnerMbwStatusOk() && learnerNotStartingLepReview())));
+      allow delete: if hasStaffAccess();
+    }
+
+    match /lep_tasks/{taskId} {
+      allow read: if canUseApp();
+      allow write: if hasAdminAccess();
+    }
+
+    match /storage_objects/{objectId} {
+      allow read: if isSuperAdmin()
+        || hasStaffAccess()
+        || (canUseApp() && resource.data.uploadedBy == request.auth.uid);
+      allow create, update: if hasAdminAccess()
+        || (canUseApp() && request.resource.data.uploadedBy == request.auth.uid);
+      allow delete: if isSuperAdmin();
+    }
+
+    // --- Mobile app /admin CMS (app-new) ---
+    // PL and Admin edit; CEM views. Same Firebase project as new_lms.
+    function cmsEditor() {
+      return isBootstrapSuperAdmin()
+        || userRole() in ['admin', 'superadmin', 'pl'];
+    }
+
+    function cmsViewer() {
+      return isBootstrapSuperAdmin()
+        || userRole() in ['admin', 'superadmin', 'pl', 'cem', 'moderator'];
+    }
+
+    // Live in CMS (missing field counts as live for older rows).
+    function cmsPublished() {
+      return !('published' in resource.data) || resource.data.published != false;
+    }
+
+    match /cms_notificationEvents/{id} {
+      allow read: if cmsViewer();
+      allow write: if cmsEditor();
+    }
+
+    // Task attachments: staff see drafts; learners and demo preview see live items only.
+    match /cms_content/{id} {
+      allow read: if cmsViewer() || cmsPublished();
+      allow write: if cmsEditor();
+    }
+
+    // ilGuide is read by the app; notificationPolicy by staff only.
+    match /cms_config/{name} {
+      allow read: if (name == 'ilGuide' && isSignedIn()) || cmsViewer();
+      allow write: if cmsEditor();
+    }
+  }
+}
+

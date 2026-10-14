@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { usePrograms } from '../context/ProgramsContext';
 import { useCourses } from '../context/CoursesContext';
+import { useCourseDemo } from '../context/CourseDemoContext';
 import { buildILGuideContext } from '../utils/ilGuideContext';
+import {
+  journeyProgressForProgram,
+  nextJourneyTask,
+  primaryProgramForGuide,
+} from '../utils/ilGuideJourney';
 import { fetchILGuideWhisper } from '../services/ilGuide';
 import { IL_GUIDE_SURFACES } from '../constants/ilGuide';
 import { updateUserProfile } from '../services/firestore';
@@ -20,9 +26,21 @@ export function useILGuideWhisper(surface) {
   const [whisper, setWhisper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hidden, setHidden] = useState(false);
-  const loadedRef = useRef(false);
+  const demo = useCourseDemo();
 
   const isGuest = profile?.role === 'guest';
+  const guideProgramId = useMemo(
+    () => primaryProgramForGuide(profile),
+    [profile]
+  );
+  const journeyProgress = useMemo(
+    () => journeyProgressForProgram(guideProgramId, profile, demo.isDone),
+    [guideProgramId, profile, demo]
+  );
+  const journeyNext = useMemo(
+    () => nextJourneyTask(guideProgramId, profile, demo.isDone),
+    [guideProgramId, profile, demo]
+  );
   const firstLogin =
     surface === IL_GUIDE_SURFACES.ONBOARD ||
     (surface === IL_GUIDE_SURFACES.HOME && !profile?.ilGuideOnboarded);
@@ -60,9 +78,17 @@ export function useILGuideWhisper(surface) {
             ? IL_GUIDE_SURFACES.ONBOARD
             : surface,
         firstLogin: Boolean(firstLogin && surface === IL_GUIDE_SURFACES.ONBOARD),
+        journeyProgress,
+        journeyNextTask: journeyNext,
+        primaryProgramId: guideProgramId,
       });
 
       const result = await fetchILGuideWhisper(context);
+      if (!result) {
+        // Turned off in the admin CMS for this surface.
+        setWhisper(null);
+        return;
+      }
       const dismissed =
         (await AsyncStorage.getItem(
           DISMISS_KEY(user.uid, surface, result.id)
@@ -93,11 +119,12 @@ export function useILGuideWhisper(surface) {
     firstLogin,
     isGuest,
     isStaff,
+    journeyProgress,
+    journeyNext,
+    guideProgramId,
   ]);
 
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
     load();
   }, [load]);
 

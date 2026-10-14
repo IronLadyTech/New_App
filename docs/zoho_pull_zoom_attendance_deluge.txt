@@ -1,0 +1,300 @@
+// Paste into Zoho: button.pull_zoom_attendance
+// Deluge — no arrow functions / lambdas
+
+string button.pull_zoom_attendance(String campaignId)
+{
+MIN_MINUTES = 30;
+MEMBER_STATUS = "Responded";
+STAFF_DOMAIN = "@iamironlady.com";
+ZOOM = "https://api.zoom.us/v2";
+campaign = zoho.crm.getRecordById("Campaigns",campaignId.toLong());
+meetingId = ifnull(campaign.get("Zoom_Meeting_ID"),"").toString().replaceAll("[^0-9]","");
+if(meetingId == "")
+{
+	return "Add the Zoom Meeting ID on this campaign first.";
+}
+minutesEmail = Map();
+namesEmail = Map();
+minutesName = Map();
+displayName = Map();
+token = "";
+done = false;
+for each  p in {1,2,3,4,5,6,7,8,9,10}
+{
+	if(done)
+	{
+		continue;
+	}
+	url = ZOOM + "/report/meetings/" + meetingId + "/participants?page_size=300";
+	if(token != "")
+	{
+		url = url + "&next_page_token=" + token;
+	}
+	resp = invokeurl
+	[
+		url :url
+		type :GET
+		connection:"zoomoauth"
+	];
+	if(resp.get("participants") == null)
+	{
+		return "Zoom report not available yet (" + ifnull(resp.get("message"),resp.toString()) + "). Try again in 30 minutes.";
+	}
+	for each  row in resp.get("participants")
+	{
+		em = ifnull(row.get("user_email"),"").toString().trim().toLowerCase();
+		secs = ifnull(row.get("duration"),0).toLong();
+		disp = ifnull(row.get("name"),"").toString().trim();
+		if(em != "" && !em.contains(STAFF_DOMAIN))
+		{
+			minutesEmail.put(em,ifnull(minutesEmail.get(em),0).toLong() + secs);
+			if(namesEmail.get(em) == null)
+			{
+				namesEmail.put(em,disp);
+			}
+		}
+		else if(em == "" && disp != "")
+		{
+			nameKey = disp.toLowerCase().trim();
+			nameKey = nameKey.replaceAll("\\s+"," ");
+			if(nameKey == "" || nameKey.contains("iron lady"))
+			{
+				continue;
+			}
+			minutesName.put(nameKey,ifnull(minutesName.get(nameKey),0).toLong() + secs);
+			if(displayName.get(nameKey) == null)
+			{
+				displayName.put(nameKey,disp);
+			}
+		}
+	}
+	token = ifnull(resp.get("next_page_token"),"");
+	if(token == "")
+	{
+		done = true;
+	}
+}
+reg = Map();
+regNote = "";
+token = "";
+done = false;
+for each  p in {1,2,3,4,5}
+{
+	if(done)
+	{
+		continue;
+	}
+	url = ZOOM + "/meetings/" + meetingId + "/registrants?status=approved&page_size=300";
+	if(token != "")
+	{
+		url = url + "&next_page_token=" + token;
+	}
+	r = invokeurl
+	[
+		url :url
+		type :GET
+		connection:"zoomoauth"
+	];
+	if(r.get("registrants") == null)
+	{
+		errMsg = ifnull(r.get("message"),"").toString();
+		if(errMsg.contains("Registration has not been enabled"))
+		{
+			regNote = "registration off — matched by participant report";
+		}
+		done = true;
+		continue;
+	}
+	for each  g in r.get("registrants")
+	{
+		reg.put(ifnull(g.get("email"),"").toString().trim().toLowerCase(),g);
+	}
+	token = ifnull(r.get("next_page_token"),"");
+	if(token == "")
+	{
+		done = true;
+	}
+}
+attendedEmail = 0;
+attendedName = 0;
+contactsAdded = 0;
+leadsUpdated = 0;
+leadsCreated = 0;
+errors = List();
+for each  em in minutesEmail.keys()
+{
+	mins = ((minutesEmail.get(em) + 30) / 60).toLong();
+	if(mins < MIN_MINUTES)
+	{
+		continue;
+	}
+	attendedEmail = attendedEmail + 1;
+	g = reg.get(em);
+	info = Map();
+	if(g != null)
+	{
+		digits = ifnull(g.get("phone"),"").toString().replaceAll("[^0-9]","");
+		if(digits.length() >= 10)
+		{
+			digits = digits.subString(digits.length() - 10);
+			info.put("Mobile",digits);
+			info.put("Phone",digits);
+		}
+		if(ifnull(g.get("city"),"") != "")
+		{
+			info.put("City",g.get("city"));
+		}
+		if(ifnull(g.get("job_title"),"") != "")
+		{
+			info.put("Designation_Title",g.get("job_title"));
+		}
+		for each  q in ifnull(g.get("custom_questions"),List())
+		{
+			t = ifnull(q.get("title"),"").toString().toLowerCase();
+			v = ifnull(q.get("value"),"").toString().trim();
+			if(v == "")
+			{
+				continue;
+			}
+			if(t.contains("experience"))
+			{
+				info.put("Years_of_Experience",v);
+				n = v.replaceAll("[^0-9.]","");
+				if(n != "" && n != ".")
+				{
+					info.put("Total_Years_Of_Experience",n.toDecimal().round(0).toLong());
+				}
+			}
+			else if(t.contains("salary") || t.contains("package") || t.contains("ctc"))
+			{
+				info.put("Package",v);
+			}
+		}
+	}
+	cs = zoho.crm.searchRecords("Contacts","(Email:equals:" + em + ")");
+	if(cs != null && cs.size() > 0 && cs.get(0).get("id") != null)
+	{
+		zoho.crm.updateRelatedRecord("Campaigns",campaignId.toLong(),"Contacts",cs.get(0).get("id").toLong(),{"Member_Status":MEMBER_STATUS});
+		contactsAdded = contactsAdded + 1;
+		continue;
+	}
+	ls = zoho.crm.searchRecords("Leads","(Email:equals:" + em + ")");
+	leadId = null;
+	if(ls != null && ls.size() > 0 && ls.get(0).get("id") != null)
+	{
+		leadId = ls.get(0).get("id").toLong();
+		if(info.size() > 0)
+		{
+			zoho.crm.updateRecord("Leads",leadId,info);
+		}
+		leadsUpdated = leadsUpdated + 1;
+	}
+	else
+	{
+		fn = "";
+		lnm = "";
+		if(g != null)
+		{
+			fn = ifnull(g.get("first_name"),"").toString().trim();
+			lnm = ifnull(g.get("last_name"),"").toString().trim();
+		}
+		if(lnm == "")
+		{
+			full = namesEmail.get(em).toString().trim();
+			if(full.contains(" "))
+			{
+				fn = full.getPrefix(" ");
+				lnm = full.getSuffix(" ");
+			}
+			else
+			{
+				lnm = full;
+			}
+		}
+		if(lnm == "")
+		{
+			lnm = em.getPrefix("@");
+		}
+		info.put("First_Name",fn);
+		info.put("Last_Name",lnm);
+		info.put("Email",em);
+		created = zoho.crm.createRecord("Leads",info);
+		if(created.get("id") == null)
+		{
+			errors.add(em + " (create failed)");
+			continue;
+		}
+		leadId = created.get("id").toLong();
+		leadsCreated = leadsCreated + 1;
+	}
+	zoho.crm.updateRelatedRecord("Campaigns",campaignId.toLong(),"Leads",leadId,{"Member_Status":MEMBER_STATUS});
+}
+for each  nameKey in minutesName.keys()
+{
+	mins = ((minutesName.get(nameKey) + 30) / 60).toLong();
+	if(mins < MIN_MINUTES)
+	{
+		continue;
+	}
+	attendedName = attendedName + 1;
+	full = displayName.get(nameKey).toString().trim();
+	fn = "";
+	lnm = full;
+	if(full.contains(" "))
+	{
+		fn = full.getPrefix(" ");
+		lnm = full.getSuffix(" ");
+	}
+	if(lnm == "")
+	{
+		lnm = full;
+	}
+	criteria = "(Last_Name:equals:" + lnm + ")";
+	if(fn != "")
+	{
+		criteria = "(First_Name:equals:" + fn + ") and (Last_Name:equals:" + lnm + ")";
+	}
+	ls = zoho.crm.searchRecords("Leads",criteria);
+	if(ls != null && ls.size() > 1)
+	{
+		errors.add("ambiguous name: " + full);
+		continue;
+	}
+	leadId = null;
+	if(ls != null && ls.size() == 1 && ls.get(0).get("id") != null)
+	{
+		leadId = ls.get(0).get("id").toLong();
+		leadsUpdated = leadsUpdated + 1;
+	}
+	else
+	{
+		info = Map();
+		info.put("First_Name",fn);
+		info.put("Last_Name",lnm);
+		info.put("Lead_Source","Zoom attendance name only");
+		created = zoho.crm.createRecord("Leads",info);
+		if(created.get("id") == null)
+		{
+			errors.add(full + " (no email — create failed; make Email optional or match manually)");
+			continue;
+		}
+		leadId = created.get("id").toLong();
+		leadsCreated = leadsCreated + 1;
+	}
+	zoho.crm.updateRelatedRecord("Campaigns",campaignId.toLong(),"Leads",leadId,{"Member_Status":MEMBER_STATUS});
+}
+msg = attendedEmail + " attended by email · " + attendedName + " by name (" + MIN_MINUTES + "+ min) · " + leadsUpdated + " existing leads · " + leadsCreated + " new leads · " + contactsAdded + " contacts";
+if(regNote != "")
+{
+	msg = msg + " · " + regNote;
+}
+else
+{
+	msg = msg + " · registrations read: " + reg.size();
+}
+if(errors.size() > 0)
+{
+	msg = msg + " · errors: " + errors.toString(", ");
+}
+return msg;
+}

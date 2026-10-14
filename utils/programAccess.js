@@ -144,6 +144,35 @@ export function canOpenProgramTasks(programIdOrCode, profile) {
   return programPaymentStatus(profile, entry.id) !== PAYMENT_STATUS.UNPAID;
 }
 
-export function learnerBatchId(profile) {
-  return profile?.batchId || profile?.batch || 'default';
+function primaryProgramId(profile) {
+  const ids = getEnrolledProgramIds(profile);
+  if (ids.has('lep')) return 'lep';
+  const first = [...ids][0];
+  return first || normalizeProgramId(profile?.program) || null;
+}
+
+/** Batch id for submissions and calendar filtering (Zoho → Firestore via refreshMyAccess). */
+export function learnerBatchId(profile, programId) {
+  const pid = programId || primaryProgramId(profile);
+  const fromAccess = pid ? profile?.programAccess?.[pid] : null;
+  return (
+    fromAccess?.batchId ||
+    profile?.batchId ||
+    profile?.batch ||
+    'default'
+  );
+}
+
+/** Human-readable batch for Profile and Home (e.g. "LEP Batch 42"). */
+export function learnerBatchLabel(profile, programId) {
+  const pid = programId || primaryProgramId(profile);
+  const fromAccess = pid ? profile?.programAccess?.[pid] : null;
+  const name =
+    fromAccess?.batchName ||
+    profile?.batchName ||
+    fromAccess?.batchId ||
+    profile?.batchId ||
+    profile?.batch;
+  if (!name || name === 'default') return null;
+  return String(name);
 }

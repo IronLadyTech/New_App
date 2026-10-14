@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, TextInput, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +29,7 @@ import {
 import PracticeVideo from '../../components/program/PracticeVideo';
 import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
+import { fetchPublishedCmsForTask } from '../../services/cms';
 
 function PickCard({ icon, title, sub, onPress }) {
   return (
@@ -79,11 +80,16 @@ function openTaskFile(url) {
   Linking.openURL(url).catch(() => {});
 }
 
-function fileKind(url) {
+function fileKind(url, cmsType) {
+  const type = String(cmsType || '').toLowerCase();
+  if (type === 'image') return { icon: 'image', sub: 'Open image' };
+  if (type === 'pdf') return { icon: 'picture-as-pdf', sub: 'Open document' };
+  if (type === 'video') return { icon: 'play-circle-outline', sub: 'Open video' };
   const lower = String(url || '').toLowerCase();
-  if (lower.endsWith('.pdf')) return { icon: 'picture-as-pdf', sub: 'Open document' };
+  if (lower.includes('.pdf') || lower.includes('pdf')) return { icon: 'picture-as-pdf', sub: 'Open document' };
   if (lower.endsWith('.doc') || lower.endsWith('.docx')) return { icon: 'description', sub: 'Open template' };
-  return { icon: 'open-in-new', sub: 'Open site' };
+  if (/\.(png|jpe?g|gif|webp)(\?|$)/i.test(lower)) return { icon: 'image', sub: 'Open image' };
+  return { icon: 'open-in-new', sub: 'Open file' };
 }
 
 function openTaskDocument(navigation, item) {
@@ -100,10 +106,10 @@ function TaskFiles({ task, skipReadingDocument = false }) {
   const add = (item, fallback) => {
     if (!item?.url || seen.has(item.url)) return;
     seen.add(item.url);
-    const kind = fileKind(item.url);
+    const kind = fileKind(item.url, item.cmsType);
     items.push({
       url: item.url,
-      title: item.label,
+      title: item.label || item.title,
       pages: item.pages,
       icon: kind.icon,
       sub: fallback || (isInAppDocument(item.url) ? 'Read in app' : kind.sub),
@@ -121,7 +127,10 @@ function TaskFiles({ task, skipReadingDocument = false }) {
   if (!items.length) return null;
 
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 18 }}>
+      <ILText role="label" color={G.ink} style={{ marginBottom: 4 }}>
+        Batch materials
+      </ILText>
       {items.map((item) => (
         <PickCard
           key={item.url}
@@ -178,6 +187,49 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [videoUri, setVideoUri] = useState(null);
   const [done, setDone] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
+  const [cmsLinks, setCmsLinks] = useState([]);
+  const [cmsHint, setCmsHint] = useState(null);
+
+  useEffect(() => {
+    if (!taskId) return undefined;
+    let cancelled = false;
+    setCmsHint(null);
+    fetchPublishedCmsForTask(programId, taskId)
+      .then((rows) => {
+        if (cancelled) return;
+        const links = rows
+          .filter((r) => r.url)
+          .map((r) => ({
+            label: r.title || 'Open file',
+            url: r.url,
+            cmsType: r.type,
+          }));
+        setCmsLinks(links);
+        if (!links.length && taskId === 'lep-orientation-schedule') {
+          setCmsHint(
+            'No schedule file yet. In CMS → Content library, set Task IDs to lep-orientation-schedule or T12 and turn Live on.'
+          );
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setCmsLinks([]);
+          const code = e?.code || '';
+          if (code === 'permission-denied') {
+            setCmsHint('Could not load materials (permissions). Deploy latest Firestore rules, then reload.');
+          }
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [programId, taskId]);
+
+  const taskForFiles = useMemo(() => {
+    if (!task) return task;
+    if (!cmsLinks.length) return task;
+    return { ...task, resourceLinks: [...(task.resourceLinks || []), ...cmsLinks] };
+  }, [task, cmsLinks]);
 
   const isErrcTask = task?.templateId === TEMPLATE_IDS.ERRC;
   const videoPoster = getVideoPoster({ taskId, uri: videoUri });
@@ -326,7 +378,12 @@ export default function CourseTaskScreen({ route, navigation }) {
           {task.description}
         </ILText>
 
-        <TaskFiles task={task} skipReadingDocument={isErrcTask} />
+        <TaskFiles task={taskForFiles} skipReadingDocument={isErrcTask} />
+        {cmsHint && !cmsLinks.length ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 14, fontSize: 13, lineHeight: 18 }}>
+            {cmsHint}
+          </ILText>
+        ) : null}
 
         {videoUri && type !== TASK_TYPES.WATCH_ONLY ? (
           <View style={{ marginTop: 18 }}>

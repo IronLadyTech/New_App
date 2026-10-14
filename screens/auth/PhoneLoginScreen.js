@@ -49,7 +49,10 @@ export default function PhoneLoginScreen({ navigation }) {
         setError(access?.reason || 'Could not check this number.');
         return;
       }
-      if (WHATSAPP_OTP_ENABLED) {
+      // Guests skip WhatsApp OTP — Zoho already decided they have no program seat.
+      if (access.guest || !WHATSAPP_OTP_ENABLED) {
+        stashPhoneAuth({ demo: true, access }, phone);
+      } else {
         setSending(true);
         try {
           await sendWhatsAppOtp(phone);
@@ -60,8 +63,6 @@ export default function PhoneLoginScreen({ navigation }) {
           setSending(false);
         }
         stashPhoneAuth({ whatsapp: true, access }, phone);
-      } else {
-        stashPhoneAuth({ demo: true, access }, phone);
       }
       navigation.navigate('VerifyOtp');
     } catch (err) {

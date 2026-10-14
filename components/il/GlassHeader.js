@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILLogoMark from './ILLogoMark';
 import ILText from './ILText';
+import { useNotificationBellBadge } from '../../hooks/useNotificationBellBadge';
 
 // Same glass as the liquid tab bar, so the top and bottom of the app read as one set.
 const GLASS = 'rgba(17,55,68,0.86)';
@@ -166,11 +167,11 @@ function BrandMark() {
   );
 }
 
-function HeaderActions({ onSearch, onNotifications, onProfile, photo, showSearch, showProfile }) {
+function HeaderActions({ onSearch, onNotifications, onProfile, photo, showSearch, showProfile, showBadge }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
-      <GhostIcon name="notifications-none" onPress={onNotifications} label="Notifications" badge />
+      <GhostIcon name="notifications-none" onPress={onNotifications} label="Notifications" badge={showBadge} />
       {showProfile ? (
         <View style={{ marginLeft: 6 }}>
           <ProfileFace photo={photo} onPress={onProfile} />
@@ -202,6 +203,7 @@ export default function GlassHeader({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const bell = onNotifications || (() => openNotifications(navigation));
+  const showBadge = useNotificationBellBadge();
   const top = insetTop ? Math.max(insets.top, 8) : 8;
   const melting = !!scrollY;
   const [barW, setBarW] = useState(0);
@@ -298,7 +300,7 @@ export default function GlassHeader({
                 <BrandMark />
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
-                  <GhostIcon name="notifications-none" onPress={bell} label="Notifications" badge />
+                  <GhostIcon name="notifications-none" onPress={bell} label="Notifications" badge={showBadge} />
                 </View>
               </Animated.View>
               {showProfile ? (
@@ -317,6 +319,7 @@ export default function GlassHeader({
                 photo={photo}
                 showSearch={showSearch}
                 showProfile={showProfile}
+                showBadge={showBadge}
               />
             </>
           )}

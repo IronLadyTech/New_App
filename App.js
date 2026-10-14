@@ -10,6 +10,10 @@ import { AuthProvider } from './context/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import { useILFonts } from './hooks/useILFonts';
 import ErrorBoundary from './components/ErrorBoundary';
+import { isAdminPath } from './utils/adminRoute';
+
+// Staff CMS lives at /admin on the web build; the participant app is untouched.
+const ADMIN = isAdminPath();
 
 function Root() {
   const { fontsReady } = useILFonts();
@@ -23,11 +27,21 @@ function Root() {
   }, []);
 
   useEffect(() => {
+    if (ADMIN) return;
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
   }, []);
 
   if (!fontsReady && !gaveUp) {
     return <View style={{ flex: 1, backgroundColor: '#113744' }} />;
+  }
+
+  if (ADMIN) {
+    const AdminApp = require('./screens/admin/AdminApp').default;
+    return (
+      <SafeAreaProvider>
+        <AdminApp />
+      </SafeAreaProvider>
+    );
   }
 
   return (

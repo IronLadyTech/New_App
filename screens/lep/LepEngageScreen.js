@@ -15,6 +15,8 @@ import { useLepNav } from './useLepNav';
 import { CSUITE_HOME } from '../guest/guestData';
 import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, PODCASTS, PREWORK } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 
 function CsuiteVideos({ nav }) {
   return (
@@ -266,23 +268,11 @@ function EnrolledEngage({ nav }) {
         ))}
       </View>
 
-      <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Image source={FACE} style={{ width: 36, height: 36, borderRadius: 18 }} />
-          <View style={{ marginLeft: 10, flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
-                IL Guide’s Whisper
-              </ILText>
-              <ILText role="eyebrow" color={G.cta} style={[af, { marginLeft: 6, fontSize: 9 }]}>
-                EXECUTIVE MENTOR
-              </ILText>
-            </View>
-            <ILText role="body" color={G.body} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
-              Want to meet women from your industry?
-            </ILText>
-          </View>
-        </View>
+      <ILGuideWhisperLep
+        surface={IL_GUIDE_SURFACES.COMMUNITY}
+        fallbackQuote="Want to meet women from your industry?"
+        subtitle="Executive Mentor"
+      >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
           {['Technology', 'Finance', 'Marketing', 'Not now'].map((item, i) => (
             <View
@@ -304,7 +294,7 @@ function EnrolledEngage({ nav }) {
             </View>
           ))}
         </View>
-      </WhiteCard>
+      </ILGuideWhisperLep>
     </>
   );
 }

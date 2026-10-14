@@ -9,10 +9,12 @@ import { ProgramsProvider } from '../context/ProgramsContext';
 import { CourseDemoProvider } from '../context/CourseDemoContext';
 import { ProgramNavProvider } from '../context/ProgramNavContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useNotificationOpen } from '../hooks/useNotificationOpen';
 
 export default function AuthenticatedApp() {
   const { profile } = useAuth();
   usePushNotifications();
+  useNotificationOpen();
 
   return (
     <CoursesProvider>

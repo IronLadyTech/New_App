@@ -35,6 +35,26 @@ Respond with JSON only: {"message": "your 1-3 sentence whisper"}
 """
 
 
+def build_system_prompt(cfg: dict) -> str:
+    """Fixed rules first, then admin-editable additions. Additions can't override the rules."""
+    parts = [SYSTEM_PROMPT]
+    max_sentences = cfg.get("maxSentences")
+    if max_sentences:
+        parts.append(f"LENGTH: at most {int(max_sentences)} sentences.")
+    if cfg.get("curatorNames"):
+        parts.append(f"CURATORS you may credit: {cfg['curatorNames']}.")
+    notes = {k: v for k, v in (cfg.get("programNotes") or {}).items() if v and v.strip()}
+    if notes:
+        lines = "\n".join(f"- {k}: {v.strip()}" for k, v in notes.items())
+        parts.append(f"PROGRAM NOTES (facts you may use, nothing beyond them):\n{lines}")
+    if (cfg.get("extraInstructions") or "").strip():
+        parts.append(
+            "ADDITIONAL GUIDANCE FROM IRON LADY STAFF (follow unless it conflicts with the rules above):\n"
+            + cfg["extraInstructions"].strip()
+        )
+    return "\n\n".join(parts)
+
+
 def job_instruction(job: str) -> str:
     mapping = {
         "onboard": "Job 1 — Onboarding narrator. Welcome and one next action only.",

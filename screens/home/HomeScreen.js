@@ -32,6 +32,7 @@ export default function HomeScreen(props) {
 
 function LegacyHome({ navigation }) {
   const { profile, role } = useAuth();
+  const guideProgram = profile?.program || 'lep';
   const {
     visibleAnnouncements,
     upcomingEventList,
@@ -96,6 +97,19 @@ function LegacyHome({ navigation }) {
           hidden={ilHidden}
           onDismiss={dismissILGuide}
         />
+        {ilWhisper?.taskId ? (
+          <TouchableOpacity
+            className="mb-4 -mt-2"
+            onPress={() =>
+              navigation.navigate('MyProgram', {
+                screen: 'CourseTask',
+                params: { programId: guideProgram, taskId: ilWhisper.taskId },
+              })
+            }
+          >
+            <Text className="text-sm font-semibold text-brand-700">Open next task →</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <View className="mt-5 rounded-2xl border border-ink-100 bg-white p-4">
           <Text className="text-sm font-medium text-ink-500">

@@ -1,6 +1,7 @@
 import { PROGRAM_JOURNEY, isTaskDoneStatus } from '../constants/programs';
 import { getEnrolledPrograms, learnerBatchId, programPaymentStatus } from './programAccess';
 import { submissionsByTaskId } from '../services/programs';
+import { primaryProgramForGuide } from './ilGuideJourney';
 
 /**
  * Participant context object passed to IL Guide API (mirrors spec).
@@ -17,6 +18,9 @@ export function buildILGuideContext({
   upcomingEventList = [],
   surface,
   firstLogin = false,
+  journeyProgress = null,
+  journeyNextTask = null,
+  primaryProgramId = null,
 }) {
   const name =
     profile?.displayName ||
@@ -24,7 +28,14 @@ export function buildILGuideContext({
     profile?.email?.split('@')[0] ||
     null;
 
-  const programs = enrolledPrograms.map((p) => ({
+  const guideProgramId = primaryProgramId || primaryProgramForGuide(profile);
+  const ordered = [...enrolledPrograms].sort((a, b) => {
+    if (a.id === guideProgramId) return -1;
+    if (b.id === guideProgramId) return 1;
+    return (a.order ?? 0) - (b.order ?? 0);
+  });
+
+  const programs = ordered.map((p) => ({
     id: p.id,
     code: p.shortLabel,
     title: p.title,
@@ -32,7 +43,7 @@ export function buildILGuideContext({
     progress: progressByProgram[p.id] || { percent: 0, done: 0, total: 0 },
   }));
 
-  const primary = programs[0] || null;
+  const primary = programs.find((p) => p.id === guideProgramId) || programs[0] || null;
   const primaryTasks = primary
     ? tasksByProgram[primary.id] || []
     : [];
@@ -40,9 +51,10 @@ export function buildILGuideContext({
     ? submissionsByTaskId(subsByProgram[primary.id] || [])
     : {};
 
-  const nextTask = primaryTasks.find(
+  const lmsNextTask = primaryTasks.find(
     (t) => !isTaskDoneStatus(primarySubs[t.id]?.status)
   );
+  const nextTask = journeyNextTask || lmsNextTask;
 
   const nextCalendarEvent = upcomingEventList?.[0];
   const upcomingEvent = nextCalendarEvent
@@ -77,7 +89,11 @@ export function buildILGuideContext({
     nextTask: nextTask
       ? { id: nextTask.id, title: nextTask.title, type: nextTask.type }
       : null,
-    progressPercent: primary?.progress?.percent ?? 0,
+    progressPercent: Math.max(
+      primary?.progress?.percent ?? 0,
+      journeyProgress?.percent ?? 0
+    ),
+    journeyProgress,
     upcomingEvent,
   };
 

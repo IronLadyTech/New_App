@@ -25,7 +25,9 @@ def _program_label(ctx: ParticipantContext) -> str:
 
 
 def _pick_quote(exclude_id: Optional[str], offset: int = 0) -> Optional[dict]:
-    quotes = _load_quotes()
+    from .cms_config import active_quotations, il_guide_config
+
+    quotes = active_quotations(il_guide_config()) or _load_quotes()
     pool = [q for q in quotes if q["id"] != exclude_id] or quotes
     return pool[(hash(exclude_id or "") + offset) % len(pool)]
 

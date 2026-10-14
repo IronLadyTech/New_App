@@ -7,8 +7,13 @@ import { usePrograms } from '../../context/ProgramsContext';
 import ProgressBar from '../../components/ProgressBar';
 import { BADGE_DEFS, COLORS } from '../../constants';
 import { PAYMENT_STATUS } from '../../constants/programs';
-import { programPaymentStatus } from '../../utils/programAccess';
+import {
+  getEnrolledPrograms,
+  learnerBatchLabel,
+  programPaymentStatus,
+} from '../../utils/programAccess';
 import { refreshMyAccess } from '../../services/functions';
+import { fetchUserProfile } from '../../services/auth';
 import ILHeader from '../../components/il/ILHeader';
 
 function Row({ icon, label, onPress, danger }) {
@@ -34,9 +39,23 @@ function Row({ icon, label, onPress, danger }) {
   );
 }
 
+function paymentLabel(profile, programId) {
+  const status = programPaymentStatus(profile, programId);
+  if (status === PAYMENT_STATUS.PAID) return 'Enrolled';
+  if (status === PAYMENT_STATUS.REGISTER) return 'Registered';
+  return 'Not paid';
+}
+
 export default function ProfileScreen({ navigation }) {
-  const { profile, role, logout, user } = useAuth();
+  const { profile, role, logout, user, patchProfile } = useAuth();
   const { enrolledPrograms, progressByProgram } = usePrograms();
+  const programs = enrolledPrograms.length ? enrolledPrograms : getEnrolledPrograms(profile);
+  const phone =
+    profile?.phoneNumber ||
+    profile?.phone ||
+    user?.phoneNumber ||
+    null;
+  const lepBatch = learnerBatchLabel(profile, 'lep');
 
   const earnedBadges = BADGE_DEFS.filter(
     (b) => (profile?.points || 0) >= b.minPoints
@@ -79,7 +98,12 @@ export default function ProfileScreen({ navigation }) {
           <Text className="mt-3 text-xl font-semibold text-ink-950">
             {profile?.displayName || 'Learner'}
           </Text>
-          <Text className="text-sm text-ink-500">{user?.email}</Text>
+          {user?.email ? (
+            <Text className="text-sm text-ink-500">{user.email}</Text>
+          ) : null}
+          {phone ? (
+            <Text className="mt-1 text-sm text-ink-500">{phone}</Text>
+          ) : null}
           <View className="mt-2 rounded-full bg-ink-100 px-3 py-1">
             <Text className="text-xs font-semibold uppercase text-ink-600">
               {role}
@@ -92,25 +116,54 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         <Text className="mb-2 mt-6 text-sm font-semibold uppercase tracking-wide text-ink-400">
-          Learning
+          Program & batch
         </Text>
         <View className="mb-3 rounded-2xl border border-ink-100 bg-white p-4">
-          <Text className="text-sm text-ink-500">
-            {enrolledPrograms.length} enrolled programs (LMS sync)
-          </Text>
-          {enrolledPrograms.slice(0, 3).map((p) => (
-            <View key={p.id} className="mt-3">
-              <View className="mb-1 flex-row justify-between">
-                <Text className="flex-1 text-sm text-ink-800" numberOfLines={1}>
-                  {p.shortLabel}
-                </Text>
-                <Text className="ml-2 text-xs text-brand-700">
-                  {progressByProgram[p.id]?.percent ?? 0}%
-                </Text>
-              </View>
-              <ProgressBar percent={progressByProgram[p.id]?.percent ?? 0} />
-            </View>
-          ))}
+          {programs.length === 0 ? (
+            <Text className="text-sm text-ink-500">
+              No program linked yet. Tap “Refresh access” below after Zoho has your LEP seat, or sign in with the
+              mobile number on your registration.
+            </Text>
+          ) : (
+            programs.map((p, i) => {
+              const batch = learnerBatchLabel(profile, p.id);
+              return (
+                <View
+                  key={p.id}
+                  style={{
+                    paddingVertical: 12,
+                    borderBottomWidth: i < programs.length - 1 ? 1 : 0,
+                    borderBottomColor: '#E8E4DC',
+                  }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-base font-semibold text-ink-900">{p.shortLabel}</Text>
+                    <Text className="text-xs font-semibold text-brand-700">
+                      {paymentLabel(profile, p.id)}
+                    </Text>
+                  </View>
+                  <Text className="mt-1 text-sm text-ink-500">
+                    {batch ? `Batch · ${batch}` : 'Batch · not set in Zoho yet'}
+                  </Text>
+                  <View className="mt-2">
+                    <View className="mb-1 flex-row justify-between">
+                      <Text className="text-xs text-ink-500">LMS task progress</Text>
+                      <Text className="text-xs text-brand-700">
+                        {progressByProgram[p.id]?.percent ?? 0}%
+                      </Text>
+                    </View>
+                    <ProgressBar percent={progressByProgram[p.id]?.percent ?? 0} />
+                  </View>
+                </View>
+              );
+            })
+          )}
+          {lepBatch ? null : programs.some((p) => p.id === 'lep') ? (
+            <Text className="mt-2 text-xs text-ink-400">
+              LEP batch comes from Zoho (Lead / IL User). If you just registered, tap Refresh access once CEM has
+              assigned the batch.
+            </Text>
+          ) : null}
         </View>
 
         <Text className="mb-2 mt-2 text-sm font-semibold uppercase tracking-wide text-ink-400">
@@ -156,8 +209,17 @@ export default function ProfileScreen({ navigation }) {
           icon="refresh-outline"
           label="Just paid? Refresh access"
           onPress={async () => {
-            await refreshMyAccess();
-            Alert.alert('Access refreshed', 'Entitlements were re-checked with Zoho.');
+            const data = await refreshMyAccess();
+            const freshProfile = user?.uid ? await fetchUserProfile(user.uid).catch(() => null) : null;
+            if (freshProfile) patchProfile(freshProfile);
+            const batch = learnerBatchLabel(freshProfile || profile, 'lep');
+            const hint =
+              data?.ok === false
+                ? data?.reason || 'Zoho sync did not complete. Try again in a minute.'
+                : batch
+                  ? `Batch on file: ${batch}.`
+                  : 'Synced with Zoho. If batch is still missing, ask CEM to set Batch on your Lead.';
+            Alert.alert('Access refreshed', hint);
           }}
         />
         <Row

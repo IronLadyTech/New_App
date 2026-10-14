@@ -3,7 +3,6 @@ then mint a Firebase custom token so the app can signInWithCustomToken."""
 
 import hashlib
 import hmac
-import json
 import re
 import secrets
 import threading
@@ -13,6 +12,7 @@ import httpx
 from fastapi import HTTPException
 
 from .config import settings
+from .firebase_admin_client import get_app
 
 CODE_TTL_SECONDS = 300
 RESEND_COOLDOWN_SECONDS = 30
@@ -114,14 +114,10 @@ async def send_otp(raw_phone: str) -> dict:
 
 
 def _firebase_custom_token(phone: str) -> str:
-    import firebase_admin
-    from firebase_admin import auth as fb_auth, credentials
+    from firebase_admin import auth as fb_auth
 
-    if not firebase_admin._apps:
-        if not settings.firebase_service_account_json:
-            raise HTTPException(status_code=503, detail="Firebase admin is not configured.")
-        cred = credentials.Certificate(json.loads(settings.firebase_service_account_json))
-        firebase_admin.initialize_app(cred)
+    if get_app() is None:
+        raise HTTPException(status_code=503, detail="Firebase admin is not configured.")
 
     e164 = f"+{phone}"
     try:

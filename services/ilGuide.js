@@ -9,8 +9,37 @@ import {
 } from '../constants/ilGuide';
 import { programLabel } from '../utils/ilGuideContext';
 import { fetchILGuideWhisperFromCloud } from './functions';
+import { getConfig } from './cms';
+import { CMS_CONFIG_DOCS } from '../constants/cms';
 
 const LAST_KEY = (uid, surface) => `ilguide:last:${uid}:${surface}`;
+
+// Admin CMS settings (cms_config/ilGuide), cached for a minute.
+const CONFIG_TTL_MS = 60 * 1000;
+let configCache = { at: 0, value: null };
+
+async function getILGuideConfig() {
+  if (Date.now() - configCache.at < CONFIG_TTL_MS) return configCache.value;
+  try {
+    const value = await getConfig(CMS_CONFIG_DOCS.IL_GUIDE);
+    configCache = { at: Date.now(), value };
+  } catch {
+    configCache = { at: Date.now(), value: configCache.value };
+  }
+  return configCache.value;
+}
+
+function activeQuotations(config) {
+  const fromCms = (config?.quotations || []).filter((q) => q.active !== false && q.text && q.author);
+  return fromCms.length ? fromCms : IL_GUIDE_QUOTATIONS;
+}
+
+const JOB_FOR_ENDPOINT = {
+  '/onboard': 'onboard',
+  '/nudge': 'nudge',
+  '/recommend': 'recommend',
+  '/event': 'event',
+};
 
 async function rememberMessage(uid, surface, messageId) {
   if (!uid || !messageId) return;
@@ -45,7 +74,7 @@ async function callApi(endpoint, context) {
 }
 
 /** Local fallback when FastAPI is not deployed — rule-based, spec-aligned voice. */
-function localWhisper(context, lastId) {
+function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
   const name = context.name ? context.name.split(' ')[0] : null;
   const prog = context.primaryProgram;
   const progName = programLabel(prog);
@@ -83,7 +112,7 @@ function localWhisper(context, lastId) {
       });
     }
 
-    const quote = pickQuote(lastId);
+    const quote = pickQuote(quotations, lastId);
     if (quote) {
       candidates.push({
         id: quote.id,
@@ -118,7 +147,7 @@ function localWhisper(context, lastId) {
   }
 
   if (context.surface === IL_GUIDE_SURFACES.COMMUNITY) {
-    const quote = pickQuote(lastId, 1);
+    const quote = pickQuote(quotations, lastId, 1);
     if (quote) {
       candidates.push({
         id: `community-${quote.id}`,
@@ -142,15 +171,20 @@ function localWhisper(context, lastId) {
   };
 }
 
-function pickQuote(lastId, offset = 0) {
-  const available = IL_GUIDE_QUOTATIONS.filter((q) => q.id !== lastId);
-  if (!available.length) return IL_GUIDE_QUOTATIONS[offset % IL_GUIDE_QUOTATIONS.length];
+function pickQuote(quotations, lastId, offset = 0) {
+  if (!quotations.length) return null;
+  const available = quotations.filter((q) => q.id !== lastId);
+  if (!available.length) return quotations[offset % quotations.length];
   const idx = (Date.now() + offset) % available.length;
   return available[idx];
 }
 
 export async function fetchILGuideWhisper(context) {
   const { surface, participantId: uid } = context;
+  const config = await getILGuideConfig();
+  if (config?.enabled === false) return null;
+  if (config?.surfaces && config.surfaces[surface] === false) return null;
+  const quotations = activeQuotations(config);
   const lastId = await getLastMessageId(uid, surface);
 
   let endpoint = '/nudge';
@@ -158,6 +192,11 @@ export async function fetchILGuideWhisper(context) {
   else if (surface === IL_GUIDE_SURFACES.LEARN) endpoint = '/recommend';
   else if (surface === IL_GUIDE_SURFACES.HOME && context.upcomingEvent) {
     endpoint = '/event';
+  }
+  if (config?.jobs && config.jobs[JOB_FOR_ENDPOINT[endpoint]] === false) {
+    // That job is off — fall back to a plain nudge unless nudges are off too.
+    if (config.jobs.nudge === false) return null;
+    endpoint = '/nudge';
   }
 
   let result = null;
@@ -179,11 +218,15 @@ export async function fetchILGuideWhisper(context) {
   }
 
   if (!result) {
-    result = localWhisper(context, lastId);
+    result = localWhisper(context, lastId, quotations);
   }
 
   if (result.id === lastId && result.id !== 'fallback') {
-    result = localWhisper({ ...context, firstLogin: false }, lastId);
+    result = localWhisper({ ...context, firstLogin: false }, lastId, quotations);
+  }
+
+  if (context.nextTask?.id) {
+    result = { ...result, taskId: context.nextTask.id };
   }
 
   await rememberMessage(uid, surface, result.id);

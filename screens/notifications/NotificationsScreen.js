@@ -14,6 +14,8 @@ import { useProgramNavMaybe } from '../../context/ProgramNavContext';
 import { useLepNav } from '../lep/useLepNav';
 import { isLepEnrolled } from '../../utils/lepState';
 import { noticesFor } from '../../constants/notices';
+import { useParticipantNotifications } from '../../hooks/useParticipantNotifications';
+import { navigateFromGo } from '../../utils/navigationFromGo';
 
 // Survives leaving and reopening the screen within a session.
 const readIds = new Set();
@@ -71,27 +73,38 @@ function useNoticeRunner(audience) {
 export default function NotificationsScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { profile, isAuthenticated, isGuest } = useAuth();
+  const { user, profile, isAuthenticated, isGuest } = useAuth();
   const programNav = useProgramNavMaybe();
   const audience = isGuest ? 'guest' : !isAuthenticated || !programNav ? 'signup' : 'member';
-  const items = noticesFor({
+  const uid = user?.uid && user.uid !== 'preview' ? user.uid : null;
+  const useLiveInbox = audience === 'member' && !!uid;
+  const live = useParticipantNotifications(useLiveInbox ? uid : null);
+  const demoItems = noticesFor({
     audience,
     program: programNav?.program,
     stage: programNav?.stage,
     lepEnrolled: audience === 'member' && isLepEnrolled(profile),
   });
+  const items = useLiveInbox ? live.items : demoItems;
   const run = useNoticeRunner(audience);
   const [, bump] = useState(0);
-  const isRead = (n) => readIds.has(n.id);
-  const unread = items.filter((n) => !isRead(n)).length;
+  const isRead = (n) => (useLiveInbox ? n.read : readIds.has(n.id));
+  const unread = useLiveInbox ? live.unread : items.filter((n) => !isRead(n)).length;
 
-  const markAll = () => {
-    items.forEach((n) => readIds.add(n.id));
-    bump((x) => x + 1);
+  const markAll = async () => {
+    if (useLiveInbox) await live.markAllRead();
+    else {
+      items.forEach((n) => readIds.add(n.id));
+      bump((x) => x + 1);
+    }
   };
-  const open = (n) => {
-    readIds.add(n.id);
-    bump((x) => x + 1);
+  const open = async (n) => {
+    if (useLiveInbox) await live.markRead(n.id);
+    else {
+      readIds.add(n.id);
+      bump((x) => x + 1);
+    }
+    if (n.go && navigateFromGo(n.go)) return;
     run(n.go);
   };
 
@@ -121,6 +134,13 @@ export default function NotificationsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8) }}
       >
+        {useLiveInbox && !live.loading && items.length === 0 ? (
+          <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 18 }}>
+            <ILText role="body" color={G.meta} style={{ fontSize: 14, lineHeight: 20 }}>
+              No notifications yet. When CMS events are sent, they appear here and as phone push (if enabled).
+            </ILText>
+          </WhiteCard>
+        ) : null}
         {attention.length ? (
           <>
             <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginTop: 8 }]}>

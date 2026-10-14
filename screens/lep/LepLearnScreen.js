@@ -42,6 +42,8 @@ import {
   STORIES_FUNC_ENR,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 
 export default function LepLearnScreen() {
   const { profile } = useAuth();
@@ -313,26 +315,11 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
         </View>
       </WhiteCard>
 
-      <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            IL GUIDE’S WHISPER
-          </ILText>
-          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: G.cta, marginLeft: 8 }} />
-          <ILText role="eyebrow" color={G.meta} style={[af, { marginLeft: 6, fontSize: 10 }]}>
-            This week
-          </ILText>
-        </View>
-        <View style={{ flexDirection: 'row', marginTop: 14 }}>
-          <GuideFace size={44} />
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ flex: 1, marginLeft: 12, fontFamily: IL_FONTS.display, fontSize: 18, lineHeight: 24 }}
-          >
-            “{LEARN_WHISPER}”
-          </ILText>
-        </View>
+      <ILGuideWhisperLep
+        surface={IL_GUIDE_SURFACES.LEARN}
+        fallbackQuote={LEARN_WHISPER}
+        subtitle="This week"
+      >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
           {LEARN_CITIES.map((city, i) => (
             <View
@@ -354,7 +341,7 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
             </View>
           ))}
         </View>
-      </WhiteCard>
+      </ILGuideWhisperLep>
 
       {!enrolled ? <UnlockCard onEnroll={onEnroll} /> : null}
     </>
@@ -1038,27 +1025,11 @@ function EnrolledForYou({ onTicket }) {
         </View>
       </WhiteCard>
 
-      <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <GuideFace size={44} />
-          <View style={{ marginLeft: 12, flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
-                IL Guide’s Whisper
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginLeft: 6, fontSize: 12 }}>
-                · Executive Mentor
-              </ILText>
-            </View>
-            <ILText
-              role="title"
-              color={G.ink}
-              style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 18, lineHeight: 24 }}
-            >
-              “{LEARN_WHISPER_ENR}”
-            </ILText>
-          </View>
-        </View>
+      <ILGuideWhisperLep
+        surface={IL_GUIDE_SURFACES.LEARN}
+        fallbackQuote={LEARN_WHISPER_ENR}
+        subtitle="Executive Mentor"
+      >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
           {LEARN_CITIES_ENR.map((c) => (
             <Pressable
@@ -1081,7 +1052,7 @@ function EnrolledForYou({ onTicket }) {
             </Pressable>
           ))}
         </View>
-      </WhiteCard>
+      </ILGuideWhisperLep>
       <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', marginTop: 18, fontSize: 12 }}>
         Curated for Iron Lady Cohorts · 100% confidential leadership tracks
       </ILText>
