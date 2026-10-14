@@ -13,18 +13,24 @@ import {
   YOUTUBE_EMBED_ORIGIN,
 } from '../../utils/videoSource';
 
-function NativeVideo({ source, height, fill }) {
+/** Largest 16:9 rectangle that fits the available stage. */
+function fit16x9(maxW, maxH) {
+  if (!maxW || !maxH) return { width: 0, height: 0 };
+  const widthFromHeight = maxH * (16 / 9);
+  if (widthFromHeight <= maxW) {
+    return { width: widthFromHeight, height: maxH };
+  }
+  return { width: maxW, height: maxW * (9 / 16) };
+}
+
+function NativeVideo({ source, width, height }) {
   const player = useVideoPlayer(source, (p) => {
     p.loop = false;
   });
 
   return (
     <VideoView
-      style={
-        fill
-          ? { flex: 1, width: '100%', backgroundColor: 'transparent' }
-          : { width: '100%', height, backgroundColor: 'transparent' }
-      }
+      style={{ width, height, backgroundColor: '#000' }}
       player={player}
       allowsFullscreen
       contentFit="contain"
@@ -33,25 +39,30 @@ function NativeVideo({ source, height, fill }) {
   );
 }
 
-function YoutubeEmbed({ uri, height, fill }) {
+function YoutubeEmbed({ uri, width, height }) {
   const id = youtubeIdFromUri(uri);
-  const html = useMemo(() => (id ? youtubeEmbedHtml(id) : null), [id]);
-  if (!id || !html) return null;
+  const html = useMemo(
+    () => (id && width > 0 && height > 0 ? youtubeEmbedHtml(id, { width, height }) : null),
+    [id, width, height],
+  );
+  if (!html) return null;
 
   return (
     <WebView
+      key={`${width}x${height}`}
       source={{ html, baseUrl: YOUTUBE_EMBED_ORIGIN }}
-      style={
-        fill
-          ? { flex: 1, width: '100%', backgroundColor: 'transparent' }
-          : { width: '100%', height, backgroundColor: 'transparent' }
-      }
+      style={{ width, height, backgroundColor: '#000' }}
       allowsFullscreenVideo
       allowsInlineMediaPlayback
       mediaPlaybackRequiresUserAction={false}
       javaScriptEnabled
       domStorageEnabled
       originWhitelist={['*']}
+      scalesPageToFit={false}
+      setBuiltInZoomControls={false}
+      automaticallyAdjustContentInsets={false}
+      contentInsetAdjustmentBehavior="never"
+      scrollEnabled={false}
     />
   );
 }
@@ -89,17 +100,28 @@ function PlayOverlay({ onPress }) {
   );
 }
 
-function VideoFrame({ uri, height, fill, poster, started, onStart }) {
+function VideoFrame({ uri, fill, poster, started, onStart }) {
   const youtubeId = youtubeIdFromUri(uri);
   const showPoster = !!poster;
   const showYoutubeGate = youtubeId && !started;
+  const [box, setBox] = useState({ width: 0, height: 0 });
 
   return (
     <View
+      onLayout={(e) => {
+        const { width, height: measured } = e.nativeEvent.layout;
+        const nextW = Math.round(width);
+        const nextH = Math.round(measured);
+        setBox((prev) => (
+          Math.abs(prev.width - nextW) < 2 && Math.abs(prev.height - nextH) < 2
+            ? prev
+            : { width: nextW, height: nextH }
+        ));
+      }}
       style={
         fill
           ? { flex: 1, width: '100%', backgroundColor: '#000', overflow: 'hidden' }
-          : { width: '100%', height, backgroundColor: '#000', overflow: 'hidden' }
+          : { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden' }
       }
     >
       {showPoster ? (
@@ -110,11 +132,11 @@ function VideoFrame({ uri, height, fill, poster, started, onStart }) {
         />
       ) : null}
       {showYoutubeGate ? <PlayOverlay onPress={onStart} /> : null}
-      {!showYoutubeGate ? (
+      {!showYoutubeGate && box.width > 0 && box.height > 0 ? (
         youtubeId ? (
-          <YoutubeEmbed uri={uri} height={height} fill={fill} />
+          <YoutubeEmbed uri={uri} width={box.width} height={box.height} />
         ) : (
-          <NativeVideo source={toPlayerSource(uri)} height={height} fill={fill} />
+          <NativeVideo source={toPlayerSource(uri)} width={box.width} height={box.height} />
         )
       ) : null}
     </View>
@@ -145,11 +167,13 @@ function RotateButton({ onPress, style }) {
   );
 }
 
-export default function PracticeVideo({ uri, height = 200, poster }) {
+export default function PracticeVideo({ uri, poster }) {
   const [landscape, setLandscape] = useState(false);
   const [started, setStarted] = useState(!youtubeIdFromUri(uri));
+  const [stage, setStage] = useState({ width: 0, height: 0 });
   const insets = useSafeAreaInsets();
   useVideoLandscape(landscape);
+  const frame = fit16x9(stage.width, stage.height);
 
   if (!uri) return null;
 
@@ -169,7 +193,6 @@ export default function PracticeVideo({ uri, height = 200, poster }) {
         >
           <VideoFrame
             uri={uri}
-            height={height}
             poster={poster}
             started={started}
             onStart={beginPlayback}
@@ -190,37 +213,49 @@ export default function PracticeVideo({ uri, height = 200, poster }) {
         supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
         onRequestClose={closeLandscape}
       >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: '#000',
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom,
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-          }}
-        >
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', padding: 8 }}>
-            <Pressable
-              onPress={closeLandscape}
-              accessibilityRole="button"
-              accessibilityLabel="Exit landscape"
-              hitSlop={10}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: 'rgba(255,255,255,0.14)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name="close" size={22} color="#FFFFFF" />
-            </Pressable>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingTop: insets.top,
+              paddingBottom: insets.bottom,
+              paddingLeft: insets.left,
+              paddingRight: insets.right,
+            }}
+            onLayout={(e) => {
+              const { width, height: measured } = e.nativeEvent.layout;
+              const nextW = Math.max(0, Math.round(width - insets.left - insets.right));
+              const nextH = Math.max(0, Math.round(measured - insets.top - insets.bottom));
+              setStage((prev) => (prev.width === nextW && prev.height === nextH ? prev : { width: nextW, height: nextH }));
+            }}
+          >
+            {frame.width > 0 && frame.height > 0 ? (
+              <View style={{ width: frame.width, height: frame.height }}>
+                <VideoFrame uri={uri} fill poster={poster} started={started} onStart={beginPlayback} />
+              </View>
+            ) : null}
           </View>
-          <View style={{ flex: 1 }}>
-            <VideoFrame uri={uri} fill poster={poster} started={started} onStart={beginPlayback} />
-          </View>
+          <Pressable
+            onPress={closeLandscape}
+            accessibilityRole="button"
+            accessibilityLabel="Exit landscape"
+            hitSlop={10}
+            style={{
+              position: 'absolute',
+              top: insets.top + 8,
+              right: insets.right + 8,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.14)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name="close" size={22} color="#FFFFFF" />
+          </Pressable>
         </View>
       </Modal>
     </>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Pressable, ScrollView, View } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   interpolate,
@@ -20,6 +21,9 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
+import { buildLepEnrolledHero } from '../../utils/lepBatchHero';
+import { learnerBatchId } from '../../utils/programAccess';
+import { db } from '../../services/firebase';
 import {
   CheckRow,
   CoverThumb,
@@ -452,20 +456,52 @@ function RegisteredHome() {
   );
 }
 
+function useLepBatchGroup(profile) {
+  const batchId = learnerBatchId(profile, 'lep');
+  const id = batchId && batchId !== 'default' && /^[A-Za-z0-9_-]+$/.test(batchId) ? batchId : null;
+  const [group, setGroup] = useState(null);
+
+  useEffect(() => {
+    if (!id) {
+      setGroup(null);
+      return undefined;
+    }
+    let cancelled = false;
+    getDoc(doc(db, 'groups', id))
+      .then((snap) => {
+        if (!cancelled) setGroup(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGroup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return group;
+}
+
 function EnrolledHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
   const practice = useLivePractice(ENR_PRACTICE);
+  const group = useLepBatchGroup(profile);
+  const hero = buildLepEnrolledHero(profile, group);
 
   return (
     <Shell>
       <DarkHero>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <SoftChip onDark icon="verified">
-            Enrolled · LEP
-          </SoftChip>
-          <SoftChip onDark>4 days to launch</SoftChip>
+          {hero.programChip ? (
+            <SoftChip onDark icon="verified">
+              {hero.programChip}
+            </SoftChip>
+          ) : (
+            <View />
+          )}
+          {hero.launchChip ? <SoftChip onDark>{hero.launchChip}</SoftChip> : null}
         </View>
         <ILText
           role="display"
@@ -474,31 +510,37 @@ function EnrolledHome() {
         >
           You’re all set, {name}.
         </ILText>
-        <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-          You’re in this batch. 48 women start together this Saturday.
-        </ILText>
-        <View
-          style={{
-            marginTop: 18,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: 999,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <MaterialIcons name="event" size={16} color="#FFFFFF" />
-            <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 8, fontSize: 12 }]}>
-              Sat 20 Sep · 9:00 AM IST
-            </ILText>
-          </View>
-          <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
-            Confirmed
+        {hero.subline ? (
+          <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
+            {hero.subline}
           </ILText>
-        </View>
+        ) : null}
+        {hero.whenLabel ? (
+          <View
+            style={{
+              marginTop: 18,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderRadius: 999,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <MaterialIcons name="event" size={16} color="#FFFFFF" />
+              <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 8, fontSize: 12 }]}>
+                {hero.whenLabel}
+              </ILText>
+            </View>
+            {hero.showConfirmed ? (
+              <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
+                Confirmed
+              </ILText>
+            ) : null}
+          </View>
+        ) : null}
       </DarkHero>
 
       <View style={{ marginTop: 16 }}>
