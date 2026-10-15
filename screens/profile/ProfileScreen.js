@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ import {
   programsOnProfile,
 } from '../../utils/programAccess';
 import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
-import { buildProgramBatchCard } from '../../utils/lepBatchHero';
+import { buildProgramBatchCard, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
 import { refreshMyAccess } from '../../services/functions';
 import { fetchUserProfile } from '../../services/auth';
 import ILHeader from '../../components/il/ILHeader';
@@ -69,6 +69,19 @@ export default function ProfileScreen({ navigation }) {
   const needsPayment = programs.some(
     (p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.REGISTER
   );
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    let cancelled = false;
+    (async () => {
+      await refreshMyAccess();
+      const fresh = await fetchUserProfile(user.uid).catch(() => null);
+      if (!cancelled && fresh) patchProfile(fresh);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, patchProfile]);
 
   const initial = (profile?.displayName || profile?.email || '?').charAt(0).toUpperCase();
 
@@ -176,7 +189,7 @@ export default function ProfileScreen({ navigation }) {
               mobile number on your registration.
             </Text>
           ) : (
-            programs.map((p, i) => {
+            sortProgramsByCurrentBatch(source, programs).map((p, i) => {
               const batch = buildProgramBatchCard(source, p.id).heading || learnerBatchLabel(source, p.id);
               return (
                 <View

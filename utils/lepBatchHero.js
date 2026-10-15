@@ -1,7 +1,6 @@
 import { getProgramEntry } from '../constants/programs';
-import { learnerBatchId, learnerBatchLabel, normalizeProgramId } from './programAccess';
+import { learnerBatchLabel, learnerEnrollmentLabel, normalizeProgramId } from './programAccess';
 
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTH_INDEX = Object.fromEntries(MONTHS.map((name, i) => [name.toLowerCase(), i]));
@@ -63,11 +62,6 @@ function formatWhen(start) {
   return `${WEEKDAYS_SHORT[date.getDay()]} ${start.day} ${MONTHS[start.month - 1]}`;
 }
 
-function weekdayName(start) {
-  const date = new Date(start.year, start.month - 1, start.day);
-  return WEEKDAYS[date.getDay()];
-}
-
 function formatClock(raw) {
   const value = String(raw || '').trim();
   if (!value) return null;
@@ -87,14 +81,6 @@ function formatClock(raw) {
 
 function firstFilled(...values) {
   return values.find((value) => value != null && String(value).trim() !== '') ?? null;
-}
-
-function positiveCount(...values) {
-  for (const value of values) {
-    const count = Number(value);
-    if (Number.isFinite(count) && count > 0) return Math.round(count);
-  }
-  return null;
 }
 
 function splitRange(raw) {
@@ -128,9 +114,49 @@ function batchRawForProgram(profile, programId) {
   return learnerBatchLabel(profile, programId);
 }
 
-function realBatchId(profile, programId) {
-  const id = learnerBatchId(profile, programId);
-  return id && id !== 'default' ? id : null;
+function dateStamp(date) {
+  if (!date) return null;
+  return new Date(date.year, date.month - 1, date.day).getTime();
+}
+
+/** current, upcoming, earlier, or unset — from that program's Batch field only. */
+export function programBatchPhase(profile, programId, now = new Date()) {
+  const [start, end] = splitRange(learnerBatchLabel(profile, programId));
+  const startMs = dateStamp(start);
+  if (startMs == null) return 'unset';
+  const endMs = dateStamp(end) ?? startMs;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  if (today < startMs) return 'upcoming';
+  if (today > endMs) return 'earlier';
+  return 'current';
+}
+
+/**
+ * The earliest enrolled batch stays on top until it ends.
+ * The next enrolled program then moves up. Registered programs stay below.
+ */
+export function sortProgramsByCurrentBatch(profile, programs, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const span = (program) => {
+    const [start, end] = splitRange(learnerBatchLabel(profile, program.id));
+    const startMs = dateStamp(start);
+    const endMs = dateStamp(end) ?? startMs;
+    return { program, startMs, endMs };
+  };
+  const enrolled = [];
+  const rest = [];
+  for (const program of programs) {
+    if (learnerEnrollmentLabel(profile, program.id) === 'Enrolled') enrolled.push(span(program));
+    else rest.push(span(program));
+  }
+  const byStart = (a, b) => (a.startMs ?? Number.MAX_SAFE_INTEGER) - (b.startMs ?? Number.MAX_SAFE_INTEGER);
+  const stillOpen = (row) => row.startMs != null && today <= row.endMs;
+  const place = (rows) => [
+    ...rows.filter(stillOpen).sort(byStart),
+    ...rows.filter((row) => row.startMs != null && !stillOpen(row)).sort(byStart),
+    ...rows.filter((row) => row.startMs == null),
+  ];
+  return [...place(enrolled), ...place(rest)].map((row) => row.program);
 }
 
 /**
@@ -151,9 +177,8 @@ export function buildProgramBatchCard(profile, programId, group) {
   const pid = normalizeProgramId(programId) || 'lep';
   const access = profile?.programAccess?.[pid] || {};
   const raw = batchRawForProgram(profile, pid);
-  const [start, end] = splitRange(raw);
-  const range = formatRange(start, end);
-  const named = raw && !parseBatchStart(raw) ? String(raw).trim() : null;
+  const label = raw ? String(raw).trim() : null;
+  const named = label && !parseBatchStart(label) ? label : null;
   const time = formatClock(
     firstFilled(
       access.startTime,
@@ -174,9 +199,9 @@ export function buildProgramBatchCard(profile, programId, group) {
 
   return {
     eyebrow: named || BATCH_EYEBROW[pid] || 'MY BATCH',
-    heading: range || named,
+    heading: label,
     body,
-    confirmed: Boolean(range || named),
+    confirmed: Boolean(label),
   };
 }
 
@@ -200,28 +225,11 @@ export function buildLepEnrolledHero(profile, group, now = new Date()) {
       group?.sessionTime
     )
   );
-  const women = positiveCount(
-    access.womenCount,
-    access.memberCount,
-    access.batchSize,
-    group?.memberIds?.length
-  );
-
   let launchChip = null;
   if (days === 0) launchChip = 'Launches today';
   else if (days > 0) launchChip = `${days} ${days === 1 ? 'day' : 'days'} to launch`;
 
-  let subline = null;
-  if (women && days != null && days >= 0) {
-    const noun = women === 1 ? 'woman starts' : 'women start';
-    const when = days === 0 ? ' today' : days === 1 ? ' tomorrow' : ` this ${weekdayName(start)}`;
-    subline = `You’re in this batch. ${women} ${noun} together${when}.`;
-  } else if (women) {
-    const noun = women === 1 ? 'woman is' : 'women are';
-    subline = `You’re in this batch. ${women} ${noun} in it.`;
-  } else if (start || realBatchId(profile, programId) || batchRaw) {
-    subline = 'You’re in this batch.';
-  }
+  const subline = 'This is your turn to lead out loud.';
 
   const whenLabel = start ? [formatWhen(start), time].filter(Boolean).join(' · ') : null;
 

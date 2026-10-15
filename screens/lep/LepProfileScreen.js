@@ -23,10 +23,12 @@ import {
   zohoPaymentDetail,
   zohoRegistrationAmount,
 } from '../../utils/programAccess';
-import { buildProgramBatchCard } from '../../utils/lepBatchHero';
+import { buildProgramBatchCard, programBatchPhase, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
 import { db } from '../../services/firebase';
+import { fetchUserProfile } from '../../services/auth';
+import { refreshMyAccess } from '../../services/functions';
 import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
-import { LepHeader, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
+import { LepHeader, Page, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { useMyReceipts } from '../../hooks/useMyReceipts';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
@@ -123,6 +125,19 @@ export default function LepProfileScreen() {
   const practiceBhag = String(demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || '').trim();
   const bhag = learnerBhagText(source) || practiceBhag;
   const fee = programs.length ? feeLabel(source, programs[0].id) : feeLabel(source, 'lep');
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    let cancelled = false;
+    (async () => {
+      await refreshMyAccess();
+      const fresh = await fetchUserProfile(user.uid).catch(() => null);
+      if (!cancelled && fresh) patchProfile(fresh);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, patchProfile]);
 
   const photoUrl = profile?.photoURL || '';
   const initial = String(name || '?').trim().charAt(0).toUpperCase();
@@ -349,78 +364,95 @@ export default function LepProfileScreen() {
           </Pressable>
         </WhiteCard>
 
-        {(programs.length ? programs : []).map((program) => {
-          const enrolled = learnerEnrollmentLabel(source, program.id) === 'Enrolled';
-          const batchCard = buildProgramBatchCard(source, program.id, groups[program.id]);
-          return (
-            <WhiteCard key={program.id} style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 8 }}>
-                  <MaterialIcons name="event" size={16} color={G.ink} />
-                  <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                    {batchCard.eyebrow}
-                  </ILText>
-                </View>
-                {enrolled ? (
-                  <View style={{ backgroundColor: '#E8F6EE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                    <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-                      Enrolled
-                    </ILText>
-                  </View>
-                ) : (
-                  <View style={{ backgroundColor: G.pink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                    <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-                      Registered
-                    </ILText>
-                  </View>
-                )}
-              </View>
-              <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 16, fontSize: 10 }]}>
-                {program.code}
-              </ILText>
-              <ILText
-                role="title"
-                color={G.ink}
-                style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-              >
-                {program.title}
-              </ILText>
-              <ILText role="bodySm" color={G.ink} style={{ marginTop: 8, fontSize: 15, lineHeight: 22 }}>
-                {batchCard.heading || 'Batch dates will show here.'}
-              </ILText>
-              {batchCard.body ? (
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
-                  {batchCard.body}
-                </ILText>
-              ) : null}
-              {enrolled ? (
-                <View style={{ marginTop: 14, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                    Need to reschedule?
-                  </ILText>
-                  <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                    Request a change ›
-                  </ILText>
-                </View>
-              ) : (
-                <View style={{ marginTop: 14 }}>
-                  <RedCta label="Complete your enrollment →" onPress={nav.goEnroll} />
-                </View>
-              )}
-            </WhiteCard>
-          );
-        })}
-
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {programs.length ? (
+          <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialIcons name="receipt-long" size={16} color={G.ink} />
-              <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                PAYMENT & BILLING
+              <MaterialIcons name="event" size={16} color={G.ink} />
+              <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10, marginLeft: 8 }]}>
+                Your batches
               </ILText>
             </View>
-            <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-              Synced from Zoho
+            {sortProgramsByCurrentBatch(source, programs).map((program, index) => {
+              const enrolled = learnerEnrollmentLabel(source, program.id) === 'Enrolled';
+              const batchCard = buildProgramBatchCard(source, program.id, groups[program.id]);
+              const phase = programBatchPhase(source, program.id);
+              const current = phase === 'current';
+              return (
+                <View
+                  key={program.id}
+                  style={{
+                    marginTop: index === 0 ? 14 : 0,
+                    paddingTop: index === 0 ? 0 : 14,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: G.line,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      {current ? (
+                        <View style={{ backgroundColor: G.ink, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <ILText role="eyebrow" color={G.white} style={[af, { fontSize: 9 }]}>
+                            Current
+                          </ILText>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View
+                      style={{
+                        backgroundColor: enrolled ? '#E8F6EE' : G.pink,
+                        borderRadius: 999,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <ILText role="eyebrow" color={enrolled ? '#1B7A4A' : G.cta} style={[af, { fontSize: 9 }]}>
+                        {enrolled ? 'Enrolled' : 'Registered'}
+                      </ILText>
+                    </View>
+                  </View>
+                  <ILText
+                    role="title"
+                    color={G.ink}
+                    style={{
+                      marginTop: 8,
+                      fontFamily: IL_FONTS.display,
+                      fontSize: current ? 22 : 18,
+                      lineHeight: current ? 28 : 24,
+                    }}
+                  >
+                    {program.title}
+                  </ILText>
+                  <ILText
+                    role="bodySm"
+                    color={batchCard.heading ? G.ink : G.meta}
+                    style={{ marginTop: 6, fontSize: 15, lineHeight: 22 }}
+                  >
+                    {batchCard.heading || 'Batch dates will show here.'}
+                  </ILText>
+                  {batchCard.body ? (
+                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
+                      {batchCard.body}
+                    </ILText>
+                  ) : null}
+                  {enrolled ? null : (
+                    <Pressable onPress={nav.goEnroll} style={{ marginTop: 10 }}>
+                      <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+                        Complete your enrollment →
+                      </ILText>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+          </WhiteCard>
+        ) : null}
+
+        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="receipt-long" size={16} color={G.ink} />
+            <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
+              PAYMENT & BILLING
             </ILText>
           </View>
           {(programs.length ? programs : []).map((program, i) => {

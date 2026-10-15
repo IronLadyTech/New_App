@@ -486,9 +486,22 @@ function EnrolledHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
+  const demo = useCourseDemo();
   const practice = useLivePractice(ENR_PRACTICE);
   const group = useLepBatchGroup(profile);
   const hero = buildLepEnrolledHero(profile, group);
+  const savedReady = demo.getSubmission('lep', 'lep-get-ready')?.data?.checked;
+  const readyItems = GET_READY.map((item) => ({
+    ...item,
+    done: savedReady ? !!savedReady[item.title] : item.done,
+  }));
+  const toggleReady = (title) => {
+    const checked = Object.fromEntries(
+      readyItems.map((item) => [item.title, item.title === title ? !item.done : item.done])
+    );
+    demo.saveSubmission('lep', 'lep-get-ready', { checked });
+    if (checked[title]) demo.markDone('lep', practiceKey('lep-get-ready'));
+  };
 
   return (
     <Shell>
@@ -514,32 +527,6 @@ function EnrolledHome() {
           <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
             {hero.subline}
           </ILText>
-        ) : null}
-        {hero.whenLabel ? (
-          <View
-            style={{
-              marginTop: 18,
-              backgroundColor: 'rgba(255,255,255,0.08)',
-              borderRadius: 999,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              <MaterialIcons name="event" size={16} color="#FFFFFF" />
-              <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 8, fontSize: 12 }]}>
-                {hero.whenLabel}
-              </ILText>
-            </View>
-            {hero.showConfirmed ? (
-              <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
-                Confirmed
-              </ILText>
-            ) : null}
-          </View>
         ) : null}
       </DarkHero>
 
@@ -661,8 +648,13 @@ function EnrolledHome() {
 
       <Section title="Get ready" sub="Day 1 checklist" />
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {GET_READY.map((item, i) => (
-          <CheckRow key={item.title} item={item} last={i === GET_READY.length - 1} />
+        {readyItems.map((item, i) => (
+          <CheckRow
+            key={item.title}
+            item={item}
+            last={i === readyItems.length - 1}
+            onPress={() => toggleReady(item.title)}
+          />
         ))}
       </WhiteCard>
 

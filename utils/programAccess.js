@@ -198,7 +198,7 @@ function leadKey(value) {
 const ZOHO_LEAD_FIELDS = {
   lep: {
     batch: ['LEP Batch', 'LEP_Batch'],
-    start: ['LEP Start Date', 'LEP_Start_Date'],
+    start: ['LEP Start Date', 'LEP_Start_Date', 'LEP_Reg_Date'],
     end: ['LEP End Date', 'LEP_End_Date'],
     status: ['LEP Status', 'LEP_Status'],
     active: ['LEP Active Status', 'LEP_Active_Status'],
@@ -208,9 +208,9 @@ const ZOHO_LEAD_FIELDS = {
     payStatus: ['LEP Payment Status', 'LEP_Payment_Status'],
   },
   '100bm': {
-    batch: ['100 BM Batch', '100BM Batch', '100_BM_Batch', '100BM_Batch'],
-    start: ['100 BM Start Date', '100_BM_Start_Date', '100BM Start Date'],
-    end: ['100 BM End Date', '100_BM_End_Date', '100BM End Date'],
+    batch: ['100 BM Batch', '100BM Batch', '100_BM_Batch', '100BM_Batch', 'BM_Batch'],
+    start: ['100 BM Start Date', '100_BM_Start_Date', '100BM Start Date', 'BM_Reg_Date1'],
+    end: ['100 BM End Date', '100_BM_End_Date', '100BM End Date', 'BM_End_Date'],
     status: ['100BM Status', '100 BM Status', '100_BM_Status'],
     active: ['100 BM Active Status', '100BM Active Status', '100_BM_Active_Status'],
     amount: ['100 BM Payment Amount', '100BM Payment Amount', '100_BM_Payment_Amount'],
@@ -220,7 +220,7 @@ const ZOHO_LEAD_FIELDS = {
   },
   mbw: {
     batch: ['MBW Batch', 'MBW_Batch'],
-    start: ['MBW Start Date', 'MBW_Start_Date'],
+    start: ['MBW Start Date', 'MBW_Start_Date', 'MBW_Reg_Date'],
     end: ['MBW End Date', 'MBW_End_Date'],
     status: ['MBW Status', 'MBW_Status'],
     active: ['MBW Active Status', 'MBW_Active_Status'],
@@ -395,6 +395,9 @@ export function learnerLeadDetails(profile) {
       'Total Years Of Experience.',
       'Total Years Of Experience',
       'Total_Years_Of_Experience',
+      'Years_of_Experience',
+      'Experience',
+      'experience',
     ])
   );
   return {
@@ -442,53 +445,17 @@ function looksLikeRecordId(value) {
   return /^\d{10,}$/.test(String(value || '').trim());
 }
 
-function looksLikeDate(value) {
-  const text = String(value || '').trim();
-  return (
-    /^\d{4}-\d{2}-\d{2}/.test(text) ||
-    /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(text) ||
-    /\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(text)
-  );
-}
-
-function looksLikeDateRange(value) {
-  const text = String(value || '').trim();
-  if (!text) return false;
-  const parts = text.split(/\s+[–—-]\s+/);
-  if (parts.length >= 2) return parts.some(looksLikeDate);
-  return looksLikeDate(text);
-}
-
-function namedBatch(profile, programId, pid, access) {
+function namedBatch(profile, pid, access) {
   const fromAccess = cleanBatchLabel(access?.batch);
   const id = cleanBatchId(access?.batchId);
   const accessBatch =
     fromAccess && ((id && fromAccess === id) || looksLikeRecordId(fromAccess)) ? null : fromAccess;
-  const top =
-    mayUseTopLevelBatch(profile, pid, programId)
-      ? cleanBatchLabel(profile?.batchName) || cleanBatchLabel(profile?.batch)
-      : null;
   return (
     zohoBatchRange(profile, pid) ||
-    accessBatch ||
     cleanBatchLabel(access?.zohoRawBatch) ||
     cleanBatchLabel(access?.batchName) ||
-    top
+    accessBatch
   );
-}
-
-function programDateLine(profile, pid, access) {
-  const spec = pid ? ZOHO_LEAD_FIELDS[pid] : null;
-  const start =
-    (spec ? cleanBatchLabel(readLeadField(profile, spec.start)) : null) ||
-    cleanBatchLabel(access?.startDate) ||
-    cleanBatchLabel(access?.batchStart);
-  const end =
-    (spec ? cleanBatchLabel(readLeadField(profile, spec.end)) : null) ||
-    cleanBatchLabel(access?.endDate) ||
-    cleanBatchLabel(access?.batchEnd);
-  const parts = [start, end].filter(Boolean);
-  return parts.length ? parts.join(' - ') : null;
 }
 
 /** Zoho writes each program's batch on programAccess[programId]. */
@@ -511,10 +478,8 @@ export function learnerBatchId(profile, programId) {
   return cleanBatchId(profile?.batchId) || cleanBatchId(profile?.batch) || 'default';
 }
 
-/** Human-readable batch for one program: Zoho name, or that program's start and end dates. */
+/** That program's Leads Batch field only. LEP Batch, 100 BM Batch, or MBW Batch. */
 export function learnerBatchLabel(profile, programId) {
   const { pid, access } = batchAccess(profile, programId);
-  const named = namedBatch(profile, programId, pid, access);
-  if (named && looksLikeDateRange(named)) return named;
-  return programDateLine(profile, pid, access) || named;
+  return namedBatch(profile, pid, access);
 }
