@@ -9,10 +9,11 @@
     "scheme": "lmsapp",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.lmsapp.mobile"
+      "bundleIdentifier": "com.ironlady.app"
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
+      "googleServicesFile": "./google-services.json",
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "backgroundColor": "#ED1D24",
@@ -20,7 +21,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.lmsapp.mobile",
+      "package": "com.ironlady.app",
+      "versionCode": 4,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -44,10 +46,12 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/android-icon-monochrome.png",
           "color": "#ED1D24",
-          "icon": "./assets/icon.png"
+          "defaultChannel": "default"
         }
       ],
+      "./plugins/withIronLadyNotificationBrand.js",
       "expo-font",
       [
         "expo-image-picker",

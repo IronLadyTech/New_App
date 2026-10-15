@@ -52,7 +52,11 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "export:web": "expo export --platform web",
-    "deploy:web": "expo export --platform web && firebase deploy --only hosting --project lmsironlady"
+    "deploy:web": "expo export --platform web && node scripts/copy-push-brand.js && firebase deploy --only hosting --project lmsironlady",
+    "verify:android-notifications": "node scripts/verify-notification-android.js",
+    "build:apk": "node scripts/verify-notification-android.js && eas build -p android --profile preview",
+    "build:apk:local": "node scripts/verify-notification-android.js && expo prebuild --platform android --no-install && cd android && gradlew.bat assembleDebug",
+    "android:prebuild": "expo prebuild --platform android --no-install"
   },
   "private": true,
   "devDependencies": {

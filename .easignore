@@ -1,0 +1,14 @@
+_tmp_*
+_tmp_bundle_check
+_tmp_expo_check
+_tmp_export
+dist
+web-build
+.expo
+android/build
+android/.gradle
+**/.gradle
+**/*.apk
+**/*.aab
+il-guide-api/venv
+.git

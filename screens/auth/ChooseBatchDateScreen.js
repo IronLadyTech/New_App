@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { subscribeToBatches } from '../../services/cms';
+import { cmsBatchToSignupCard } from '../../utils/cmsBatchDisplay';
 import { Animated, Modal, Platform, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -317,10 +319,28 @@ function CalendarPicker({ visible, onClose, onPick }) {
 
 export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
   const insets = useSafeAreaInsets();
+  const [cmsBatches, setCmsBatches] = useState([]);
   const [selected, setSelected] = useState(BATCHES[0].id);
   const [custom, setCustom] = useState(null);
   const [calOpen, setCalOpen] = useState(false);
-  const batches = custom ? [custom, ...BATCHES] : BATCHES;
+
+  useEffect(() => {
+    return subscribeToBatches(
+      (rows) => {
+        const open = rows
+          .filter((b) => b.openForEnrollment !== false && b.day1Date)
+          .map(cmsBatchToSignupCard);
+        setCmsBatches(open);
+        if (open.length && !open.some((b) => b.id === selected) && !custom) {
+          setSelected(open[0].id);
+        }
+      },
+      () => {}
+    );
+  }, []);
+
+  const staticOrCms = cmsBatches.length ? cmsBatches : BATCHES;
+  const batches = custom ? [custom, ...staticOrCms] : staticOrCms;
 
   const goBack = () => {
     if (typeof onBack === 'function') {

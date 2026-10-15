@@ -8,6 +8,7 @@ export const CMS = {
   EVENTS: 'cms_notificationEvents',
   CONTENT: 'cms_content',
   CONFIG: 'cms_config',
+  BATCHES: 'cms_batches',
 };
 
 export const CMS_CONFIG_DOCS = {

@@ -5,6 +5,19 @@ import { A, Card, T } from './adminUi';
 
 /** Plain-language help — one card per CMS section. */
 export const SECTION_HELP = {
+  batches: {
+    title: 'Batch calendar',
+    subtitle:
+      'One record per LEP cohort: orientation Thursday, weekend Day 1–2 (9 AM–7 PM IST), then all v1.5 sessions with dates and join links.',
+    steps: [
+      'Name the batch (e.g. month + cohort).',
+      'Pick Orientation Thursday — Day 1 Saturday is calculated automatically (same weekend).',
+      'Click Generate LEP v1.5 schedule, then paste Zoom links per session.',
+      'Save — staff can view; PL/Admin can edit.',
+      'Messages to learners still use session codes (S0, S1, …); when auto-send is live, times come from the learner’s assigned batch.',
+    ],
+    not: 'Does not upload slides or send push by itself. Use Batch materials and Messages to learners for those.',
+  },
   content: {
     title: 'Batch materials',
     subtitle: 'Files and links learners open inside a task (e.g. schedule PDF on Program Schedule).',
@@ -18,7 +31,8 @@ export const SECTION_HELP = {
   },
   notifications: {
     title: 'Messages to learners',
-    subtitle: 'Phone notification tray + in-app bell (🔔). Tied to sessions and tasks, not fixed calendar dates.',
+    subtitle:
+      'Phone notification tray + in-app bell (🔔). Tied to session codes; actual dates come from Batch calendar per cohort.',
     steps: [
       'First time: Load LEP defaults — imports standard journey messages.',
       'Click a message in the list to edit title, body, and channels (Push / WhatsApp / Email).',
@@ -97,7 +111,7 @@ export function AdminWorkflowStrip() {
         TYPICAL ORDER
       </T>
       <T size={12} color="#E8E4DC" style={{ lineHeight: 18 }}>
-        1 Batch materials → 2 Messages to learners → 3 IL Guide coach
+        1 Batch calendar → 2 Batch materials → 3 Messages → 4 IL Guide
       </T>
     </View>
   );

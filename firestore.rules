@@ -567,6 +567,12 @@ service cloud.firestore {
       allow read: if (name == 'ilGuide' && isSignedIn()) || cmsViewer();
       allow write: if cmsEditor();
     }
+
+    match /cms_batches/{id} {
+      allow read: if cmsViewer()
+        || (isSignedIn() && resource.data.openForEnrollment != false);
+      allow write: if cmsEditor();
+    }
   }
 }
 

@@ -16,6 +16,10 @@ const { getMessaging } = require('firebase-admin/messaging');
 if (!getApps().length) initializeApp();
 const db = getFirestore();
 
+/** Full-color logo in the notification shade (after `npm run deploy:web`). */
+const PUSH_BRAND_IMAGE_URL =
+  'https://lmsironlady-app.web.app/notification-logo.png';
+
 const STAFF_ROLES = new Set(['admin', 'superadmin', 'moderator', 'pl', 'cem']);
 
 async function callerIsStaff(uid) {
@@ -58,9 +62,21 @@ async function sendPush(targetUid, { title, body, go, eventCode }) {
 
   await getMessaging().send({
     token,
-    notification: { title, body },
+    notification: {
+      title,
+      body,
+      imageUrl: PUSH_BRAND_IMAGE_URL,
+    },
     data,
-    android: { priority: 'high' },
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'default',
+        icon: 'notification_icon',
+        color: '#ED1D24',
+        imageUrl: PUSH_BRAND_IMAGE_URL,
+      },
+    },
   });
   return { sent: true };
 }
@@ -80,7 +96,14 @@ exports.sendParticipantNotificationTest = onCall({ region: 'us-central1' }, asyn
   }
 
   const channels = event?.channels || { push: true, whatsapp: false, email: false };
-  const vars = { name: 'there', session: 'Session', time: '', task: '', joinLink: '' };
+  const vars = {
+    name: 'there',
+    session: 'Session',
+    time: '',
+    task: '',
+    joinLink: '',
+    score: '—',
+  };
   const finalTitle = title || fillTemplate(event?.title || event?.name || 'Iron Lady', vars);
   const finalBody = body || fillTemplate(event?.body || '', vars);
   const finalGo = go || { to: 'myProgram' };

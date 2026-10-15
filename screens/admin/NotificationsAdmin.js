@@ -246,13 +246,16 @@ function SendTestCard({ events, onResult }) {
         Try before go-live
       </T>
       <T size={13} color={A.muted} style={{ marginBottom: 14, maxWidth: 720 }}>
-        Sends one message to a single learner — phone tray (if they use the real app, not Expo Go) and the in-app bell.
-        Ask tech for the learner UID from Firebase → Firestore → users, or copy the document ID.
+        Sends one message to one learner — phone tray (real app/APK, not Expo Go) and the in-app bell. Use the Firebase
+        user ID below (not Zoho Lead ID, not mobile number).
       </T>
       <Row>
         <Col min={280}>
-          <Field label="Learner ID (Firebase users doc)" hint="Long id string, not phone number.">
-            <Input value={targetUid} onChangeText={setTargetUid} placeholder="e.g. a1b2c3…" autoCapitalize="none" />
+          <Field
+            label="Firebase user ID (UID)"
+            hint="Firestore → users → open their row → copy Document ID (e.g. Kx7abc…). Same person may exist in Zoho separately."
+          >
+            <Input value={targetUid} onChangeText={setTargetUid} placeholder="Firebase users document ID" autoCapitalize="none" />
           </Field>
         </Col>
         <Col min={280}>

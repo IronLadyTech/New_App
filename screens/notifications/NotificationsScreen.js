@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Pressable from '../../components/il/Press';
 import ILText from '../../components/il/ILText';
+import ILLogoMark from '../../components/il/ILLogoMark';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { GuestBackBar, Page, WhiteCard } from '../guest/GuestBits';
@@ -148,7 +149,14 @@ export default function NotificationsScreen() {
             </ILText>
             <WhiteCard style={{ marginTop: 10, borderRadius: 22, overflow: 'hidden' }}>
               {attention.map((n, i) => (
-                <NoticeRow key={n.id} item={n} read={isRead(n)} last={i === attention.length - 1} onPress={() => open(n)} />
+                <NoticeRow
+                  key={n.id}
+                  item={n}
+                  read={isRead(n)}
+                  last={i === attention.length - 1}
+                  brandIcon={useLiveInbox}
+                  onPress={() => open(n)}
+                />
               ))}
             </WhiteCard>
           </>
@@ -160,7 +168,14 @@ export default function NotificationsScreen() {
             </ILText>
             <WhiteCard style={{ marginTop: 10, borderRadius: 22, overflow: 'hidden' }}>
               {guide.map((n, i) => (
-                <NoticeRow key={n.id} item={n} read={isRead(n)} last={i === guide.length - 1} onPress={() => open(n)} />
+                <NoticeRow
+                  key={n.id}
+                  item={n}
+                  read={isRead(n)}
+                  last={i === guide.length - 1}
+                  brandIcon={useLiveInbox}
+                  onPress={() => open(n)}
+                />
               ))}
             </WhiteCard>
           </>
@@ -170,7 +185,7 @@ export default function NotificationsScreen() {
   );
 }
 
-function NoticeRow({ item, read, last, onPress }) {
+function NoticeRow({ item, read, last, brandIcon, onPress }) {
   return (
     <Pressable
       onPress={onPress}
@@ -191,9 +206,14 @@ function NoticeRow({ item, read, last, onPress }) {
           backgroundColor: read ? G.mutedFill : G.pink,
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
         }}
       >
-        <MaterialIcons name={item.icon} size={18} color={read ? G.meta : G.cta} />
+        {brandIcon || item.icon === 'notifications' ? (
+          <ILLogoMark size={26} />
+        ) : (
+          <MaterialIcons name={item.icon} size={18} color={read ? G.meta : G.cta} />
+        )}
       </View>
       <View style={{ flex: 1, marginLeft: 12 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -27,11 +27,14 @@ export function usePushNotifications() {
     (async () => {
       try {
         const result = await registerPushTokenForUser(user.uid);
-        if (!cancelled && result.ok) {
+        if (cancelled) return;
+        if (result.ok) {
           registeredRef.current = true;
+        } else if (result.reason) {
+          console.warn('[push] token not saved:', result.reason);
         }
-      } catch {
-        // missing native config — app still works
+      } catch (e) {
+        console.warn('[push] registration failed:', e?.message || e);
       }
     })();
 

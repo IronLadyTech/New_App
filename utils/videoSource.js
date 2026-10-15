@@ -1,5 +1,5 @@
 /** Origin YouTube requires for embedded playback (Error 153 fix). */
-export const YOUTUBE_EMBED_ORIGIN = 'https://com.lmsapp.mobile';
+export const YOUTUBE_EMBED_ORIGIN = 'https://com.ironlady.app';
 
 /** Extract a YouTube video id from common watch / share / embed URLs. */
 export function youtubeIdFromUri(uri) {

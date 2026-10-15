@@ -12,10 +12,9 @@ import { useILFonts } from './hooks/useILFonts';
 import ErrorBoundary from './components/ErrorBoundary';
 import { isAdminPath } from './utils/adminRoute';
 
-// Staff CMS lives at /admin on the web build; the participant app is untouched.
-const ADMIN = isAdminPath();
-
 function Root() {
+  // Must be evaluated in the browser on /admin — not at bundle load in Node during export.
+  const [admin] = useState(() => typeof window !== 'undefined' && isAdminPath());
   const { fontsReady } = useILFonts();
   const [gaveUp, setGaveUp] = useState(false);
 
@@ -27,9 +26,9 @@ function Root() {
   }, []);
 
   useEffect(() => {
-    if (ADMIN) return;
+    if (admin) return;
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-  }, []);
+  }, [admin]);
 
   if (!fontsReady && !gaveUp) {
     return (
@@ -39,7 +38,7 @@ function Root() {
     );
   }
 
-  if (ADMIN) {
+  if (admin) {
     const AdminApp = require('./screens/admin/AdminApp').default;
     return (
       <SafeAreaProvider>

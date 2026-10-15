@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "829229653695",
+    "project_id": "lmsironlady",
+    "storage_bucket": "lmsironlady.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829229653695:android:66df2d9eca9a9066eff00a",
+        "android_client_info": {
+          "package_name": "com.ironlady.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "829229653695-3cvpudlgtruibcbo9h1bag35gmj3eckp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDIGbeY0TRx_INFjqsXfKnTmZPJMBqCrjA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "829229653695-3cvpudlgtruibcbo9h1bag35gmj3eckp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

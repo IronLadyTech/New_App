@@ -217,6 +217,40 @@ export function updateContent(id, data) {
   return setDoc(doc(db, CMS.CONTENT, id), { ...data, ...stamp() }, { merge: true });
 }
 
+// ---------- LEP batch calendars (session dates per batch) ----------
+
+export function subscribeToBatches(onData, onError) {
+  const q = query(collection(db, CMS.BATCHES), orderBy('day1Date', 'desc'));
+  return onSnapshot(
+    q,
+    (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    onError
+  );
+}
+
+export async function saveBatch(batch) {
+  const { id, ...data } = batch;
+  const payload = {
+    ...data,
+    program: data.program || 'LEP',
+    openForEnrollment: data.openForEnrollment !== false,
+    ...stamp(),
+  };
+  if (id) {
+    await setDoc(doc(db, CMS.BATCHES, id), payload, { merge: true });
+    return id;
+  }
+  const created = await addDoc(collection(db, CMS.BATCHES), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  return created.id;
+}
+
+export function deleteBatch(id) {
+  return deleteDoc(doc(db, CMS.BATCHES, id));
+}
+
 export async function deleteContent(item) {
   if (item.storagePath) {
     try {

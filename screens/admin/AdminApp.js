@@ -13,9 +13,11 @@ import { A, Btn, Card, Field, H, Input, Notice, T } from './adminUi';
 import NotificationsAdmin from './NotificationsAdmin';
 import ContentAdmin from './ContentAdmin';
 import ILGuideAdmin from './ILGuideAdmin';
+import BatchCalendarAdmin from './BatchCalendarAdmin';
 import { AdminWorkflowStrip } from './AdminSectionGuide';
 
 const SECTIONS = [
+  { key: 'batches', label: 'Batch calendar', hint: 'Dates & Zoom', Screen: BatchCalendarAdmin },
   { key: 'content', label: 'Batch materials', hint: 'Files on tasks', Screen: ContentAdmin },
   { key: 'notifications', label: 'Messages to learners', hint: 'Push & bell', Screen: NotificationsAdmin },
   { key: 'ilguide', label: 'IL Guide coach', hint: 'In-app tips', Screen: ILGuideAdmin },
@@ -23,7 +25,7 @@ const SECTIONS = [
 
 function sectionFromHash() {
   const key = Platform.OS === 'web' ? (window.location?.hash || '').replace('#', '') : '';
-  return SECTIONS.some((s) => s.key === key) ? key : 'content';
+  return SECTIONS.some((s) => s.key === key) ? key : 'batches';
 }
 
 export default function AdminApp() {
