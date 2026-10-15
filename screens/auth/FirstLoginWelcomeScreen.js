@@ -12,6 +12,7 @@ import { PAYMENT_STATUS } from '../../constants/programs';
 import { fetchUserProfile } from '../../services/auth';
 import {
   getEnrolledPrograms,
+  learnerBhagText,
   programPaymentStatus,
 } from '../../utils/programAccess';
 import { formatCallableError, refreshMyAccess, updateMyWelcomeProfile } from '../../services/functions';
@@ -54,9 +55,7 @@ function welcomeFields(source) {
         source.workDomain ||
         source.industry
     ),
-    bhag: learnerValue(
-      source.bhag || source.Month_B_HAG || source.bHag || source.goal || source.threeMonthGoal
-    ),
+    bhag: learnerValue(learnerBhagText(source)),
   };
 }
 

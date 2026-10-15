@@ -1,5 +1,5 @@
-import React from 'react';
-import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -8,10 +8,13 @@ import ProgressBar from '../../components/ProgressBar';
 import { BADGE_DEFS, COLORS } from '../../constants';
 import { PAYMENT_STATUS } from '../../constants/programs';
 import {
-  getEnrolledPrograms,
   learnerBatchLabel,
+  learnerEnrollmentLabel,
   programPaymentStatus,
+  programsOnProfile,
 } from '../../utils/programAccess';
+import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
+import { buildProgramBatchCard } from '../../utils/lepBatchHero';
 import { refreshMyAccess } from '../../services/functions';
 import { fetchUserProfile } from '../../services/auth';
 import ILHeader from '../../components/il/ILHeader';
@@ -39,31 +42,51 @@ function Row({ icon, label, onPress, danger }) {
   );
 }
 
-function paymentLabel(profile, programId) {
-  const status = programPaymentStatus(profile, programId);
-  if (status === PAYMENT_STATUS.PAID) return 'Enrolled';
-  if (status === PAYMENT_STATUS.REGISTER) return 'Registered';
-  return 'Not paid';
-}
-
 export default function ProfileScreen({ navigation }) {
-  const { profile, role, logout, user, patchProfile } = useAuth();
-  const { enrolledPrograms, progressByProgram } = usePrograms();
-  const programs = enrolledPrograms.length ? enrolledPrograms : getEnrolledPrograms(profile);
+  const { profile, accountProfile, role, logout, user, patchProfile } = useAuth();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { progressByProgram } = usePrograms();
+  const source = {
+    ...(profile || {}),
+    ...(accountProfile || {}),
+    programAccess: {
+      ...(profile?.programAccess || {}),
+      ...(accountProfile?.programAccess || {}),
+    },
+    programs: accountProfile?.programs?.length ? accountProfile.programs : profile?.programs,
+    program: accountProfile?.program || profile?.program,
+  };
+  const programs = programsOnProfile(source);
   const phone =
     profile?.phoneNumber ||
     profile?.phone ||
     user?.phoneNumber ||
     null;
-  const lepBatch = learnerBatchLabel(profile, 'lep');
-
   const earnedBadges = BADGE_DEFS.filter(
     (b) => (profile?.points || 0) >= b.minPoints
   );
 
-  const needsPayment = enrolledPrograms.some(
-    (p) => programPaymentStatus(profile, p.id) === PAYMENT_STATUS.REGISTER
+  const needsPayment = programs.some(
+    (p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.REGISTER
   );
+
+  const initial = (profile?.displayName || profile?.email || '?').charAt(0).toUpperCase();
+
+  const onPickPhoto = async () => {
+    if (!user?.uid || uploadingPhoto) return;
+    setUploadingPhoto(true);
+    try {
+      const photoURL = await pickAndSaveProfilePhoto(user.uid);
+      if (photoURL) patchProfile({ photoURL });
+    } catch (err) {
+      Alert.alert(
+        'Photo',
+        err?.code === 'permission' ? err.message : 'Could not upload that photo. Try again.'
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const onLogout = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -88,13 +111,41 @@ export default function ProfileScreen({ navigation }) {
         <Text className="text-2xl font-bold text-ink-950">Profile</Text>
 
         <View className="mt-4 items-center rounded-2xl border border-ink-100 bg-white p-5">
-          <View className="h-20 w-20 items-center justify-center rounded-full bg-brand-100">
-            <Text className="text-3xl font-bold text-brand-700">
-              {(profile?.displayName || profile?.email || '?')
-                .charAt(0)
-                .toUpperCase()}
-            </Text>
-          </View>
+          <TouchableOpacity
+            onPress={onPickPhoto}
+            disabled={uploadingPhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Upload profile photo"
+            style={{ width: 80, height: 80 }}
+          >
+            <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-brand-100">
+              {profile?.photoURL ? (
+                <Image
+                  source={{ uri: profile.photoURL }}
+                  style={{ width: 80, height: 80, opacity: uploadingPhoto ? 0.55 : 1 }}
+                />
+              ) : (
+                <Text className="text-3xl font-bold text-brand-700">{initial}</Text>
+              )}
+            </View>
+            <View
+              style={{
+                position: 'absolute',
+                right: -2,
+                bottom: -2,
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: COLORS.brand,
+                borderWidth: 2,
+                borderColor: '#FFFFFF',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="camera" size={15} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
           <Text className="mt-3 text-xl font-semibold text-ink-950">
             {profile?.displayName || 'Learner'}
           </Text>
@@ -126,7 +177,7 @@ export default function ProfileScreen({ navigation }) {
             </Text>
           ) : (
             programs.map((p, i) => {
-              const batch = learnerBatchLabel(profile, p.id);
+              const batch = buildProgramBatchCard(source, p.id).heading || learnerBatchLabel(source, p.id);
               return (
                 <View
                   key={p.id}
@@ -139,11 +190,11 @@ export default function ProfileScreen({ navigation }) {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-base font-semibold text-ink-900">{p.shortLabel}</Text>
                     <Text className="text-xs font-semibold text-brand-700">
-                      {paymentLabel(profile, p.id)}
+                      {learnerEnrollmentLabel(source, p.id)}
                     </Text>
                   </View>
                   <Text className="mt-1 text-sm text-ink-500">
-                    {batch ? `Batch · ${batch}` : 'Batch · not set in Zoho yet'}
+                    {batch ? `Batch · ${batch}` : 'Batch dates will show here.'}
                   </Text>
                   <View className="mt-2">
                     <View className="mb-1 flex-row justify-between">
@@ -158,12 +209,6 @@ export default function ProfileScreen({ navigation }) {
               );
             })
           )}
-          {lepBatch ? null : programs.some((p) => p.id === 'lep') ? (
-            <Text className="mt-2 text-xs text-ink-400">
-              LEP batch comes from Zoho (Lead / IL User). If you just registered, tap Refresh access once CEM has
-              assigned the batch.
-            </Text>
-          ) : null}
         </View>
 
         <Text className="mb-2 mt-2 text-sm font-semibold uppercase tracking-wide text-ink-400">

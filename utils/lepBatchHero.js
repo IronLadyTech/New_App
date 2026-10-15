@@ -16,8 +16,11 @@ function validDate(year, month, day) {
 
 function parseOneDate(raw) {
   const value = String(raw || '').trim();
-  const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
-  if (dmy) return validDate(Number(dmy[3]), Number(dmy[2]), Number(dmy[1]));
+  const dmy = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(value);
+  if (dmy) {
+    const year = dmy[3].length === 2 ? 2000 + Number(dmy[3]) : Number(dmy[3]);
+    return validDate(year, Number(dmy[2]), Number(dmy[1]));
+  }
 
   const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   if (iso) return validDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
@@ -147,18 +150,7 @@ const BATCH_EYEBROW = {
 export function buildProgramBatchCard(profile, programId, group) {
   const pid = normalizeProgramId(programId) || 'lep';
   const access = profile?.programAccess?.[pid] || {};
-  const raw = firstFilled(
-    access.zohoRawBatch,
-    access.batchName,
-    access.batchStart,
-    access.startDate,
-    group?.zohoRawBatch,
-    group?.rawBatch,
-    group?.startDate,
-    group?.date,
-    batchRawForProgram(profile, pid),
-    group?.name
-  );
+  const raw = batchRawForProgram(profile, pid);
   const [start, end] = splitRange(raw);
   const range = formatRange(start, end);
   const named = raw && !parseBatchStart(raw) ? String(raw).trim() : null;

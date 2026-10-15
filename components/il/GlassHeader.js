@@ -119,7 +119,8 @@ const PILL_SHADOW =
         elevation: 10,
       };
 
-function ProfileFace({ photo, onPress, size = 36 }) {
+function ProfileFace({ photo, onPress, size = 36, initial }) {
+  const letter = String(initial || '').trim().charAt(0).toUpperCase();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Profile">
       {photo ? (
@@ -138,7 +139,11 @@ function ProfileFace({ photo, onPress, size = 36 }) {
             justifyContent: 'center',
           }}
         >
-          <MaterialIcons name="person" size={20} color={CREAM} />
+          {letter ? (
+            <Text style={{ color: CREAM, fontFamily: IL_FONTS.display, fontSize: size * 0.42 }}>{letter}</Text>
+          ) : (
+            <MaterialIcons name="person" size={20} color={CREAM} />
+          )}
         </View>
       )}
     </Pressable>
@@ -167,14 +172,14 @@ function BrandMark() {
   );
 }
 
-function HeaderActions({ onSearch, onNotifications, onProfile, photo, showSearch, showProfile, showBadge }) {
+function HeaderActions({ onSearch, onNotifications, onProfile, photo, initial, showSearch, showProfile, showBadge }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
       <GhostIcon name="notifications-none" onPress={onNotifications} label="Notifications" badge={showBadge} />
       {showProfile ? (
         <View style={{ marginLeft: 6 }}>
-          <ProfileFace photo={photo} onPress={onProfile} />
+          <ProfileFace photo={photo} initial={initial} onPress={onProfile} />
         </View>
       ) : null}
     </View>
@@ -193,6 +198,7 @@ export default function GlassHeader({
   onNotifications,
   onProfile,
   photo,
+  initial,
   showSearch = true,
   showProfile = true,
   floating = false,
@@ -305,7 +311,7 @@ export default function GlassHeader({
               </Animated.View>
               {showProfile ? (
                 <View style={{ marginLeft: 'auto' }}>
-                  <ProfileFace photo={photo} onPress={onProfile} />
+                  <ProfileFace photo={photo} initial={initial} onPress={onProfile} />
                 </View>
               ) : null}
             </>
@@ -317,6 +323,7 @@ export default function GlassHeader({
                 onNotifications={bell}
                 onProfile={onProfile}
                 photo={photo}
+                initial={initial}
                 showSearch={showSearch}
                 showProfile={showProfile}
                 showBadge={showBadge}

@@ -50,6 +50,12 @@
       ],
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Iron Lady to use a photo for your profile."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ED1D24",
