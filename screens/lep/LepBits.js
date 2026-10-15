@@ -16,12 +16,19 @@ export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../g
 export { GuestBackBar } from '../guest/GuestBits';
 
 export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false, scrollY, inert }) {
+  const { profile } = useAuth();
+  const url = photoUrl || profile?.photoURL || '';
+  const initial = String(profile?.displayName || profile?.email || '?')
+    .trim()
+    .charAt(0)
+    .toUpperCase();
   return (
     <GlassHeader
       onSearch={onSearch}
       onNotifications={onNotifications}
       onProfile={onProfile}
-      photo={photoUrl ? { uri: photoUrl } : FACE}
+      photo={url ? { uri: url } : null}
+      initial={initial}
       floating={floating}
       scrollY={scrollY}
       inert={inert}

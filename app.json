@@ -20,7 +20,13 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.lmsapp.mobile"
+      "package": "com.lmsapp.mobile",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -44,6 +50,12 @@
       ],
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Iron Lady to use a photo for your profile."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ED1D24",
@@ -51,6 +63,11 @@
           "imageWidth": 200
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "105ad21e-a20b-4925-8fd3-221ed9706bbe"
+      }
+    }
   }
 }

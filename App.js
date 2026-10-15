@@ -1,7 +1,7 @@
 import './global.css';
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -32,7 +32,11 @@ function Root() {
   }, []);
 
   if (!fontsReady && !gaveUp) {
-    return <View style={{ flex: 1, backgroundColor: '#113744' }} />;
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F7F6E4' }}>
+        <ActivityIndicator size="large" color="#ED1D24" />
+      </View>
+    );
   }
 
   if (ADMIN) {

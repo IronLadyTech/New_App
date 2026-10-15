@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Image, Platform, Pressable, ScrollView, View } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,83 +9,41 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
-import { getActiveProgram, isLepEnrolled, lepFullName } from '../../utils/lepState';
-import { REGISTRATION_FEE } from '../../constants/programs';
-import { LepHeader, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
+import { useCourseDemo } from '../../context/CourseDemoContext';
+import { lepFullName } from '../../utils/lepState';
+import { PAYMENT_STATUS, REGISTRATION_FEE } from '../../constants/programs';
+import { practiceKey } from '../../constants/practice';
+import {
+  learnerBatchId,
+  learnerBhagText,
+  learnerEnrollmentLabel,
+  learnerLeadDetails,
+  programPaymentStatus,
+  programsOnProfile,
+  zohoPaymentDetail,
+  zohoRegistrationAmount,
+} from '../../utils/programAccess';
+import { buildProgramBatchCard, programBatchPhase, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
+import { db } from '../../services/firebase';
+import { fetchUserProfile } from '../../services/auth';
+import { refreshMyAccess } from '../../services/functions';
+import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
+import { LepHeader, Page, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { FACE } from './lepData';
 import { useMyReceipts } from '../../hooks/useMyReceipts';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 
-/** Profile text per program and state, so 100BM and MBW stop showing LEP details. */
-const PROGRAM_PROFILE = {
-  lep: {
-    code: 'LEP',
-    title: 'Leadership Essentials Program',
-    short: 'Leadership Essentials',
-    reg: {
-      badges: [{ label: 'LEP Applicant', on: true }, { label: 'Masterclass Registered' }],
-      bhag: 'Calibrated for Leadership Essentials · Foundation principle active',
-      status: 'Seat reserved · Pending enrollment',
-      heading: 'Leadership Essentials Program',
-      body: 'Masterclass completed (4/4 Foundation Principles). Complete enrollment to unlock all 27 Principles, Private Cohort Triads & Thursday Circles.',
-      date: 'Sat 20 – Sun 21 September, 2026',
-      dateSub: '9:00 AM – 7:00 PM IST (Both days)',
-      certs: 'Certificates · 1 issued',
-    },
-    enr: {
-      badges: [{ label: 'LEP', on: true }, { label: '100BM' }],
-      bhag: 'Calibrated for Leadership Essentials Program · Review milestone scheduled at Day 45',
-      batch: 'MY BATCH',
-      heading: 'Sat 20 – Sun 21 Sep, 2026',
-      body: '9:00 AM – 7:00 PM IST (Both days) · Live Zoom',
-    },
-  },
-  '100bm': {
-    code: '100BM',
-    title: '100 Board Members',
-    short: '100 Board Members',
-    reg: {
-      badges: [{ label: '100BM Applicant', on: true }, { label: 'Onboarding preview' }],
-      bhag: 'Calibrated for 100 Board Members · Onboarding preview active',
-      status: 'Seat reserved · Pending enrollment',
-      heading: '100 Board Members',
-      body: 'Onboarding is open as a preview. Complete enrollment to unlock all 4 Phases, Practice Huddles and your cohort.',
-      date: 'Cohort of Oct 2026 · starts Sat 3 Oct',
-      dateSub: '~24 weeks online · weekly live Q&A',
-      certs: 'Onboarding certificate · 1 issued',
-    },
-    enr: {
-      badges: [{ label: '100BM', on: true }, { label: 'LEP', on: true }],
-      bhag: 'Board ambition carried through to Graduation · Phase 2 in progress',
-      batch: 'MY 100BM COHORT',
-      heading: 'Batch B · 3 Oct 2026 – 4 Apr 2027',
-      body: 'Weekly live Q&A · Thu 7:00 PM IST · online',
-    },
-  },
-  mbw: {
-    code: 'MBW',
-    title: 'Master of Business Warfare',
-    short: 'Master of Business Warfare',
-    reg: {
-      badges: [{ label: 'MBW Applicant', on: true }, { label: 'Preparation' }],
-      bhag: 'Calibrated for Master of Business Warfare · Preparation week 5 of 12',
-      status: 'Preparation · week 5 of 12',
-      heading: 'Master of Business Warfare',
-      body: 'Preparation week 5 of 12 — Orientation with Rajesh is done. The Q1 core session starts in eight weeks.',
-      date: 'Q1 core session · in 8 weeks',
-      dateSub: '1 year · 16 Impact Champions sessions + 4 with Suvarna',
-      certs: 'Certificates · 0 issued',
-    },
-    enr: {
-      badges: [{ label: 'MBW', on: true }, { label: 'LEP', on: true }],
-      bhag: 'Your C-Suite ambition · CXO by 2028',
-      batch: 'MY MBW YEAR',
-      heading: 'Q1 · Week 4 of 52',
-      body: 'Next: Session 2 · C-Suite Story Video · weekly WA-group deliverable',
-    },
-  },
-};
+function feeLabel(profile, programId) {
+  const access = profile?.programAccess?.[programId] || {};
+  const amount = Number(
+    zohoRegistrationAmount(profile, programId) ??
+      access.registrationFee ??
+      access.registrationAmount ??
+      REGISTRATION_FEE[programId] ??
+      REGISTRATION_FEE.lep
+  );
+  return `₹${amount.toLocaleString('en-IN')}`;
+}
 
 const SETTINGS = [
   { icon: 'receipt-long', label: 'Orders & receipts', go: 'goOrders' },
@@ -97,17 +56,107 @@ const SETTINGS = [
   { icon: 'description', label: 'Terms' },
 ];
 
+function useProgramGroups(profile, programIds) {
+  const idsKey = programIds
+    .map((programId) => {
+      const batchId = learnerBatchId(profile, programId);
+      const id = batchId && batchId !== 'default' && /^[A-Za-z0-9_-]+$/.test(batchId) ? batchId : '';
+      return id ? `${programId}:${id}` : '';
+    })
+    .filter(Boolean)
+    .join('|');
+  const [groups, setGroups] = useState({});
+
+  useEffect(() => {
+    const pairs = idsKey ? idsKey.split('|') : [];
+    if (!pairs.length) {
+      setGroups({});
+      return undefined;
+    }
+    let cancelled = false;
+    Promise.all(
+      pairs.map(async (pair) => {
+        const splitAt = pair.indexOf(':');
+        const programId = pair.slice(0, splitAt);
+        const batchId = pair.slice(splitAt + 1);
+        try {
+          const snap = await getDoc(doc(db, 'groups', batchId));
+          return [programId, snap.exists() ? { id: snap.id, ...snap.data() } : null];
+        } catch {
+          return [programId, null];
+        }
+      })
+    ).then((rows) => {
+      if (!cancelled) setGroups(Object.fromEntries(rows));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [idsKey]);
+
+  return groups;
+}
+
 export default function LepProfileScreen() {
-  const { profile, logout } = useAuth();
+  const { profile, accountProfile, logout, user, patchProfile } = useAuth();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const demo = useCourseDemo();
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const { orders, latest, signedIn } = useMyReceipts();
-  const enrolled = isLepEnrolled(profile);
-  const name = lepFullName(profile);
-  const program = PROGRAM_PROFILE[getActiveProgram(profile)] || PROGRAM_PROFILE.lep;
-  const copy = enrolled ? program.enr : program.reg;
-  const fee = `₹${(REGISTRATION_FEE[getActiveProgram(profile)] ?? REGISTRATION_FEE.lep).toLocaleString('en-IN')}`;
+  const source = {
+    ...(profile || {}),
+    ...(accountProfile || {}),
+    programAccess: {
+      ...(profile?.programAccess || {}),
+      ...(accountProfile?.programAccess || {}),
+    },
+    programs: accountProfile?.programs?.length ? accountProfile.programs : profile?.programs,
+    program: accountProfile?.program || profile?.program,
+  };
+  const programs = programsOnProfile(source);
+  const anyEnrolled = programs.some((p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.PAID);
+  const facts = learnerLeadDetails(source);
+  const name = facts.name || lepFullName(profile);
+  const headline = [facts.designation, facts.industry, facts.experience].filter(Boolean).join(' · ');
+  const filled = [facts.city, facts.experience, facts.designation, learnerBhagText(source)].filter(Boolean).length;
+  const groups = useProgramGroups(source, programs.map((p) => p.id));
+  const practiceBhag = String(demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || '').trim();
+  const bhag = learnerBhagText(source) || practiceBhag;
+  const fee = programs.length ? feeLabel(source, programs[0].id) : feeLabel(source, 'lep');
+
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    let cancelled = false;
+    (async () => {
+      await refreshMyAccess();
+      const fresh = await fetchUserProfile(user.uid).catch(() => null);
+      if (!cancelled && fresh) patchProfile(fresh);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, patchProfile]);
+
+  const photoUrl = profile?.photoURL || '';
+  const initial = String(name || '?').trim().charAt(0).toUpperCase();
+
+  const onPickPhoto = async () => {
+    if (!user?.uid || uploadingPhoto) return;
+    setUploadingPhoto(true);
+    try {
+      const photoURL = await pickAndSaveProfilePhoto(user.uid);
+      if (photoURL) patchProfile({ photoURL });
+    } catch (err) {
+      Alert.alert(
+        'Photo',
+        err?.code === 'permission' ? err.message : 'Could not upload that photo. Try again.'
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const onLogout = () => {
     if (Platform.OS === 'web') {
@@ -135,9 +184,9 @@ export default function LepProfileScreen() {
         <View style={{ backgroundColor: G.dark, borderRadius: 28, padding: 18 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <SoftChip onDark icon="fiber-manual-record">
-              {enrolled ? 'Your profile' : 'Registered participant'}
+              {anyEnrolled ? 'Your profile' : 'Registered participant'}
             </SoftChip>
-            {enrolled ? (
+            {anyEnrolled ? (
               <MaterialIcons name="settings" size={18} color="rgba(255,255,255,0.7)" />
             ) : (
               <Pressable onPress={onLogout} hitSlop={8}>
@@ -148,49 +197,91 @@ export default function LepProfileScreen() {
             )}
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
-            <Image
-              source={profile?.photoURL ? { uri: profile.photoURL } : FACE}
-              style={{ width: 64, height: 64, borderRadius: 32 }}
-            />
-            <View style={{ flex: 1, marginLeft: 14 }}>
-              <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 24 }}>
+            <Pressable
+              onPress={onPickPhoto}
+              disabled={uploadingPhoto}
+              accessibilityRole="button"
+              accessibilityLabel="Upload profile photo"
+              style={{ width: 64, height: 64 }}
+            >
+              {photoUrl ? (
+                <Image
+                  source={{ uri: photoUrl }}
+                  style={{ width: 64, height: 64, borderRadius: 32, opacity: uploadingPhoto ? 0.55 : 1 }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 32,
+                    backgroundColor: 'rgba(255,255,255,0.16)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 24 }}>
+                    {initial}
+                  </ILText>
+                </View>
+              )}
+              <View
+                style={{
+                  position: 'absolute',
+                  right: -2,
+                  bottom: -2,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: G.cta,
+                  borderWidth: 2,
+                  borderColor: G.dark,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialIcons name="photo-camera" size={14} color="#FFFFFF" />
+              </View>
+            </Pressable>
+            <View style={{ flex: 1, marginLeft: 14, minWidth: 0 }}>
+              <ILText role="title" color="#FFFFFF" numberOfLines={2} style={{ fontFamily: IL_FONTS.display, fontSize: 24 }}>
                 {name}
               </ILText>
-              <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ marginTop: 4, fontSize: 12 }}>
-                Iron Lady Army · since Sep 2026
-              </ILText>
-              <View style={{ flexDirection: 'row', marginTop: 10 }}>
-                {copy.badges.map((b) => (
-                  <Badge key={b.label} on={b.on}>
-                    {b.label}
-                  </Badge>
-                ))}
-              </View>
+              {headline ? (
+                <ILText role="bodySm" color="rgba(255,255,255,0.65)" numberOfLines={2} style={{ marginTop: 4, fontSize: 12 }}>
+                  {headline}
+                </ILText>
+              ) : null}
             </View>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, gap: 8 }}>
+            {programs.map((p) => (
+              <Badge key={p.id} on>
+                {`${p.code} · ${learnerEnrollmentLabel(source, p.id)}`}
+              </Badge>
+            ))}
           </View>
         </View>
 
-        <Pressable onPress={() => latest && nav.goReceipt(latest)}>
-          <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: G.cta }}>
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-              Razorpay receipt
-            </ILText>
-            <ILText role="title" color={G.ink} style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 28 }}>
-              ₹1 paid
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
-              {/* Name the program the saved payment was for, not the one being viewed. */}
-              Programme balance ·{' '}
-              {latest?.programTitle || latest?.description?.split(' — ')[0] || program.short}
-              {latest?.transactionId && latest.transactionId !== 'Razorpay ₹1'
-                ? ` · ${latest.transactionId}`
-                : ''}
-            </ILText>
-            <ILText role="label" color={G.cta} style={{ marginTop: 12 }}>
-              View ₹1 receipt →
-            </ILText>
-          </WhiteCard>
-        </Pressable>
+        {latest ? (
+          <Pressable onPress={() => nav.goReceipt(latest)}>
+            <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: G.cta }}>
+              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+                Razorpay receipt
+              </ILText>
+              <ILText role="title" color={G.ink} style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 28 }}>
+                ₹{Number(latest.amountRupees || 0).toLocaleString('en-IN')} paid
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
+                {latest.programTitle || latest.description || 'Payment'}
+                {latest.transactionId ? ` · ${latest.transactionId}` : ''}
+              </ILText>
+              <ILText role="label" color={G.cta} style={{ marginTop: 12 }}>
+                View receipt →
+              </ILText>
+            </WhiteCard>
+          </Pressable>
+        ) : null}
 
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
           <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
@@ -239,20 +330,20 @@ export default function LepProfileScreen() {
                 <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
                   Profile strength
                 </ILText>
-                <ILText role="label" color={G.cta} style={[af, { fontSize: 12, marginLeft: 6 }]}>
-                  Good
-                </ILText>
+                {filled === 4 ? (
+                  <ILText role="label" color={G.cta} style={[af, { fontSize: 12, marginLeft: 6 }]}>
+                    Complete
+                  </ILText>
+                ) : null}
               </View>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-                Add 2 details to get better matches
-              </ILText>
             </View>
             <ILText role="display" color={G.cta} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
-              60%
+              {Math.round((filled / 4) * 100)}%
             </ILText>
           </View>
-          <AddRow icon="place" title="Current city" sub="Finding nearby meetups & peers" />
-          <AddRow icon="work-outline" title="Years of experience" sub="Helps us group you with the right peers" />
+          <AddRow icon="place" title="Current city" sub={facts.city} />
+          <AddRow icon="work-outline" title="Years of experience" sub={facts.experience} />
+          <AddRow icon="badge" title="Designation" sub={facts.designation} />
         </WhiteCard>
 
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
@@ -264,146 +355,150 @@ export default function LepProfileScreen() {
             color={G.ink}
             style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
           >
-            CXO by 2028 — Heading Enterprise Technology
+            {bhag || 'Write your B-HAG'}
           </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            {copy.bhag}
-          </ILText>
+          <Pressable onPress={() => nav.goPractice('lep', 'lep-bhag')} style={{ marginTop: 10 }}>
+            <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+              {bhag ? 'Refine it →' : 'Write my B-HAG →'}
+            </ILText>
+          </Pressable>
         </WhiteCard>
 
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {programs.length ? (
+          <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <MaterialIcons name="event" size={16} color={G.ink} />
-              <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                {enrolled ? copy.batch : 'ENROLLMENT STATUS'}
+              <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10, marginLeft: 8 }]}>
+                Your batches
               </ILText>
             </View>
-            {!enrolled ? (
-              <View style={{ backgroundColor: G.pink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-                  {copy.status}
-                </ILText>
-              </View>
-            ) : (
-              <View style={{ backgroundColor: '#E8F6EE', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-                  Confirmed
-                </ILText>
-              </View>
-            )}
-          </View>
-          <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 16, fontSize: 10 }]}>
-            {program.code}
-          </ILText>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            {copy.heading}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            {copy.body}
-          </ILText>
-          {!enrolled ? (
-            <View
-              style={{
-                marginTop: 14,
-                backgroundColor: G.white,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: G.line,
-                padding: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <MaterialIcons name="schedule" size={16} color={G.ink} />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <ILText role="label" color={G.ink}>
-                  {copy.date}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                  {copy.dateSub}
-                </ILText>
-              </View>
-              <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                Change date
-              </ILText>
-            </View>
-          ) : null}
-          {enrolled ? (
-            <View style={{ marginTop: 14, flexDirection: 'row', justifyContent: 'space-between' }}>
-              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                Need to reschedule?
-              </ILText>
-              <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                Request a change ›
-              </ILText>
-            </View>
-          ) : (
-            <View style={{ marginTop: 14 }}>
-              <RedCta label="Complete your enrollment →" onPress={nav.goEnroll} />
-            </View>
-          )}
-          {!enrolled ? (
-            <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                Need help deciding?
-              </ILText>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialIcons name="call" size={14} color={G.cta} />
-                <ILText role="label" color={G.ink} style={{ marginLeft: 6, fontSize: 13 }}>
-                  Talk to someone at Iron Lady
-                </ILText>
-              </View>
-            </View>
-          ) : null}
-        </WhiteCard>
+            {sortProgramsByCurrentBatch(source, programs).map((program, index) => {
+              const enrolled = learnerEnrollmentLabel(source, program.id) === 'Enrolled';
+              const batchCard = buildProgramBatchCard(source, program.id, groups[program.id]);
+              const phase = programBatchPhase(source, program.id);
+              const current = phase === 'current';
+              return (
+                <View
+                  key={program.id}
+                  style={{
+                    marginTop: index === 0 ? 14 : 0,
+                    paddingTop: index === 0 ? 0 : 14,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: G.line,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      {current ? (
+                        <View style={{ backgroundColor: G.ink, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <ILText role="eyebrow" color={G.white} style={[af, { fontSize: 9 }]}>
+                            Current
+                          </ILText>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View
+                      style={{
+                        backgroundColor: enrolled ? '#E8F6EE' : G.pink,
+                        borderRadius: 999,
+                        paddingHorizontal: 10,
+                        paddingVertical: 4,
+                        marginLeft: 8,
+                      }}
+                    >
+                      <ILText role="eyebrow" color={enrolled ? '#1B7A4A' : G.cta} style={[af, { fontSize: 9 }]}>
+                        {enrolled ? 'Enrolled' : 'Registered'}
+                      </ILText>
+                    </View>
+                  </View>
+                  <ILText
+                    role="title"
+                    color={G.ink}
+                    style={{
+                      marginTop: 8,
+                      fontFamily: IL_FONTS.display,
+                      fontSize: current ? 22 : 18,
+                      lineHeight: current ? 28 : 24,
+                    }}
+                  >
+                    {program.title}
+                  </ILText>
+                  <ILText
+                    role="bodySm"
+                    color={batchCard.heading ? G.ink : G.meta}
+                    style={{ marginTop: 6, fontSize: 15, lineHeight: 22 }}
+                  >
+                    {batchCard.heading || 'Batch dates will show here.'}
+                  </ILText>
+                  {batchCard.body ? (
+                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
+                      {batchCard.body}
+                    </ILText>
+                  ) : null}
+                  {enrolled ? null : (
+                    <Pressable onPress={nav.goEnroll} style={{ marginTop: 10 }}>
+                      <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+                        Complete your enrollment →
+                      </ILText>
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
+          </WhiteCard>
+        ) : null}
 
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialIcons name="receipt-long" size={16} color={G.ink} />
-              <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-                PAYMENT & BILLING
-              </ILText>
-            </View>
-            <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-              Synced from Zoho
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="receipt-long" size={16} color={G.ink} />
+            <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
+              PAYMENT & BILLING
             </ILText>
           </View>
-          <ILText role="label" color={G.ink} style={{ marginTop: 14 }}>
-            {program.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-            {enrolled ? 'Paid in full' : 'Balance due'}
-          </ILText>
-          <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: G.line }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1 }}>
+          {(programs.length ? programs : []).map((program, i) => {
+            const pay = zohoPaymentDetail(source, program.id);
+            const paid =
+              /completed|paid/i.test(pay.status || '') ||
+              programPaymentStatus(source, program.id) === PAYMENT_STATUS.PAID;
+            const note = [pay.paidOn, pay.txn].filter(Boolean).join(' · ');
+            return (
+              <View
+                key={program.id}
+                style={{
+                  marginTop: 14,
+                  paddingTop: i ? 14 : 0,
+                  borderTopWidth: i ? 1 : 0,
+                  borderTopColor: G.line,
+                }}
+              >
                 <ILText role="label" color={G.ink}>
-                  Registration fee
+                  {program.title}
                 </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }}>
-                  Received · txn 4471 · 12 Sep
-                </ILText>
+                <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+                      Registration fee
+                    </ILText>
+                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }}>
+                      {note || pay.status || (paid ? 'Paid' : 'Due')}
+                    </ILText>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
+                      {pay.amount != null ? `₹${pay.amount.toLocaleString('en-IN')}` : feeLabel(source, program.id)}
+                    </ILText>
+                    <ILText role="eyebrow" color={paid ? '#1B7A4A' : G.cta} style={[af, { fontSize: 9, marginTop: 4 }]}>
+                      {pay.status || (paid ? 'PAID' : 'DUE')}
+                    </ILText>
+                  </View>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-                  {fee}
-                </ILText>
-                <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9, marginTop: 4 }]}>
-                  PAID
-                </ILText>
-              </View>
-            </View>
-          </View>
+            );
+          })}
         </WhiteCard>
 
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, overflow: 'hidden' }}>
-          {(enrolled
+          {(anyEnrolled
             ? [
                 { icon: 'workspace-premium', label: 'Certificates', extra: '0 issued', go: 'goCertificate' },
                 { icon: 'file-download', label: 'Downloads', extra: 'Offline guides' },
@@ -428,7 +523,7 @@ export default function LepProfileScreen() {
             >
               <MaterialIcons name={row.icon} size={20} color={G.ink} />
               <ILText role="label" color={G.ink} style={{ flex: 1, marginLeft: 12 }}>
-                {row.certs ? copy.certs : row.label}
+                {row.label}
               </ILText>
               {row.extra ? (
                 <ILText role="bodySm" color={G.meta} style={{ marginRight: 6, fontSize: 12 }}>
@@ -460,7 +555,7 @@ function Badge({ children, on }) {
   return (
     <View
       style={{
-        marginRight: 8,
+        maxWidth: '100%',
         borderRadius: 999,
         paddingHorizontal: 10,
         paddingVertical: 5,
@@ -494,13 +589,17 @@ function AddRow({ icon, title, sub }) {
         <ILText role="label" color={G.ink}>
           {title}
         </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          {sub}
-        </ILText>
+        {sub ? (
+          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+            {sub}
+          </ILText>
+        ) : null}
       </View>
-      <ILText role="label" color={G.cta} style={[af, { fontSize: 12 }]}>
-        + add
-      </ILText>
+      {!sub ? (
+        <ILText role="label" color={G.cta} style={[af, { fontSize: 12 }]}>
+          + add
+        </ILText>
+      ) : null}
     </View>
   );
 }

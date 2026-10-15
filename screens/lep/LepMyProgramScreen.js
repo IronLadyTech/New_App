@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
+import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +9,9 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
+import { useCourses } from '../../context/CoursesContext';
+import { learnerBatchId, learnerBatchLabel } from '../../utils/programAccess';
+import { splitBatchSessions } from '../../utils/eventVisibility';
 import { isLepEnrolled } from '../../utils/lepState';
 import {
   LepHeader,
@@ -25,8 +29,6 @@ import {
   COHORT_WEEK,
   FACE,
   PHASES,
-  SESSIONS_DONE,
-  SESSIONS_UP,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
@@ -231,6 +233,13 @@ function JourneyBody({ locked = false }) {
 
 function SessionsBody({ preview = false, onEnroll }) {
   const nav = useLepNav();
+  const { profile } = useAuth();
+  const { events } = useCourses();
+  const batchId = learnerBatchId(profile, 'lep');
+  const batchLabel = learnerBatchLabel(profile, 'lep');
+  const { upcoming, done } = splitBatchSessions(events, { batchId, batchName: batchLabel });
+  const hasBatch = Boolean((batchId && batchId !== 'default') || batchLabel);
+
   return (
     <>
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
@@ -238,100 +247,125 @@ function SessionsBody({ preview = false, onEnroll }) {
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
             Coming up
           </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-            Live sessions for Batch 42
-          </ILText>
+          {batchLabel ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
+              Live sessions for {batchLabel}
+            </ILText>
+          ) : null}
         </View>
-        {preview ? null : <LinkRow label="Add all to calendar" onPress={nav.goSchedule} />}
+        {preview || upcoming.length === 0 ? null : (
+          <LinkRow label="Add all to calendar" onPress={nav.goSchedule} />
+        )}
       </View>
-      {SESSIONS_UP.map((s, i) => {
-        const shut = preview && i >= 2;
-        return (
-          <WhiteCard
-            key={s.id}
-            style={{
-              marginTop: 12,
-              borderRadius: 22,
-              padding: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              opacity: shut ? 0.62 : 1,
-            }}
-          >
-            <View
+      {upcoming.length === 0 ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 14, lineHeight: 20 }}>
+          {hasBatch
+            ? 'No upcoming sessions on your batch yet.'
+            : 'Your batch sessions will show here once your batch is set in Zoho.'}
+        </ILText>
+      ) : (
+        upcoming.map((s) => {
+          const open = () => {
+            if (preview) {
+              onEnroll?.();
+              return;
+            }
+            if (s.linkUrl) Linking.openURL(s.linkUrl).catch(() => {});
+          };
+          return (
+            <WhiteCard
+              key={s.id}
               style={{
-                width: 52,
-                borderRadius: 14,
-                backgroundColor: shut ? G.mutedFill : G.cta,
+                marginTop: 12,
+                borderRadius: 22,
+                padding: 16,
+                flexDirection: 'row',
                 alignItems: 'center',
-                paddingVertical: 8,
+                opacity: preview ? 0.62 : 1,
               }}
             >
-              <ILText role="eyebrow" color={shut ? G.meta : '#FFFFFF'} style={[af, { fontSize: 9 }]}>
-                {s.mon}
-              </ILText>
-              <ILText
-                role="title"
-                color={shut ? G.ink : '#FFFFFF'}
-                style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}
-              >
-                {s.day}
-              </ILText>
-            </View>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <ILText role="label" color={G.ink}>
-                {s.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                {s.meta}
-              </ILText>
-            </View>
-            {shut ? (
-              <MaterialIcons name="lock-outline" size={18} color={G.meta} />
-            ) : (
-              <Pressable
-                onPress={preview ? onEnroll : nav.goCheckin}
-                style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
-              >
-                <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
-                  {s.cta}
+              {s.mon && s.day ? (
+                <View
+                  style={{
+                    width: 52,
+                    borderRadius: 14,
+                    backgroundColor: preview ? G.mutedFill : G.cta,
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                  }}
+                >
+                  <ILText role="eyebrow" color={preview ? G.meta : '#FFFFFF'} style={[af, { fontSize: 9 }]}>
+                    {s.mon}
+                  </ILText>
+                  <ILText
+                    role="title"
+                    color={preview ? G.ink : '#FFFFFF'}
+                    style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}
+                  >
+                    {s.day}
+                  </ILText>
+                </View>
+              ) : null}
+              <View style={{ flex: 1, marginLeft: s.mon && s.day ? 12 : 0 }}>
+                <ILText role="label" color={G.ink}>
+                  {s.title}
                 </ILText>
-              </Pressable>
-            )}
+                {s.meta ? (
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
+                    {s.meta}
+                  </ILText>
+                ) : null}
+              </View>
+              {preview ? (
+                <MaterialIcons name="lock-outline" size={18} color={G.meta} />
+              ) : s.linkUrl ? (
+                <Pressable
+                  onPress={open}
+                  style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
+                >
+                  <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
+                    Join
+                  </ILText>
+                </Pressable>
+              ) : null}
+            </WhiteCard>
+          );
+        })
+      )}
+      {done.length ? (
+        <>
+          <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
+            Done
+          </ILText>
+          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
+            {done.map((s, i) => (
+              <View
+                key={s.id}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderTopWidth: i ? 1 : 0,
+                  borderTopColor: G.line,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <ILText role="label" color={G.ink}>
+                    {s.title}
+                  </ILText>
+                  {s.doneMeta ? (
+                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
+                      {s.doneMeta}
+                    </ILText>
+                  ) : null}
+                </View>
+                {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
+              </View>
+            ))}
           </WhiteCard>
-        );
-      })}
-      <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-        Done
-      </ILText>
-      <ILText role="bodySm" color={G.meta}>
-        Recordings and check-ins · attendance counts toward the certificate
-      </ILText>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
-        {SESSIONS_DONE.map((s, i) => (
-          <View
-            key={s.title}
-            style={{
-              paddingHorizontal: 16,
-              paddingVertical: 14,
-              borderTopWidth: i ? 1 : 0,
-              borderTopColor: G.line,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <View style={{ flex: 1 }}>
-              <ILText role="label" color={G.ink}>
-                {s.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                {s.meta}
-              </ILText>
-            </View>
-            {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
-          </View>
-        ))}
-      </WhiteCard>
+        </>
+      ) : null}
       {preview ? <UnlockRest onEnroll={onEnroll} /> : null}
     </>
   );

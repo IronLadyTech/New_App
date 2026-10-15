@@ -29,20 +29,31 @@ export function youtubeEmbedUri(id) {
 }
 
 /** HTML wrapper so WebView has a valid baseUrl (fixes YouTube Error 153). */
-export function youtubeEmbedHtml(id) {
+export function youtubeEmbedHtml(id, { width, height } = {}) {
   const embed = youtubeEmbedUri(id);
+  const w = width ? `${Math.round(width)}px` : '100%';
+  const h = height ? `${Math.round(height)}px` : '100%';
   return `<!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <style>
-      html, body { margin: 0; padding: 0; background: #000; height: 100%; overflow: hidden; }
-      iframe { border: 0; width: 100%; height: 100%; }
+      html, body { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
+      iframe {
+        position: fixed;
+        top: 0;
+        left: 0;
+        border: 0;
+        width: ${w};
+        height: ${h};
+      }
     </style>
   </head>
   <body>
     <iframe
       src="${embed}"
+      width="${width ? Math.round(width) : '100%'}"
+      height="${height ? Math.round(height) : '100%'}"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
       allowfullscreen
     ></iframe>

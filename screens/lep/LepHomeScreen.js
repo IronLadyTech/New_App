@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Image, Pressable, ScrollView, View } from 'react-native';
+import { doc, getDoc } from 'firebase/firestore';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   interpolate,
@@ -20,6 +21,9 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
+import { buildLepEnrolledHero } from '../../utils/lepBatchHero';
+import { learnerBatchId } from '../../utils/programAccess';
+import { db } from '../../services/firebase';
 import {
   CheckRow,
   CoverThumb,
@@ -452,20 +456,65 @@ function RegisteredHome() {
   );
 }
 
+function useLepBatchGroup(profile) {
+  const batchId = learnerBatchId(profile, 'lep');
+  const id = batchId && batchId !== 'default' && /^[A-Za-z0-9_-]+$/.test(batchId) ? batchId : null;
+  const [group, setGroup] = useState(null);
+
+  useEffect(() => {
+    if (!id) {
+      setGroup(null);
+      return undefined;
+    }
+    let cancelled = false;
+    getDoc(doc(db, 'groups', id))
+      .then((snap) => {
+        if (!cancelled) setGroup(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setGroup(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return group;
+}
+
 function EnrolledHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
+  const demo = useCourseDemo();
   const practice = useLivePractice(ENR_PRACTICE);
+  const group = useLepBatchGroup(profile);
+  const hero = buildLepEnrolledHero(profile, group);
+  const savedReady = demo.getSubmission('lep', 'lep-get-ready')?.data?.checked;
+  const readyItems = GET_READY.map((item) => ({
+    ...item,
+    done: savedReady ? !!savedReady[item.title] : item.done,
+  }));
+  const toggleReady = (title) => {
+    const checked = Object.fromEntries(
+      readyItems.map((item) => [item.title, item.title === title ? !item.done : item.done])
+    );
+    demo.saveSubmission('lep', 'lep-get-ready', { checked });
+    if (checked[title]) demo.markDone('lep', practiceKey('lep-get-ready'));
+  };
 
   return (
     <Shell>
       <DarkHero>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <SoftChip onDark icon="verified">
-            Enrolled · LEP
-          </SoftChip>
-          <SoftChip onDark>4 days to launch</SoftChip>
+          {hero.programChip ? (
+            <SoftChip onDark icon="verified">
+              {hero.programChip}
+            </SoftChip>
+          ) : (
+            <View />
+          )}
+          {hero.launchChip ? <SoftChip onDark>{hero.launchChip}</SoftChip> : null}
         </View>
         <ILText
           role="display"
@@ -474,31 +523,11 @@ function EnrolledHome() {
         >
           You’re all set, {name}.
         </ILText>
-        <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-          You’re in this batch. 48 women start together this Saturday.
-        </ILText>
-        <View
-          style={{
-            marginTop: 18,
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            borderRadius: 999,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-            <MaterialIcons name="event" size={16} color="#FFFFFF" />
-            <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 8, fontSize: 12 }]}>
-              Sat 20 Sep · 9:00 AM IST
-            </ILText>
-          </View>
-          <ILText role="label" color={G.pink} style={[af, { fontSize: 12 }]}>
-            Confirmed
+        {hero.subline ? (
+          <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
+            {hero.subline}
           </ILText>
-        </View>
+        ) : null}
       </DarkHero>
 
       <View style={{ marginTop: 16 }}>
@@ -619,8 +648,13 @@ function EnrolledHome() {
 
       <Section title="Get ready" sub="Day 1 checklist" />
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {GET_READY.map((item, i) => (
-          <CheckRow key={item.title} item={item} last={i === GET_READY.length - 1} />
+        {readyItems.map((item, i) => (
+          <CheckRow
+            key={item.title}
+            item={item}
+            last={i === readyItems.length - 1}
+            onPress={() => toggleReady(item.title)}
+          />
         ))}
       </WhiteCard>
 
