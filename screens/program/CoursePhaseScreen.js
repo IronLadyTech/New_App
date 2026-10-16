@@ -19,6 +19,11 @@ import {
 } from '../../constants/programCourseSlice';
 import { PROGRAMS } from '../../constants/programs';
 import { useCourseDemo } from '../../context/CourseDemoContext';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
+import { filterLepCourseTasks } from '../../utils/lepRitualsUnlock';
+import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
 
 export default function CoursePhaseScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -28,8 +33,14 @@ export default function CoursePhaseScreen({ route, navigation }) {
   const programId = route.params?.programId || PROGRAMS.LEP;
   const phaseId = route.params?.phaseId;
   const phase = coursePhase(programId, phaseId);
-  const tasks = courseTasks(programId, phaseId);
-  const open = isPhaseOpen(phase, enrolled);
+  const { batch: cmsBatch } = useLearnerCmsBatch(programId === PROGRAMS.LEP ? 'lep' : null);
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
+  const lepFlow =
+    programId === PROGRAMS.LEP
+      ? { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() }
+      : null;
+  const tasks = filterLepCourseTasks(courseTasks(programId, phaseId), programId, ritualsUnlocked);
+  const open = isPhaseOpen(phase, enrolled, lepFlow);
   const demo = useCourseDemo();
 
   return (

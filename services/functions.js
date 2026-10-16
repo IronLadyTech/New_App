@@ -11,11 +11,21 @@ function call(name, data = {}) {
 
 function formatCallableError(err, fallback) {
   const code = err?.code || '';
+  if (__DEV__ && code) {
+    console.warn('[Cloud Function]', code, err?.message || err);
+  }
   if (code === 'functions/deadline-exceeded') {
     return 'The server timed out. Try again in a moment.';
   }
+  if (code === 'functions/not-found') {
+    return __DEV__
+      ? 'Callable resolvePhoneAccess not deployed (lmsironlady).'
+      : 'Service not ready. Try again later.';
+  }
   if (code === 'functions/unavailable' || code === 'functions/internal') {
-    return 'Cloud Function unavailable. Try again later.';
+    return __DEV__
+      ? `Cloud Function unavailable (${code}). Check emulator internet and reload with: npx expo start -c`
+      : 'Cloud Function unavailable. Try again later.';
   }
   if (code === 'functions/permission-denied') {
     return err?.message || 'Permission denied.';

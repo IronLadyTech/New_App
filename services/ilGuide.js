@@ -96,6 +96,46 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
   }
 
   if (context.surface === IL_GUIDE_SURFACES.HOME) {
+    const lp = context.lepPractice;
+    if (lp && (prog?.id === 'lep' || progName?.includes('LEP'))) {
+      if (lp.ritualsUnlocked && !lp.ritualsDoneToday) {
+        candidates.unshift({
+          id: 'home-lep-rituals',
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, start with the 5 Daily Rituals — two minutes now keeps your streak alive.`
+            : 'Start with the 5 Daily Rituals today. That is what counts for your streak.',
+        });
+      } else if (lp.currentStreak >= 3) {
+        candidates.unshift({
+          id: `home-lep-streak-${lp.currentStreak}`,
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${lp.currentStreak} days in a row, ${name}. Finish today’s principle revision while the momentum is warm.`
+            : `${lp.currentStreak} days in a row. Finish today’s principle revision while the momentum is warm.`,
+        });
+      } else if (lp.practiceDoneToday < lp.practiceTotalToday) {
+        candidates.unshift({
+          id: 'home-lep-practice-open',
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, you have ${lp.practiceTotalToday - lp.practiceDoneToday} practice item(s) left today.`
+            : `You have ${lp.practiceTotalToday - lp.practiceDoneToday} practice item(s) left today.`,
+        });
+      }
+      const lb = context.lepBatch;
+      if (lb?.nextSessionTitle) {
+        const when = lb.nextSessionWhen ? ` (${lb.nextSessionWhen})` : '';
+        candidates.unshift({
+          id: 'home-lep-next-session',
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, next on your batch: ${lb.nextSessionTitle}${when}.`
+            : `Next on your batch: ${lb.nextSessionTitle}${when}.`,
+        });
+      }
+    }
+
     if (next && pct < 100) {
       candidates.push({
         id: `home-progress-${next.id}`,

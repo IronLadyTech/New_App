@@ -11,6 +11,7 @@ import { WHATSAPP_OTP_ENABLED, sendWhatsAppOtp } from '../../services/whatsappOt
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from '../../components/il/ilShadow';
 import ILText from '../../components/il/ILText';
+import ILButton from '../../components/il/ILButton';
 import ILLogoMark from '../../components/il/ILLogoMark';
 import { useKeyboardRoom } from '../../hooks/useKeyboardRoom';
 
@@ -48,6 +49,9 @@ export default function PhoneLoginScreen({ navigation }) {
       if (!access?.ok) {
         setError(access?.reason || 'Could not check this number.');
         return;
+      }
+      if (__DEV__ && access.cmsBatchId) {
+        console.log('[login] CMS batch pinned:', access.cmsBatchId);
       }
       // Guests skip WhatsApp OTP — Zoho already decided they have no program seat.
       if (access.guest || !WHATSAPP_OTP_ENABLED) {
@@ -154,6 +158,7 @@ export default function PhoneLoginScreen({ navigation }) {
         style={{
           paddingTop: insets.top + 10,
           paddingBottom: 8,
+          paddingHorizontal: 20,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -161,19 +166,9 @@ export default function PhoneLoginScreen({ navigation }) {
         }}
       >
         <ILLogoMark size={28} />
-        <Text
-          numberOfLines={1}
-          style={{
-            marginLeft: 10,
-            color: '#FFFFFF',
-            fontFamily: IL_FONTS.display,
-            fontSize: 20,
-            lineHeight: 26,
-            ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
-          }}
-        >
-          {'Iron\u00A0Lady'}
-        </Text>
+        <ILText role="wordmark" color="#FFFFFF" style={{ marginLeft: 10, flexShrink: 0 }}>
+          Iron Lady
+        </ILText>
       </View>
 
       <KeyboardAvoidingView
@@ -341,34 +336,13 @@ export default function PhoneLoginScreen({ navigation }) {
             ) : null}
           </View>
 
-          <Pressable
+          <ILButton
+            label={sending ? 'Sending code…' : checking ? 'Checking…' : 'Continue'}
             onPress={onContinue}
             disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel="Continue"
-            style={({ pressed }) => ({
-              marginTop: 16,
-              minHeight: 56,
-              borderRadius: 999,
-              backgroundColor: CTA,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: busy ? 0.7 : pressed ? 0.92 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: '#FFFFFF',
-                fontFamily: IL_FONTS.semibold,
-                fontSize: 16,
-                ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
-              }}
-            >
-              {sending ? 'Sending code…' : checking ? 'Checking…' : 'Continue'}
-            </Text>
-            <MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </Pressable>
+            loading={false}
+            style={{ marginTop: 16, opacity: busy ? 0.7 : 1 }}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>

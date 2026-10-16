@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Pressable, ScrollView, View } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -21,7 +21,10 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
-import { buildLepEnrolledHero } from '../../utils/lepBatchHero';
+import { buildLepEnrolledHero, buildLepRegisteredHero } from '../../utils/lepBatchHero';
+import { buildLepDueWeek } from '../../utils/lepBatchDueWeek';
+import { nextCmsBatchSession } from '../../utils/cmsBatchSessions';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { learnerBatchId } from '../../utils/programAccess';
 import { db } from '../../services/firebase';
 import {
@@ -35,27 +38,31 @@ import {
   RedCta,
   SoftChip,
   WeekRing,
-  WhisperCard,
   WhiteCard,
 } from './LepBits';
 import { useLepNav } from './useLepNav';
 import {
-  DUE_WEEK,
-  ENR_PRACTICE,
   FACE,
   GET_READY,
   HERO,
   PREWORK,
-  REG_PRACTICE,
   practiceSummary,
   ROLES,
   ARMY_STORIES,
   TODAY_MESSAGE,
 } from './lepData';
+import { useEnrolledDailyPractice, useRegisteredDailyPractice } from '../../hooks/useLepDailyPractice';
+import { useLepPracticeStreak } from '../../hooks/useLepPracticeStreak';
+import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
+import { filterLepPrework } from '../../utils/lepRitualsUnlock';
+import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
+import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 import { useCourseDemo } from '../../context/CourseDemoContext';
-import { isItemDone, practiceKey } from '../../constants/practice';
+import { practiceKey } from '../../constants/practice';
 import { DueWeek } from '../program/ProgramKit';
 
 export default function LepHomeScreen() {
@@ -130,7 +137,38 @@ function RegisteredHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
-  const practice = useLivePractice(REG_PRACTICE);
+  const group = useLepBatchGroup(profile);
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch, group });
+  const prework = useMemo(() => filterLepPrework(PREWORK, ritualsUnlocked), [ritualsUnlocked]);
+  const practice = useRegisteredDailyPractice(group, cmsBatch);
+  const streak = useLepPracticeStreak();
+  const hero = useMemo(() => buildLepRegisteredHero(profile, group, cmsBatch), [profile, group, cmsBatch]);
+  const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch), [cmsBatch]);
+  const guideContext = useMemo(() => {
+    const practiceDoneToday = practice.filter((p) => p.done).length;
+    const nextSession = nextCmsBatchSession(cmsBatch);
+    return {
+      lepPractice: {
+        currentStreak: streak.currentStreak,
+        ritualsDoneToday: streak.ritualsDoneToday,
+        ritualsUnlocked,
+        weekActiveDays: streak.weekActiveDays,
+        practiceDoneToday,
+        practiceTotalToday: practice.length,
+      },
+      lepBatch: cmsBatch
+        ? {
+            name: cmsBatch.name,
+            day1Date: cmsBatch.day1Date,
+            orientationDate: cmsBatch.orientationDate,
+            nextSessionTitle: nextSession?.title || null,
+            nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || null,
+          }
+        : null,
+    };
+  }, [streak, practice, cmsBatch, ritualsUnlocked]);
+  const challengeItem = practice.find((p) => !p.done) || practice[0];
   const scrollY = useRef(new Animated.Value(0)).current;
   const [headerGone, setHeaderGone] = useState(false);
   const [role, setRole] = useState('Technology');
@@ -160,11 +198,15 @@ function RegisteredHome() {
           Good morning, {name}.
         </ILText>
         <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-          Your LEP batch starts in 9 days.
+          {hero.countdownSubline}
         </ILText>
         <View style={{ flexDirection: 'row', marginTop: 18, flexWrap: 'wrap', alignItems: 'center' }}>
-          <CountChip n="09" l="DAYS" />
-          <CountChip n="04" l="HOURS" />
+          {hero.showCountdown ? (
+            <>
+              <CountChip n={String(hero.days).padStart(2, '0')} l="DAYS" />
+              <CountChip n={String(hero.hours).padStart(2, '0')} l="HOURS" />
+            </>
+          ) : null}
           <View
             style={{
               backgroundColor: 'rgba(255,255,255,0.10)',
@@ -201,7 +243,7 @@ function RegisteredHome() {
             color="#FFFFFF"
             style={{ marginTop: 14, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
           >
-            Power Pitch — say who you are in 30 seconds
+            {challengeItem?.title || 'Start today’s practice'}
           </ILText>
           <View style={{ marginTop: 16 }}>
             <RedCta label="Start today’s practice →" onPress={nav.goToday} />
@@ -236,7 +278,32 @@ function RegisteredHome() {
         />
       ) : null}
 
-      <PracticeDeck items={practice} onOpen={nav.goToday} onItem={nav.goPracticeItem} />
+      <PracticeDeck
+        items={practice}
+        streakLabel={streak.streakLabel}
+        onOpen={nav.goToday}
+        onItem={nav.goPracticeItem}
+      />
+
+      <ILGuideWhisperLep
+        surface={IL_GUIDE_SURFACES.HOME}
+        guideContext={guideContext}
+        fallbackQuote={
+          ritualsUnlocked
+            ? 'Leadership is practiced, not announced. Start with today’s practice checklist.'
+            : 'Focus on pre-work and Day 1 prep. The 5 Daily Rituals unlock after your Saturday–Sunday sessions.'
+        }
+        subtitle="Daily practice"
+      />
+
+      <DueWeek
+        sub={dueWeek.sub}
+        onSchedule={nav.goSchedule}
+        items={dueWeek.items.map((item) => ({
+          ...item,
+          onPress: () => nav.goCourseTask(PROGRAMS.LEP, item.taskId),
+        }))}
+      />
 
       <Section title="Today’s message" sub="Principle 01 · Your BHAG" />
       <WhiteCard
@@ -322,7 +389,7 @@ function RegisteredHome() {
         }}
       >
         <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-          Your enrolment · LEP · Batch 42
+          {hero.enrollEyebrow}
         </ILText>
         <Pressable
           onPress={nav.goEnroll}
@@ -361,29 +428,28 @@ function RegisteredHome() {
         </Pressable>
       </View>
 
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row' }}>
-          {[0, 1, 2].map((i) => (
-            <Image
-              key={i}
-              source={FACE}
-              style={{ width: 28, height: 28, borderRadius: 14, marginLeft: i ? -8 : 0, borderWidth: 2, borderColor: G.white }}
-            />
-          ))}
-        </View>
-        <ILText role="label" color={G.ink} style={{ marginLeft: 6, fontSize: 12 }}>
-          +42
-        </ILText>
-        <View style={{ flex: 1, marginLeft: 10 }}>
-          <ILText role="label" color={G.ink}>
-            42 women from Bengaluru
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-            Joining alongside you
-          </ILText>
-        </View>
-        <MaterialIcons name="place" size={18} color={G.meta} />
-      </WhiteCard>
+      <Pressable onPress={nav.goEngage} accessibilityRole="button">
+        <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row' }}>
+            {[0, 1, 2].map((i) => (
+              <Image
+                key={i}
+                source={FACE}
+                style={{ width: 28, height: 28, borderRadius: 14, marginLeft: i ? -8 : 0, borderWidth: 2, borderColor: G.white }}
+              />
+            ))}
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label" color={G.ink}>
+              {LEP_COHORT_SOCIAL.title}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+              {LEP_COHORT_SOCIAL.sub}
+            </ILText>
+          </View>
+          <MaterialIcons name="groups" size={20} color={G.meta} />
+        </WhiteCard>
+      </Pressable>
 
       <Section title="Welcome to the community" sub="Stories and prep from women who made the leap" action="View all" onAction={nav.goEngage} />
       <ScrollView
@@ -487,9 +553,36 @@ function EnrolledHome() {
   const name = lepFirstName(profile);
   const nav = useLepNav();
   const demo = useCourseDemo();
-  const practice = useLivePractice(ENR_PRACTICE);
   const group = useLepBatchGroup(profile);
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch, group });
+  const practice = useEnrolledDailyPractice(group, cmsBatch);
+  const streak = useLepPracticeStreak();
   const hero = buildLepEnrolledHero(profile, group);
+  const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch), [cmsBatch]);
+  const guideContext = useMemo(() => {
+    const practiceDoneToday = practice.filter((p) => p.done).length;
+    const nextSession = nextCmsBatchSession(cmsBatch);
+    return {
+      lepPractice: {
+        currentStreak: streak.currentStreak,
+        ritualsDoneToday: streak.ritualsDoneToday,
+        ritualsUnlocked,
+        weekActiveDays: streak.weekActiveDays,
+        practiceDoneToday,
+        practiceTotalToday: practice.length,
+      },
+      lepBatch: cmsBatch
+        ? {
+            name: cmsBatch.name,
+            day1Date: cmsBatch.day1Date,
+            orientationDate: cmsBatch.orientationDate,
+            nextSessionTitle: nextSession?.title || null,
+            nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || null,
+          }
+        : null,
+    };
+  }, [streak, practice, cmsBatch, ritualsUnlocked]);
   const savedReady = demo.getSubmission('lep', 'lep-get-ready')?.data?.checked;
   const readyItems = GET_READY.map((item) => ({
     ...item,
@@ -500,7 +593,10 @@ function EnrolledHome() {
       readyItems.map((item) => [item.title, item.title === title ? !item.done : item.done])
     );
     demo.saveSubmission('lep', 'lep-get-ready', { checked });
-    if (checked[title]) demo.markDone('lep', practiceKey('lep-get-ready'));
+    if (checked[title]) {
+      demo.markDone('lep', practiceKey('lep-get-ready'));
+      demo.recordLepActiveDay(todayIsoIST());
+    }
   };
 
   return (
@@ -530,17 +626,17 @@ function EnrolledHome() {
         ) : null}
       </DarkHero>
 
-      <View style={{ marginTop: 16 }}>
-        <WhisperCard
-          quote="Join 10 minutes early on Saturday. The first hour sets the tone and the room remembers who was already there."
-          onPress={nav.goGuide}
-        />
-      </View>
+      <ILGuideWhisperLep
+        surface={IL_GUIDE_SURFACES.HOME}
+        guideContext={guideContext}
+        fallbackQuote="Join 10 minutes early on Saturday. The first hour sets the tone and the room remembers who was already there."
+        subtitle="Daily practice"
+      />
 
       <Section title="Today’s practice" sub={practiceSummary(practice)} action="Open checklist" onAction={nav.goToday} />
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, alignItems: 'center' }}>
-          <SoftChip icon="local-fire-department">3-day streak</SoftChip>
+          <SoftChip icon="local-fire-department">{streak.streakLabel}</SoftChip>
           <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
             Daily revision at 8:00 AM
           </ILText>
@@ -551,22 +647,24 @@ function EnrolledHome() {
       </WhiteCard>
 
       <DueWeek
-        sub="Before Day 1 · Sat 20 Sep"
+        sub={dueWeek.sub}
         onSchedule={nav.goSchedule}
-        items={DUE_WEEK.map((item) => ({
+        items={dueWeek.items.map((item) => ({
           ...item,
           onPress: () => nav.goCourseTask(PROGRAMS.LEP, item.taskId),
         }))}
       />
 
       <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-        <WeekRing done={4} total={5} />
+        <WeekRing done={streak.weekActiveDays} total={streak.weekTotal} />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <ILText role="label" color={G.ink}>
-            This week · 4 of 5 active days
+            {streak.weekLabel}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12, lineHeight: 17 }}>
-            Red ring = weekdays you opened the app or finished a practice. Friday is still open. Never resets.
+            {ritualsUnlocked
+              ? 'Active day = you finished at least one practice (5 Rituals count). Mon–Fri this week.'
+              : 'Active day = any practice you complete. 5 Rituals unlock after Day 1 and Day 2.'}
           </ILText>
           <View style={{ flexDirection: 'row', marginTop: 8 }}>
             {['M', 'T', 'W', 'T', 'F'].map((d, i) => (
@@ -577,12 +675,16 @@ function EnrolledHome() {
                   height: 26,
                   borderRadius: 13,
                   marginRight: 6,
-                  backgroundColor: i < 4 ? G.dark : G.mutedFill,
+                  backgroundColor: streak.weekFilled[i] ? G.dark : G.mutedFill,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <ILText role="label" color={i < 4 ? '#FFFFFF' : G.meta} style={[af, { fontSize: 10 }]}>
+                <ILText
+                  role="label"
+                  color={streak.weekFilled[i] ? '#FFFFFF' : G.meta}
+                  style={[af, { fontSize: 10 }]}
+                >
                   {d}
                 </ILText>
               </View>
@@ -591,8 +693,12 @@ function EnrolledHome() {
         </View>
       </WhiteCard>
 
-      <Section title="Watch these 3 before Day 1" sub="Essential foundations curated by Rajesh & IL Guide" action="2 of 3 done" />
-      {PREWORK.map((item) =>
+      <Section
+        title={`Watch these ${prework.length} before Day 1`}
+        sub="Essential foundations curated by Rajesh & IL Guide"
+        action={`${prework.filter((i) => i.done).length} of ${prework.length} done`}
+      />
+      {prework.map((item) =>
         item.done ? (
         <WhiteCard
           key={item.n}
@@ -820,12 +926,7 @@ function GlanceCell({ label, value }) {
 
 const DECK_SPRING = { damping: 17, stiffness: 95, mass: 0.9 };
 
-function useLivePractice(items) {
-  const { isDone } = useCourseDemo();
-  return items.map((item) => ({ ...item, done: isItemDone(item, isDone) }));
-}
-
-function PracticeDeck({ items, onOpen, onItem }) {
+function PracticeDeck({ items, onOpen, onItem, streakLabel = 'Start your streak' }) {
   const [aside, setAside] = useState([]);
   const leftover = items.filter((item) => !item.done);
   const remaining = leftover.filter((item) => !aside.includes(item.id));
@@ -847,7 +948,7 @@ function PracticeDeck({ items, onOpen, onItem }) {
         <LinkRow label="Open checklist" onPress={onOpen} />
       </View>
       <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <SoftChip icon="local-fire-department">2-day streak</SoftChip>
+        <SoftChip icon="local-fire-department">{streakLabel}</SoftChip>
         <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
           Daily revision at 8:00 AM
         </ILText>

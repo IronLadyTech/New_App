@@ -21,6 +21,8 @@ export function buildILGuideContext({
   journeyProgress = null,
   journeyNextTask = null,
   primaryProgramId = null,
+  lepPractice = null,
+  lepBatch = null,
 }) {
   const name =
     profile?.displayName ||
@@ -95,6 +97,8 @@ export function buildILGuideContext({
     ),
     journeyProgress,
     upcomingEvent,
+    lepPractice,
+    lepBatch,
   };
 
   // Strip null/empty optional fields

@@ -12,6 +12,16 @@ Source: **LEP Program Journey v1.5** (9 Oct 2026). Canonical PDF copy: `docs/LEP
 
 CEM sets **one orientation Thursday** per batch in CMS → **Batch calendar**. The app derives Day 1 Saturday (+2 days) and builds the rest of the journey from **Day 1**.
 
+## Participant secrets (LEP_Flow.pdf)
+
+| Topic | PDF rule | App gate |
+|--------|----------|----------|
+| **5 Rituals** (video, tracker, course tasks) | Not before Week 0 **Day 1 + Day 2**; introduced end of Day 2, **from Monday** | `utils/lepRitualsUnlock.js` — hidden until `day1Date + 2` (IST) |
+| **Journey phases** (Day 1, Day 2, Week 1…) | Open on calendar days from batch **Day 1 Saturday** | `utils/lepFlowGates.js` — `LEP_PHASE_DAY_OFFSET` |
+| **CMS ritual nudges** (`RITUALS-AM`, etc.) | Same as tracker | Scheduler must respect unlock date (not yet wired in Cloud Functions) |
+
+Full gap list: `docs/LEP_PDF_APP_SYNC.md`.
+
 ## Session list (codes used in CMS messages)
 
 Offsets are **calendar days from Day 1 Saturday**.

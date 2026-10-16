@@ -570,8 +570,16 @@ service cloud.firestore {
 
     match /cms_batches/{id} {
       allow read: if cmsViewer()
-        || (isSignedIn() && resource.data.openForEnrollment != false);
+        || (isSignedIn() && (
+          resource.data.openForEnrollment != false
+          || resource.data.status == 'live'
+        ));
       allow write: if cmsEditor();
+    }
+
+    // CMS-only QA phone seats (resolvePhoneAccess on Cloud Functions — not read in app).
+    match /cms_phone_enrollments/{phone10} {
+      allow read, write: if cmsEditor();
     }
   }
 }

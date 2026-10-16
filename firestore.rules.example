@@ -82,8 +82,15 @@ service cloud.firestore {
     // LEP batch calendars (orientation + session dates per cohort).
     match /cms_batches/{id} {
       allow read: if cmsViewer()
-        || (signedIn() && resource.data.openForEnrollment != false);
+        || (signedIn() && (
+          resource.data.openForEnrollment != false
+          || resource.data.status == 'live'
+        ));
       allow write: if cmsEditor();
+    }
+
+    match /cms_phone_enrollments/{phone10} {
+      allow read, write: if cmsEditor();
     }
   }
 }

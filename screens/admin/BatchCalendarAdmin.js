@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { LEP_TIMEZONE } from '../../constants/lepSessionTemplate';
 import { deleteBatch, saveBatch, subscribeToBatches } from '../../services/cms';
+import { formatBatchPickerLabel, suggestLmsGroupId } from '../../utils/cmsBatchLabel';
 import {
   buildLepBatchSessions,
   day1FromOrientationThursday,
@@ -25,6 +26,10 @@ function emptyDraft() {
     notes: '',
     openForEnrollment: true,
     filling: false,
+    status: 'draft',
+    automationEnabled: false,
+    zohoBatchKey: '',
+    lmsGroupId: '',
   };
 }
 
@@ -44,13 +49,19 @@ function syncAnchorDates(draft) {
   };
 }
 
-export default function BatchCalendarAdmin({ canEdit }) {
+export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBatchChange }) {
   const [batches, setBatches] = useState([]);
   const [draft, setDraft] = useState(emptyDraft());
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => subscribeToBatches(setBatches, (e) => setMsg({ tone: 'error', text: e.message })), []);
+
+  useEffect(() => {
+    if (!embed || !hubBatchId) return;
+    const b = batches.find((x) => x.id === hubBatchId);
+    if (b && draft.id !== b.id) loadBatch(b);
+  }, [embed, hubBatchId, batches]);
 
   const selected = useMemo(() => batches.find((b) => b.id === draft.id), [batches, draft.id]);
 
@@ -72,6 +83,10 @@ export default function BatchCalendarAdmin({ canEdit }) {
       notes: b.notes || '',
       openForEnrollment: b.openForEnrollment !== false,
       filling: b.filling === true,
+      status: b.status || 'draft',
+      automationEnabled: b.automationEnabled === true,
+      zohoBatchKey: b.zohoBatchKey || '',
+      lmsGroupId: b.lmsGroupId || '',
     });
   };
 
@@ -120,8 +135,13 @@ export default function BatchCalendarAdmin({ canEdit }) {
         notes: synced.notes || '',
         openForEnrollment: synced.openForEnrollment !== false,
         filling: synced.filling === true,
+        status: synced.status,
+        automationEnabled: synced.automationEnabled,
+        zohoBatchKey: synced.zohoBatchKey?.trim() || '',
+        lmsGroupId: synced.lmsGroupId?.trim() || '',
       });
       setDraft((d) => ({ ...d, id }));
+      onHubBatchChange?.(id);
       setMsg({ tone: 'ok', text: 'Batch calendar saved. Notification rules use session codes (S0, S1, …).' });
     } catch (e) {
       setMsg({ tone: 'error', text: e.message });
@@ -144,45 +164,98 @@ export default function BatchCalendarAdmin({ canEdit }) {
     }
   };
 
-  return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 28 }}>
-      <H style={{ marginBottom: 6 }}>Batch calendar</H>
-      <T color={A.muted} style={{ marginBottom: 12, maxWidth: 760 }}>
-        LEP v1.5: each batch has <T weight="semibold">Thursday orientation</T>, then that week’s{' '}
-        <T weight="semibold">Saturday & Sunday 9:00 AM–7:00 PM</T> (Day 1 & Day 2), plus all core and optional
-        sessions. Reminder messages in “Messages to learners” fire relative to these session times.
-      </T>
-      <CemHelpCard sectionKey="batches" />
+  const body = (
+    <>
+      {!embed ? (
+        <>
+          <H style={{ marginBottom: 6 }}>Batch calendar</H>
+          <T color={A.muted} style={{ marginBottom: 12, maxWidth: 760 }}>
+            LEP v1.5: each batch has <T weight="semibold">Thursday orientation</T>, then that week’s{' '}
+            <T weight="semibold">Saturday & Sunday 9:00 AM–7:00 PM</T> (Day 1 & Day 2), plus all core and optional
+            sessions.
+          </T>
+          <CemHelpCard sectionKey="batches" />
+        </>
+      ) : (
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <T weight="semibold" size={13}>Dates & Zoom</T>
+          {canEdit ? <Btn label="New batch" kind="ghost" small onPress={() => loadBatch(null)} /> : null}
+        </Row>
+      )}
       {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
 
-      <Row style={{ marginTop: 16, marginBottom: 12 }} gap={8}>
-        <View style={{ minWidth: 220 }}>
-          <Select
-            value={draft.id || 'new'}
-            onChange={(v) => loadBatch(v === 'new' ? null : batches.find((b) => b.id === v))}
-            options={[
-              { value: 'new', label: '+ New batch' },
-              ...batches.map((b) => ({
-                value: b.id,
-                label: `${b.name || 'Batch'} · Day 1 ${b.day1Date || '?'}`,
-              })),
-            ]}
-          />
-        </View>
-        {canEdit ? (
-          <Btn label="New batch" kind="ghost" onPress={() => loadBatch(null)} />
-        ) : null}
-      </Row>
+      {!embed ? (
+        <Row style={{ marginTop: 16, marginBottom: 12 }} gap={8}>
+          <View style={{ minWidth: 220 }}>
+            <Select
+              value={draft.id || 'new'}
+              onChange={(v) => loadBatch(v === 'new' ? null : batches.find((b) => b.id === v))}
+              options={[
+                { value: 'new', label: '+ New batch' },
+                ...batches.map((b) => ({
+                  value: b.id,
+                  label: formatBatchPickerLabel(b),
+                })),
+              ]}
+            />
+          </View>
+          {canEdit ? (
+            <Btn label="New batch" kind="ghost" onPress={() => loadBatch(null)} />
+          ) : null}
+        </Row>
+      ) : null}
 
       <Card style={{ marginBottom: 20 }}>
-        <Field label="Batch name">
+        <Field label="Batch name (Delivery Desk / Zoho)">
           <Input
             value={draft.name}
             onChangeText={(v) => setDraft((d) => ({ ...d, name: v }))}
-            placeholder="e.g. LEP Oct 2026 — Cohort A"
+            placeholder="e.g. 1st Aug batch"
             editable={canEdit}
           />
         </Field>
+        <Row gap={12}>
+          <View style={{ flex: 1 }}>
+            <Field label="Zoho Batch key (optional)">
+              <Input
+                value={draft.zohoBatchKey}
+                onChangeText={(v) => setDraft((d) => ({ ...d, zohoBatchKey: v }))}
+                placeholder="Zoho LEP_Batch, e.g. 27/12/2025 - 28/12/2025"
+                editable={canEdit}
+                autoCapitalize="none"
+              />
+            </Field>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Field label="Web LMS group id (optional)">
+              <Input
+                value={draft.lmsGroupId}
+                onChangeText={(v) => setDraft((d) => ({ ...d, lmsGroupId: v }))}
+                placeholder="e.g. zoho_lep_01-08-2026-..."
+                editable={canEdit}
+                autoCapitalize="none"
+              />
+            </Field>
+          </View>
+        </Row>
+        {canEdit && (draft.zohoBatchKey || draft.name) ? (
+          <Btn
+            label="Suggest LMS group id from Zoho key"
+            kind="ghost"
+            small
+            onPress={() =>
+              setDraft((d) => ({
+                ...d,
+                lmsGroupId:
+                  suggestLmsGroupId({
+                    program: d.program,
+                    zohoBatchKey: d.zohoBatchKey || d.name,
+                  }) || d.lmsGroupId,
+              }))
+            }
+            style={{ marginBottom: 12 }}
+          />
+        ) : null}
         <Row gap={12}>
           <View style={{ flex: 1 }}>
             <Field label="Anchor date type">
@@ -294,6 +367,15 @@ export default function BatchCalendarAdmin({ canEdit }) {
       ) : selected?.sessions?.length ? (
         <T color={A.muted}>Select the batch above to view sessions.</T>
       ) : null}
+    </>
+  );
+
+  if (embed) {
+    return <View style={{ padding: 16 }}>{body}</View>;
+  }
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 28 }}>
+      {body}
     </ScrollView>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +12,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useCourses } from '../../context/CoursesContext';
 import { learnerBatchId, learnerBatchLabel } from '../../utils/programAccess';
 import { splitBatchSessions } from '../../utils/eventVisibility';
+import { splitCmsBatchSessions } from '../../utils/cmsBatchSessions';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { isLepEnrolled } from '../../utils/lepState';
 import {
   LepHeader,
@@ -32,7 +34,9 @@ import {
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
-import { coursePhases, currentPhaseId } from '../../constants/programCourseSlice';
+import { coursePhases, currentPhaseId, isPhaseOpen } from '../../constants/programCourseSlice';
+import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
 import ThisPhaseBlock from '../program/ThisPhaseBlock';
 
 // Registered = partial payment = partial unlock. Everything after these stays locked.
@@ -155,7 +159,10 @@ function UnlockRest({ onEnroll }) {
 
 function JourneyBody({ locked = false }) {
   const nav = useLepNav();
-  const phaseId = currentPhaseId(PROGRAMS.LEP, !locked);
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
+  const enrolled = !locked;
+  const phaseId = currentPhaseId(PROGRAMS.LEP, enrolled, lepFlow);
   const phases = coursePhases(PROGRAMS.LEP);
   return (
     <>
@@ -186,7 +193,10 @@ function JourneyBody({ locked = false }) {
       </ILText>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
         {(phases.length ? phases : PHASES).map((p, i) => {
-          const shut = locked && (p.openRegistered === false || (p.openRegistered == null && i >= REG_OPEN_PHASES));
+          const shut =
+            locked && (p.openRegistered === false || (p.openRegistered == null && i >= REG_OPEN_PHASES))
+              ? true
+              : !isPhaseOpen(p, enrolled, lepFlow);
           const now = p.id === phaseId;
           const currentIndex = phases.findIndex((x) => x.id === phaseId);
           const done = !locked && i < currentIndex;
@@ -235,10 +245,17 @@ function SessionsBody({ preview = false, onEnroll }) {
   const nav = useLepNav();
   const { profile } = useAuth();
   const { events } = useCourses();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const batchId = learnerBatchId(profile, 'lep');
   const batchLabel = learnerBatchLabel(profile, 'lep');
-  const { upcoming, done } = splitBatchSessions(events, { batchId, batchName: batchLabel });
-  const hasBatch = Boolean((batchId && batchId !== 'default') || batchLabel);
+  const { upcoming, done } = useMemo(() => {
+    if (cmsBatch?.sessions?.length) {
+      return splitCmsBatchSessions(cmsBatch);
+    }
+    return splitBatchSessions(events, { batchId, batchName: batchLabel });
+  }, [cmsBatch, events, batchId, batchLabel]);
+  const sessionBatchLabel = cmsBatch?.name || batchLabel;
+  const hasBatch = Boolean(cmsBatch?.id || (batchId && batchId !== 'default') || batchLabel);
 
   return (
     <>
@@ -247,9 +264,9 @@ function SessionsBody({ preview = false, onEnroll }) {
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
             Coming up
           </ILText>
-          {batchLabel ? (
+          {sessionBatchLabel ? (
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-              Live sessions for {batchLabel}
+              Live sessions for {sessionBatchLabel}
             </ILText>
           ) : null}
         </View>

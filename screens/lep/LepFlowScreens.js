@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Linking, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +23,14 @@ import {
   SCHEDULE_ITEMS,
   TODAY_ITEMS,
 } from './lepData';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import {
+  buildScheduleDay,
+  buildScheduleWeekStrip,
+  markDaysWithSessions,
+  scheduleRecommendation,
+  scheduleTodayIso,
+} from '../../utils/lepBatchScheduleView';
 
 function Shell({ title, sub, right, children }) {
   const insets = useSafeAreaInsets();
@@ -46,74 +54,163 @@ function Shell({ title, sub, right, children }) {
   );
 }
 
+function ScheduleRow({ item, nav }) {
+  const openJoin = () => {
+    if (item.joinLink) Linking.openURL(item.joinLink).catch(() => {});
+    else nav.goCheckin();
+  };
+  const openTask = () => {
+    if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
+  };
+  const isTask = Boolean(item.taskId);
+  const showJoin = !isTask && (item.live || Boolean(item.joinLink));
+  return (
+    <View style={{ flexDirection: 'row', marginTop: 14 }}>
+      <ILText role="label" color={G.meta} style={{ width: 72, fontSize: 11, marginTop: 12 }}>
+        {item.time}
+      </ILText>
+      <WhiteCard
+        style={{ flex: 1, borderRadius: 18, padding: 14, borderLeftWidth: item.live ? 3 : 0, borderLeftColor: G.cta }}
+      >
+        {item.day ? (
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginBottom: 6 }]}>
+            {item.day}
+          </ILText>
+        ) : null}
+        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+          {item.tag}
+        </ILText>
+        <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
+          {item.title}
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+          {item.meta}
+        </ILText>
+        {showJoin ? (
+          <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}>
+            <Pressable
+              onPress={openJoin}
+              style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, marginRight: 8, marginBottom: 8 }}
+            >
+              <ILText role="label" color="#FFFFFF">
+                {item.taskId ? 'Open task' : 'Join'}
+              </ILText>
+            </Pressable>
+          </View>
+        ) : item.taskId ? (
+          <Pressable onPress={openTask} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+            <ILText role="label" color={G.cta}>
+              Open task →
+            </ILText>
+          </Pressable>
+        ) : null}
+      </WhiteCard>
+    </View>
+  );
+}
+
 export function LepScheduleScreen() {
   const nav = useLepNav();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const todayIso = scheduleTodayIso();
+  const [selectedIso, setSelectedIso] = useState(todayIso);
+
+  const useCms = Boolean(cmsBatch?.sessions?.length);
+  const weekDays = useMemo(() => {
+    const strip = buildScheduleWeekStrip(new Date(), selectedIso);
+    return useCms ? markDaysWithSessions(strip, cmsBatch) : strip.map((d) => ({ ...d, hasSession: false }));
+  }, [cmsBatch, selectedIso, useCms]);
+
+  const items = useMemo(() => {
+    if (useCms) return buildScheduleDay(cmsBatch, selectedIso);
+    return SCHEDULE_ITEMS;
+  }, [cmsBatch, selectedIso, useCms]);
+
+  const recommend = useMemo(() => (useCms ? scheduleRecommendation(cmsBatch) : null), [cmsBatch, useCms]);
+
+  const dayHeading = useMemo(() => {
+    const hit = weekDays.find((d) => d.iso === selectedIso);
+    if (!hit) return 'This day';
+    const label = hit.isToday ? 'Today' : `${hit.w} ${hit.d}`;
+    return label;
+  }, [weekDays, selectedIso]);
+
+  const sub = cmsBatch?.name ? `LEP · ${cmsBatch.name}` : 'All programs · this week';
+
   return (
-    <Shell title="Schedule" sub="All programs · this week">
+    <Shell title="Schedule" sub={sub}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-        {SCHEDULE_DAYS.map((d) => (
-          <View
-            key={d.d}
-            style={{
-              width: 46,
-              alignItems: 'center',
-              paddingVertical: 10,
-              borderRadius: 16,
-              backgroundColor: d.on ? G.dark : 'transparent',
-            }}
-          >
-            <ILText role="eyebrow" color={d.on ? 'rgba(255,255,255,0.55)' : G.meta} style={[af, { fontSize: 9 }]}>
-              {d.w}
-            </ILText>
-            <ILText role="title" color={d.on ? '#FFFFFF' : G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18, marginTop: 4 }}>
-              {d.d}
-            </ILText>
-          </View>
-        ))}
-      </View>
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10 }]}>
-        Today · Wed 23
-      </ILText>
-      {SCHEDULE_ITEMS.map((item) => (
-        <View key={item.title} style={{ flexDirection: 'row', marginTop: 14 }}>
-          <ILText role="label" color={G.meta} style={{ width: 72, fontSize: 11, marginTop: 12 }}>
-            {item.time}
-          </ILText>
-          <WhiteCard style={{ flex: 1, borderRadius: 18, padding: 14, borderLeftWidth: item.live ? 3 : 0, borderLeftColor: G.cta }}>
-            {item.day ? (
-              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginBottom: 6 }]}>
-                {item.day}
+        {(useCms ? weekDays : SCHEDULE_DAYS).map((d) => {
+          const key = d.iso || `${d.w}-${d.d}`;
+          const on = useCms ? d.iso === selectedIso : d.on;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => d.iso && setSelectedIso(d.iso)}
+              style={{
+                width: 46,
+                alignItems: 'center',
+                paddingVertical: 10,
+                borderRadius: 16,
+                backgroundColor: on ? G.dark : 'transparent',
+              }}
+            >
+              <ILText role="eyebrow" color={on ? 'rgba(255,255,255,0.55)' : G.meta} style={[af, { fontSize: 9 }]}>
+                {d.w}
               </ILText>
-            ) : null}
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-              {item.tag}
-            </ILText>
-            <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
-              {item.title}
-            </ILText>
+              <ILText
+                role="title"
+                color={on ? '#FFFFFF' : G.ink}
+                style={{ fontFamily: IL_FONTS.display, fontSize: 18, marginTop: 4 }}
+              >
+                {d.d}
+              </ILText>
+              {d.hasSession ? (
+                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: on ? '#FFFFFF' : G.cta, marginTop: 4 }} />
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {recommend ? (
+        <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14, borderLeftWidth: 3, borderLeftColor: G.cta }}>
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+            Recommended next
+          </ILText>
+          <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
+            {recommend.title}
+          </ILText>
+          {recommend.when ? (
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {item.meta}
+              {recommend.when}
             </ILText>
-            {item.live ? (
-              <View style={{ flexDirection: 'row', marginTop: 12 }}>
-                <Pressable
-                  onPress={nav.goCheckin}
-                  style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, marginRight: 8 }}
-                >
-                  <ILText role="label" color="#FFFFFF">
-                    Join
-                  </ILText>
-                </Pressable>
-                <Pressable style={{ borderWidth: 1, borderColor: G.line, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10 }}>
-                  <ILText role="label" color={G.ink}>
-                    Add to calendar
-                  </ILText>
-                </Pressable>
-              </View>
-            ) : null}
-          </WhiteCard>
-        </View>
-      ))}
+          ) : null}
+          {recommend.joinLink ? (
+            <Pressable
+              onPress={() => Linking.openURL(recommend.joinLink).catch(() => {})}
+              style={{ marginTop: 10, alignSelf: 'flex-start' }}
+            >
+              <ILText role="label" color={G.cta}>
+                Join session →
+              </ILText>
+            </Pressable>
+          ) : null}
+        </WhiteCard>
+      ) : null}
+
+      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10 }]}>
+        {dayHeading}
+      </ILText>
+      {items.length === 0 ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 14, fontSize: 14, lineHeight: 20 }}>
+          {useCms
+            ? 'Nothing scheduled this day for your batch. Pick another day or check My Program → Sessions.'
+            : 'Your batch calendar will appear here once your cohort is linked in CMS.'}
+        </ILText>
+      ) : (
+        items.map((item) => <ScheduleRow key={item.id || item.title} item={item} nav={nav} />)
+      )}
     </Shell>
   );
 }

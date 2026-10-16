@@ -8,6 +8,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
+import { useAuth } from '../../context/AuthContext';
+import { needsLepBatchSelection } from '../../utils/programAccess';
 
 const PAGE = '#F7F6E4';
 const INK = '#113744';
@@ -319,10 +321,18 @@ function CalendarPicker({ visible, onClose, onPick }) {
 
 export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
   const insets = useSafeAreaInsets();
+  const { profile } = useAuth();
   const [cmsBatches, setCmsBatches] = useState([]);
   const [selected, setSelected] = useState(BATCHES[0].id);
   const [custom, setCustom] = useState(null);
   const [calOpen, setCalOpen] = useState(false);
+
+  useEffect(() => {
+    if (profile && !needsLepBatchSelection(profile)) {
+      if (typeof onBack === 'function') onBack();
+      else navigation?.goBack?.();
+    }
+  }, [profile, navigation, onBack]);
 
   useEffect(() => {
     return subscribeToBatches(

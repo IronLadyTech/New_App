@@ -50,7 +50,12 @@ export function useLepNav() {
     goPracticeItem: (item) => {
       if (item.taskId) goIn('MyProgram', 'CourseTask', { programId: item.programId, taskId: item.taskId });
       else if (item.practiceId) {
-        goIn('Home', 'Practice', { programId: item.programId, practiceId: item.practiceId, seededDone: !!item.done });
+        goIn('Home', 'Practice', {
+          programId: item.programId,
+          practiceId: item.practiceId,
+          seededDone: !!item.done,
+          principleN: item.principleN,
+        });
       }
     },
     goManager: (programId) => goIn('MyProgram', 'ManagerChat', { programId }),

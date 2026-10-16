@@ -17,7 +17,7 @@ import { markILGuideOnboarded } from '../services/ilGuide';
 
 const DISMISS_KEY = (uid, surface, id) => `ilguide:dismiss:${uid}:${surface}:${id}`;
 
-export function useILGuideWhisper(surface) {
+export function useILGuideWhisper(surface, extraContext = null) {
   const { user, profile, isStaff, patchProfile } = useAuth();
   const { enrolledPrograms, progressByProgram, tasksByProgram, subsByProgram } =
     usePrograms();
@@ -81,6 +81,7 @@ export function useILGuideWhisper(surface) {
         journeyProgress,
         journeyNextTask: journeyNext,
         primaryProgramId: guideProgramId,
+        ...(extraContext && typeof extraContext === 'object' ? extraContext : {}),
       });
 
       const result = await fetchILGuideWhisper(context);
@@ -122,6 +123,7 @@ export function useILGuideWhisper(surface) {
     journeyProgress,
     journeyNext,
     guideProgramId,
+    extraContext,
   ]);
 
   useEffect(() => {

@@ -218,10 +218,24 @@ export const PRACTICE = {
 
 export const practiceKey = (id) => `practice:${id}`;
 
+/** Practices that reset each IST day (5 Rituals + daily principle revision). */
+export const DAILY_RESET_PRACTICE_IDS = new Set(['lep-rituals', 'lep-principle']);
+
+export function practiceDailyKey(practiceId, todayIso) {
+  return `practice-day:${practiceId}:${todayIso}`;
+}
+
 /** A practice row is done if it was seeded done, or ticked as a course task / practice. */
 export function isItemDone(item, isDone) {
   if (item.done) return true;
   if (item.taskId) return isDone(item.programId, item.taskId);
   if (item.practiceId) return isDone(item.programId, practiceKey(item.practiceId));
   return false;
+}
+
+export function isPracticeItemDone(item, todayIso, isDone, isDoneOnDay) {
+  if (item.dailyReset && item.practiceId && todayIso) {
+    return isDoneOnDay(item.programId, practiceDailyKey(item.practiceId, todayIso));
+  }
+  return isItemDone(item, isDone);
 }

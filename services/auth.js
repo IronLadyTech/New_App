@@ -147,6 +147,10 @@ export async function ensureUserProfile(user, extras = {}) {
 export async function signInWithAccessToken(token) {
   if (!token) throw new Error('Sign-in could not be completed.');
   const credential = await signInWithCustomToken(auth, token);
+  await ensureUserProfile(credential.user, {
+    phoneNumber: credential.user.phoneNumber,
+    displayName: credential.user.displayName,
+  });
   return credential.user;
 }
 

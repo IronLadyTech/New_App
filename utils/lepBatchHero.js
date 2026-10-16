@@ -1,5 +1,7 @@
 import { getProgramEntry } from '../constants/programs';
 import { learnerBatchLabel, learnerEnrollmentLabel, normalizeProgramId } from './programAccess';
+import { inferLepDay1FromZohoRaw } from './lepDeskBatchDate';
+import { toISTIso } from './lepBatchSchedule';
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -202,6 +204,59 @@ export function buildProgramBatchCard(profile, programId, group) {
     heading: label,
     body,
     confirmed: Boolean(label),
+  };
+}
+
+function resolveLepDay1Iso(cmsBatch, group, profile) {
+  if (cmsBatch?.day1Date) return cmsBatch.day1Date;
+  const raw = group?.zohoRawBatch || batchRawForProgram(profile, 'lep');
+  return inferLepDay1FromZohoRaw(raw) || null;
+}
+
+/** Countdown to Day 1 Saturday 9:00 AM IST. */
+export function lepLaunchCountdown(cmsBatch, group, profile, now = new Date()) {
+  const day1 = resolveLepDay1Iso(cmsBatch, group, profile);
+  if (!day1) return { days: null, hours: null, ms: null };
+  const target = Date.parse(toISTIso(day1, '09:00'));
+  const ms = Math.max(0, target - now.getTime());
+  return {
+    ms,
+    days: Math.floor(ms / 86400000),
+    hours: Math.floor((ms % 86400000) / 3600000),
+    day1,
+  };
+}
+
+/** Registered LEP home hero — batch dates from CMS, then Zoho / LMS group. */
+export function buildLepRegisteredHero(profile, group, cmsBatch, now = new Date()) {
+  const { days, hours, day1 } = lepLaunchCountdown(cmsBatch, group, profile, now);
+  const start = day1 ? parseBatchStart(day1) : parseBatchStart(batchRawForProgram(profile, 'lep'));
+
+  let countdownSubline = 'Your batch dates will appear when your cohort is linked.';
+  if (days != null) {
+    if (days === 0 && hours === 0) countdownSubline = 'Your LEP batch starts today.';
+    else if (days === 0) countdownSubline = `Your LEP batch starts in ${hours} ${hours === 1 ? 'hour' : 'hours'}.`;
+    else if (days === 1) countdownSubline = 'Your LEP batch starts tomorrow.';
+    else countdownSubline = `Your LEP batch starts in ${days} days.`;
+  }
+
+  const batchLabel =
+    cmsBatch?.name?.trim() ||
+    batchRawForProgram(profile, 'lep') ||
+    (start ? formatWhen(start) : null) ||
+    'your batch';
+
+  const enrollEyebrow = `Your enrolment · LEP · ${batchLabel}`;
+  const glanceDay1 = start ? formatWhen(start) : cmsBatch?.day1Date || null;
+
+  return {
+    countdownSubline,
+    days,
+    hours,
+    enrollEyebrow,
+    batchLabel,
+    glanceDay1,
+    showCountdown: days != null,
   };
 }
 

@@ -9,6 +9,7 @@ import { CoverThumb } from '../lep/LepBits';
 import { ARMY_STORIES, PODCASTS } from '../lep/lepData';
 import { CSUITE_HOME } from '../guest/guestData';
 import { useLepNav } from '../lep/useLepNav';
+import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 
 const CIRCLES = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 const INDUSTRIES = ['Finance', 'Technology', 'Marketing'];
@@ -203,9 +204,9 @@ function EnrolledEngage({ navigation, onWatch }) {
       <SoftCard>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1, paddingRight: 8 }}>
-            <ILText role="label">42 women in your LEP batch</ILText>
+            <ILText role="label">{LEP_COHORT_SOCIAL.title}</ILText>
             <ILText role="bodySm" color={IL_BRAND.muted}>
-              Leadership Track
+              {LEP_COHORT_SOCIAL.sub}
             </ILText>
           </View>
           <Pressable
@@ -217,12 +218,7 @@ function EnrolledEngage({ navigation, onWatch }) {
             </ILText>
           </Pressable>
         </View>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <PeopleRow extra={37} onLight />
-          <ILText role="bodySm" color={IL_BRAND.paidGreen}>
-            8 active now
-          </ILText>
-        </View>
+        <PeopleRow onLight />
       </SoftCard>
 
       <SoftCard>

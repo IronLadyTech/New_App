@@ -15,8 +15,17 @@ import PracticeAudioRecorder from '../../components/program/PracticeAudioRecorde
 import { Page, WhiteCard } from '../lep/LepBits';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseDemo } from '../../context/CourseDemoContext';
-import { PRACTICE, practiceKey } from '../../constants/practice';
+import {
+  DAILY_RESET_PRACTICE_IDS,
+  PRACTICE,
+  practiceDailyKey,
+  practiceKey,
+} from '../../constants/practice';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { isLepEnrolled } from '../../utils/lepState';
+import { isLepRitualsPracticeId } from '../../utils/lepRitualsUnlock';
 import { getPracticeVideoUrl } from '../../utils/resolveVideoUrl';
 
 const TAG = { lep: 'LEP', '100bm': '100BM', mbw: 'MBW' };
@@ -27,32 +36,62 @@ export default function PracticeScreen() {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const demo = useCourseDemo();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const p = PRACTICE[params.practiceId];
   const programId = p?.programId || params.programId;
   const practiceId = params.practiceId;
   const lepEnrolled = programId === 'lep' ? isLepEnrolled(profile) : true;
   const videoUri = p?.videoUrl ? getPracticeVideoUrl(practiceId, lepEnrolled) || p.videoUrl : null;
   const pKey = practiceId ? practiceKey(practiceId) : '';
-  const done = p ? !!params.seededDone || demo.isDone(programId, pKey) : false;
+  const today = todayIsoIST();
+  const dailyKey = practiceId && DAILY_RESET_PRACTICE_IDS.has(practiceId)
+    ? practiceDailyKey(practiceId, today)
+    : null;
+  const done = p
+    ? !!params.seededDone ||
+      (dailyKey ? demo.isDoneOnDay(programId, dailyKey) : demo.isDone(programId, pKey))
+    : false;
   const saved = p ? demo.getSubmission(programId, pKey) : null;
   const [ticks, setTicks] = useState({});
   const [note, setNote] = useState(saved?.data?.note || '');
   const [recordingUri, setRecordingUri] = useState(saved?.data?.audioUri || null);
 
-  if (!p) {
+  const lepRitualsLocked =
+    isLepRitualsPracticeId(practiceId) &&
+    !ritualsUnlocked &&
+    (params.programId === 'lep' || p?.programId === 'lep');
+
+  if (!p || lepRitualsLocked) {
     return (
       <Page>
         <View style={{ paddingTop: Math.max(insets.top, 8) }}>
           <GuestBackBar title="Practice" onBack={() => navigation.goBack()} />
         </View>
-        <ILText role="body" color={G.meta} align="center" style={{ marginTop: 40 }}>
-          This practice is not available.
+        <ILText role="body" color={G.meta} align="center" style={{ marginTop: 40, paddingHorizontal: 24 }}>
+          {isLepRitualsPracticeId(practiceId) && !ritualsUnlocked
+            ? 'The 5 Daily Rituals unlock after your Day 1 and Day 2 sessions (from Monday of Week 1).'
+            : 'This practice is not available.'}
         </ILText>
       </Page>
     );
   }
 
-  const stepsDone = p.steps.filter((_, i) => ticks[i] || done).length;
+  const principleN = params.principleN;
+  const displayTitle =
+    practiceId === 'lep-principle' && principleN
+      ? `Revise Principle ${principleN} from the 27 Principles`
+      : p.title;
+  const displaySteps =
+    practiceId === 'lep-principle' && principleN
+      ? [
+          `Open the 27 Principles in Learn and find Principle ${principleN}.`,
+          'Read it once, then say it in your own words.',
+          'Name one place you will use it today.',
+        ]
+      : p.steps;
+
+  const stepsDone = displaySteps.filter((_, i) => ticks[i] || done).length;
   const audioUri = recordingUri || saved?.data?.audioUri || null;
   const canFinish = (p.noteRequired ? !!note.trim() : true) && (!p.audioRecord || !!audioUri);
   const finish = () => {
@@ -62,9 +101,10 @@ export default function PracticeScreen() {
     if (p.note && note.trim()) data.note = note.trim();
     if (Object.keys(data).length) {
       demo.saveSubmission(programId, pKey, data);
-      return;
     }
-    demo.markDone(programId, pKey);
+    if (dailyKey) demo.markDoneOnDay(programId, dailyKey);
+    else if (!Object.keys(data).length) demo.markDone(programId, pKey);
+    if (programId === 'lep') demo.recordLepActiveDay(today);
   };
 
   return (
@@ -98,27 +138,27 @@ export default function PracticeScreen() {
               color="#FFFFFF"
               style={{ marginTop: 14, fontFamily: IL_FONTS.display, fontSize: 26, lineHeight: 32 }}
             >
-              {p.title}
+              {displayTitle}
             </ILText>
             <ILText role="body" color="rgba(255,255,255,0.75)" style={{ marginTop: 10, fontSize: 14, lineHeight: 21 }}>
               {p.why}
             </ILText>
             <View style={{ flexDirection: 'row', marginTop: 16 }}>
-              {p.steps.map((_, i) => (
+              {displaySteps.map((_, i) => (
                 <View
                   key={i}
                   style={{
                     flex: 1,
                     height: 4,
                     borderRadius: 2,
-                    marginRight: i < p.steps.length - 1 ? 6 : 0,
+                    marginRight: i < displaySteps.length - 1 ? 6 : 0,
                     backgroundColor: ticks[i] || done ? G.cta : 'rgba(255,255,255,0.18)',
                   }}
                 />
               ))}
             </View>
             <ILText role="bodySm" color="rgba(255,255,255,0.6)" style={{ marginTop: 8, fontSize: 12 }}>
-              {stepsDone} of {p.steps.length} steps
+              {stepsDone} of {displaySteps.length} steps
             </ILText>
           </View>
 
@@ -135,7 +175,7 @@ export default function PracticeScreen() {
             How to do it
           </ILText>
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-            {p.steps.map((step, i) => {
+            {displaySteps.map((step, i) => {
               const on = ticks[i] || done;
               return (
                 <Pressable

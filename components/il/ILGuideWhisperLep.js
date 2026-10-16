@@ -16,13 +16,14 @@ import { PROGRAMS } from '../../constants/programs';
  */
 export default function ILGuideWhisperLep({
   surface = IL_GUIDE_SURFACES.LEARN,
+  guideContext = null,
   fallbackQuote = '',
   subtitle = 'Executive Mentor',
   style,
   children,
 }) {
   const nav = useLepNav();
-  const { whisper, loading, hidden, dismiss, reload } = useILGuideWhisper(surface);
+  const { whisper, loading, hidden, dismiss, reload } = useILGuideWhisper(surface, guideContext);
 
   if (hidden && !loading && !fallbackQuote) return null;
 

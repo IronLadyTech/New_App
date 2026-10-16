@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Pressable as RNPressable, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +17,10 @@ import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, ENGAGE_EVENTS_REG, FACE, PODCASTS
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
+import { filterLepPrework } from '../../utils/lepRitualsUnlock';
 
 function CsuiteVideos({ nav }) {
   return (
@@ -165,10 +169,10 @@ function EnrolledEngage({ nav }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <ILText role="label" color={G.ink}>
-              42 women in your LEP batch
+              {LEP_COHORT_SOCIAL.title}
             </ILText>
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              Leadership Track
+              {LEP_COHORT_SOCIAL.sub}
             </ILText>
           </View>
           <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
@@ -300,6 +304,10 @@ function EnrolledEngage({ nav }) {
 }
 
 function RegisteredEngage({ nav }) {
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
+  const prework = useMemo(() => filterLepPrework(PREWORK, ritualsUnlocked), [ritualsUnlocked]);
+
   return (
     <>
       <View style={{ backgroundColor: G.dark, borderRadius: 24, padding: 18, flexDirection: 'row', alignItems: 'center' }}>
@@ -401,13 +409,13 @@ function RegisteredEngage({ nav }) {
           Prepare for Day 1
         </ILText>
         <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          3 essentials
+          {prework.length} essentials
         </ILText>
       </View>
       <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
         Pre-work videos — not in the podcast library above
       </ILText>
-      {PREWORK.map((item) => (
+      {prework.map((item) => (
         <WhiteCard
           key={item.practiceId}
           style={{ marginTop: 10, borderRadius: 18, overflow: 'hidden', flexDirection: 'row', alignItems: 'center' }}

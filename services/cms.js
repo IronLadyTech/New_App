@@ -18,7 +18,14 @@ import {
 } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { auth, db, storage } from './firebase';
-import { CMS } from '../constants/cms';
+import { CMS, CMS_QA_BATCH_ID } from '../constants/cms';
+import {
+  cmsBatchNameFromGroup,
+  formatZohoLepBatchLabel,
+  inferLepDay1FromGroup,
+  inferLepDay1FromZohoRaw,
+} from '../utils/lepDeskBatchDate';
+import { buildLepBatchSessions, orientationFromDay1Saturday } from '../utils/lepBatchSchedule';
 
 function stamp() {
   return { updatedAt: serverTimestamp(), updatedBy: auth.currentUser?.email || auth.currentUser?.uid || null };
@@ -175,6 +182,10 @@ export function uploadContentFile(file, meta, onProgress) {
             title: meta.title || file.name,
             type: meta.type || typeFromMime(file.type),
             program: meta.program || 'ALL',
+            library: meta.library || 'task',
+            assetKey: meta.assetKey || '',
+            batchId: meta.batchId || null,
+            sessionCode: meta.sessionCode || '',
             tags: meta.tags || [],
             linkedTaskIds: meta.linkedTaskIds || [],
             description: meta.description || '',
@@ -201,6 +212,10 @@ export async function addContentEntry(meta) {
     title: meta.title,
     type: meta.type,
     program: meta.program || 'ALL',
+    library: meta.library || 'task',
+    assetKey: meta.assetKey || '',
+    batchId: meta.batchId || null,
+    sessionCode: meta.sessionCode || '',
     tags: meta.tags || [],
     linkedTaskIds: meta.linkedTaskIds || [],
     description: meta.description || '',
@@ -219,11 +234,15 @@ export function updateContent(id, data) {
 
 // ---------- LEP batch calendars (session dates per batch) ----------
 
+function sortBatches(rows) {
+  return [...rows].sort((a, b) => String(b.day1Date || '').localeCompare(String(a.day1Date || '')));
+}
+
+/** Full collection listen — avoids missing docs without `day1Date` (orderBy would exclude them). */
 export function subscribeToBatches(onData, onError) {
-  const q = query(collection(db, CMS.BATCHES), orderBy('day1Date', 'desc'));
   return onSnapshot(
-    q,
-    (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    collection(db, CMS.BATCHES),
+    (snap) => onData(sortBatches(snap.docs.map((d) => ({ id: d.id, ...d.data() })))),
     onError
   );
 }
@@ -236,6 +255,8 @@ export async function saveBatch(batch) {
     openForEnrollment: data.openForEnrollment !== false,
     ...stamp(),
   };
+  if (data.status !== undefined) payload.status = data.status || 'draft';
+  if (data.automationEnabled !== undefined) payload.automationEnabled = data.automationEnabled === true;
   if (id) {
     await setDoc(doc(db, CMS.BATCHES, id), payload, { merge: true });
     return id;
@@ -249,6 +270,165 @@ export async function saveBatch(batch) {
 
 export function deleteBatch(id) {
   return deleteDoc(doc(db, CMS.BATCHES, id));
+}
+
+/**
+ * Live LEP batch + phone seat for app QA (no CRM). Staff only (Firestore rules).
+ * @param {string} phoneLocal10 — 10-digit Indian mobile (no +91)
+ */
+export async function ensureCmsQaTestPack(phoneLocal10, displayName = 'CMS QA') {
+  const phone10 = String(phoneLocal10 || '').replace(/\D/g, '').slice(-10);
+  if (phone10.length !== 10) {
+    throw new Error('Enter a 10-digit mobile number (e.g. 8309882198).');
+  }
+
+  const day1Date = '2026-10-17';
+  const orientationDate = '2026-10-15';
+  const sessions = buildLepBatchSessions({
+    anchor: 'day1',
+    date: day1Date,
+    joinLinks: { S0: 'https://zoom.us/j/cms-qa-orientation', S1: 'https://zoom.us/j/cms-qa-day1' },
+  });
+
+  await setDoc(
+    doc(db, CMS.BATCHES, CMS_QA_BATCH_ID),
+    {
+      name: 'CMS QA · Oct 2026 (no CRM)',
+      program: 'LEP',
+      orientationDate,
+      day1Date,
+      timezone: 'Asia/Kolkata',
+      sessions,
+      weeksLabel: 'One-month LEP journey · v1.5 schedule',
+      notes: 'CMS-only test cohort. Not synced from Zoho or web LMS groups.',
+      zohoBatchKey: '',
+      lmsGroupId: '',
+      openForEnrollment: true,
+      filling: true,
+      status: 'live',
+      automationEnabled: true,
+      ...stamp(),
+      createdAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await setDoc(
+    doc(db, CMS.PHONE_ENROLLMENTS, phone10),
+    {
+      cmsBatchId: CMS_QA_BATCH_ID,
+      paymentStatus: 'register',
+      displayName,
+      active: true,
+      email: `cmsqa+${phone10}@ironlady.test`,
+      ...stamp(),
+    },
+    { merge: true }
+  );
+
+  return { batchId: CMS_QA_BATCH_ID, phone10 };
+}
+
+/** Create `cms_batches` rows for LEP web LMS groups not already linked by `lmsGroupId`. */
+export async function importCmsBatchesFromLmsGroups(groups, existingBatches = []) {
+  const linkedLms = new Set(
+    existingBatches.map((b) => String(b.lmsGroupId || '').trim()).filter(Boolean)
+  );
+  const linkedZoho = new Set(
+    existingBatches.map((b) => String(b.zohoBatchKey || '').trim()).filter(Boolean)
+  );
+  let added = 0;
+  let skipped = 0;
+  for (const g of groups) {
+    if (linkedLms.has(g.id)) {
+      skipped += 1;
+      continue;
+    }
+    const zohoKey = String(g.zohoRawBatch || '').trim();
+    if (zohoKey && linkedZoho.has(zohoKey)) {
+      skipped += 1;
+      continue;
+    }
+    const day1Date = inferLepDay1FromGroup(g);
+    if (!day1Date) {
+      skipped += 1;
+      continue;
+    }
+    const orientationDate = orientationFromDay1Saturday(day1Date);
+    const sessions = buildLepBatchSessions({
+      anchor: 'day1',
+      date: day1Date,
+      joinLinks: {},
+    });
+    await saveBatch({
+      name: cmsBatchNameFromGroup(g),
+      program: 'LEP',
+      orientationDate,
+      day1Date,
+      timezone: 'Asia/Kolkata',
+      sessions,
+      notes: 'Imported from web LMS groups',
+      lmsGroupId: g.id,
+      zohoBatchKey: g.zohoRawBatch || '',
+      openForEnrollment: false,
+      filling: false,
+      status: 'draft',
+      automationEnabled: false,
+    });
+    linkedLms.add(g.id);
+    if (zohoKey) linkedZoho.add(zohoKey);
+    added += 1;
+  }
+  return { added, skipped };
+}
+
+/** Upsert `cms_batches` from Zoho `LEP_Batch` strings (Delivery Desk picklist values). */
+export async function importCmsBatchesFromZohoBatchKeys(keys, existingBatches = []) {
+  const linkedZoho = new Set(
+    existingBatches.map((b) => String(b.zohoBatchKey || '').trim()).filter(Boolean)
+  );
+  let added = 0;
+  let skipped = 0;
+  for (const raw of keys) {
+    const zohoBatchKey = String(raw || '').trim();
+    if (!zohoBatchKey || zohoBatchKey.includes('$')) {
+      skipped += 1;
+      continue;
+    }
+    if (linkedZoho.has(zohoBatchKey)) {
+      skipped += 1;
+      continue;
+    }
+    const day1Date = inferLepDay1FromZohoRaw(zohoBatchKey);
+    if (!day1Date) {
+      skipped += 1;
+      continue;
+    }
+    const orientationDate = orientationFromDay1Saturday(day1Date);
+    const sessions = buildLepBatchSessions({
+      anchor: 'day1',
+      date: day1Date,
+      joinLinks: {},
+    });
+    await saveBatch({
+      name: formatZohoLepBatchLabel(zohoBatchKey) || zohoBatchKey,
+      program: 'LEP',
+      orientationDate,
+      day1Date,
+      timezone: 'Asia/Kolkata',
+      sessions,
+      notes: 'Imported from Zoho LEP_Batch',
+      zohoBatchKey,
+      lmsGroupId: '',
+      openForEnrollment: false,
+      filling: false,
+      status: 'draft',
+      automationEnabled: false,
+    });
+    linkedZoho.add(zohoBatchKey);
+    added += 1;
+  }
+  return { added, skipped };
 }
 
 export async function deleteContent(item) {

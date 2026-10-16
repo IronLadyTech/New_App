@@ -11,15 +11,30 @@ import {
 import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const firebaseConfig = {
+/** Web LMS keys (Expo web + shared fields). */
+const WEB_FIREBASE = {
   apiKey: 'AIzaSyAdrvMFjHpbgQ937cM4MhMsdpCDFf25kpc',
+  appId: '1:829229653695:web:a144087bd1003910eff00a',
+};
+
+/** From google-services.json — required for native Android callables/auth. */
+const ANDROID_FIREBASE = {
+  apiKey: 'AIzaSyDIGbeY0TRx_INFjqsXfKnTmZPJMBqCrjA',
+  appId: '1:829229653695:android:66df2d9eca9a9066eff00a',
+};
+
+const native = Platform.OS === 'android' ? ANDROID_FIREBASE : WEB_FIREBASE;
+
+export const firebaseConfig = {
+  apiKey: native.apiKey,
   authDomain: 'lmsironlady.firebaseapp.com',
   projectId: 'lmsironlady',
   storageBucket: 'lmsironlady.firebasestorage.app',
   messagingSenderId: '829229653695',
-  appId: '1:829229653695:web:a144087bd1003910eff00a',
+  appId: native.appId,
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -39,8 +54,8 @@ export const db = initializeFirestore(app, {
 });
 export const storage = getStorage(app);
 
-/** Default region (most callables). */
-export const functions = getFunctions(app);
+/** Most callables (resolvePhoneAccess, refreshMyAccess, ilGuideWhisper). */
+export const functions = getFunctions(app, 'us-central1');
 
 /** Login provisioning callable is deployed to asia-south1. */
 export const loginFunctions = getFunctions(app, 'asia-south1');

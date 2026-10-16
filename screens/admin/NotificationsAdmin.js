@@ -95,7 +95,7 @@ export default function NotificationsAdmin({ canEdit }) {
     <View style={{ flex: 1, flexDirection: 'row' }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 28 }}>
         <Row style={{ alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <H>Messages to learners</H>
+          <H>Program templates</H>
           {canEdit ? (
             <Row gap={8}>
               <Btn label="Load LEP defaults" kind="ghost" onPress={seed} loading={busy} />

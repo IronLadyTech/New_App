@@ -1,4 +1,5 @@
 import { PROGRAMS, TASK_TYPES } from './programs';
+import { currentLepPhaseIdForDate, isLepJourneyPhaseOpen } from '../utils/lepFlowGates';
 import { withLepResources } from './lepResources';
 
 /** Real LMS phase + task ids. Content from the web LMS course lists. */
@@ -1833,13 +1834,32 @@ export function coursePhase(programId, phaseId) {
   return coursePhases(programId).find((p) => p.id === phaseId) || null;
 }
 
-export function isPhaseOpen(phase, enrolled) {
+/**
+ * @param {{ programId?: string, todayIso?: string, day1Iso?: string|null }} [lepFlow]
+ *   When `programId` is LEP, phases also follow batch calendar (LEP_Flow.pdf).
+ */
+export function isPhaseOpen(phase, enrolled, lepFlow) {
+  if (!phase) return false;
+  if (lepFlow?.programId === PROGRAMS.LEP) {
+    return isLepJourneyPhaseOpen(
+      phase.id,
+      lepFlow.todayIso,
+      lepFlow.day1Iso,
+      enrolled,
+      !!phase.openRegistered
+    );
+  }
   if (enrolled) return true;
   return !!phase?.openRegistered;
 }
 
-export function currentPhaseId(programId, enrolled) {
-  if (programId === PROGRAMS.LEP) return enrolled ? 'day-2' : 'pre-program';
+export function currentPhaseId(programId, enrolled, lepFlow) {
+  if (programId === PROGRAMS.LEP) {
+    if (lepFlow?.day1Iso && lepFlow?.todayIso) {
+      return currentLepPhaseIdForDate(lepFlow.todayIso, lepFlow.day1Iso, enrolled);
+    }
+    return enrolled ? 'day-1' : 'pre-program';
+  }
   if (programId === PROGRAMS.BM100) return enrolled ? 'phase-2-pitch-strategy' : 'onboarding';
   if (programId === PROGRAMS.MBW) return enrolled ? 'quarter-1' : 'pre-preparation';
   return coursePhases(programId)[0]?.id || null;

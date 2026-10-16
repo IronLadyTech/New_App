@@ -9,7 +9,11 @@ export const CMS = {
   CONTENT: 'cms_content',
   CONFIG: 'cms_config',
   BATCHES: 'cms_batches',
+  PHONE_ENROLLMENTS: 'cms_phone_enrollments',
 };
+
+/** Fixed id for CMS-only QA cohort (not in Zoho / LMS groups). */
+export const CMS_QA_BATCH_ID = 'lep-cms-qa-oct2026';
 
 export const CMS_CONFIG_DOCS = {
   IL_GUIDE: 'ilGuide',

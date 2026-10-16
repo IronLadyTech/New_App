@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Alert, Platform, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
+import { updateUserProfile } from '../../services/firestore';
 import { BATCHES } from './ChooseBatchDateScreen';
 
 const PAGE = '#F7F6E4';
@@ -128,7 +129,7 @@ function BatchLine({ tag, title, note, last }) {
 
 export default function SeatHeldScreen({ navigation, route, onContinue }) {
   const insets = useSafeAreaInsets();
-  const { profile } = useAuth();
+  const { profile, user, patchProfile } = useAuth();
   const name =
     route?.params?.name ||
     profile?.displayName?.split(' ')[0] ||
@@ -137,6 +138,28 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     route?.params?.batch ||
     BATCHES.find((b) => b.id === route?.params?.batchId) ||
     BATCHES[0];
+
+  useEffect(() => {
+    const cmsBatchId = batch?.cmsBatchId || (batch?.id && batch?.day1Date ? batch.id : null);
+    if (!cmsBatchId) return;
+    const lep = profile?.programAccess?.lep || {};
+    patchProfile({
+      cmsBatchId,
+      programAccess: {
+        ...(profile?.programAccess || {}),
+        lep: { ...lep, cmsBatchId },
+      },
+    });
+    if (user?.uid && user.uid !== 'preview') {
+      updateUserProfile(user.uid, {
+        cmsBatchId,
+        programAccess: {
+          ...(profile?.programAccess || {}),
+          lep: { ...lep, cmsBatchId },
+        },
+      }).catch(() => {});
+    }
+  }, [batch?.cmsBatchId, batch?.id, batch?.day1Date, user?.uid]);
 
   const finish = () => {
     if (navigation?.navigate) {
@@ -356,7 +379,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             color={CTA}
             style={[androidFix, { fontSize: 10, lineHeight: 13, letterSpacing: 1.6 }]}
           >
-            Your batch
+            {batch?.name ? `Your batch · ${batch.name}` : 'Your batch'}
           </ILText>
           <View style={{ marginTop: 10, gap: 10 }}>
             <BatchLine

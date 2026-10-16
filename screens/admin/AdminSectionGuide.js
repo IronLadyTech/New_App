@@ -5,12 +5,26 @@ import { A, Card, T } from './adminUi';
 
 /** Plain-language help — one card per CMS section. */
 export const SECTION_HELP = {
+  batchHub: {
+    title: 'LEP batch hub',
+    subtitle:
+      'Pick one cohort, then use Messages (timeline), Content (tasks, sessions, podcasts, C-Suite), Practice, and Setup (dates).',
+    steps: [
+      'Setup: use the same batch name as LEP Delivery Desk / Zoho (e.g. 1st Aug batch), orientation Thursday, generate schedule, Zoom links, save.',
+      'Optional: Zoho Batch key + web LMS group id link this cohort to CX on lmsironlady.web.app.',
+      'Go live when dates are final — enables enrollment automations for this batch.',
+      'Messages: see WELCOME, R-24h, TASK-OPEN, etc. grouped by orientation / Day 1 / weeks. Expired rows need confirm to override.',
+      'Content: upload per journey task, session recordings, and set Learn podcast / C-Suite URLs.',
+      'Program templates: edit message wording globally (sidebar).',
+    ],
+    not: 'IL Guide is separate (one config for the whole app). Automatic send engine still uses these rules when deployed.',
+  },
   batches: {
     title: 'Batch calendar',
     subtitle:
       'One record per LEP cohort: orientation Thursday, weekend Day 1–2 (9 AM–7 PM IST), then all v1.5 sessions with dates and join links.',
     steps: [
-      'Name the batch (e.g. month + cohort).',
+      'Name the batch exactly as on Delivery Desk / Zoho (e.g. 1st Aug batch). Year shows in the picker from Day 1 date.',
       'Pick Orientation Thursday — Day 1 Saturday is calculated automatically (same weekend).',
       'Click Generate LEP v1.5 schedule, then paste Zoom links per session.',
       'Save — staff can view; PL/Admin can edit.',
@@ -111,7 +125,7 @@ export function AdminWorkflowStrip() {
         TYPICAL ORDER
       </T>
       <T size={12} color="#E8E4DC" style={{ lineHeight: 18 }}>
-        1 Batch calendar → 2 Batch materials → 3 Messages → 4 IL Guide
+        1 LEP batch → 2 Program templates → 3 IL Guide
       </T>
     </View>
   );

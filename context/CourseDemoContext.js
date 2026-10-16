@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { todayIsoIST } from '../utils/lepDailyPractice';
+import { lepActiveDayKey } from '../utils/lepPracticeStreak';
 
 const KEY = 'il_course_demo_done';
 const SUB_KEY = 'il_course_demo_submissions';
@@ -39,6 +41,26 @@ export function CourseDemoProvider({ children }) {
     [done]
   );
 
+  const isDoneOnDay = useCallback(
+    (programId, dayKey) => !!done[taskKey(programId, dayKey)],
+    [done]
+  );
+
+  const markDoneOnDay = useCallback((programId, dayKey) => {
+    markDone(programId, dayKey);
+    if (programId === 'lep') {
+      markDone(programId, lepActiveDayKey(todayIsoIST()));
+    }
+  }, [markDone]);
+
+  const recordLepActiveDay = useCallback(
+    (isoDate) => {
+      if (!isoDate) return;
+      markDone('lep', lepActiveDayKey(isoDate));
+    },
+    [markDone]
+  );
+
   const getSubmission = useCallback(
     (programId, taskId) => submissions[taskKey(programId, taskId)] || null,
     [submissions]
@@ -58,8 +80,17 @@ export function CourseDemoProvider({ children }) {
   }, [markDone]);
 
   const value = useMemo(
-    () => ({ done, isDone, markDone, getSubmission, saveSubmission }),
-    [done, isDone, markDone, getSubmission, saveSubmission]
+    () => ({
+      done,
+      isDone,
+      isDoneOnDay,
+      markDone,
+      markDoneOnDay,
+      recordLepActiveDay,
+      getSubmission,
+      saveSubmission,
+    }),
+    [done, isDone, isDoneOnDay, markDone, markDoneOnDay, recordLepActiveDay, getSubmission, saveSubmission]
   );
   return <CourseDemoContext.Provider value={value}>{children}</CourseDemoContext.Provider>;
 }
@@ -69,7 +100,10 @@ export function useCourseDemo() {
     useContext(CourseDemoContext) || {
       done: {},
       isDone: () => false,
+      isDoneOnDay: () => false,
       markDone: () => {},
+      markDoneOnDay: () => {},
+      recordLepActiveDay: () => {},
       getSubmission: () => null,
       saveSubmission: () => {},
     }

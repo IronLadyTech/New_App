@@ -16,6 +16,9 @@ import { COURSE_LABEL, courseTask, nextCourseTask } from '../../constants/progra
 import { PROGRAMS, TASK_TYPES } from '../../constants/programs';
 import { useCourseDemo } from '../../context/CourseDemoContext';
 import { useLepNav } from '../lep/useLepNav';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
+import { isLepRitualsCourseTask } from '../../utils/lepRitualsUnlock';
 import { isInAppDocument } from '../../utils/taskDocumentUri';
 import EditableTemplateForm, {
   isGenericTemplateComplete,
@@ -175,7 +178,11 @@ export default function CourseTaskScreen({ route, navigation }) {
   const demo = useCourseDemo();
   const programId = route.params?.programId || PROGRAMS.LEP;
   const taskId = route.params?.taskId;
+  const { batch: cmsBatch } = useLearnerCmsBatch(programId === PROGRAMS.LEP ? 'lep' : 'lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const task = courseTask(programId, taskId);
+  const ritualsTaskLocked =
+    programId === PROGRAMS.LEP && taskId && isLepRitualsCourseTask(taskId) && !ritualsUnlocked;
   const next = nextCourseTask(programId, taskId);
 
   const [text, setText] = useState('');
@@ -284,13 +291,22 @@ export default function CourseTaskScreen({ route, navigation }) {
     setDone(true);
   };
 
-  if (!task) {
+  if (!task || ritualsTaskLocked) {
     return (
       <Page>
         <StatusBar style="dark" />
         <View style={{ paddingTop: Math.max(insets.top, 8) }}>
-          <GuestBackBar title="Task" sub="Not found" onBack={() => navigation.goBack()} />
+          <GuestBackBar
+            title="Task"
+            sub={ritualsTaskLocked ? 'Locked' : 'Not found'}
+            onBack={() => navigation.goBack()}
+          />
         </View>
+        {ritualsTaskLocked ? (
+          <ILText role="body" color={G.meta} align="center" style={{ marginTop: 40, paddingHorizontal: 24 }}>
+            The 5 Daily Rituals unlock after your Day 1 and Day 2 sessions (from Monday of Week 1).
+          </ILText>
+        ) : null}
       </Page>
     );
   }

@@ -12,7 +12,9 @@ import { PAYMENT_STATUS } from '../../constants/programs';
 import { fetchUserProfile } from '../../services/auth';
 import {
   getEnrolledPrograms,
+  learnerBatchLabel,
   learnerBhagText,
+  needsLepBatchSelection,
   programPaymentStatus,
 } from '../../utils/programAccess';
 import { formatCallableError, refreshMyAccess, updateMyWelcomeProfile } from '../../services/functions';
@@ -148,6 +150,8 @@ export default function FirstLoginWelcomeScreen({
   const domain = synced.domain;
   const bhag = synced.bhag;
   const needsDetails = !city || !domain || !bhag;
+  const pickBatch = needsLepBatchSelection(profile);
+  const batchLabel = learnerBatchLabel(profile, 'lep');
   const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
@@ -191,10 +195,27 @@ export default function FirstLoginWelcomeScreen({
       const data = await refreshMyAccess();
       const fresh = await fetchUserProfile(user.uid).catch(() => null);
       const next = fieldsFromZoho(fresh, data);
+      const pinnedCms =
+        profile?.cmsBatchId ||
+        profile?.programAccess?.lep?.cmsBatchId ||
+        fresh?.cmsBatchId ||
+        fresh?.programAccess?.lep?.cmsBatchId;
       const patch = {};
       if (next.city) patch.city = next.city;
       if (next.domain) patch.domain = next.domain;
       if (next.bhag) patch.bhag = next.bhag;
+      if (fresh?.programAccess) {
+        patch.programAccess = fresh.programAccess;
+        if (pinnedCms && patch.programAccess.lep) {
+          patch.programAccess.lep = {
+            ...patch.programAccess.lep,
+            cmsBatchId: pinnedCms,
+            batchId: pinnedCms,
+          };
+        }
+      }
+      if (fresh?.cmsBatchId) patch.cmsBatchId = fresh.cmsBatchId;
+      else if (pinnedCms) patch.cmsBatchId = pinnedCms;
       if (Object.keys(patch).length) patchProfile(patch);
     } finally {
       setSyncing(false);
@@ -224,7 +245,20 @@ export default function FirstLoginWelcomeScreen({
     logout();
   };
 
+  const finishWelcome = () => {
+    const done = onDoneProp || route?.params?.onDone;
+    if (typeof done === 'function') {
+      done();
+      return;
+    }
+    if (navigation?.canGoBack?.()) navigation.goBack();
+  };
+
   const goBatch = () => {
+    if (!pickBatch) {
+      finishWelcome();
+      return;
+    }
     if (typeof onGoBatch === 'function') {
       onGoBatch();
       return;
@@ -233,8 +267,7 @@ export default function FirstLoginWelcomeScreen({
       navigation.navigate('ChooseBatchDate');
       return;
     }
-    const fallback = onDoneProp || route?.params?.onDone;
-    if (typeof fallback === 'function') fallback();
+    finishWelcome();
   };
 
   return (
@@ -430,7 +463,11 @@ export default function FirstLoginWelcomeScreen({
               align="center"
               style={{ fontSize: 16, lineHeight: 24 }}
             >
-              {`Hi ${name}! I’m IL Guide, and I’ll walk with you every step. First, let’s lock in your batch date so your seat is yours.`}
+              {pickBatch
+                ? `Hi ${name}! I’m IL Guide, and I’ll walk with you every step. First, let’s lock in your batch date so your seat is yours.`
+                : batchLabel
+                  ? `Hi ${name}! I’m IL Guide. You’re on ${batchLabel} — let’s confirm your details and open your dashboard.`
+                  : `Hi ${name}! I’m IL Guide. Let’s confirm your details and open your dashboard.`}
             </ILText>
           </View>
 
@@ -524,7 +561,7 @@ export default function FirstLoginWelcomeScreen({
           </View>
 
           <ILButton
-            label="Choose my batch date"
+            label={pickBatch ? 'Choose my batch date' : 'Continue to my dashboard'}
             onPress={goBatch}
             style={{
               alignSelf: 'stretch',
@@ -533,26 +570,28 @@ export default function FirstLoginWelcomeScreen({
             }}
           />
 
-          <View
-            style={{
-              marginTop: 16,
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              borderRadius: 999,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-            }}
-          >
-            <MaterialIcons name="info-outline" size={15} color={ROSE} />
-            <ILText
-              role="bodySm"
-              color={ROSE}
-              style={{ marginLeft: 8, fontSize: 12 }}
+          {pickBatch ? (
+            <View
+              style={{
+                marginTop: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.06)',
+                borderRadius: 999,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+              }}
             >
-              Pick a batch to open your dashboard and community
-            </ILText>
-          </View>
+              <MaterialIcons name="info-outline" size={15} color={ROSE} />
+              <ILText
+                role="bodySm"
+                color={ROSE}
+                style={{ marginLeft: 8, fontSize: 12 }}
+              >
+                Pick a batch to open your dashboard and community
+              </ILText>
+            </View>
+          ) : null}
 
           <View
             style={{

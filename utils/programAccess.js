@@ -483,3 +483,38 @@ export function learnerBatchLabel(profile, programId) {
   const { pid, access } = batchAccess(profile, programId);
   return namedBatch(profile, pid, access);
 }
+
+/** CRM, Firestore, or app signup already tied this learner to an LEP cohort. */
+export function lepBatchIsAssigned(profile) {
+  if (!profile) return false;
+  const access = profile?.programAccess?.lep || {};
+  if (String(access.cmsBatchId || profile.cmsBatchId || '').trim()) return true;
+  if (cleanBatchLabel(access.zohoRawBatch) || cleanBatchLabel(access.zohoBatchKey)) return true;
+  const label = learnerBatchLabel(profile, 'lep');
+  if (label) return true;
+  const name = cleanBatchLabel(access.batchName) || cleanBatchLabel(access.batch);
+  if (name) return true;
+  const id = learnerBatchId(profile, 'lep');
+  return Boolean(id && id !== 'default');
+}
+
+/**
+ * LEP Registered vs Enrolled (same as web LMS):
+ * - Registered: `programAccess.lep.paymentStatus` → register (or legacy paymentStatus)
+ * - Enrolled: paymentStatus → paid (full programme fee)
+ * Home UI: `isLepEnrolled(profile)` in utils/lepState.js → EnrolledHome vs RegisteredHome.
+ */
+export function isLepRegistered(profile) {
+  return programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.REGISTER;
+}
+
+export function isLepEnrolledPayment(profile) {
+  return programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.PAID;
+}
+
+/** Onboarding batch picker — only when LEP is active and Zoho has no batch yet. */
+export function needsLepBatchSelection(profile) {
+  if (!profile || lepBatchIsAssigned(profile)) return false;
+  const pay = programPaymentStatus(profile, 'lep');
+  return pay === PAYMENT_STATUS.REGISTER || pay === PAYMENT_STATUS.PAID;
+}
