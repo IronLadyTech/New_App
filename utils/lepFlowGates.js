@@ -82,15 +82,23 @@ const LEP_OPEN_REGISTERED = {
   certificate: false,
 };
 
-/** Latest phase that is open on this date (for “current phase” UI). */
+/** Parallel track. Open on its own date, but it must not become "you are here". */
+const LEP_PARALLEL_PHASES = new Set(['community']);
+
+/**
+ * Furthest sequential phase open today.
+ * Community unlocks the Monday after Day 1 and sits after Week 4 in the list,
+ * so treating it as the next journey step marks earlier weeks done too soon.
+ */
 export function currentLepPhaseIdForDate(todayIso, day1Iso, enrolled) {
   let lastOpen = 'pre-program';
-  LEP_PHASE_ORDER.forEach((phaseId) => {
+  for (const phaseId of LEP_PHASE_ORDER) {
+    if (LEP_PARALLEL_PHASES.has(phaseId)) continue;
     const openRegistered = !!LEP_OPEN_REGISTERED[phaseId];
-    if (isLepJourneyPhaseOpen(phaseId, todayIso, day1Iso, enrolled, openRegistered)) {
-      lastOpen = phaseId;
-    }
-  });
+    const open = isLepJourneyPhaseOpen(phaseId, todayIso, day1Iso, enrolled, openRegistered);
+    if (!open) break;
+    lastOpen = phaseId;
+  }
   return lastOpen;
 }
 

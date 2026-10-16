@@ -164,24 +164,29 @@ function JourneyBody({ locked = false }) {
   const enrolled = !locked;
   const phaseId = currentPhaseId(PROGRAMS.LEP, enrolled, lepFlow);
   const phases = coursePhases(PROGRAMS.LEP);
+  const currentIndex = Math.max(0, phases.findIndex((p) => p.id === phaseId));
+  const currentPhase = phases[currentIndex];
+  const percent = Math.round(((currentIndex + 1) / Math.max(phases.length, 1)) * 100);
+  const batchKicker = cmsBatch?.name
+    ? String(cmsBatch.name)
+    : locked
+      ? 'Registered'
+      : 'Your progress';
   return (
     <>
       <View style={{ marginTop: 18 }}>
-        {locked ? (
-          <ProgressDark
-            kicker="Batch 42 · starts Sat 20 Sep"
-            title="Phase 1 of 11"
-            percent={5}
-            foot={`Registered · ${REG_OPEN_PHASES} phases open now · the rest unlock on enrollment`}
-          />
-        ) : (
-          <ProgressDark
-            kicker="Batch 42 · your progress"
-            title="Phase 4 of 11"
-            percent={36}
-            foot="Day 2 — Strategies and Tactics · 2 of 6 tasks done"
-          />
-        )}
+        <ProgressDark
+          kicker={batchKicker}
+          title={`Phase ${currentIndex + 1} of ${phases.length || 11}`}
+          percent={percent}
+          foot={
+            currentPhase
+              ? currentPhase.title
+              : locked
+                ? 'Registered · later phases unlock on enrollment'
+                : ''
+          }
+        />
       </View>
       <ThisPhaseBlock programId={PROGRAMS.LEP} phaseId={phaseId} style={{ marginTop: 22 }} />
 
@@ -198,7 +203,6 @@ function JourneyBody({ locked = false }) {
               ? true
               : !isPhaseOpen(p, enrolled, lepFlow);
           const now = p.id === phaseId;
-          const currentIndex = phases.findIndex((x) => x.id === phaseId);
           const done = !locked && i < currentIndex;
           return (
             <Pressable

@@ -23,6 +23,7 @@ export default function LandingGate({ profile, forcedClosed }) {
   const { setProgram } = useProgramNav();
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
+  const [entryProgram, setEntryProgram] = React.useState(null);
   const [closed, setClosed] = React.useState(false);
   const leave = (programId) => {
     if (typeof programId === 'string') setProgram(programId);
@@ -61,10 +62,15 @@ export default function LandingGate({ profile, forcedClosed }) {
       {node}
     </View>
   );
-  if (programs.length >= 2) {
+  if (programs.length >= 2 && step === 'welcome') {
     return wrap(
       <AccountFoundScreen
-        onDone={leave}
+        onDone={(programId) => {
+          const id = programId || primaryId;
+          setEntryProgram(id);
+          if (needsLepBatchSelection(profile)) setStep('batch');
+          else leave(id);
+        }}
         onBack={() => logout()}
         route={{
           params: {
@@ -99,7 +105,10 @@ export default function LandingGate({ profile, forcedClosed }) {
     return wrap(
       <SeatHeldScreen
         route={{ params: { batch } }}
-        onContinue={() => setStep('picker')}
+        onContinue={() => {
+          if (entryProgram) leave(entryProgram);
+          else setStep('picker');
+        }}
       />
     );
   }
