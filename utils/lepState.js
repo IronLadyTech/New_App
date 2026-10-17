@@ -1,14 +1,28 @@
 import { PAYMENT_STATUS } from '../constants/programs';
-import { normalizeProgramId, programPaymentStatus } from './programAccess';
+import {
+  learnerLeadDetails,
+  normalizeProgramId,
+  programPaymentStatus,
+} from './programAccess';
 
 export function lepFirstName(profile) {
-  const raw = profile?.displayName || profile?.firstName || '';
+  // Lab/demo journeys intentionally use Ananya; real leads use Zoho / profile name.
+  if (profile?.labProgram) {
+    const lab = String(profile?.firstName || profile?.displayName || 'Ananya')
+      .trim()
+      .split(/\s+/)[0];
+    return lab || 'Ananya';
+  }
+  const leadName = learnerLeadDetails(profile)?.name || '';
+  const raw = leadName || profile?.displayName || profile?.firstName || '';
   const first = String(raw).trim().split(/\s+/)[0];
-  return first || 'Ananya';
+  return first || 'there';
 }
 
 export function lepFullName(profile) {
-  return profile?.displayName || 'Ananya Rao';
+  if (profile?.labProgram) return profile?.displayName || 'Ananya Rao';
+  const leadName = learnerLeadDetails(profile)?.name || '';
+  return leadName || profile?.displayName || 'Iron Lady member';
 }
 
 export function getActiveProgram(profile) {

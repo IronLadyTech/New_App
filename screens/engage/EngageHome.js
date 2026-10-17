@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
@@ -10,6 +10,8 @@ import { ARMY_STORIES, PODCASTS } from '../lep/lepData';
 import { CSUITE_HOME } from '../guest/guestData';
 import { useLepNav } from '../lep/useLepNav';
 import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
+import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
+import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
 
 const CIRCLES = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 const INDUSTRIES = ['Finance', 'Technology', 'Marketing'];
@@ -37,34 +39,39 @@ function RedButton({ label, icon, onPress }) {
   );
 }
 
-function StoryCard({ story, last, onPress }) {
-  return (
-    <Pressable onPress={onPress} style={{ flex: 1, marginRight: last ? 0 : 10 }}>
-      <View style={{ height: 110 }}>
-        <CoverThumb source={story.img} height={110} radius={16} play time={story.time} />
-      </View>
-      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
-        {story.title}
-      </ILText>
-      <ILText role="bodySm" color={IL_BRAND.muted}>
-        {story.meta}
-      </ILText>
-    </Pressable>
-  );
-}
-
 function ArmyStories({ onWatch }) {
   return (
-    <View style={{ flexDirection: 'row', marginTop: 12 }}>
-      {ARMY_STORIES.map((story, i) => (
-        <StoryCard
-          key={story.title}
-          story={story}
-          last={i === ARMY_STORIES.length - 1}
-          onPress={() => onWatch?.({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
-        />
-      ))}
-    </View>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      nestedScrollEnabled
+      keyboardShouldPersistTaps="handled"
+      style={{ marginTop: 12, marginHorizontal: -IL_SPACE.page }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: IL_SPACE.page }}>
+        {ARMY_STORIES.map((story) => (
+          <Pressable
+            key={story.title}
+            onPress={() => onWatch?.({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
+            style={{ width: 220, marginRight: 12 }}
+          >
+            <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
+              <CoverThumb source={story.img} height={124} radius={16} play time={story.time} />
+            </View>
+            <ILText
+              role="label"
+              style={{ marginTop: 8, fontSize: 13, lineHeight: 18, height: 36 }}
+              numberOfLines={2}
+            >
+              {story.title}
+            </ILText>
+            <ILText role="bodySm" color={IL_BRAND.muted} style={{ height: 16 }} numberOfLines={1}>
+              {story.meta}
+            </ILText>
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
   );
 }
 
@@ -92,7 +99,7 @@ function CsuiteVideos({ onWatch }) {
               onPress={() => onWatch?.({ assetKey: c.assetKey, title: c.title, sub: c.who })}
               style={{ width: 220, marginRight: 12 }}
             >
-              <View style={{ height: 124 }}>
+              <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
                 <CoverThumb source={c.img} height={124} radius={16} play />
                 <View
                   style={{
@@ -110,10 +117,14 @@ function CsuiteVideos({ onWatch }) {
                   </ILText>
                 </View>
               </View>
-              <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
+              <ILText
+                role="label"
+                style={{ marginTop: 8, fontSize: 13, lineHeight: 18, height: 36 }}
+                numberOfLines={2}
+              >
                 {c.title}
               </ILText>
-              <ILText role="bodySm" color={IL_BRAND.muted}>
+              <ILText role="bodySm" color={IL_BRAND.muted} style={{ height: 16 }} numberOfLines={1}>
                 {c.who}
               </ILText>
             </Pressable>
@@ -125,8 +136,16 @@ function CsuiteVideos({ onWatch }) {
 }
 
 function EnrolledEngage({ navigation, onWatch }) {
-  const [added, setAdded] = useState(false);
   const [industry, setIndustry] = useState(null);
+  const { featured, nextOffline, highlights } = useArmyEventCalendar();
+  const chapter = nextOffline;
+  const spotlight = highlights.slice(0, 2);
+
+  const addCal = (event) => {
+    const url = armyEventCalendarUrl(event);
+    if (url) Linking.openURL(url).catch(() => {});
+  };
+
   return (
     <>
       <View
@@ -160,46 +179,70 @@ function EnrolledEngage({ navigation, onWatch }) {
         </ILText>
       </View>
 
-      <SoftCard>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
-            This Thursday
+      {featured ? (
+        <SoftCard
+          style={
+            featured.highlight
+              ? { borderWidth: 1.5, borderColor: IL_BRAND.red, backgroundColor: '#FDECEC' }
+              : undefined
+          }
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }} numberOfLines={1}>
+              {featured.eyebrow}
+            </ILText>
+            <ILText role="bodySm" color={IL_BRAND.muted}>
+              {featured.mode === 'offline' ? 'In person' : 'Live · Online'}
+            </ILText>
+          </View>
+          <ILText role="title" style={{ marginTop: 8 }}>
+            {featured.title}
           </ILText>
-          <ILText role="bodySm" color={IL_BRAND.muted}>
-            Live closed-door triad
+          <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 6 }}>
+            {featured.whenLabel}
           </ILText>
-        </View>
-        <ILText role="title" style={{ marginTop: 8 }}>
-          Community Circle · Thu 8–9 PM
-        </ILText>
-        <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 6 }}>
-          Small group sessions with women working through the same problems.
-        </ILText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
-          {CIRCLES.map((label) => (
-            <View
-              key={label}
-              style={{
-                marginRight: 8,
-                marginBottom: 8,
-                borderRadius: 999,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: '#F3EFE8',
-              }}
-            >
-              <ILText role="label" style={{ fontSize: 12 }}>
-                {label}
-              </ILText>
+          {featured.mode === 'online' && !featured.highlight ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
+              {CIRCLES.map((label) => (
+                <View
+                  key={label}
+                  style={{
+                    marginRight: 8,
+                    marginBottom: 8,
+                    borderRadius: 999,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    backgroundColor: '#F3EFE8',
+                  }}
+                >
+                  <ILText role="label" style={{ fontSize: 12 }}>
+                    {label}
+                  </ILText>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-        <RedButton
-          icon="event"
-          label={added ? 'Added to calendar' : 'Add to calendar'}
-          onPress={() => setAdded(true)}
-        />
-      </SoftCard>
+          ) : null}
+          <RedButton icon="event" label="Add to calendar" onPress={() => addCal(featured)} />
+        </SoftCard>
+      ) : null}
+
+      {spotlight.map((ev) => (
+        <SoftCard
+          key={ev.id}
+          style={{ borderWidth: 1.5, borderColor: IL_BRAND.red, backgroundColor: '#FDECEC' }}
+        >
+          <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }}>
+            SPOTLIGHT
+          </ILText>
+          <ILText role="title" style={{ marginTop: 8 }}>
+            {ev.title}
+          </ILText>
+          <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 6 }}>
+            {ev.whenLabel}
+          </ILText>
+          <RedButton icon="event" label="Add to calendar" onPress={() => addCal(ev)} />
+        </SoftCard>
+      ))}
 
       <SoftCard>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -221,22 +264,24 @@ function EnrolledEngage({ navigation, onWatch }) {
         <PeopleRow onLight />
       </SoftCard>
 
-      <SoftCard>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons name="place" size={18} color={IL_BRAND.red} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <ILText role="label">Bengaluru Chapter</ILText>
-            <ILText role="bodySm" color={IL_BRAND.muted}>
-              Next meetup: Sat 27 Sep
-            </ILText>
+      {chapter ? (
+        <SoftCard>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="place" size={18} color={IL_BRAND.red} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <ILText role="label">{chapter.city ? `${chapter.city} Chapter` : 'Chapter meetup'}</ILText>
+              <ILText role="bodySm" color={IL_BRAND.muted} numberOfLines={2}>
+                {chapter.title} · {chapter.whenLabel}
+              </ILText>
+            </View>
+            <Pressable accessibilityRole="button" onPress={() => addCal(chapter)}>
+              <ILText role="label" color={IL_BRAND.red}>
+                RSVP
+              </ILText>
+            </Pressable>
           </View>
-          <Pressable accessibilityRole="button">
-            <ILText role="label" color={IL_BRAND.red}>
-              RSVP
-            </ILText>
-          </Pressable>
-        </View>
-      </SoftCard>
+        </SoftCard>
+      ) : null}
 
       <ILText role="title" style={{ marginTop: 22 }}>
         Stories from the Army
@@ -301,8 +346,8 @@ function EnrolledEngage({ navigation, onWatch }) {
 function Episode({ ep, onPress }) {
   return (
     <Pressable onPress={onPress} style={{ width: 200, marginRight: 12 }}>
-      <View style={{ height: 110 }}>
-        <CoverThumb source={ep.img} height={110} radius={16} play />
+      <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
+        <CoverThumb source={ep.img} height={124} radius={16} play />
         <View
           style={{
             position: 'absolute',
@@ -319,13 +364,80 @@ function Episode({ ep, onPress }) {
           </ILText>
         </View>
       </View>
-      <ILText role="label" style={{ marginTop: 8, fontSize: 13 }} numberOfLines={2}>
+      <ILText role="label" style={{ marginTop: 8, fontSize: 13, lineHeight: 18, height: 36 }} numberOfLines={2}>
         {ep.title}
       </ILText>
-      <ILText role="bodySm" color={IL_BRAND.muted}>
+      <ILText role="bodySm" color={IL_BRAND.muted} style={{ height: 16 }} numberOfLines={1}>
         {ep.who} · {ep.meta}
       </ILText>
     </Pressable>
+  );
+}
+
+function RegisteredEventsList() {
+  const { upcoming, highlights } = useArmyEventCalendar();
+  const rows = useMemo(() => {
+    const hi = highlights.slice(0, 2);
+    const hiIds = new Set(hi.map((h) => h.id));
+    const rest = upcoming.filter((e) => !hiIds.has(e.id)).slice(0, 6 - hi.length);
+    return [...hi, ...rest];
+  }, [upcoming, highlights]);
+  if (!rows.length) {
+    return (
+      <SoftCard>
+        <ILText role="bodySm" color={IL_BRAND.muted}>
+          Upcoming Army events load from the Iron Lady calendar.
+        </ILText>
+      </SoftCard>
+    );
+  }
+  return (
+    <SoftCard>
+      {rows.map((ev, i) => {
+        const day = String(Number(ev.dateIso.slice(8, 10)));
+        const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][
+          Number(ev.dateIso.slice(5, 7)) - 1
+        ];
+        const hi = Boolean(ev.highlight);
+        return (
+          <View key={ev.id}>
+            {i > 0 ? <View style={{ height: 1, backgroundColor: IL_BRAND.line, marginVertical: 8 }} /> : null}
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 6,
+                paddingHorizontal: hi ? 8 : 0,
+                borderRadius: hi ? 12 : 0,
+                backgroundColor: hi ? '#FDECEC' : 'transparent',
+              }}
+              onPress={() => {
+                const url = armyEventCalendarUrl(ev);
+                if (url) Linking.openURL(url).catch(() => {});
+              }}
+            >
+              <DateBadge month={hi ? '★' : mon} day={day} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                {hi ? (
+                  <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 9, marginBottom: 2 }}>
+                    SPOTLIGHT
+                  </ILText>
+                ) : null}
+                <ILText role="label" numberOfLines={2}>
+                  {ev.title}
+                </ILText>
+                <ILText role="bodySm" color={IL_BRAND.muted} numberOfLines={1}>
+                  {ev.meta}
+                </ILText>
+              </View>
+              <ILText role="label" color={IL_BRAND.red}>
+                RSVP
+              </ILText>
+            </Pressable>
+          </View>
+        );
+      })}
+    </SoftCard>
   );
 }
 
@@ -365,33 +477,7 @@ function RegisteredEngage({ navigation, onWatch }) {
       <ILText role="title" style={{ marginTop: 22 }}>
         Events
       </ILText>
-      <SoftCard>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
-          <DateBadge month="APR" day="26" />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label">Winning Ways for Women</ILText>
-            <ILText role="bodySm" color={IL_BRAND.muted}>
-              Live webinar · April 26
-            </ILText>
-          </View>
-          <ILText role="label" color={IL_BRAND.red}>
-            RSVP
-          </ILText>
-        </View>
-        <View style={{ height: 1, backgroundColor: IL_BRAND.line, marginVertical: 8 }} />
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6 }}>
-          <DateBadge month="SEP" day="27" />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label">Bengaluru Chapter meetup</ILText>
-            <ILText role="bodySm" color={IL_BRAND.muted}>
-              Sat 27 Sep · 6 PM
-            </ILText>
-          </View>
-          <ILText role="label" color={IL_BRAND.red}>
-            RSVP
-          </ILText>
-        </View>
-      </SoftCard>
+      <RegisteredEventsList />
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 22 }}>
         <ILText role="title">Stories from the Army</ILText>

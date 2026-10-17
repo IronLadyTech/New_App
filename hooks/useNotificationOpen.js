@@ -5,6 +5,7 @@ import { normalizeGo } from '../utils/notificationGo';
 import { navigateFromGo } from '../utils/navigationFromGo';
 
 function notifications() {
+  // Expo Go Android SDK 53+ throws if expo-notifications is loaded at all.
   if (Platform.OS === 'web' || isExpoGo()) return null;
   try {
     return require('expo-notifications');

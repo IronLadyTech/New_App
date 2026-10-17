@@ -205,6 +205,7 @@ export default function GlassHeader({
   insetTop = true,
   scrollY,
   inert = false,
+  scrim = true,
 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -246,7 +247,7 @@ export default function GlassHeader({
         melting && { opacity: wrapOp, transform: [{ translateY: wrapY }] },
       ]}
     >
-      {floating ? (
+      {floating && scrim ? (
         // Keeps the clock and battery readable while content scrolls past the pill.
         <LinearGradient
           pointerEvents="none"

@@ -32,10 +32,7 @@ export function programStage(profile, programId) {
   if (profile?.labProgram === programId && (profile?.labState === 'enrolled' || profile?.labState === 'registered')) {
     return profile.labState;
   }
-  if (programId !== '100bm' && programId !== 'mbw') return 'enrolled';
-  return programPaymentStatus(profile, programId) === PAYMENT_STATUS.REGISTER
-    ? 'registered'
-    : 'enrolled';
+  return programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID ? 'enrolled' : 'registered';
 }
 
 export function ProgramNavProvider({ children }) {

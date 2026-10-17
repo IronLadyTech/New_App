@@ -25,8 +25,16 @@ function HomeRoot(props) {
 
 export default function HomeStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-      <Stack.Screen name="LepHome" component={HomeRoot} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        statusBarTranslucent: true,
+        statusBarColor: 'transparent',
+        statusBarStyle: 'dark',
+      }}
+    >
+      <Stack.Screen name="LepHome" component={HomeRoot} options={{ statusBarStyle: 'light' }} />
       <Stack.Screen name="Schedule" component={LepScheduleScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen

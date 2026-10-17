@@ -102,8 +102,9 @@ export default function PracticeScreen() {
     if (Object.keys(data).length) {
       demo.saveSubmission(programId, pKey, data);
     }
+    // Always stamp done so home practice / dues / IL Guide update immediately.
     if (dailyKey) demo.markDoneOnDay(programId, dailyKey);
-    else if (!Object.keys(data).length) demo.markDone(programId, pKey);
+    demo.markDone(programId, pKey);
     if (programId === 'lep') demo.recordLepActiveDay(today);
   };
 

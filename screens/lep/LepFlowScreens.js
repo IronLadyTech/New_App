@@ -11,26 +11,31 @@ import { GuestBackBar } from '../guest/GuestBits';
 import { Page, ProgressDark, RedCta, Seal, SoftChip, WhisperCard, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { PROGRAMS } from '../../constants/programs';
-import { coursePhases } from '../../constants/programCourseSlice';
-import { lepFirstName } from '../../utils/lepState';
+import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
 import { useAuth } from '../../context/AuthContext';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
+import { learnerBatchLabel, learnerProgramDates } from '../../utils/programAccess';
+import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
+import CourseCurriculum from './CourseCurriculum';
 import {
   FACE,
   QUIZ_Q,
   ROAD,
-  SCHEDULE_DAYS,
-  SCHEDULE_ITEMS,
   TODAY_ITEMS,
 } from './lepData';
-import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import {
-  buildScheduleDay,
+  buildScheduleFullAgenda,
   buildScheduleWeekStrip,
   markDaysWithSessions,
-  scheduleRecommendation,
+  scheduleAddDaysIso,
   scheduleTodayIso,
+  weekMondayIso,
 } from '../../utils/lepBatchScheduleView';
+import { resolveCmsBatchSessions } from '../../utils/cmsBatchSessions';
+import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 
 function Shell({ title, sub, right, children }) {
   const insets = useSafeAreaInsets();
@@ -54,162 +59,270 @@ function Shell({ title, sub, right, children }) {
   );
 }
 
+function scheduleItemAllowed(item, enrolled, registeredCodes) {
+  if (enrolled) return true;
+  if (item.tag === 'DEADLINE') return true;
+  if (item.code && registeredCodes.has(item.code)) return true;
+  return /orientation|day\s*1|day\s*2/i.test(String(item.title || ''));
+}
+
 function ScheduleRow({ item, nav }) {
   const openJoin = () => {
     if (item.joinLink) Linking.openURL(item.joinLink).catch(() => {});
+    else if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
     else nav.goCheckin();
   };
-  const openTask = () => {
-    if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
+  const openCalendar = () => {
+    if (!item.dateIso) {
+      nav.goSchedule?.();
+      return;
+    }
+    const url = lepSessionCalendarUrl({
+      iso: item.dateIso,
+      clockLabelText: item.startTime || item.time,
+      title: item.title || 'LEP session',
+      durationHours: item.durationHours || 1,
+    });
+    if (url) Linking.openURL(url).catch(() => {});
   };
-  const isTask = Boolean(item.taskId);
-  const showJoin = !isTask && (item.live || Boolean(item.joinLink));
+  const isDeadline = item.tag === 'DEADLINE' || Boolean(item.taskId);
+  // Red left rail only when live or starting soon (matches Schedule mockup).
+  const isLive = Boolean(item.live) || /\bIN\s+\d/i.test(String(item.tag || ''));
+  const showActions = !isDeadline;
+
   return (
-    <View style={{ flexDirection: 'row', marginTop: 14 }}>
-      <ILText role="label" color={G.meta} style={{ width: 72, fontSize: 11, marginTop: 12 }}>
+    <View style={{ flexDirection: 'row', marginTop: 12, alignItems: 'flex-start' }}>
+      <ILText
+        role="label"
+        color={G.ink}
+        style={{ width: 64, fontSize: 12, marginTop: 16, fontWeight: '600' }}
+      >
         {item.time}
       </ILText>
-      <WhiteCard
-        style={{ flex: 1, borderRadius: 18, padding: 14, borderLeftWidth: item.live ? 3 : 0, borderLeftColor: G.cta }}
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: G.white,
+          borderRadius: 18,
+          padding: 16,
+          borderLeftWidth: isLive ? 4 : 0,
+          borderLeftColor: G.cta,
+          shadowColor: '#113744',
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 2,
+        }}
       >
-        {item.day ? (
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginBottom: 6 }]}>
-            {item.day}
-          </ILText>
-        ) : null}
-        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, letterSpacing: 0.8 }]}>
           {item.tag}
         </ILText>
-        <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
+        <ILText role="label" color={G.ink} style={{ marginTop: 8, fontSize: 16, fontWeight: '700' }}>
           {item.title}
         </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-          {item.meta}
-        </ILText>
-        {showJoin ? (
-          <View style={{ flexDirection: 'row', marginTop: 12, flexWrap: 'wrap' }}>
+        {item.meta ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+            {item.meta}
+          </ILText>
+        ) : null}
+        {showActions ? (
+          <View style={{ flexDirection: 'row', marginTop: 14, flexWrap: 'wrap' }}>
             <Pressable
               onPress={openJoin}
-              style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 10, marginRight: 8, marginBottom: 8 }}
+              style={{
+                backgroundColor: G.cta,
+                borderRadius: 999,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                marginRight: 8,
+                marginBottom: 4,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
             >
-              <ILText role="label" color="#FFFFFF">
-                {item.taskId ? 'Open task' : 'Join'}
+              <MaterialIcons name="videocam" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 13 }}>
+                Join
+              </ILText>
+            </Pressable>
+            <Pressable
+              onPress={openCalendar}
+              style={{
+                borderRadius: 999,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                marginBottom: 4,
+                borderWidth: 1,
+                borderColor: G.dash,
+                backgroundColor: G.white,
+              }}
+            >
+              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
+                Add to calendar
               </ILText>
             </Pressable>
           </View>
         ) : item.taskId ? (
-          <Pressable onPress={openTask} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
+          <Pressable onPress={openJoin} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
             <ILText role="label" color={G.cta}>
               Open task →
             </ILText>
           </Pressable>
         ) : null}
-      </WhiteCard>
+      </View>
     </View>
   );
 }
 
 export function LepScheduleScreen() {
   const nav = useLepNav();
+  const { profile } = useAuth();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const todayIso = scheduleTodayIso();
   const [selectedIso, setSelectedIso] = useState(todayIso);
+  const [weekStartIso, setWeekStartIso] = useState(() => weekMondayIso(todayIso));
 
-  const useCms = Boolean(cmsBatch?.sessions?.length);
+  const batchLabel = learnerBatchLabel(profile, 'lep');
+  const lepAccess = profile?.programAccess?.lep || {};
+  const day1Iso =
+    (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
+    learnerProgramDates(profile, 'lep').start ||
+    String(lepAccess.day1Date || '').slice(0, 10) ||
+    inferLepDay1FromZohoRaw(
+      lepAccess.zohoRawBatch || lepAccess.zohoBatchKey || batchLabel || ''
+    ) ||
+    '';
+
+  const batchAnchor = useMemo(() => {
+    if (!cmsBatch && !day1Iso) return null;
+    return {
+      ...(cmsBatch || {}),
+      day1Date: cmsBatch?.day1Date || day1Iso,
+      sessions: cmsBatch?.sessions || [],
+      name: cmsBatch?.name || batchLabel || 'LEP',
+    };
+  }, [cmsBatch, day1Iso, batchLabel]);
+
+  const hasBatch = Boolean(batchAnchor?.day1Date || batchAnchor?.orientationDate);
+  const enrolled = isLepEnrolled(profile);
+  const registeredCodes = useMemo(() => new Set(['S0', 'S1', 'S2']), []);
+
   const weekDays = useMemo(() => {
-    const strip = buildScheduleWeekStrip(new Date(), selectedIso);
-    return useCms ? markDaysWithSessions(strip, cmsBatch) : strip.map((d) => ({ ...d, hasSession: false }));
-  }, [cmsBatch, selectedIso, useCms]);
+    const strip = buildScheduleWeekStrip(new Date(), weekStartIso, 0).map((d) => ({
+      ...d,
+      on: d.iso === selectedIso,
+    }));
+    if (!hasBatch) return strip.map((d) => ({ ...d, hasSession: false }));
+    const marked = markDaysWithSessions(strip, batchAnchor, day1Iso);
+    if (enrolled) return marked;
+    const allowed = new Set(
+      resolveCmsBatchSessions(batchAnchor, { day1Iso })
+        .filter((s) => registeredCodes.has(s.code))
+        .map((s) => s.date)
+    );
+    return marked.map((d) => ({ ...d, hasSession: allowed.has(d.iso) }));
+  }, [batchAnchor, day1Iso, selectedIso, weekStartIso, hasBatch, enrolled, registeredCodes]);
 
-  const items = useMemo(() => {
-    if (useCms) return buildScheduleDay(cmsBatch, selectedIso);
-    return SCHEDULE_ITEMS;
-  }, [cmsBatch, selectedIso, useCms]);
+  // Full program list from selected day forward (not limited to one week).
+  const visibleSections = useMemo(() => {
+    if (!hasBatch) return [];
+    return buildScheduleFullAgenda(batchAnchor, new Date(), day1Iso, selectedIso)
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => scheduleItemAllowed(item, enrolled, registeredCodes)),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [batchAnchor, day1Iso, selectedIso, hasBatch, enrolled, registeredCodes]);
 
-  const recommend = useMemo(() => (useCms ? scheduleRecommendation(cmsBatch) : null), [cmsBatch, useCms]);
+  const shiftWeek = (delta) => {
+    const nextStart = scheduleAddDaysIso(weekStartIso, delta * 7);
+    setWeekStartIso(nextStart);
+    const idx = weekDays.findIndex((d) => d.iso === selectedIso);
+    setSelectedIso(scheduleAddDaysIso(nextStart, idx < 0 ? 0 : idx));
+  };
 
-  const dayHeading = useMemo(() => {
-    const hit = weekDays.find((d) => d.iso === selectedIso);
-    if (!hit) return 'This day';
-    const label = hit.isToday ? 'Today' : `${hit.w} ${hit.d}`;
-    return label;
-  }, [weekDays, selectedIso]);
-
-  const sub = cmsBatch?.name ? `LEP · ${cmsBatch.name}` : 'All programs · this week';
+  const sub = cmsBatch?.name
+    ? `${cmsBatch.name} · full schedule`
+    : batchLabel
+      ? `${batchLabel} · full schedule`
+      : 'All programs · full schedule';
 
   return (
     <Shell title="Schedule" sub={sub}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-        {(useCms ? weekDays : SCHEDULE_DAYS).map((d) => {
-          const key = d.iso || `${d.w}-${d.d}`;
-          const on = useCms ? d.iso === selectedIso : d.on;
-          return (
-            <Pressable
-              key={key}
-              onPress={() => d.iso && setSelectedIso(d.iso)}
-              style={{
-                width: 46,
-                alignItems: 'center',
-                paddingVertical: 10,
-                borderRadius: 16,
-                backgroundColor: on ? G.dark : 'transparent',
-              }}
-            >
-              <ILText role="eyebrow" color={on ? 'rgba(255,255,255,0.55)' : G.meta} style={[af, { fontSize: 9 }]}>
-                {d.w}
-              </ILText>
-              <ILText
-                role="title"
-                color={on ? '#FFFFFF' : G.ink}
-                style={{ fontFamily: IL_FONTS.display, fontSize: 18, marginTop: 4 }}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+        <Pressable
+          onPress={() => shiftWeek(-1)}
+          accessibilityLabel="Previous week"
+          style={{ padding: 8, marginRight: 2 }}
+        >
+          <MaterialIcons name="chevron-left" size={22} color={G.ink} />
+        </Pressable>
+        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
+          {weekDays.map((d) => {
+            const on = d.iso === selectedIso;
+            return (
+              <Pressable
+                key={d.iso}
+                onPress={() => d.iso && setSelectedIso(d.iso)}
+                style={{
+                  width: 40,
+                  alignItems: 'center',
+                  paddingVertical: 10,
+                  borderRadius: 16,
+                  backgroundColor: on ? G.dark : 'transparent',
+                }}
               >
-                {d.d}
-              </ILText>
-              {d.hasSession ? (
-                <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: on ? '#FFFFFF' : G.cta, marginTop: 4 }} />
-              ) : null}
-            </Pressable>
-          );
-        })}
+                <ILText role="eyebrow" color={on ? 'rgba(255,255,255,0.55)' : G.meta} style={[af, { fontSize: 9 }]}>
+                  {d.w}
+                </ILText>
+                <ILText
+                  role="title"
+                  color={on ? '#FFFFFF' : G.ink}
+                  style={{ fontFamily: IL_FONTS.display, fontSize: 17, marginTop: 4 }}
+                >
+                  {d.d}
+                </ILText>
+                {d.hasSession ? (
+                  <View
+                    style={{
+                      width: 4,
+                      height: 4,
+                      borderRadius: 2,
+                      backgroundColor: on ? '#FFFFFF' : G.cta,
+                      marginTop: 4,
+                    }}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+        <Pressable
+          onPress={() => shiftWeek(1)}
+          accessibilityLabel="Next week"
+          style={{ padding: 8, marginLeft: 2 }}
+        >
+          <MaterialIcons name="chevron-right" size={22} color={G.ink} />
+        </Pressable>
       </View>
 
-      {recommend ? (
-        <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14, borderLeftWidth: 3, borderLeftColor: G.cta }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            Recommended next
-          </ILText>
-          <ILText role="label" color={G.ink} style={{ marginTop: 6 }}>
-            {recommend.title}
-          </ILText>
-          {recommend.when ? (
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {recommend.when}
-            </ILText>
-          ) : null}
-          {recommend.joinLink ? (
-            <Pressable
-              onPress={() => Linking.openURL(recommend.joinLink).catch(() => {})}
-              style={{ marginTop: 10, alignSelf: 'flex-start' }}
-            >
-              <ILText role="label" color={G.cta}>
-                Join session →
-              </ILText>
-            </Pressable>
-          ) : null}
-        </WhiteCard>
-      ) : null}
-
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10 }]}>
-        {dayHeading}
-      </ILText>
-      {items.length === 0 ? (
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 14, fontSize: 14, lineHeight: 20 }}>
-          {useCms
-            ? 'Nothing scheduled this day for your batch. Pick another day or check My Program → Sessions.'
-            : 'Your batch calendar will appear here once your cohort is linked in CMS.'}
+      {visibleSections.length === 0 ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 22, fontSize: 14, lineHeight: 20 }}>
+          {hasBatch
+            ? 'Nothing left on your batch calendar from this day. Use the arrows to jump weeks, or open My Program → Sessions.'
+            : 'Your batch calendar appears once Day 1 is set (CMS or Zoho).'}
         </ILText>
       ) : (
-        items.map((item) => <ScheduleRow key={item.id || item.title} item={item} nav={nav} />)
+        visibleSections.map((section) => (
+          <View key={section.iso} style={{ marginTop: 22 }}>
+            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 11, letterSpacing: 1 }]}>
+              {section.heading}
+            </ILText>
+            {section.items.map((item) => (
+              <ScheduleRow key={`${section.iso}-${item.id || item.title}`} item={item} nav={nav} />
+            ))}
+          </View>
+        ))
       )}
     </Shell>
   );
@@ -295,41 +408,14 @@ export function LepMilestoneScreen() {
 }
 
 export function LepPhaseDetailScreen() {
-  const nav = useLepNav();
+  const { profile } = useAuth();
+  const enrolled = isLepEnrolled(profile);
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
+  const batchLabel = cmsBatch?.name ? String(cmsBatch.name) : 'Your batch';
   return (
-    <Shell title="Leadership Essentials" sub="LEP · Batch 42 · Course">
-      <ProgressDark
-        kicker="Your progress"
-        title="Phase 4 of 11"
-        percent={36}
-        foot="36% complete · Next up: Day 2 Assignment"
-      />
-      <ILText role="title" color={G.ink} style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-        Course
-      </ILText>
-      <ILText role="bodySm" color={G.meta}>
-        Phase by phase, from Moodle
-      </ILText>
-      {coursePhases(PROGRAMS.LEP).map((p, i) => (
-        <Pressable key={p.id} onPress={() => nav.goCoursePhase(PROGRAMS.LEP, p.id)}>
-          <WhiteCard style={{ marginTop: 10, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialIcons
-              name={i === 3 ? 'radio-button-checked' : i < 3 ? 'check-circle' : 'radio-button-unchecked'}
-              size={22}
-              color={i <= 3 ? G.ink : '#C8C4B6'}
-            />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <ILText role="label" color={G.ink}>
-                {String(i + 1).padStart(2, '0')} {p.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                {p.sub}
-              </ILText>
-            </View>
-            <MaterialIcons name="chevron-right" size={18} color={G.meta} />
-          </WhiteCard>
-        </Pressable>
-      ))}
+    <Shell title="Leadership Essentials" sub={`LEP · ${batchLabel} · Course`}>
+      <CourseCurriculum programId={PROGRAMS.LEP} enrolled={enrolled} lepFlow={lepFlow} />
     </Shell>
   );
 }

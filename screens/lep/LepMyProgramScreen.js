@@ -10,9 +10,10 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { useCourses } from '../../context/CoursesContext';
-import { learnerBatchId, learnerBatchLabel } from '../../utils/programAccess';
+import { learnerBatchId, learnerBatchLabel, learnerProgramDates } from '../../utils/programAccess';
 import { splitBatchSessions } from '../../utils/eventVisibility';
 import { splitCmsBatchSessions } from '../../utils/cmsBatchSessions';
+import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { isLepEnrolled } from '../../utils/lepState';
 import {
@@ -20,7 +21,6 @@ import {
   ProgramFilter,
   LinkRow,
   Page,
-  ProgressDark,
   RedCta,
   UnderlineTabs,
   WhiteCard,
@@ -30,14 +30,15 @@ import {
   CIRCLE,
   COHORT_WEEK,
   FACE,
-  PHASES,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
-import { coursePhases, currentPhaseId, isPhaseOpen } from '../../constants/programCourseSlice';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
-import ThisPhaseBlock from '../program/ThisPhaseBlock';
+import CourseCurriculum from './CourseCurriculum';
+
+/** Registered learners: Orientation + Day 1 + Day 2 only (unlocked). */
+const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
 
 // Registered = partial payment = partial unlock. Everything after these stays locked.
 const REG_OPEN_PHASES = 3;
@@ -87,7 +88,7 @@ export default function LepMyProgramScreen() {
         {tab === 'Journey' ? (
           <JourneyBody locked={!enrolled} />
         ) : tab === 'Sessions' ? (
-          <SessionsBody preview={!enrolled} onEnroll={nav.goEnroll} />
+          <SessionsBody enrolled={enrolled} onEnroll={nav.goEnroll} />
         ) : (
           <CohortBody preview={!enrolled} onEnroll={nav.goEnroll} />
         )}
@@ -161,105 +162,68 @@ function JourneyBody({ locked = false }) {
   const nav = useLepNav();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
-  const enrolled = !locked;
-  const phaseId = currentPhaseId(PROGRAMS.LEP, enrolled, lepFlow);
-  const phases = coursePhases(PROGRAMS.LEP);
-  const currentIndex = Math.max(0, phases.findIndex((p) => p.id === phaseId));
-  const currentPhase = phases[currentIndex];
-  const percent = Math.round(((currentIndex + 1) / Math.max(phases.length, 1)) * 100);
-  const batchKicker = cmsBatch?.name
-    ? String(cmsBatch.name)
-    : locked
-      ? 'Registered'
-      : 'Your progress';
   return (
-    <>
-      <View style={{ marginTop: 18 }}>
-        <ProgressDark
-          kicker={batchKicker}
-          title={`Phase ${currentIndex + 1} of ${phases.length || 11}`}
-          percent={percent}
-          foot={
-            currentPhase
-              ? currentPhase.title
-              : locked
-                ? 'Registered · later phases unlock on enrollment'
-                : ''
-          }
-        />
-      </View>
-      <ThisPhaseBlock programId={PROGRAMS.LEP} phaseId={phaseId} style={{ marginTop: 22 }} />
-
-      <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-        Your phases
-      </ILText>
-      <ILText role="bodySm" color={G.meta}>
-        {locked ? 'First phases open now · the rest unlock on enrollment' : 'Phase by phase from the LEP course'}
-      </ILText>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
-        {(phases.length ? phases : PHASES).map((p, i) => {
-          const shut =
-            locked && (p.openRegistered === false || (p.openRegistered == null && i >= REG_OPEN_PHASES))
-              ? true
-              : !isPhaseOpen(p, enrolled, lepFlow);
-          const now = p.id === phaseId;
-          const done = !locked && i < currentIndex;
-          return (
-            <Pressable
-              key={p.id || p.n}
-              onPress={shut ? nav.goEnroll : () => nav.goCoursePhase(PROGRAMS.LEP, p.id || 'pre-program')}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                borderTopWidth: i ? 1 : 0,
-                borderTopColor: G.line,
-                opacity: shut ? 0.6 : 1,
-              }}
-            >
-              <MaterialIcons
-                name={shut ? 'lock' : done ? 'check-circle' : now ? 'radio-button-checked' : 'radio-button-unchecked'}
-                size={22}
-                color={shut ? G.meta : done || now ? G.ink : '#C8C4B6'}
-              />
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-                  Phase {String(i + 1).padStart(2, '0')}
-                </ILText>
-                <ILText role="label" color={G.ink} style={{ marginTop: 2 }}>
-                  {p.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                  {p.sub}
-                </ILText>
-              </View>
-              {shut ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
-            </Pressable>
-          );
-        })}
-      </WhiteCard>
-
-      {locked ? <UnlockRest onEnroll={nav.goEnroll} /> : null}
-    </>
+    <View style={{ marginTop: 18 }}>
+      <CourseCurriculum
+        programId={PROGRAMS.LEP}
+        enrolled={!locked}
+        lepFlow={lepFlow}
+        lockedFooter={locked ? <UnlockRest onEnroll={nav.goEnroll} /> : null}
+      />
+    </View>
   );
 }
 
-function SessionsBody({ preview = false, onEnroll }) {
+function filterRegisteredSessions(list) {
+  return (list || []).filter((s) => {
+    if (s?.code && REGISTERED_SESSION_CODES.has(s.code)) return true;
+    // Fallback when calendar events lack codes (title match).
+    const t = String(s?.title || '').toLowerCase();
+    return /orientation|day\s*1|day\s*2/i.test(t) && !/week\s*[2-9]|closure|progress|brand|pitch/i.test(t);
+  });
+}
+
+function SessionsBody({ enrolled = false, onEnroll }) {
   const nav = useLepNav();
   const { profile } = useAuth();
   const { events } = useCourses();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const batchId = learnerBatchId(profile, 'lep');
   const batchLabel = learnerBatchLabel(profile, 'lep');
+  const lepAccess = profile?.programAccess?.lep || {};
+  const day1Iso =
+    (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
+    learnerProgramDates(profile, 'lep').start ||
+    String(lepAccess.day1Date || '').slice(0, 10) ||
+    inferLepDay1FromZohoRaw(
+      lepAccess.zohoRawBatch || lepAccess.zohoBatchKey || batchLabel || ''
+    ) ||
+    '';
+
   const { upcoming, done } = useMemo(() => {
-    if (cmsBatch?.sessions?.length) {
-      return splitCmsBatchSessions(cmsBatch);
+    let split = { upcoming: [], done: [] };
+    if (day1Iso || cmsBatch?.day1Date || cmsBatch?.orientationDate || cmsBatch?.sessions?.length) {
+      const anchor = {
+        ...(cmsBatch || {}),
+        day1Date: cmsBatch?.day1Date || day1Iso,
+        sessions: cmsBatch?.sessions || [],
+      };
+      split = splitCmsBatchSessions(anchor, { day1Iso: day1Iso || String(anchor.day1Date || '').slice(0, 10) });
+    } else if (events?.length) {
+      split = splitBatchSessions(events, { batchId, batchName: batchLabel });
     }
-    return splitBatchSessions(events, { batchId, batchName: batchLabel });
-  }, [cmsBatch, events, batchId, batchLabel]);
+
+    if (!enrolled) {
+      split = {
+        upcoming: filterRegisteredSessions(split.upcoming),
+        done: filterRegisteredSessions(split.done),
+      };
+    }
+    return split;
+  }, [cmsBatch, day1Iso, events, batchId, batchLabel, enrolled]);
+
   const sessionBatchLabel = cmsBatch?.name || batchLabel;
-  const hasBatch = Boolean(cmsBatch?.id || (batchId && batchId !== 'default') || batchLabel);
+  const hasBatch = Boolean(cmsBatch?.id || day1Iso || (batchId && batchId !== 'default') || batchLabel);
 
   return (
     <>
@@ -268,29 +232,31 @@ function SessionsBody({ preview = false, onEnroll }) {
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
             Coming up
           </ILText>
-          {sessionBatchLabel ? (
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-              Live sessions for {sessionBatchLabel}
-            </ILText>
-          ) : null}
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
+            {enrolled
+              ? sessionBatchLabel
+                ? `All live sessions · ${sessionBatchLabel}`
+                : 'All live sessions for your batch'
+              : sessionBatchLabel
+                ? `Orientation, Day 1 & Day 2 · ${sessionBatchLabel}`
+                : 'Orientation, Day 1 & Day 2'}
+          </ILText>
         </View>
-        {preview || upcoming.length === 0 ? null : (
+        {upcoming.length === 0 ? null : (
           <LinkRow label="Add all to calendar" onPress={nav.goSchedule} />
         )}
       </View>
       {upcoming.length === 0 ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 14, lineHeight: 20 }}>
-          {hasBatch
-            ? 'No upcoming sessions on your batch yet.'
-            : 'Your batch sessions will show here once your batch is set in Zoho.'}
+          {!hasBatch
+            ? 'Your batch sessions will show here once your batch date is set.'
+            : done.length
+              ? 'No upcoming sessions — your intensive sessions are listed under Done.'
+              : 'No upcoming sessions on your batch yet.'}
         </ILText>
       ) : (
         upcoming.map((s) => {
           const open = () => {
-            if (preview) {
-              onEnroll?.();
-              return;
-            }
             if (s.linkUrl) Linking.openURL(s.linkUrl).catch(() => {});
           };
           return (
@@ -302,7 +268,6 @@ function SessionsBody({ preview = false, onEnroll }) {
                 padding: 16,
                 flexDirection: 'row',
                 alignItems: 'center',
-                opacity: preview ? 0.62 : 1,
               }}
             >
               {s.mon && s.day ? (
@@ -310,17 +275,17 @@ function SessionsBody({ preview = false, onEnroll }) {
                   style={{
                     width: 52,
                     borderRadius: 14,
-                    backgroundColor: preview ? G.mutedFill : G.cta,
+                    backgroundColor: G.cta,
                     alignItems: 'center',
                     paddingVertical: 8,
                   }}
                 >
-                  <ILText role="eyebrow" color={preview ? G.meta : '#FFFFFF'} style={[af, { fontSize: 9 }]}>
+                  <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
                     {s.mon}
                   </ILText>
                   <ILText
                     role="title"
-                    color={preview ? G.ink : '#FFFFFF'}
+                    color="#FFFFFF"
                     style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}
                   >
                     {s.day}
@@ -337,9 +302,7 @@ function SessionsBody({ preview = false, onEnroll }) {
                   </ILText>
                 ) : null}
               </View>
-              {preview ? (
-                <MaterialIcons name="lock-outline" size={18} color={G.meta} />
-              ) : s.linkUrl ? (
+              {s.linkUrl ? (
                 <Pressable
                   onPress={open}
                   style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
@@ -358,7 +321,7 @@ function SessionsBody({ preview = false, onEnroll }) {
           <ILText role="title" color={G.ink} style={{ marginTop: 26, fontFamily: IL_FONTS.display, fontSize: 22 }}>
             Done
           </ILText>
-          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
+          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
             {done.map((s, i) => (
               <View
                 key={s.id}
@@ -381,13 +344,23 @@ function SessionsBody({ preview = false, onEnroll }) {
                     </ILText>
                   ) : null}
                 </View>
-                {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
               </View>
             ))}
           </WhiteCard>
         </>
       ) : null}
-      {preview ? <UnlockRest onEnroll={onEnroll} /> : null}
+      {!enrolled ? (
+        <View style={{ marginTop: 18 }}>
+          <ILText role="bodySm" color={G.meta} style={{ fontSize: 13, lineHeight: 19 }}>
+            Later weekly sessions unlock when you complete enrollment.
+          </ILText>
+          {onEnroll ? (
+            <View style={{ marginTop: 12 }}>
+              <RedCta label="Complete enrollment" onPress={onEnroll} />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </>
   );
 }

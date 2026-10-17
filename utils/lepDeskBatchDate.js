@@ -3,6 +3,7 @@ import {
   day1FromOrientationThursday,
   parseISODate,
 } from './lepBatchSchedule';
+import { learnerProgramDates } from './programAccess';
 
 const MONTHS = {
   jan: 1,
@@ -124,4 +125,71 @@ export function formatZohoLepBatchLabel(raw) {
   const mon = Number(m[2]);
   if (!day || mon < 1 || mon > 12) return '';
   return `${ordinalDay(day)} ${MONTH_SHORT[mon - 1]} batch`;
+}
+
+function toDmy(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${pad2(d)}/${pad2(m)}/${y}`;
+}
+
+/** Same calendar day next month (14/10 → 14/11). */
+export function addOneCalendarMonth(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  const next = new Date(y, m - 1 + 1, d);
+  // Clamp overflow (e.g. 31 Jan → last day of Feb)
+  if (next.getDate() !== d) {
+    next.setDate(0);
+  }
+  return toIso(next.getFullYear(), next.getMonth() + 1, next.getDate());
+}
+
+/**
+ * Zoho Leads `LEP_Batch` from Day 1 Saturday:
+ * Wed before that Sat → same weekday one month later.
+ * e.g. Sat 17–Sun 18 Oct → `14/10/2026 - 14/11/2026`
+ */
+export function zohoLepBatchKeyFromDay1(day1Iso) {
+  const day1 = String(day1Iso || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return '';
+  const start = addCalendarDays(day1, -3); // Wednesday
+  const end = addOneCalendarMonth(start);
+  if (!start || !end) return '';
+  return `${toDmy(start)} - ${toDmy(end)}`;
+}
+
+/**
+ * One LEP batch date-range line for Profile (Your batches + Enrollment Status).
+ * Prefer live Zoho, then in-app pick, then CMS batch / Day 1.
+ */
+export function resolveLepBatchDateLine({ profile, cmsBatch, zohoLive } = {}) {
+  const lep = profile?.programAccess?.lep || {};
+  const zohoDates = learnerProgramDates(profile, 'lep');
+  const startDmy = toDmy(zohoDates.start);
+  const endDmy = toDmy(zohoDates.end);
+  const fromStartEnd =
+    startDmy && endDmy
+      ? `${startDmy} - ${endDmy}`
+      : zohoDates.start
+        ? zohoLepBatchKeyFromDay1(zohoDates.start)
+        : '';
+  const candidates = [
+    zohoLive,
+    lep.zohoRawBatch,
+    lep.zohoBatchKey,
+    cmsBatch?.zohoBatchKey,
+    fromStartEnd,
+    lep.day1Date ? zohoLepBatchKeyFromDay1(lep.day1Date) : '',
+    cmsBatch?.day1Date ? zohoLepBatchKeyFromDay1(cmsBatch.day1Date) : '',
+  ]
+    .map((v) => String(v || '').trim())
+    .filter(Boolean);
+  const dateLine = candidates.find((v) => /^\d{1,2}\/\d{1,2}\/\d{2,4}\s*[-–—]\s*\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) || '';
+  const live = String(zohoLive || '').trim();
+  return {
+    dateLine,
+    fromZoho: Boolean(dateLine && live && dateLine === live),
+    awaitingZoho: Boolean(dateLine && !(live && dateLine === live)),
+  };
 }

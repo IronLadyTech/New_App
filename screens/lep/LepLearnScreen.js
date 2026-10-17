@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, ScrollView, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Linking, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,7 +15,6 @@ import { useLepNav } from './useLepNav';
 import {
   CASES_ENR,
   COVER,
-  EVENT_NEAR_ENR,
   EVENT_ROOMS_ENR,
   FACE,
   LEARN_CASES_LOCKED,
@@ -28,7 +27,6 @@ import {
   LEARN_EVENT_ENR,
   LEARN_EVENT_REG,
   LEARN_EVENTS_LOCKED,
-  LEARN_EVENTS_OPEN,
   LEARN_FRESH,
   LEARN_FRESH_ENR,
   LEARN_WHISPER,
@@ -43,6 +41,8 @@ import {
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
+import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 
 export default function LepLearnScreen() {
@@ -115,13 +115,13 @@ export default function LepLearnScreen() {
 const REG_HEAD = {
   'For you': {
     title: 'Learn Library',
-    badge: 'MASTERCLASS REGISTERED',
-    sub: '4 foundation principles accessible · 23 unlocked upon enrollment',
+    badge: 'LEP REGISTERED',
+    sub: 'Preview principles and stories. Full library unlocks when enrollment completes.',
   },
   Principles: {
     title: 'The 27 Principles',
-    badge: '4 OF 27 OPEN',
-    sub: 'The four Foundation Principles from your Masterclass are open. The remaining 23 unlock the day your enrollment completes.',
+    badge: 'PREVIEW',
+    sub: 'Start with the foundations open to registered learners. The full 27 unlock when your enrollment completes.',
   },
   'Case studies': {
     title: 'Case studies',
@@ -193,17 +193,25 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
       <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
         PICKED FOR WOMEN IN TECHNOLOGY IN BENGALURU
       </ILText>
-      <Pressable onPress={() => onPractice?.('lep', 'lep-principles-video')}>
+      <Pressable
+        onPress={() =>
+          onWatch?.({
+            assetKey: 'csuite:radhika',
+            title: "Technology isn’t a cost. It’s a growth multiplier.",
+            sub: 'Radhika Sharma · Technology',
+          })
+        }
+      >
         <ILText role="label" color={G.cta} style={{ marginTop: 6, fontSize: 13 }}>
           Start watch →
         </ILText>
       </Pressable>
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Continue watching" accent="1 in progress" />
+        <SectionHead title="Continue watching" accent={`${LEARN_CONTINUE.length} open`} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
           {LEARN_CONTINUE.map((item) => (
             <ContinueCard
               key={item.title}
@@ -349,6 +357,7 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
 }
 
 function ContinueCard({ item, onPress }) {
+  const showProgress = item.open && Number(item.pct) > 0;
   return (
     <WhiteCard
       onPress={onPress}
@@ -357,68 +366,69 @@ function ContinueCard({ item, onPress }) {
         marginRight: 12,
         borderRadius: 22,
         overflow: 'hidden',
-        padding: item.img ? 0 : 16,
+        padding: 0,
         opacity: item.open ? 1 : 0.72,
       }}
     >
-      {item.img ? (
-        <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-          <CoverThumb source={item.img} play />
-        </View>
-      ) : null}
-      <View style={{ padding: item.img ? 14 : 0 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        {item.img ? null : (
-        <View
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: G.page,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="play-arrow" size={18} color={G.ink} />
-        </View>
-        )}
-        {item.left ? (
-          <View style={{ backgroundColor: G.mutedFill, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
-            <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 9 }]}>
-              {item.left}
-            </ILText>
+      <View style={{ width: '100%', height: 135, backgroundColor: G.dark }}>
+        {item.img ? <CoverThumb source={item.img} height="100%" play={!item.open ? false : true} /> : null}
+        {!item.open ? (
+          <View
+            style={{
+              position: 'absolute',
+              right: 10,
+              top: 10,
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              backgroundColor: 'rgba(0,0,0,0.45)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name="lock" size={14} color="#FFFFFF" />
           </View>
         ) : null}
       </View>
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 14, fontSize: 10 }]}>
-        {item.tag}
-      </ILText>
-      <ILText
-        role="title"
-        color={G.ink}
-        style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 18, lineHeight: 24 }}
-      >
-        {item.title}
-      </ILText>
-      {item.open ? (
-        <>
-          <View style={{ marginTop: 14, height: 4, backgroundColor: G.mutedFill, borderRadius: 2, overflow: 'hidden' }}>
-            <View style={{ width: `${item.pct}%`, height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
+      <View style={{ padding: 14, minHeight: 128, justifyContent: 'space-between' }}>
+        <View>
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]} numberOfLines={1}>
+            {item.tag}
+          </ILText>
+          <ILText
+            role="title"
+            color={G.ink}
+            numberOfLines={2}
+            style={{
+              marginTop: 6,
+              fontFamily: IL_FONTS.display,
+              fontSize: 17,
+              lineHeight: 22,
+              height: 44,
+            }}
+          >
+            {item.title}
+          </ILText>
+        </View>
+        {showProgress ? (
+          <View>
+            <View style={{ height: 4, backgroundColor: G.mutedFill, borderRadius: 2, overflow: 'hidden' }}>
+              <View style={{ width: `${item.pct}%`, height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
+            </View>
+            <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
+              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+                {item.pct}% completed
+              </ILText>
+              <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+                {item.cta}
+              </ILText>
+            </View>
           </View>
-          <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              {item.pct}% completed
-            </ILText>
-            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-              {item.cta}
-            </ILText>
-          </View>
-        </>
-      ) : (
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 14, fontSize: 12 }}>
-          {item.cta}
-        </ILText>
-      )}
+        ) : (
+          <ILText role="label" color={item.open ? G.cta : G.meta} style={{ fontSize: 12 }}>
+            {item.cta || (item.open ? 'Watch →' : 'Unlocks on enrollment')}
+          </ILText>
+        )}
       </View>
     </WhiteCard>
   );
@@ -536,22 +546,22 @@ function PrinciplesPane({ onEnroll, onPractice }) {
         </ILText>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}>
-            4 principles absorbed
+            0 principles absorbed
           </ILText>
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 28 }}>
-            15%
+            0%
           </ILText>
         </View>
         <View style={{ marginTop: 12, height: 4, backgroundColor: G.mutedFill, borderRadius: 2 }}>
-          <View style={{ width: '15%', height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
+          <View style={{ width: '0%', height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
         </View>
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13, lineHeight: 18 }}>
-          Carried over from Executive Masterclass · completed 4 / 4
+          Watch the open principles below. Progress counts as you complete them.
         </ILText>
       </WhiteCard>
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Open to you" accent="4 principles" />
+        <SectionHead title="Open to you" accent="Preview" />
       </View>
       {PRINCIPLES_OPEN.map((p) => (
         <NumberRow
@@ -679,10 +689,118 @@ function CasesPane({ onEnroll, onWatch }) {
   );
 }
 
-const EVENT_CITIES = ['Bengaluru', 'Mumbai', 'Pune', 'Delhi NCR', 'Hyderabad'];
+const EVENT_CITIES = ['All', 'Bengaluru', 'Mumbai', 'Pune', 'Delhi NCR', 'Hyderabad'];
+const MON_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+function cityMatches(eventCity, filterCity) {
+  if (!filterCity || filterCity === 'All') return true;
+  if (!eventCity) return filterCity === 'All';
+  const a = String(eventCity).toLowerCase();
+  const b = String(filterCity).toLowerCase().replace(/\s+ncr$/, '');
+  if (a === b) return true;
+  if (a.includes('delhi') && b.includes('delhi')) return true;
+  if ((a.includes('bengaluru') || a.includes('bangalore')) && b.includes('bengaluru')) return true;
+  return false;
+}
+
+function filterArmyEventsForCity(upcoming, city) {
+  return (upcoming || []).filter((ev) => {
+    // Online Army events are national — always listed; city chips filter offline only.
+    if (ev.mode === 'online') return true;
+    if (!city || city === 'All') return true;
+    return cityMatches(ev.city, city);
+  });
+}
+
+function openArmyEventCal(event) {
+  const url = armyEventCalendarUrl(event);
+  if (url) Linking.openURL(url).catch(() => {});
+}
+
+function ArmyEventRows({ events, emptyLabel = 'Upcoming Army events load from the Iron Lady calendar.' }) {
+  if (!events.length) {
+    return (
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13, lineHeight: 18 }}>
+        {emptyLabel}
+      </ILText>
+    );
+  }
+  return events.map((e) => {
+    const day = String(Number(e.dateIso.slice(8, 10)));
+    const mon = MON_SHORT[Number(e.dateIso.slice(5, 7)) - 1];
+    const hi = Boolean(e.highlight);
+    return (
+      <WhiteCard
+        key={e.id}
+        onPress={() => openArmyEventCal(e)}
+        style={{
+          marginTop: 10,
+          borderRadius: 18,
+          padding: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderWidth: hi ? 1.5 : 0,
+          borderColor: hi ? G.cta : 'transparent',
+          backgroundColor: hi ? G.pink : G.white,
+        }}
+      >
+        <View
+          style={{
+            width: 48,
+            height: 52,
+            borderRadius: 12,
+            backgroundColor: hi ? G.cta : G.pink,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ILText role="eyebrow" color={hi ? '#FFFFFF' : G.cta} style={[af, { fontSize: 9 }]}>
+            {hi ? '★' : mon}
+          </ILText>
+          <ILText
+            role="title"
+            color={hi ? '#FFFFFF' : G.ink}
+            style={{ fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 20 }}
+          >
+            {day}
+          </ILText>
+        </View>
+        <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+          {hi ? (
+            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9, marginBottom: 2 }]}>
+              SPOTLIGHT
+            </ILText>
+          ) : null}
+          <ILText role="label" color={G.ink} numberOfLines={2} style={{ fontSize: 15 }}>
+            {e.title}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 13 }} numberOfLines={2}>
+            {e.meta}
+          </ILText>
+        </View>
+        <View
+          style={{
+            borderWidth: 1.5,
+            borderColor: G.cta,
+            borderRadius: 999,
+            paddingHorizontal: 14,
+            paddingVertical: 7,
+          }}
+        >
+          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+            RSVP
+          </ILText>
+        </View>
+      </WhiteCard>
+    );
+  });
+}
 
 function EventsPane({ onEnroll, onTicket }) {
-  const [city, setCity] = useState('Bengaluru');
+  const [city, setCity] = useState('All');
+  const { upcoming } = useArmyEventCalendar();
+  const openEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 12), [upcoming, city]);
+
   return (
     <>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
@@ -710,57 +828,12 @@ function EventsPane({ onEnroll, onTicket }) {
       </ScrollView>
 
       <View style={{ marginTop: 22 }}>
-        <SectionHead title="Open to every member" accent={`${LEARN_EVENTS_OPEN.length} upcoming`} />
+        <SectionHead title="Open to every member" accent={`${openEvents.length} upcoming`} />
       </View>
-      {LEARN_EVENTS_OPEN.map((e) => (
-        <WhiteCard
-          key={e.title}
-          onPress={onTicket}
-          style={{ marginTop: 10, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' }}
-        >
-          <View
-            style={{
-              width: 48,
-              height: 52,
-              borderRadius: 12,
-              backgroundColor: G.pink,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-              {e.mon}
-            </ILText>
-            <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 20 }}>
-              {e.day}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
-            <ILText role="label" color={G.ink} numberOfLines={1} style={{ fontSize: 15 }}>
-              {e.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 13 }} numberOfLines={2}>
-              {e.meta}
-            </ILText>
-          </View>
-          <View
-            style={{
-              borderWidth: 1.5,
-              borderColor: G.cta,
-              borderRadius: 999,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-            }}
-          >
-            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-              RSVP
-            </ILText>
-          </View>
-        </WhiteCard>
-      ))}
+      <ArmyEventRows events={openEvents} />
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Cohort rooms" accent="Your batch" />
+        <SectionHead title="Cohort rooms" accent="After enrollment" />
       </View>
       {LEARN_EVENTS_LOCKED.map((e) => (
         <WhiteCard
@@ -1391,54 +1464,95 @@ function CasesEnrolled({ onMark }) {
 }
 
 function EventsEnrolled({ onCal, onTriad, onTicket }) {
+  const [city, setCity] = useState('All');
+  const { upcoming, featured, highlights } = useArmyEventCalendar();
+  const armyEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 12), [upcoming, city]);
+  const spotlight = highlights.slice(0, 2);
+
   return (
     <>
-      <View style={{ marginTop: 18, backgroundColor: G.dark, borderRadius: 28, padding: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View
+      {featured ? (
+        <View style={{ marginTop: 18, backgroundColor: G.dark, borderRadius: 28, padding: 18 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View
+              style={{
+                backgroundColor: G.cta,
+                borderRadius: 999,
+                paddingHorizontal: 10,
+                paddingVertical: 5,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF', marginRight: 6 }} />
+              <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]} numberOfLines={1}>
+                {featured.eyebrow}
+              </ILText>
+            </View>
+            <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ fontSize: 12 }}>
+              {featured.mode === 'offline' ? 'In person' : 'Live · Online'}
+            </ILText>
+          </View>
+          <ILText
+            role="display"
+            color="#FFFFFF"
+            style={{ marginTop: 16, fontFamily: IL_FONTS.display, fontSize: 26, lineHeight: 32 }}
+          >
+            {featured.title}
+          </ILText>
+          <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14 }}>
+            {featured.whenLabel}
+          </ILText>
+          <Pressable
+            onPress={() => openArmyEventCal(featured)}
             style={{
+              marginTop: 16,
               backgroundColor: G.cta,
               borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 5,
-              flexDirection: 'row',
+              paddingVertical: 14,
               alignItems: 'center',
             }}
           >
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFFFFF', marginRight: 6 }} />
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
-              4 DAYS TO LAUNCH
+            <ILText role="label" color="#FFFFFF">
+              Add to calendar
             </ILText>
-          </View>
-          <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ fontSize: 12 }}>
-            Live · Zoom
-          </ILText>
+          </Pressable>
+          <Pressable onPress={onCal} style={{ marginTop: 10, alignItems: 'center' }}>
+            <ILText role="label" color="rgba(255,255,255,0.75)" style={{ fontSize: 12 }}>
+              Open batch schedule →
+            </ILText>
+          </Pressable>
         </View>
-        <ILText
-          role="display"
-          color="#FFFFFF"
-          style={{ marginTop: 16, fontFamily: IL_FONTS.display, fontSize: 28, lineHeight: 34 }}
-        >
-          Day 1 & Day 2
-        </ILText>
-        <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14 }}>
-          Sat 20 – Sun 21 Sep · 9:00 AM – 7:00 PM IST
-        </ILText>
-        <Pressable
-          onPress={onCal}
+      ) : null}
+
+      {spotlight.map((ev) => (
+        <WhiteCard
+          key={ev.id}
           style={{
-            marginTop: 16,
-            backgroundColor: G.cta,
-            borderRadius: 999,
-            paddingVertical: 14,
-            alignItems: 'center',
+            marginTop: 12,
+            borderRadius: 22,
+            padding: 16,
+            borderWidth: 1.5,
+            borderColor: G.cta,
+            backgroundColor: G.pink,
           }}
+          onPress={() => openArmyEventCal(ev)}
         >
-          <ILText role="label" color="#FFFFFF">
-            Add both days to calendar
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+            SPOTLIGHT
           </ILText>
-        </Pressable>
-      </View>
+          <ILText
+            role="title"
+            color={G.ink}
+            style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
+          >
+            {ev.title}
+          </ILText>
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
+            {ev.whenLabel}
+          </ILText>
+        </WhiteCard>
+      ))}
 
       <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
@@ -1452,6 +1566,7 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
         <WhiteCard
           key={`${item.day}${item.title}`}
           style={{ marginTop: 10, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}
+          onPress={onTicket}
         >
           <View
             style={{
@@ -1496,49 +1611,36 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
 
       <View style={{ marginTop: 24, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          Near you · Bengaluru
+          Army calendar
         </ILText>
         <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          Change city
+          {armyEvents.length} upcoming
         </ILText>
       </View>
-      {EVENT_NEAR_ENR.map((item) => (
-        <WhiteCard
-          key={item.title}
-          style={{ marginTop: 10, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}
-          onPress={onTicket}
-        >
-          <View
-            style={{
-              width: 52,
-              borderRadius: 14,
-              backgroundColor: G.mutedFill,
-              alignItems: 'center',
-              paddingVertical: 8,
-            }}
-          >
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 8 }]}>
-              {item.mon}
-            </ILText>
-            <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18, lineHeight: 22 }}>
-              {item.day}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink}>
-              {item.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }}>
-              {item.meta}
-            </ILText>
-          </View>
-          <View style={{ borderWidth: 1, borderColor: G.cta, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-              {item.cta}
-            </ILText>
-          </View>
-        </WhiteCard>
-      ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
+        <View style={{ flexDirection: 'row' }}>
+          {EVENT_CITIES.map((c) => (
+            <Pressable
+              key={c}
+              onPress={() => setCity(c)}
+              style={{
+                marginRight: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 999,
+                backgroundColor: c === city ? G.dark : G.white,
+                borderWidth: 1,
+                borderColor: c === city ? G.dark : G.line,
+              }}
+            >
+              <ILText role="label" color={c === city ? '#FFFFFF' : G.ink} style={{ fontSize: 13 }}>
+                {c}
+              </ILText>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+      <ArmyEventRows events={armyEvents} />
 
       <NextCard
         kicker="AFTER DAY 2"

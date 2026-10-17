@@ -1,5 +1,10 @@
 import { PROGRAM_JOURNEY, isTaskDoneStatus } from '../constants/programs';
-import { getEnrolledPrograms, learnerBatchId, programPaymentStatus } from './programAccess';
+import {
+  getEnrolledPrograms,
+  learnerBatchId,
+  learnerDomainText,
+  programPaymentStatus,
+} from './programAccess';
 import { submissionsByTaskId } from '../services/programs';
 import { primaryProgramForGuide } from './ilGuideJourney';
 
@@ -23,6 +28,7 @@ export function buildILGuideContext({
   primaryProgramId = null,
   lepPractice = null,
   lepBatch = null,
+  lepDues = null,
 }) {
   const name =
     profile?.displayName ||
@@ -53,10 +59,27 @@ export function buildILGuideContext({
     ? submissionsByTaskId(subsByProgram[primary.id] || [])
     : {};
 
+  const dues = Array.isArray(lepDues) ? lepDues : [];
+  const openDue = dues.find((d) => d && !d.done && (d.taskId || d.title));
   const lmsNextTask = primaryTasks.find(
     (t) => !isTaskDoneStatus(primarySubs[t.id]?.status)
   );
-  const nextTask = journeyNextTask || lmsNextTask;
+  // Prefer an open due, then journey next (if not already done in dues), then LMS.
+  let nextTask = null;
+  if (openDue?.taskId || openDue?.title) {
+    nextTask = {
+      id: openDue.taskId || openDue.id || 'due',
+      title: openDue.title,
+      type: openDue.type || null,
+    };
+  } else if (
+    journeyNextTask?.id &&
+    !dues.some((d) => d?.taskId === journeyNextTask.id && d.done)
+  ) {
+    nextTask = journeyNextTask;
+  } else if (lmsNextTask) {
+    nextTask = lmsNextTask;
+  }
 
   const nextCalendarEvent = upcomingEventList?.[0];
   const upcomingEvent = nextCalendarEvent
@@ -85,7 +108,7 @@ export function buildILGuideContext({
     programs,
     primaryProgram: primary,
     location: profile?.city || profile?.location || null,
-    domain: profile?.domain || profile?.roleTitle || profile?.jobTitle || null,
+    domain: learnerDomainText(profile) || null,
     batchId: learnerBatchId(profile),
     phase: profile?.currentPhase || profile?.phase || null,
     nextTask: nextTask
@@ -99,6 +122,7 @@ export function buildILGuideContext({
     upcomingEvent,
     lepPractice,
     lepBatch,
+    lepDues,
   };
 
   // Strip null/empty optional fields

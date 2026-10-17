@@ -233,9 +233,23 @@ export function isItemDone(item, isDone) {
   return false;
 }
 
-export function isPracticeItemDone(item, todayIso, isDone, isDoneOnDay) {
+/**
+ * @param {(programId: string, taskId: string) => boolean} [lmsDone]
+ *   Optional LMS / Firestore submission check (same task ids).
+ */
+export function isPracticeItemDone(item, todayIso, isDone, isDoneOnDay, lmsDone) {
   if (item.dailyReset && item.practiceId && todayIso) {
-    return isDoneOnDay(item.programId, practiceDailyKey(item.practiceId, todayIso));
+    if (isDoneOnDay(item.programId, practiceDailyKey(item.practiceId, todayIso))) return true;
+  }
+  if (item.taskId && typeof lmsDone === 'function' && lmsDone(item.programId, item.taskId)) {
+    return true;
+  }
+  if (
+    item.practiceId &&
+    typeof lmsDone === 'function' &&
+    lmsDone(item.programId, practiceKey(item.practiceId))
+  ) {
+    return true;
   }
   return isItemDone(item, isDone);
 }

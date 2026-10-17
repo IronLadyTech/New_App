@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar as RNStatusBar,
+  View,
+} from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -11,17 +22,17 @@ import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseDemo } from '../../context/CourseDemoContext';
 import { lepFullName } from '../../utils/lepState';
-import { PAYMENT_STATUS, REGISTRATION_FEE } from '../../constants/programs';
+import { PAYMENT_STATUS, PROGRAMS } from '../../constants/programs';
 import { practiceKey } from '../../constants/practice';
 import {
+  isZohoBatchDateRange,
   learnerBatchId,
   learnerBhagText,
   learnerEnrollmentLabel,
   learnerLeadDetails,
   programPaymentStatus,
   programsOnProfile,
-  zohoPaymentDetail,
-  zohoRegistrationAmount,
+  zohoLeadBatchLabel,
 } from '../../utils/programAccess';
 import { buildProgramBatchCard, programBatchPhase, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
 import { db } from '../../services/firebase';
@@ -30,31 +41,59 @@ import { refreshMyAccess } from '../../services/functions';
 import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
 import { LepHeader, Page, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { useMyReceipts } from '../../hooks/useMyReceipts';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import { useNotificationBellBadge } from '../../hooks/useNotificationBellBadge';
+import { useMyReceipts } from '../../hooks/useMyReceipts';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
+import { updateUserProfile } from '../../services/firestore';
+import { lockLepBatchChoice } from '../../utils/lockLepBatch';
+import { resolveLepBatchDateLine } from '../../utils/lepDeskBatchDate';
+import {
+  PaymentBillingCard,
+  ProfileBhagCard,
+  ProfileStrengthCard,
+} from './LepProfileSections';
 
-function feeLabel(profile, programId) {
-  const access = profile?.programAccess?.[programId] || {};
-  const amount = Number(
-    zohoRegistrationAmount(profile, programId) ??
-      access.registrationFee ??
-      access.registrationAmount ??
-      REGISTRATION_FEE[programId] ??
-      REGISTRATION_FEE.lep
-  );
-  return `₹${amount.toLocaleString('en-IN')}`;
+function hasMasterclassOnProfile(source) {
+  if (!source) return false;
+  if (source.masterclassRegistered === true || source.masterclassCompleted === true) return true;
+  const mc = source.programAccess?.mc || source.programAccess?.masterclass;
+  if (mc && (mc.paymentStatus || mc.certificateUrl || mc.completed)) return true;
+  const programs = Array.isArray(source.programs) ? source.programs : [];
+  return programs.some((p) => /master\s*class|^mc$/i.test(String(p)));
 }
 
-const SETTINGS = [
-  { icon: 'receipt-long', label: 'Orders & receipts', go: 'goOrders' },
-  { icon: 'payments', label: 'Payment & enrollment', go: 'goEnroll' },
-  { icon: 'workspace-premium', label: 'Certificates', go: 'goCertificate', certs: true },
-  { icon: 'insights', label: 'Your progress', go: 'goProgress' },
-  { icon: 'notifications-none', label: 'Nudges & reminders', go: 'goNudges' },
-  { icon: 'help-outline', label: 'Help & Support' },
-  { icon: 'lock-outline', label: 'Privacy' },
-  { icon: 'description', label: 'Terms' },
-];
+/** Last menu box — Masterclass row only when the learner actually has MC. */
+function profileMenuRows(hasMasterclass) {
+  const rows = [];
+  if (hasMasterclass) {
+    rows.push({
+      icon: 'workspace-premium',
+      label: 'Masterclass Certificate',
+      badge: '1 Issued',
+      go: 'goCertificates',
+    });
+  }
+  rows.push(
+    {
+      icon: 'inventory-2',
+      label: 'Foundation Guides',
+      sub: 'Open after you start principles',
+      go: 'goFoundationGuides',
+    },
+    {
+      icon: 'notifications-none',
+      label: 'Notifications',
+      go: 'goNotifications',
+      notify: true,
+    },
+    { icon: 'help-outline', label: 'Help & Support', go: 'goHelp' },
+    { icon: 'shield', label: 'Privacy', go: 'goPrivacy' },
+    { icon: 'description', label: 'Terms', go: 'goTerms' }
+  );
+  return rows;
+}
 
 function useProgramGroups(profile, programIds) {
   const idsKey = programIds
@@ -104,7 +143,11 @@ export default function LepProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
-  const { orders, latest, signedIn } = useMyReceipts();
+  const hasUnread = useNotificationBellBadge();
+  const { latest } = useMyReceipts();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [localFacts, setLocalFacts] = useState({});
   const source = {
     ...(profile || {}),
     ...(accountProfile || {}),
@@ -117,14 +160,24 @@ export default function LepProfileScreen() {
   };
   const programs = programsOnProfile(source);
   const anyEnrolled = programs.some((p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.PAID);
-  const facts = learnerLeadDetails(source);
+  const lead = learnerLeadDetails(source);
+  const facts = {
+    ...lead,
+    domain: source?.domain || lead.industry || source?.leadershipRole || '',
+    ...localFacts,
+  };
   const name = facts.name || lepFullName(profile);
-  const headline = [facts.designation, facts.industry, facts.experience].filter(Boolean).join(' · ');
-  const filled = [facts.city, facts.experience, facts.designation, learnerBhagText(source)].filter(Boolean).length;
   const groups = useProgramGroups(source, programs.map((p) => p.id));
   const practiceBhag = String(demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || '').trim();
-  const bhag = learnerBhagText(source) || practiceBhag;
-  const fee = programs.length ? feeLabel(source, programs[0].id) : feeLabel(source, 'lep');
+  const bhag = learnerBhagText(source) || practiceBhag || localFacts.bhag || '';
+  const lepProgram = programs.find((p) => p.id === PROGRAMS.LEP) || programs[0] || { id: 'lep', title: 'Leadership Essentials' };
+  const hasMasterclass = hasMasterclassOnProfile(source);
+  const menuRows = profileMenuRows(hasMasterclass);
+  const lepBatchLine = resolveLepBatchDateLine({
+    profile: source,
+    cmsBatch,
+    zohoLive: zohoLeadBatchLabel(source, PROGRAMS.LEP),
+  });
 
   useEffect(() => {
     if (!user?.uid) return undefined;
@@ -169,32 +222,93 @@ export default function LepProfileScreen() {
     ]);
   };
 
+  const onDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'Email support@ironlady.tech to delete your account. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Email support',
+          style: 'destructive',
+          onPress: () =>
+            Linking.openURL(
+              'mailto:support@ironlady.tech?subject=Delete%20my%20Iron%20Lady%20account'
+            ).catch(() => {}),
+        },
+      ]
+    );
+  };
+
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const buildNumber =
+    Constants.expoConfig?.android?.versionCode ||
+    Constants.expoConfig?.ios?.buildNumber ||
+    '';
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    RNStatusBar.setTranslucent(true);
+    RNStatusBar.setBackgroundColor('transparent');
+    RNStatusBar.setBarStyle('light-content');
+    return undefined;
+  }, []);
+
+  const lockBatch = (picked) => {
+    setBatchOpen(false);
+    lockLepBatchChoice({ user, profile: source, patchProfile, picked }).catch(() => {});
+  };
+
   return (
+    <View style={{ flex: 1 }}>
     <Page>
-      <StatusBar style="dark" />
-      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={() => {}} />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <LepHeader
+        floating
+        scrim={false}
+        photoUrl={profile?.photoURL}
+        onNotifications={nav.goNotifications}
+        onProfile={() => {}}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-        paddingTop: headerPad + 4,
+          paddingTop: 0,
           paddingHorizontal: 20,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 24) + 24,
         }}
       >
-        <View style={{ backgroundColor: G.dark, borderRadius: 28, padding: 18 }}>
+        <View
+          style={{
+            backgroundColor: G.dark,
+            marginHorizontal: -20,
+            paddingHorizontal: 20,
+            paddingTop: headerPad + 20,
+            paddingBottom: 22,
+            borderBottomLeftRadius: 12,
+            borderBottomRightRadius: 12,
+          }}
+        >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <SoftChip onDark icon="fiber-manual-record">
               {anyEnrolled ? 'Your profile' : 'Registered participant'}
             </SoftChip>
-            {anyEnrolled ? (
-              <MaterialIcons name="settings" size={18} color="rgba(255,255,255,0.7)" />
-            ) : (
-              <Pressable onPress={onLogout} hitSlop={8}>
-                <ILText role="label" color="#F8D6D4" style={{ fontSize: 13 }}>
-                  Log out
-                </ILText>
-              </Pressable>
-            )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Settings"
+              onPress={nav.goNudges}
+              hitSlop={8}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialIcons name="settings" size={18} color="rgba(255,255,255,0.85)" />
+            </Pressable>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16 }}>
             <Pressable
@@ -247,123 +361,47 @@ export default function LepProfileScreen() {
               <ILText role="title" color="#FFFFFF" numberOfLines={2} style={{ fontFamily: IL_FONTS.display, fontSize: 24 }}>
                 {name}
               </ILText>
-              {headline ? (
-                <ILText role="bodySm" color="rgba(255,255,255,0.65)" numberOfLines={2} style={{ marginTop: 4, fontSize: 12 }}>
-                  {headline}
-                </ILText>
-              ) : null}
             </View>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, gap: 8 }}>
-            {programs.map((p) => (
-              <Badge key={p.id} on>
-                {`${p.code} · ${learnerEnrollmentLabel(source, p.id)}`}
-              </Badge>
-            ))}
+            {programs.map((p) => {
+              const label = learnerEnrollmentLabel(source, p.id);
+              const text =
+                label === 'Enrolled'
+                  ? `${p.code} Enrolled`
+                  : label === 'Registered'
+                    ? `${p.code} Registered`
+                    : `${p.code} Applicant`;
+              return (
+                <Badge key={p.id} on={label !== 'Enrolled'}>
+                  {text}
+                </Badge>
+              );
+            })}
+            {hasMasterclass ? <Badge>Masterclass Registered</Badge> : null}
           </View>
         </View>
 
-        {latest ? (
-          <Pressable onPress={() => nav.goReceipt(latest)}>
-            <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18, borderWidth: 1, borderColor: G.cta }}>
-              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-                Razorpay receipt
-              </ILText>
-              <ILText role="title" color={G.ink} style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 28 }}>
-                ₹{Number(latest.amountRupees || 0).toLocaleString('en-IN')} paid
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 18 }}>
-                {latest.programTitle || latest.description || 'Payment'}
-                {latest.transactionId ? ` · ${latest.transactionId}` : ''}
-              </ILText>
-              <ILText role="label" color={G.cta} style={{ marginTop: 12 }}>
-                View receipt →
-              </ILText>
-            </WhiteCard>
-          </Pressable>
-        ) : null}
-
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            Your receipts
-          </ILText>
-          {(orders.length ? orders : latest ? [latest] : []).map((row, i) => (
-            <Pressable
-              key={row.id || row.transactionId}
-              onPress={() => nav.goReceipt(row)}
-              style={{
-                marginTop: 14,
-                paddingTop: i ? 14 : 0,
-                borderTopWidth: i ? 1 : 0,
-                borderTopColor: G.line,
-              }}
-            >
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <View style={{ flex: 1, paddingRight: 12 }}>
-                  <ILText role="label" color={G.ink}>
-                    {row.description || row.programTitle || 'Payment'}
-                  </ILText>
-                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                    {row.transactionId ? `Txn ${row.transactionId}` : 'Paid'}
-                  </ILText>
-                </View>
-                <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 20 }}>
-                  ₹{Number(row.amountRupees || 0).toLocaleString('en-IN')}
-                </ILText>
-              </View>
-              <ILText role="label" color={G.cta} style={{ marginTop: 10 }}>
-                View receipt →
-              </ILText>
-            </Pressable>
-          ))}
-          {!orders.length && !latest ? (
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
-              {signedIn ? 'No saved Razorpay receipt on this number yet.' : `Open Payment & enrollment for the ${fee} registration receipt.`}
-            </ILText>
-          ) : null}
-        </WhiteCard>
-
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-                  Profile strength
-                </ILText>
-                {filled === 4 ? (
-                  <ILText role="label" color={G.cta} style={[af, { fontSize: 12, marginLeft: 6 }]}>
-                    Complete
-                  </ILText>
-                ) : null}
-              </View>
-            </View>
-            <ILText role="display" color={G.cta} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
-              {Math.round((filled / 4) * 100)}%
-            </ILText>
-          </View>
-          <AddRow icon="place" title="Current city" sub={facts.city} />
-          <AddRow icon="work-outline" title="Years of experience" sub={facts.experience} />
-          <AddRow icon="badge" title="Designation" sub={facts.designation} />
-        </WhiteCard>
-
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            MY B-HAG (BIG HAIRY AUDACIOUS GOAL)
-          </ILText>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            {bhag || 'Write your B-HAG'}
-          </ILText>
-          <Pressable onPress={() => nav.goPractice('lep', 'lep-bhag')} style={{ marginTop: 10 }}>
-            <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
-              {bhag ? 'Refine it →' : 'Write my B-HAG →'}
-            </ILText>
-          </Pressable>
-        </WhiteCard>
-
+        <ProfileStrengthCard
+          facts={{ ...facts, bhag }}
+          onSaved={(partial) => {
+            setLocalFacts((prev) => ({ ...prev, ...partial }));
+            patchProfile(partial);
+            if (user?.uid && user.uid !== 'preview') {
+              updateUserProfile(user.uid, partial).catch(() => {});
+            }
+          }}
+        />
+        <ProfileBhagCard
+          bhag={bhag}
+          onSaved={(partial) => {
+            setLocalFacts((prev) => ({ ...prev, ...partial }));
+            patchProfile(partial);
+            if (user?.uid && user.uid !== 'preview') {
+              updateUserProfile(user.uid, partial).catch(() => {});
+            }
+          }}
+        />
         {programs.length ? (
           <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -377,6 +415,16 @@ export default function LepProfileScreen() {
               const batchCard = buildProgramBatchCard(source, program.id, groups[program.id]);
               const phase = programBatchPhase(source, program.id);
               const current = phase === 'current';
+              const isLep = program.id === PROGRAMS.LEP;
+              // Same date source as Enrollment Status — no double story.
+              const { dateLine, awaitingZoho } = isLep
+                ? lepBatchLine
+                : {
+                    dateLine: isZohoBatchDateRange(zohoLeadBatchLabel(source, program.id) || '')
+                      ? zohoLeadBatchLabel(source, program.id)
+                      : '',
+                    awaitingZoho: false,
+                  };
               return (
                 <View
                   key={program.id}
@@ -425,129 +473,150 @@ export default function LepProfileScreen() {
                   </ILText>
                   <ILText
                     role="bodySm"
-                    color={batchCard.heading ? G.ink : G.meta}
+                    color={dateLine ? G.ink : G.meta}
                     style={{ marginTop: 6, fontSize: 15, lineHeight: 22 }}
                   >
-                    {batchCard.heading || 'Batch dates will show here.'}
+                    {dateLine
+                      ? awaitingZoho
+                        ? `${dateLine} · syncing to Zoho`
+                        : dateLine
+                      : 'Not set in Zoho yet'}
                   </ILText>
-                  {batchCard.body ? (
+                  {dateLine && batchCard.body ? (
                     <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
                       {batchCard.body}
                     </ILText>
                   ) : null}
-                  {enrolled ? null : (
-                    <Pressable onPress={nav.goEnroll} style={{ marginTop: 10 }}>
+                  {isLep && !enrolled ? (
+                    <Pressable onPress={() => setBatchOpen(true)} style={{ marginTop: 10 }}>
+                      <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+                        {dateLine ? 'Change batch date →' : 'Choose batch date →'}
+                      </ILText>
+                    </Pressable>
+                  ) : null}
+                  {!enrolled ? (
+                    <Pressable onPress={nav.goEnroll} style={{ marginTop: 8 }}>
                       <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
                         Complete your enrollment →
                       </ILText>
                     </Pressable>
-                  )}
+                  ) : null}
                 </View>
               );
             })}
           </WhiteCard>
         ) : null}
-
-        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialIcons name="receipt-long" size={16} color={G.ink} />
-            <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-              PAYMENT & BILLING
-            </ILText>
-          </View>
-          {(programs.length ? programs : []).map((program, i) => {
-            const pay = zohoPaymentDetail(source, program.id);
-            const paid =
-              /completed|paid/i.test(pay.status || '') ||
-              programPaymentStatus(source, program.id) === PAYMENT_STATUS.PAID;
-            const note = [pay.paidOn, pay.txn].filter(Boolean).join(' · ');
-            return (
-              <View
-                key={program.id}
-                style={{
-                  marginTop: 14,
-                  paddingTop: i ? 14 : 0,
-                  borderTopWidth: i ? 1 : 0,
-                  borderTopColor: G.line,
-                }}
-              >
-                <ILText role="label" color={G.ink}>
-                  {program.title}
-                </ILText>
-                <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                      Registration fee
-                    </ILText>
-                    <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }}>
-                      {note || pay.status || (paid ? 'Paid' : 'Due')}
-                    </ILText>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-                      {pay.amount != null ? `₹${pay.amount.toLocaleString('en-IN')}` : feeLabel(source, program.id)}
-                    </ILText>
-                    <ILText role="eyebrow" color={paid ? '#1B7A4A' : G.cta} style={[af, { fontSize: 9, marginTop: 4 }]}>
-                      {pay.status || (paid ? 'PAID' : 'DUE')}
-                    </ILText>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </WhiteCard>
+        {lepProgram ? (
+          <PaymentBillingCard
+            program={lepProgram}
+            source={source}
+            latest={latest}
+            onPay={nav.goEnroll}
+            onReceipt={nav.goReceipt}
+          />
+        ) : null}
 
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, overflow: 'hidden' }}>
-          {(anyEnrolled
-            ? [
-                { icon: 'workspace-premium', label: 'Certificates', extra: '0 issued', go: 'goCertificate' },
-                { icon: 'file-download', label: 'Downloads', extra: 'Offline guides' },
-                { icon: 'notifications-none', label: 'Notifications', go: 'goNudges' },
-                { icon: 'help-outline', label: 'Help & Support' },
-                { icon: 'lock-outline', label: 'Privacy' },
-                { icon: 'description', label: 'Terms' },
-              ]
-            : SETTINGS
-          ).map((row, i) => (
+          {menuRows.map((row, i) => (
             <Pressable
               key={row.label}
+              accessibilityRole="button"
+              accessibilityLabel={row.label}
               onPress={() => row.go && nav[row.go]?.()}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
                 paddingHorizontal: 16,
                 paddingVertical: 14,
+                minHeight: 52,
                 borderTopWidth: i ? 1 : 0,
                 borderTopColor: G.line,
               }}
             >
               <MaterialIcons name={row.icon} size={20} color={G.ink} />
-              <ILText role="label" color={G.ink} style={{ flex: 1, marginLeft: 12 }}>
-                {row.label}
-              </ILText>
-              {row.extra ? (
-                <ILText role="bodySm" color={G.meta} style={{ marginRight: 6, fontSize: 12 }}>
-                  {row.extra}
-                </ILText>
+              <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <ILText role="label" color={G.ink}>
+                    {row.label}
+                  </ILText>
+                  {row.badge ? (
+                    <View
+                      style={{
+                        marginLeft: 8,
+                        backgroundColor: G.cta,
+                        borderRadius: 999,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                      }}
+                    >
+                      <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 10 }]}>
+                        {row.badge}
+                      </ILText>
+                    </View>
+                  ) : null}
+                </View>
+                {row.sub ? (
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                    {row.sub}
+                  </ILText>
+                ) : null}
+              </View>
+              {row.notify && hasUnread ? (
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: G.cta,
+                    marginRight: 8,
+                  }}
+                />
               ) : null}
               <MaterialIcons name="chevron-right" size={18} color={G.meta} />
             </Pressable>
           ))}
         </WhiteCard>
 
-        <Pressable onPress={onLogout} style={{ marginTop: 22, alignItems: 'center', paddingVertical: 8 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          onPress={onLogout}
+          style={{ marginTop: 22, alignItems: 'center', paddingVertical: 8 }}
+        >
           <ILText role="label" color={G.ink}>
             Log out
           </ILText>
         </Pressable>
-        <ILText role="bodySm" color={G.cta} style={{ textAlign: 'center', fontSize: 13, marginTop: 4 }}>
-          Delete account
-        </ILText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+          onPress={onDeleteAccount}
+          style={{ alignItems: 'center', paddingVertical: 6 }}
+        >
+          <ILText role="bodySm" color={G.cta} style={{ fontSize: 13 }}>
+            Delete account
+          </ILText>
+        </Pressable>
         <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', fontSize: 11, marginTop: 10, marginBottom: 8 }}>
-          Iron Lady Executive App · Version 2.4.0
+          {`Iron Lady · Version ${appVersion}${buildNumber ? ` (build ${buildNumber})` : ''}`}
         </ILText>
       </ScrollView>
     </Page>
+    {batchOpen ? (
+      <Modal
+        visible
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setBatchOpen(false)}
+      >
+        <ChooseBatchDateScreen
+          allowChange
+          onBack={() => setBatchOpen(false)}
+          onLock={lockBatch}
+        />
+      </Modal>
+    ) : null}
+    </View>
   );
 }
 
@@ -570,36 +639,3 @@ function Badge({ children, on }) {
   );
 }
 
-function AddRow({ icon, title, sub }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
-          backgroundColor: G.mutedFill,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <MaterialIcons name={icon} size={16} color={G.ink} />
-      </View>
-      <View style={{ flex: 1, marginLeft: 10 }}>
-        <ILText role="label" color={G.ink}>
-          {title}
-        </ILText>
-        {sub ? (
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            {sub}
-          </ILText>
-        ) : null}
-      </View>
-      {!sub ? (
-        <ILText role="label" color={G.cta} style={[af, { fontSize: 12 }]}>
-          + add
-        </ILText>
-      ) : null}
-    </View>
-  );
-}

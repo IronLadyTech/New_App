@@ -19,7 +19,8 @@ export function lepRitualsUnlockIso(day1Iso) {
 export function resolveLepDay1Iso({ cmsBatch, group, zohoRawBatch } = {}) {
   const fromCms = cmsBatch?.day1Date ? String(cmsBatch.day1Date).slice(0, 10) : null;
   if (fromCms) return fromCms;
-  const raw = zohoRawBatch ?? group?.zohoRawBatch;
+  // Explicit null/'' means "no Zoho range" — do not fall back to a stale group copy.
+  const raw = zohoRawBatch !== undefined ? zohoRawBatch : group?.zohoRawBatch;
   return inferLepDay1FromZohoRaw(raw) || null;
 }
 

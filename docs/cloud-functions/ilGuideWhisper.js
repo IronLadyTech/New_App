@@ -87,14 +87,63 @@ function generate(ctx, job, quotes = DEFAULT_QUOTES) {
     };
   }
 
-  if (next && pct < 100) {
+  const dues = Array.isArray(ctx.lepDues) ? ctx.lepDues : [];
+  const openDue = dues.find((d) => d && !d.done);
+  const nextOpen =
+    next && !dues.some((d) => d && d.taskId === next.id && d.done) ? next : null;
+  const lp = ctx.lepPractice;
+
+  if (lp && lp.practiceDoneToday < lp.practiceTotalToday) {
+    const left = lp.practiceTotalToday - lp.practiceDoneToday;
     return {
-      id: `home-progress-${next.id}`,
+      id: 'home-lep-practice-open',
       message: name
-        ? `${name}, you're at ${pct}% in ${prog}. Next up: ${next.title}.`
-        : `You're at ${pct}% in ${prog}. Next up: ${next.title}.`,
+        ? `${name}, you have ${left} practice item(s) left today.`
+        : `You have ${left} practice item(s) left today.`,
       job: 'nudge',
-      taskId: next.id,
+    };
+  }
+
+  if (openDue?.title) {
+    return {
+      id: `home-lep-due-${openDue.taskId || 'open'}`,
+      message: name
+        ? `${name}, ${openDue.title} is still open this week. Clear it while you have momentum.`
+        : `${openDue.title} is still open this week. Clear it while you have momentum.`,
+      job: 'nudge',
+      taskId: openDue.taskId || undefined,
+    };
+  }
+
+  if (nextOpen && pct < 100) {
+    return {
+      id: `home-progress-${nextOpen.id}`,
+      message: name
+        ? `${name}, you're at ${pct}% in ${prog}. Next up: ${nextOpen.title}.`
+        : `You're at ${pct}% in ${prog}. Next up: ${nextOpen.title}.`,
+      job: 'nudge',
+      taskId: nextOpen.id,
+    };
+  }
+
+  if (ctx.lepBatch?.nextSessionTitle) {
+    const when = ctx.lepBatch.nextSessionWhen ? ` (${ctx.lepBatch.nextSessionWhen})` : '';
+    return {
+      id: 'home-lep-next-session',
+      message: name
+        ? `${name}, next on your batch: ${ctx.lepBatch.nextSessionTitle}${when}.`
+        : `Next on your batch: ${ctx.lepBatch.nextSessionTitle}${when}.`,
+      job: 'nudge',
+    };
+  }
+
+  if (lp && lp.practiceDoneToday >= (lp.practiceTotalToday || 0)) {
+    return {
+      id: 'home-lep-caught-up',
+      message: name
+        ? `${name}, today’s practice is done. You’re clear — come back tomorrow sharp.`
+        : `Today’s practice is done. You’re clear — come back tomorrow sharp.`,
+      job: 'nudge',
     };
   }
 

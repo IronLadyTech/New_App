@@ -26,6 +26,10 @@ const JUMPS = [
   { label: 'Guest start', route: 'GuestStart' },
   { label: 'Guest · Home', guest: true },
   { label: 'LEP · Registered home', lep: 'registered' },
+  { label: 'LEP · 1 Enrollment pending', lep: 'registered', reg: 'enroll' },
+  { label: 'LEP · 2 Choose batch', lep: 'registered', reg: 'batch' },
+  { label: 'LEP · 3 Pre-work', lep: 'registered', reg: 'prework' },
+  { label: 'LEP · 4 Ready for Day 1', lep: 'registered', reg: 'ready' },
   { label: 'LEP · Enrolled home', lep: 'enrolled' },
   { label: '100BM · Registered home', bm: 'registered' },
   { label: '100BM · Enrolled home', bm: 'enrolled' },
@@ -79,7 +83,7 @@ export default function ScreenLab({ navigation }) {
                   return;
                 }
                 if (item.lep) {
-                  enterJourneyPreview('lep', item.lep);
+                  enterJourneyPreview('lep', item.lep, item.reg);
                   return;
                 }
                 if (item.bm) {

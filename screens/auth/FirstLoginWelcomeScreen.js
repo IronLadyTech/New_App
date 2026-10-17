@@ -52,12 +52,15 @@ function welcomeFields(source) {
     city: learnerValue(source.city || source.City || source.location || source.currentCity),
     domain: learnerValue(
       source.domain ||
+        source.leadershipRole ||
         source.Industry_Field_of_Work ||
+        source['Industry/Field of Work'] ||
         source.fieldOfWork ||
         source.workDomain ||
         source.industry
     ),
-    bhag: learnerValue(learnerBhagText(source)),
+    // Prefer Zoho B-HAG, then the value the learner just saved on the profile.
+    bhag: learnerValue(learnerBhagText(source) || source.bhag),
   };
 }
 
@@ -139,8 +142,10 @@ export default function FirstLoginWelcomeScreen({
   const { profile, user, isPreview, patchProfile, logout } = useAuth();
   const name =
     route?.params?.name ||
-    profile?.displayName?.split(' ')[0] ||
-    'Ananya';
+    String(profile?.displayName || profile?.firstName || '')
+      .trim()
+      .split(/\s+/)[0] ||
+    'there';
   const synced = fieldsFromZoho(profile);
   const badges =
     !user?.uid || user.uid === 'preview' || isPreview
@@ -173,16 +178,23 @@ export default function FirstLoginWelcomeScreen({
     if (!editing || !value || saving) return;
     setSaving(true);
     setSaveError('');
+    // Keep the typed value on the profile immediately so the chip updates even if Zoho is slow.
+    const local =
+      editing === 'domain'
+        ? { domain: value, leadershipRole: value }
+        : { [editing]: value };
+    patchProfile(local);
     try {
       const result = await updateMyWelcomeProfile({ [editing]: value });
       if (result?.ok === false || result?.zoho === false) {
-        setSaveError(result?.reason || 'Could not save to Zoho');
+        setSaveError(result?.reason || 'Saved on your profile — Zoho sync pending');
+        setEditing(null);
         return;
       }
-      patchProfile({ [editing]: value });
       setEditing(null);
     } catch (err) {
-      setSaveError(formatCallableError(err, 'Could not save to Zoho'));
+      setSaveError(formatCallableError(err, 'Saved on your profile — Zoho sync pending'));
+      setEditing(null);
     } finally {
       setSaving(false);
     }
@@ -569,6 +581,19 @@ export default function FirstLoginWelcomeScreen({
               marginTop: 26,
             }}
           />
+
+          {pickBatch && __DEV__ ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Skip batch selection"
+              onPress={finishWelcome}
+              style={{ marginTop: 14, paddingVertical: 8 }}
+            >
+              <ILText role="label" color={ROSE} align="center" style={{ fontSize: 14 }}>
+                Skip for now
+              </ILText>
+            </Pressable>
+          ) : null}
 
           {pickBatch ? (
             <View

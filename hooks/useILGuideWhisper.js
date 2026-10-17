@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { usePrograms } from '../context/ProgramsContext';
@@ -10,6 +10,7 @@ import {
   nextJourneyTask,
   primaryProgramForGuide,
 } from '../utils/ilGuideJourney';
+import { makeTaskDoneChecker } from '../utils/taskDone';
 import { fetchILGuideWhisper } from '../services/ilGuide';
 import { IL_GUIDE_SURFACES } from '../constants/ilGuide';
 import { updateUserProfile } from '../services/firestore';
@@ -19,13 +20,20 @@ const DISMISS_KEY = (uid, surface, id) => `ilguide:dismiss:${uid}:${surface}:${i
 
 export function useILGuideWhisper(surface, extraContext = null) {
   const { user, profile, isStaff, patchProfile } = useAuth();
-  const { enrolledPrograms, progressByProgram, tasksByProgram, subsByProgram } =
-    usePrograms();
+  const {
+    enrolledPrograms,
+    progressByProgram,
+    tasksByProgram,
+    subsByProgram,
+    getTaskSubmission,
+  } = usePrograms();
   const { visibleAnnouncements, upcomingEventList } = useCourses();
 
   const [whisper, setWhisper] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hidden, setHidden] = useState(false);
+  const whisperRef = useRef(null);
+  whisperRef.current = whisper;
   const demo = useCourseDemo();
 
   const isGuest = profile?.role === 'guest';
@@ -33,17 +41,37 @@ export function useILGuideWhisper(surface, extraContext = null) {
     () => primaryProgramForGuide(profile),
     [profile]
   );
+  const taskIsDone = useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, getTaskSubmission, demo.done, subsByProgram]
+  );
   const journeyProgress = useMemo(
-    () => journeyProgressForProgram(guideProgramId, profile, demo.isDone),
-    [guideProgramId, profile, demo]
+    () => journeyProgressForProgram(guideProgramId, profile, taskIsDone),
+    [guideProgramId, profile, taskIsDone]
   );
   const journeyNext = useMemo(
-    () => nextJourneyTask(guideProgramId, profile, demo.isDone),
-    [guideProgramId, profile, demo]
+    () => nextJourneyTask(guideProgramId, profile, taskIsDone),
+    [guideProgramId, profile, taskIsDone]
   );
   const firstLogin =
     surface === IL_GUIDE_SURFACES.ONBOARD ||
     (surface === IL_GUIDE_SURFACES.HOME && !profile?.ilGuideOnboarded);
+
+  // Stable key so parent object identity does not retrigger fetches every render.
+  const extraKey = useMemo(() => {
+    try {
+      return JSON.stringify(extraContext || null);
+    } catch {
+      return '';
+    }
+  }, [extraContext]);
+  const extraStable = useMemo(() => {
+    try {
+      return extraContext && typeof extraContext === 'object' ? JSON.parse(extraKey) : null;
+    } catch {
+      return null;
+    }
+  }, [extraKey]);
 
   const load = useCallback(async () => {
     if (!user?.uid || isGuest || isStaff) {
@@ -62,7 +90,8 @@ export function useILGuideWhisper(surface, extraContext = null) {
       return;
     }
 
-    setLoading(true);
+    // Keep the current message on screen — only show loading on the first fetch.
+    if (!whisperRef.current) setLoading(true);
     try {
       const context = buildILGuideContext({
         user,
@@ -81,13 +110,13 @@ export function useILGuideWhisper(surface, extraContext = null) {
         journeyProgress,
         journeyNextTask: journeyNext,
         primaryProgramId: guideProgramId,
-        ...(extraContext && typeof extraContext === 'object' ? extraContext : {}),
+        ...(extraStable && typeof extraStable === 'object' ? extraStable : {}),
       });
 
       const result = await fetchILGuideWhisper(context);
       if (!result) {
         // Turned off in the admin CMS for this surface.
-        setWhisper(null);
+        if (!whisperRef.current) setWhisper(null);
         return;
       }
       const dismissed =
@@ -103,7 +132,7 @@ export function useILGuideWhisper(surface, extraContext = null) {
         setHidden(false);
       }
     } catch {
-      setWhisper(null);
+      if (!whisperRef.current) setWhisper(null);
     } finally {
       setLoading(false);
     }
@@ -123,7 +152,7 @@ export function useILGuideWhisper(surface, extraContext = null) {
     journeyProgress,
     journeyNext,
     guideProgramId,
-    extraContext,
+    extraStable,
   ]);
 
   useEffect(() => {

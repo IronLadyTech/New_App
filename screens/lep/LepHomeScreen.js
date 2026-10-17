@@ -1,18 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, Pressable, ScrollView, View } from 'react-native';
+import {
+  Animated,
+  Image,
+  Linking,
+  Modal,
+  Platform,
+  StatusBar as RNStatusBar,
+  View,
+} from 'react-native';
+import Pressable from '../../components/il/Press';
 import { doc, getDoc } from 'firebase/firestore';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Reanimated, {
-  interpolate,
-  interpolateColor,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -21,17 +19,34 @@ import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
-import { buildLepEnrolledHero, buildLepRegisteredHero } from '../../utils/lepBatchHero';
+import { buildLepEnrolledHero } from '../../utils/lepBatchHero';
+import {
+  buildPreviewRegisteredHome,
+  buildRegisteredHome,
+  day1CalendarUrl,
+  isLepProfileInfoDone,
+  orientationCalendarUrl,
+} from '../../utils/registeredHomeData';
+import { isTaskDoneStatus, PROGRAMS } from '../../constants/programs';
+import {
+  learnerBatchId,
+  learnerBhagText,
+  learnerDomainText,
+  learnerProgramDates,
+  zohoLeadBatchLabel,
+} from '../../utils/programAccess';
+import { updateUserProfile } from '../../services/firestore';
+import { updateMyWelcomeProfile } from '../../services/functions';
+import { lockLepBatchChoice } from '../../utils/lockLepBatch';
+import { usePrograms } from '../../context/ProgramsContext';
+import RegisteredHomeView, { openDay1Calendar } from './RegisteredHomeView';
+import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
 import { buildLepDueWeek } from '../../utils/lepBatchDueWeek';
 import { nextCmsBatchSession } from '../../utils/cmsBatchSessions';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
-import { learnerBatchId } from '../../utils/programAccess';
 import { db } from '../../services/firebase';
 import {
   CheckRow,
-  CoverThumb,
-  DarkHero,
-  GuideFace,
   LepHeader,
   LinkRow,
   Page,
@@ -41,73 +56,53 @@ import {
   WhiteCard,
 } from './LepBits';
 import { useLepNav } from './useLepNav';
-import {
-  FACE,
-  GET_READY,
-  HERO,
-  PREWORK,
-  practiceSummary,
-  ROLES,
-  ARMY_STORIES,
-  TODAY_MESSAGE,
-} from './lepData';
-import { useEnrolledDailyPractice, useRegisteredDailyPractice } from '../../hooks/useLepDailyPractice';
+import { GET_READY, HERO, PREWORK } from './lepData';
+import { useEnrolledDailyPractice } from '../../hooks/useLepDailyPractice';
 import { useLepPracticeStreak } from '../../hooks/useLepPracticeStreak';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
-import { filterLepPrework } from '../../utils/lepRitualsUnlock';
+import { filterLepPracticeItems, filterLepPrework } from '../../utils/lepRitualsUnlock';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
-import { PROGRAMS } from '../../constants/programs';
-import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 import { useCourseDemo } from '../../context/CourseDemoContext';
 import { practiceKey } from '../../constants/practice';
 import { DueWeek } from '../program/ProgramKit';
+import {
+  buildUpcomingSessionCard,
+  enrolledWhisperFallback,
+} from '../../utils/lepEnrolledHomeHint';
+import { nextJourneyTask } from '../../utils/ilGuideJourney';
+import { makeTaskDoneChecker } from '../../utils/taskDone';
+import PracticeDeck from '../../components/lep/PracticeDeck';
+import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 
 export default function LepHomeScreen() {
   const { profile } = useAuth();
-  return isLepEnrolled(profile) ? <EnrolledHome /> : <RegisteredHome />;
-}
-
-function Shell({ children }) {
-  const insets = useSafeAreaInsets();
-  const headerPad = useGlassHeaderPad();
-  const { profile } = useAuth();
-  const nav = useLepNav();
-  return (
-    <Page>
-      <StatusBar style="dark" />
-      <LepHeader
-        floating
-        photoUrl={profile?.photoURL}
-        onNotifications={nav.goNotifications}
-        onProfile={nav.goProfile}
-      />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: headerPad + 8,
-          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
-        }}
-      >
-        {children}
-      </ScrollView>
-    </Page>
-  );
+  const { batch } = useLearnerCmsBatch('lep');
+  const forced = profile?.labRegStatus || null;
+  // Enrolled keeps the original enrolled home. Registered-only UI is for part-paid.
+  if (!forced && isLepEnrolled(profile)) return <EnrolledHome />;
+  return <RegisteredHome cmsBatch={batch} preview={forced} />;
 }
 
 function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
   const insets = useSafeAreaInsets();
-  const headerPad = useGlassHeaderPad();
   const { profile } = useAuth();
   const nav = useLepNav();
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    RNStatusBar.setTranslucent(true);
+    RNStatusBar.setBackgroundColor('transparent');
+    RNStatusBar.setBarStyle('light-content');
+    return undefined;
+  }, []);
   return (
     <Page>
-      <StatusBar style="dark" />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <LepHeader
         floating
+        scrim={false}
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
@@ -123,7 +118,7 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
         })}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: headerPad + 8,
+          paddingTop: 0,
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >
@@ -133,392 +128,163 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
   );
 }
 
-function RegisteredHome() {
-  const { profile } = useAuth();
-  const name = lepFirstName(profile);
+function RegisteredHome({ cmsBatch, preview }) {
+  const { profile, user, patchProfile } = useAuth();
   const nav = useLepNav();
-  const group = useLepBatchGroup(profile);
-  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
-  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch, group });
-  const prework = useMemo(() => filterLepPrework(PREWORK, ritualsUnlocked), [ritualsUnlocked]);
-  const practice = useRegisteredDailyPractice(group, cmsBatch);
-  const streak = useLepPracticeStreak();
-  const hero = useMemo(() => buildLepRegisteredHero(profile, group, cmsBatch), [profile, group, cmsBatch]);
-  const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch), [cmsBatch]);
-  const guideContext = useMemo(() => {
-    const practiceDoneToday = practice.filter((p) => p.done).length;
-    const nextSession = nextCmsBatchSession(cmsBatch);
-    return {
-      lepPractice: {
-        currentStreak: streak.currentStreak,
-        ritualsDoneToday: streak.ritualsDoneToday,
-        ritualsUnlocked,
-        weekActiveDays: streak.weekActiveDays,
-        practiceDoneToday,
-        practiceTotalToday: practice.length,
-      },
-      lepBatch: cmsBatch
-        ? {
-            name: cmsBatch.name,
-            day1Date: cmsBatch.day1Date,
-            orientationDate: cmsBatch.orientationDate,
-            nextSessionTitle: nextSession?.title || null,
-            nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || null,
-          }
-        : null,
-    };
-  }, [streak, practice, cmsBatch, ritualsUnlocked]);
-  const challengeItem = practice.find((p) => !p.done) || practice[0];
+  const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+  const [roleDismissed, setRoleDismissed] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const headerPad = useGlassHeaderPad();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [headerGone, setHeaderGone] = useState(false);
-  const [role, setRole] = useState('Technology');
-  const [whisperOn, setWhisperOn] = useState(true);
+  const name = lepFirstName(profile);
+  const domain = learnerDomainText(profile);
+  const bhag =
+    learnerBhagText(profile) ||
+    demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note ||
+    '';
+  const model = useMemo(() => {
+    if (preview && preview !== 'live') return buildPreviewRegisteredHome(preview, name);
+    return buildRegisteredHome({
+      profile,
+      cmsBatch,
+      viaDone: isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, 'lep-via-survey')?.status),
+      nsdcDone: isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, 'lep-prep-nsdc')?.status),
+      bhagDone: Boolean(String(bhag).trim()),
+      profileDone: isLepProfileInfoDone(profile),
+    });
+  }, [preview, name, profile, cmsBatch, bhag, getTaskSubmission]);
+  const guideContext = useMemo(
+    () => ({
+      programId: PROGRAMS.LEP,
+      regStatus: model.status,
+      cmsBatchId: cmsBatch?.id || profile?.cmsBatchId || null,
+      day1Date: cmsBatch?.day1Date || model.day1Iso || null,
+    }),
+    [model.status, model.day1Iso, cmsBatch, profile?.cmsBatchId]
+  );
+
+  // Domain already comes from welcome / Zoho profile — only ask when it is missing.
+  const roleOn = !roleDismissed && !domain;
+
+  const saveRole = (picked) => {
+    const next = { domain: picked, leadershipRole: picked };
+    patchProfile(next);
+    if (user?.uid && user.uid !== 'preview') {
+      updateUserProfile(user.uid, next).catch(() => {});
+      updateMyWelcomeProfile({ domain: picked }).catch(() => {});
+    }
+  };
+
+  const lockBatch = (picked) => {
+    setBatchOpen(false);
+    lockLepBatchChoice({ user, profile, patchProfile, picked }).catch(() => {});
+  };
+
+  const openTask = (task) => {
+    if (task.id === 'enroll') nav.goEnroll();
+    else if (task.id === 'via') nav.goCourseTask(PROGRAMS.LEP, 'lep-via-survey');
+    else if (task.id === 'bhag') nav.goPractice('lep', 'lep-bhag');
+    else if (task.id === 'nsdc') nav.goCourseTask(PROGRAMS.LEP, 'lep-prep-nsdc');
+    else if (task.id === 'profile') nav.goProfile();
+  };
+
+  const onPhaseCta = (phase) => {
+    if (phase?.ctaBlocked) return;
+    const taskId = phase?.ctaTaskId;
+    if (
+      taskId === 'calendar' ||
+      taskId === 'day1' ||
+      taskId === 'orientation' ||
+      (phase?.key === 'day1' && String(phase?.cta || '').toLowerCase().includes('calendar'))
+    ) {
+      const milestone = model.milestone || phase?.label || 'Day 1';
+      const url =
+        milestone === 'Orientation'
+          ? orientationCalendarUrl(model.orientationIso, model.orientationClock)
+          : day1CalendarUrl(model.day1Iso, model.day1Clock);
+      if (url) openDay1Calendar(url);
+      else nav.goSchedule();
+      return;
+    }
+    if (taskId === 'batch' || String(phase?.cta || '').includes('batch date')) {
+      setBatchOpen(true);
+      return;
+    }
+    if (taskId === 'enroll') {
+      openTask({ id: 'enroll' });
+      return;
+    }
+    if (phase?.key === 'prework') {
+      const pre =
+        model.tasks.find(
+          (task) => ['via', 'bhag', 'nsdc', 'profile'].includes(task.id) && task.state !== 'done'
+        ) || model.tasks.find((task) => task.id === taskId);
+      if (pre) openTask(pre);
+      return;
+    }
+    const current =
+      model.tasks.find((task) => task.id === taskId) ||
+      model.tasks.find((task) => task.state === 'now') ||
+      model.tasks[0];
+    if (current) openTask(current);
+  };
+
+  const onCta = () => {
+    const phase = (model.phases || [])[model.lockerStep] || model.phases?.[0];
+    if (phase) onPhaseCta(phase);
+  };
 
   return (
-    <RegisteredShell
-      scrollY={scrollY}
-      headerGone={headerGone}
-      onScrollY={(y) => {
-        const gone = y > 110;
-        setHeaderGone((prev) => (prev === gone ? prev : gone));
-      }}
-    >
-      <DarkHero>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <SoftChip onDark icon="fiber-manual-record">
-            Leadership Essentials
-          </SoftChip>
-          <Image source={FACE} style={{ width: 36, height: 36, borderRadius: 18 }} />
-        </View>
-        <ILText
-          role="display"
-          color="#FFFFFF"
-          style={{ marginTop: 18, fontFamily: IL_FONTS.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.7 }}
-        >
-          Good morning, {name}.
-        </ILText>
-        <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
-          {hero.countdownSubline}
-        </ILText>
-        <View style={{ flexDirection: 'row', marginTop: 18, flexWrap: 'wrap', alignItems: 'center' }}>
-          {hero.showCountdown ? (
-            <>
-              <CountChip n={String(hero.days).padStart(2, '0')} l="DAYS" />
-              <CountChip n={String(hero.hours).padStart(2, '0')} l="HOURS" />
-            </>
-          ) : null}
-          <View
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.10)',
-              borderRadius: 999,
-              paddingHorizontal: 14,
-              paddingVertical: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <MaterialIcons name="verified" size={14} color={G.pink} />
-            <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 6, fontSize: 12 }]}>
-              Seat reserved
-            </ILText>
-          </View>
-        </View>
-
-        <View style={{ marginTop: 20, paddingTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
-              Your challenge · Day 1 of 3
-            </ILText>
-            <ILText role="bodySm" color="rgba(255,255,255,0.55)" style={{ fontSize: 12 }}>
-              15 min
-            </ILText>
-          </View>
-          <View style={{ flexDirection: 'row', marginTop: 10 }}>
-            <View style={{ flex: 1, height: 3, backgroundColor: G.cta, borderRadius: 2, marginRight: 6 }} />
-            <View style={{ flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 2, marginRight: 6 }} />
-            <View style={{ flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.16)', borderRadius: 2 }} />
-          </View>
-          <ILText
-            role="title"
-            color="#FFFFFF"
-            style={{ marginTop: 14, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            {challengeItem?.title || 'Start today’s practice'}
-          </ILText>
-          <View style={{ marginTop: 16 }}>
-            <RedCta label="Start today’s practice →" onPress={nav.goToday} />
-          </View>
-        </View>
-      </DarkHero>
-
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, borderColor: 'transparent' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons name="menu-book" size={15} color={G.cta} />
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginLeft: 8, letterSpacing: 1.1 }]}>
-            Leadership Essentials program · at a glance
-          </ILText>
-        </View>
-        <View style={{ flexDirection: 'row', marginTop: 14 }}>
-          <GlanceCell label="Duration" value="1 month" />
-          <View style={{ width: 10 }} />
-          <GlanceCell label="Format" value="2-day intensive + weekly" />
-        </View>
-        <View style={{ flexDirection: 'row', marginTop: 10 }}>
-          <GlanceCell label="Curriculum" value="All 27 principles" />
-          <View style={{ width: 10 }} />
-          <GlanceCell label="On completion" value="Certification" />
-        </View>
-      </WhiteCard>
-
-      {whisperOn ? (
-        <InkWhisper
-          name={name}
-          onClose={() => setWhisperOn(false)}
-          onOpen={() => nav.goPractice('lep', 'lep-principles-video')}
-        />
-      ) : null}
-
-      <PracticeDeck
-        items={practice}
-        streakLabel={streak.streakLabel}
-        onOpen={nav.goToday}
-        onItem={nav.goPracticeItem}
-      />
-
-      <ILGuideWhisperLep
-        surface={IL_GUIDE_SURFACES.HOME}
-        guideContext={guideContext}
-        fallbackQuote={
-          ritualsUnlocked
-            ? 'Leadership is practiced, not announced. Start with today’s practice checklist.'
-            : 'Focus on pre-work and Day 1 prep. The 5 Daily Rituals unlock after your Saturday–Sunday sessions.'
-        }
-        subtitle="Daily practice"
-      />
-
-      <DueWeek
-        sub={dueWeek.sub}
-        onSchedule={nav.goSchedule}
-        items={dueWeek.items.map((item) => ({
-          ...item,
-          onPress: () => nav.goCourseTask(PROGRAMS.LEP, item.taskId),
-        }))}
-      />
-
-      <Section title="Today’s message" sub="Principle 01 · Your BHAG" />
-      <WhiteCard
-        style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}
-        onPress={() =>
-          nav.goWatch({
-            assetKey: TODAY_MESSAGE.assetKey,
-            title: TODAY_MESSAGE.title,
-            sub: TODAY_MESSAGE.sub,
-          })
-        }
-      >
-        <View style={{ aspectRatio: 16 / 9 }}>
-          <CoverThumb source={TODAY_MESSAGE.thumb} play time={TODAY_MESSAGE.duration} />
-        </View>
-        <View style={{ padding: 14 }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            FOUNDATION PRINCIPLE
-          </ILText>
-          <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 16 }}>
-            {TODAY_MESSAGE.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
-            {TODAY_MESSAGE.hint}
-          </ILText>
-        </View>
-      </WhiteCard>
-
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, overflow: 'hidden' }}>
-        <View style={{ backgroundColor: G.cta, paddingHorizontal: 16, paddingVertical: 10 }}>
-          <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 11 }]}>
-            #ImpactStories
-          </ILText>
-        </View>
-        <View style={{ padding: 16 }}>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 28 }}
-          >
-            “From Career Break to Thriving Psychiatrist: Leadership Essentials Program Transformed My Mindset!”
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
-            Ruhi Satija · Consultant Psychiatrist
-          </ILText>
-        </View>
-      </WhiteCard>
-
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: G.pink,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons name="place" size={18} color={G.cta} />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <ILText role="label" color={G.ink}>
-            Bengaluru chapter meetup
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-            Sat 26 Sep · open to registered members
-          </ILText>
-        </View>
-        <ILText role="label" color={G.cta}>
-          RSVP
-        </ILText>
-      </WhiteCard>
-
-      <View
-        style={{
-          marginTop: 12,
-          borderRadius: 22,
-          borderWidth: 1,
-          borderStyle: 'dashed',
-          borderColor: G.dash,
-          padding: 14,
+    <View style={{ flex: 1 }}>
+      <RegisteredShell
+        scrollY={scrollY}
+        headerGone={headerGone}
+        onScrollY={(y) => {
+          const gone = y > 110;
+          setHeaderGone((prev) => (prev === gone ? prev : gone));
         }}
       >
-        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-          {hero.enrollEyebrow}
-        </ILText>
-        <Pressable
-          onPress={nav.goEnroll}
-          style={{
-            marginTop: 12,
-            backgroundColor: G.white,
-            borderRadius: 18,
-            padding: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
+        <RegisteredHomeView
+          model={model}
+          guideContext={guideContext}
+          onCta={onCta}
+          onPhaseCta={onPhaseCta}
+          onTask={openTask}
+          onVideo={() =>
+            nav.goWatch({
+              assetKey: 'lep-principles-video',
+              title: '27 Principles',
+              sub: 'Mental models for unflinching leadership',
+            })
+          }
+          onStory={(story) => nav.goWatch({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
+          onRsvp={nav.goEngage}
+          role={domain}
+          roleOn={roleOn}
+          onRole={saveRole}
+          onDismissRole={() => setRoleDismissed(true)}
+          bhag={String(bhag).trim()}
+          onBhag={() => nav.goPractice('lep', 'lep-bhag')}
+          topPad={headerPad}
+        />
+      </RegisteredShell>
+      {batchOpen ? (
+        <Modal
+          visible
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setBatchOpen(false)}
         >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: G.pink,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="event" size={16} color={G.cta} />
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink}>
-              Complete enrollment
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              To secure your cohort seat
-            </ILText>
-          </View>
-          <ILText role="label" color={G.cta}>
-            Proceed →
-          </ILText>
-        </Pressable>
-      </View>
-
-      <Pressable onPress={nav.goEngage} accessibilityRole="button">
-        <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row' }}>
-            {[0, 1, 2].map((i) => (
-              <Image
-                key={i}
-                source={FACE}
-                style={{ width: 28, height: 28, borderRadius: 14, marginLeft: i ? -8 : 0, borderWidth: 2, borderColor: G.white }}
-              />
-            ))}
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink}>
-              {LEP_COHORT_SOCIAL.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {LEP_COHORT_SOCIAL.sub}
-            </ILText>
-          </View>
-          <MaterialIcons name="groups" size={20} color={G.meta} />
-        </WhiteCard>
-      </Pressable>
-
-      <Section title="Welcome to the community" sub="Stories and prep from women who made the leap" action="View all" onAction={nav.goEngage} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginTop: 12, marginHorizontal: -20 }}
-        contentContainerStyle={{ paddingHorizontal: 20 }}
-      >
-        {ARMY_STORIES.map((clip) => (
-          <Pressable
-            key={clip.title}
-            onPress={() => nav.goWatch({ assetKey: clip.assetKey, title: clip.title, sub: clip.meta })}
-            style={{ width: 228, marginRight: 12 }}
-          >
-            <View style={{ aspectRatio: 16 / 9, borderRadius: 18, overflow: 'hidden', backgroundColor: G.dark }}>
-              <CoverThumb source={clip.img} play time={clip.time} />
-            </View>
-            <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
-              {clip.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {clip.meta}
-            </ILText>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      <WhiteCard style={{ marginTop: 22, borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Image source={FACE} style={{ width: 36, height: 36, borderRadius: 18 }} />
-          <View style={{ marginLeft: 10 }}>
-            <ILText role="label" color={G.ink}>
-              IL Guide from Iron Lady
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              Personalized curriculum check
-            </ILText>
-          </View>
-        </View>
-        <ILText role="title" color={G.ink} style={{ marginTop: 14, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}>
-          Which best describes your current leadership role?
-        </ILText>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
-          {ROLES.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setRole(item)}
-              style={{
-                marginRight: 8,
-                marginBottom: 8,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 999,
-                backgroundColor: role === item ? G.dark : G.mutedFill,
-              }}
-            >
-              <ILText role="label" color={role === item ? '#FFFFFF' : G.ink} style={[af, { fontSize: 12 }]}>
-                {item}
-              </ILText>
-            </Pressable>
-          ))}
-        </View>
-        <ILText role="bodySm" color={G.meta} style={{ textAlign: 'right', fontSize: 12 }}>
-          Not now
-        </ILText>
-      </WhiteCard>
-
-      <BhagCard nav={nav} />
-    </RegisteredShell>
+          <ChooseBatchDateScreen
+            allowChange
+            onBack={() => setBatchOpen(false)}
+            onLock={lockBatch}
+          />
+        </Modal>
+      ) : null}
+    </View>
   );
 }
 
@@ -553,16 +319,73 @@ function EnrolledHome() {
   const name = lepFirstName(profile);
   const nav = useLepNav();
   const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
   const group = useLepBatchGroup(profile);
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
-  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch, group });
-  const practice = useEnrolledDailyPractice(group, cmsBatch);
+  const headerPad = useGlassHeaderPad();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [headerGone, setHeaderGone] = useState(false);
+  // Live Zoho batch only — empty Zoho must not unlock rituals via a stale group range.
+  const liveZohoBatch = zohoLeadBatchLabel(profile, 'lep');
+  const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({
+    cmsBatch,
+    group,
+    zohoRawBatch: liveZohoBatch || null,
+  });
+  // Always hide 5 Rituals here — this block is pre–Day 1 only (LEP_Flow).
+  const prework = useMemo(() => {
+    const base = filterLepPrework(PREWORK, false);
+    return base.map((item) => ({
+      ...item,
+      done: Boolean(
+        item.practiceId &&
+          (demo.isDone('lep', practiceKey(item.practiceId)) ||
+            demo.isDone('lep', item.practiceId))
+      ),
+    }));
+  }, [demo.done]);
+  const practiceRaw = useEnrolledDailyPractice(group, cmsBatch);
+  const practice = useMemo(
+    () => filterLepPracticeItems(practiceRaw, ritualsUnlocked),
+    [practiceRaw, ritualsUnlocked]
+  );
+  // Template = day/time; CMS/Zoho = which Day 1 + Zoom when ops set a link.
+  const day1Iso =
+    (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
+    learnerProgramDates(profile, 'lep').start ||
+    String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10) ||
+    '';
+  const day1Offset = useMemo(
+    () => (day1Iso ? daysFromDay1(practiceTodayIso(), day1Iso) : null),
+    [day1Iso]
+  );
+  // Keep “Watch these 2” visible until both videos are done (even on Day 1 launch day).
+  const showWatchThese = prework.some((item) => !item.done);
   const streak = useLepPracticeStreak();
   const hero = buildLepEnrolledHero(profile, group);
-  const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch), [cmsBatch]);
+  const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch || (day1Iso ? { day1Date: day1Iso } : null)), [
+    cmsBatch,
+    day1Iso,
+  ]);
+  const upcoming = useMemo(
+    () => buildUpcomingSessionCard(cmsBatch, { day1Iso }),
+    [cmsBatch, day1Iso]
+  );
+  const nextSession = useMemo(
+    () => nextCmsBatchSession(cmsBatch || (day1Iso ? { day1Date: day1Iso } : null), new Date(), { day1Iso }),
+    [cmsBatch, day1Iso]
+  );
+  const taskIsDone = useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, demo.done, getTaskSubmission]
+  );
+  const journeyNext = useMemo(
+    () => nextJourneyTask(PROGRAMS.LEP, profile, taskIsDone),
+    [profile, taskIsDone]
+  );
   const guideContext = useMemo(() => {
     const practiceDoneToday = practice.filter((p) => p.done).length;
-    const nextSession = nextCmsBatchSession(cmsBatch);
+    const nextOpenPractice = practice.find((p) => !p.done) || null;
     return {
       lepPractice: {
         currentStreak: streak.currentStreak,
@@ -572,17 +395,87 @@ function EnrolledHome() {
         practiceDoneToday,
         practiceTotalToday: practice.length,
       },
-      lepBatch: cmsBatch
+      lepBatch:
+        cmsBatch || day1Iso
+          ? {
+              name: cmsBatch?.name || null,
+              day1Date: cmsBatch?.day1Date || day1Iso,
+              orientationDate: cmsBatch?.orientationDate || null,
+              nextSessionTitle: nextSession?.title || upcoming.title || null,
+              nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || upcoming.when || null,
+            }
+          : null,
+      lepDues: (dueWeek.items || []).map((item) => {
+        const lmsDone = item.taskId
+          ? isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, item.taskId)?.status)
+          : false;
+        const done = item.taskId
+          ? demo.isDone(PROGRAMS.LEP, item.taskId) || lmsDone
+          : !!item.done;
+        return {
+          title: item.title,
+          due: item.due,
+          urgent: !!item.urgent,
+          taskId: item.taskId || null,
+          sessionCode: item.sessionCode || null,
+          done,
+        };
+      }),
+      openPractice: nextOpenPractice
         ? {
-            name: cmsBatch.name,
-            day1Date: cmsBatch.day1Date,
-            orientationDate: cmsBatch.orientationDate,
-            nextSessionTitle: nextSession?.title || null,
-            nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || null,
+            title: nextOpenPractice.title,
+            taskId: nextOpenPractice.taskId || null,
+            practiceId: nextOpenPractice.practiceId || null,
+            programId: PROGRAMS.LEP,
+            done: false,
           }
         : null,
+      journeyNextTask: journeyNext
+        ? { id: journeyNext.id, title: journeyNext.title, type: journeyNext.type }
+        : null,
     };
-  }, [streak, practice, cmsBatch, ritualsUnlocked]);
+  }, [
+    streak,
+    practice,
+    cmsBatch,
+    day1Iso,
+    nextSession,
+    ritualsUnlocked,
+    dueWeek.items,
+    upcoming,
+    journeyNext,
+    demo,
+    getTaskSubmission,
+  ]);
+  const dueItemsWithDone = useMemo(
+    () =>
+      (dueWeek.items || []).map((item) => {
+        const lmsDone = item.taskId
+          ? isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, item.taskId)?.status)
+          : false;
+        const done = item.taskId
+          ? demo.isDone(PROGRAMS.LEP, item.taskId) || lmsDone
+          : !!item.done;
+        return { ...item, done };
+      }),
+    [dueWeek.items, demo, getTaskSubmission]
+  );
+  const whisperFallback = useMemo(
+    () =>
+      enrolledWhisperFallback({
+        name,
+        nextSession,
+        nextTaskTitle: journeyNext?.title || '',
+        nextTaskId: journeyNext?.id || null,
+        dueItems: dueItemsWithDone,
+        practice,
+        ritualsUnlocked,
+        practiceDoneToday: practice.filter((p) => p.done).length,
+        practiceTotalToday: practice.length,
+        currentStreak: streak.currentStreak,
+      }),
+    [name, nextSession, journeyNext, dueItemsWithDone, practice, ritualsUnlocked, streak.currentStreak]
+  );
   const savedReady = demo.getSubmission('lep', 'lep-get-ready')?.data?.checked;
   const readyItems = GET_READY.map((item) => ({
     ...item,
@@ -600,8 +493,25 @@ function EnrolledHome() {
   };
 
   return (
-    <Shell>
-      <DarkHero>
+    <RegisteredShell
+      scrollY={scrollY}
+      headerGone={headerGone}
+      onScrollY={(y) => {
+        const gone = y > 110;
+        setHeaderGone((prev) => (prev === gone ? prev : gone));
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: G.dark,
+          marginHorizontal: -20,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
+          paddingTop: headerPad + 28,
+          paddingBottom: 22,
+          paddingHorizontal: 20,
+        }}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           {hero.programChip ? (
             <SoftChip onDark icon="verified">
@@ -624,34 +534,45 @@ function EnrolledHome() {
             {hero.subline}
           </ILText>
         ) : null}
-      </DarkHero>
+      </View>
 
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.HOME}
         guideContext={guideContext}
-        fallbackQuote="Join 10 minutes early on Saturday. The first hour sets the tone and the room remembers who was already there."
-        subtitle="Daily practice"
+        fallbackQuote={whisperFallback}
+        instant={false}
+        subtitle="Your guide"
       />
 
-      <Section title="Today’s practice" sub={practiceSummary(practice)} action="Open checklist" onAction={nav.goToday} />
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, alignItems: 'center' }}>
-          <SoftChip icon="local-fire-department">{streak.streakLabel}</SoftChip>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            Daily revision at 8:00 AM
-          </ILText>
-        </View>
-        {practice.map((item, i) => (
-          <CheckRow key={item.id} item={item} last={i === practice.length - 1} onPress={() => nav.goPracticeItem(item)} />
-        ))}
-      </WhiteCard>
+      <PracticeDeck
+        items={practice}
+        streakLabel={streak.streakLabel}
+        onOpen={nav.goToday}
+        onItem={nav.goPracticeItem}
+        note={
+          day1Iso
+            ? (() => {
+                const off = daysFromDay1(practiceTodayIso(), day1Iso);
+                if (off == null) return 'Set your batch to unlock the calendar';
+                if (off < 0) return 'Pre-Day 1 · from your batch';
+                if (off === 0) return 'Day 1 · live today';
+                if (off === 1) return 'Day 2 · live today';
+                return `Day ${off + 1} of your batch journey`;
+              })()
+            : 'Batch date needed for calendar dues'
+        }
+      />
 
       <DueWeek
         sub={dueWeek.sub}
         onSchedule={nav.goSchedule}
-        items={dueWeek.items.map((item) => ({
+        items={dueItemsWithDone.map((item) => ({
           ...item,
-          onPress: () => nav.goCourseTask(PROGRAMS.LEP, item.taskId),
+          onPress: item.taskId
+            ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)
+            : item.sessionCode
+              ? nav.goSchedule
+              : undefined,
         }))}
       />
 
@@ -693,64 +614,81 @@ function EnrolledHome() {
         </View>
       </WhiteCard>
 
-      <Section
-        title={`Watch these ${prework.length} before Day 1`}
-        sub="Essential foundations curated by Rajesh & IL Guide"
-        action={`${prework.filter((i) => i.done).length} of ${prework.length} done`}
-      />
-      {prework.map((item) =>
-        item.done ? (
-        <WhiteCard
-          key={item.n}
-          onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
-          style={{ marginTop: 10, borderRadius: 20, overflow: 'hidden', flexDirection: 'row' }}
-        >
-          <View style={{ width: 96, height: 86, backgroundColor: G.dark }}>
-            <Image source={item.thumb || HERO} style={{ width: '100%', height: '100%', opacity: 0.55 }} resizeMode="cover" />
-            <View
-              style={{
-                position: 'absolute',
-                left: 34,
-                top: 29,
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                backgroundColor: G.white,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name="check" size={16} color={G.ink} />
-            </View>
-            <ILText role="label" color="#FFFFFF" style={{ position: 'absolute', left: 8, bottom: 8, fontSize: 10 }}>
-              {item.min}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, padding: 12 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 11 }]}>
-                {item.n}
-              </ILText>
-              <ILText role="label" color={G.cta} style={[af, { fontSize: 11 }]}>
-                Watched
-              </ILText>
-            </View>
-            <ILText role="label" color={G.ink} style={{ marginTop: 4 }}>
-              {item.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }} numberOfLines={2}>
-              {item.sub}
-            </ILText>
-          </View>
-        </WhiteCard>
-        ) : (
-          <NextVideoCard
-            key={item.n}
-            item={item}
-            onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
+      {showWatchThese ? (
+        <>
+          <Section
+            title={`Watch these ${prework.length} before Day 1`}
+            sub="Essential foundations curated by Rajesh & IL Guide"
+            action={`${prework.filter((i) => i.done).length} of ${prework.length} done`}
           />
-        )
-      )}
+          {prework.map((item) =>
+            item.done ? (
+              <WhiteCard
+                key={item.n}
+                onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
+                style={{ marginTop: 10, borderRadius: 20, overflow: 'hidden', flexDirection: 'row' }}
+              >
+                <View style={{ width: 96, height: 86, backgroundColor: G.dark }}>
+                  <Image
+                    source={item.thumb || HERO}
+                    style={{ width: '100%', height: '100%', opacity: 0.55 }}
+                    resizeMode="cover"
+                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 34,
+                      top: 29,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: G.white,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <MaterialIcons name="check" size={16} color={G.ink} />
+                  </View>
+                  <ILText
+                    role="label"
+                    color="#FFFFFF"
+                    style={{ position: 'absolute', left: 8, bottom: 8, fontSize: 10 }}
+                  >
+                    {item.min}
+                  </ILText>
+                </View>
+                <View style={{ flex: 1, padding: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 11 }]}>
+                      {item.n}
+                    </ILText>
+                    <ILText role="label" color={G.cta} style={[af, { fontSize: 11 }]}>
+                      Watched
+                    </ILText>
+                  </View>
+                  <ILText role="label" color={G.ink} style={{ marginTop: 4 }}>
+                    {item.title}
+                  </ILText>
+                  <ILText
+                    role="bodySm"
+                    color={G.meta}
+                    style={{ marginTop: 2, fontSize: 12 }}
+                    numberOfLines={2}
+                  >
+                    {item.sub}
+                  </ILText>
+                </View>
+              </WhiteCard>
+            ) : (
+              <NextVideoCard
+                key={item.n}
+                item={item}
+                onPress={() => item.practiceId && nav.goPractice('lep', item.practiceId)}
+              />
+            )
+          )}
+        </>
+      ) : null}
 
       <Section title="Get ready" sub="Day 1 checklist" />
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
@@ -767,7 +705,7 @@ function EnrolledHome() {
       <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 18 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-            Live Weekend Boardroom
+            {upcoming.kicker}
           </ILText>
           <MaterialIcons name="groups" size={18} color={G.ink} />
         </View>
@@ -776,18 +714,31 @@ function EnrolledHome() {
           color={G.ink}
           style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
         >
-          Leadership Essentials program
+          {upcoming.title}
         </ILText>
         <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 14 }}>
-          Sat 20 – Sun 21 Sep
+          {upcoming.when}
         </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-          9:00 AM – 7:00 PM IST (both days)
-        </ILText>
+        {upcoming.hours ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+            {upcoming.hours}
+          </ILText>
+        ) : null}
         <View style={{ marginTop: 16 }}>
-          <RedCta label="Add to calendar (.ics)" icon="event" onPress={nav.goSchedule} />
+          <RedCta
+            label="Add to calendar"
+            icon="event"
+            onPress={() => {
+              if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
+              else nav.goSchedule();
+            }}
+          />
         </View>
-        <View
+        <Pressable
+          onPress={() => {
+            if (upcoming.joinLink) Linking.openURL(upcoming.joinLink).catch(() => {});
+            else nav.goSchedule();
+          }}
           style={{
             marginTop: 10,
             backgroundColor: G.dark,
@@ -797,15 +748,15 @@ function EnrolledHome() {
           }}
         >
           <ILText role="label" color="#FFFFFF">
-            Zoom Boardroom link
+            {upcoming.ready ? 'Join Zoom session' : 'Zoom Boardroom link'}
           </ILText>
           <ILText role="bodySm" color="rgba(255,255,255,0.6)" style={{ marginTop: 2, fontSize: 11 }}>
-            Unlocks 24 hours before Day 1
+            {upcoming.ready ? 'Opens your batch join link' : 'Unlocks when the host posts the link'}
           </ILText>
-        </View>
+        </Pressable>
       </WhiteCard>
 
-    </Shell>
+    </RegisteredShell>
   );
 }
 
@@ -875,431 +826,6 @@ function NextVideoCard({ item, onPress }) {
   );
 }
 
-function CountChip({ n, l }) {
-  return (
-    <View
-      style={{
-        backgroundColor: 'rgba(255,255,255,0.10)',
-        borderRadius: 999,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        marginRight: 8,
-        flexDirection: 'row',
-        alignItems: 'baseline',
-      }}
-    >
-      <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}>
-        {n}
-      </ILText>
-      <ILText role="eyebrow" color="rgba(255,255,255,0.55)" style={[af, { fontSize: 10, marginLeft: 6 }]}>
-        {l}
-      </ILText>
-    </View>
-  );
-}
-
-function GlanceCell({ label, value }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: G.mutedFill,
-        borderRadius: 16,
-        paddingHorizontal: 14,
-        paddingVertical: 14,
-        minHeight: 86,
-      }}
-    >
-      <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10, letterSpacing: 1 }]}>
-        {label}
-      </ILText>
-      <ILText
-        role="title"
-        color={G.ink}
-        style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26, letterSpacing: -0.3 }}
-      >
-        {value}
-      </ILText>
-    </View>
-  );
-}
-
-const DECK_SPRING = { damping: 17, stiffness: 95, mass: 0.9 };
-
-function PracticeDeck({ items, onOpen, onItem, streakLabel = 'Start your streak' }) {
-  const [aside, setAside] = useState([]);
-  const leftover = items.filter((item) => !item.done);
-  const remaining = leftover.filter((item) => !aside.includes(item.id));
-  const stack = remaining.slice(0, 3);
-  const canRefresh = aside.length > 0;
-  const refresh = () => setAside([]);
-
-  return (
-    <WhiteCard style={{ marginTop: 22, borderRadius: 22, padding: 16, overflow: 'hidden' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-        <View style={{ flex: 1 }}>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
-            Today’s practice
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-            {practiceSummary(items)}
-          </ILText>
-        </View>
-        <LinkRow label="Open checklist" onPress={onOpen} />
-      </View>
-      <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <SoftChip icon="local-fire-department">{streakLabel}</SoftChip>
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          Daily revision at 8:00 AM
-        </ILText>
-      </View>
-
-      {remaining.length ? (
-        <View style={{ marginTop: 14, height: 208 }}>
-          {stack
-            .slice()
-            .reverse()
-            .map((item, paintI, arr) => {
-              const slot = arr.length - 1 - paintI;
-              return (
-                <DeckCard
-                  key={item.id}
-                  item={item}
-                  slot={slot}
-                  onPress={() => (onItem ? onItem(item) : onOpen())}
-                  onSkip={() => setAside((prev) => (prev.includes(item.id) ? prev : [...prev, item.id]))}
-                />
-              );
-            })}
-        </View>
-      ) : (
-        <View style={{ marginTop: 18, paddingVertical: 18, alignItems: 'center' }}>
-          <MaterialIcons name="check-circle" size={22} color={G.ink} />
-          <ILText role="label" color={G.ink} style={{ marginTop: 8 }}>
-            {leftover.length ? 'That’s all for now.' : 'Today’s practice is done.'}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, textAlign: 'center' }}>
-            {leftover.length ? 'Swipe skipped the rest.' : 'The next card will wait for tomorrow.'}
-          </ILText>
-        </View>
-      )}
-      {canRefresh ? (
-        <Pressable
-          onPress={refresh}
-          accessibilityRole="button"
-          accessibilityLabel="Show skipped tasks again"
-          hitSlop={8}
-          style={({ pressed }) => ({
-            alignSelf: 'center',
-            marginTop: 12,
-            opacity: pressed ? 0.55 : 1,
-          })}
-        >
-          <MaterialIcons name="refresh" size={22} color={G.ink} />
-        </Pressable>
-      ) : null}
-    </WhiteCard>
-  );
-}
-
-function DeckCard({ item, slot, onPress, onSkip }) {
-  const place = useSharedValue(slot);
-  const dragX = useSharedValue(0);
-  const front = slot === 0;
-
-  useEffect(() => {
-    place.value = withSpring(slot, DECK_SPRING);
-  }, [place, slot]);
-
-  const skip = () => onSkip?.();
-
-  const pan = Gesture.Pan()
-    .enabled(front)
-    .activeOffsetX([-18, 18])
-    .failOffsetY([-14, 14])
-    .onUpdate((e) => {
-      dragX.value = e.translationX;
-    })
-    .onEnd((e) => {
-      const away = Math.abs(e.translationX) > 72 || Math.abs(e.velocityX) > 800;
-      if (!away) {
-        dragX.value = withSpring(0, DECK_SPRING);
-        return;
-      }
-      const dir = (e.translationX === 0 ? e.velocityX : e.translationX) >= 0 ? 1 : -1;
-      dragX.value = withTiming(dir * 460, { duration: 260 }, (finished) => {
-        if (finished) runOnJS(skip)();
-      });
-    });
-
-  const tap = Gesture.Tap()
-    .enabled(true)
-    .onEnd(() => {
-      runOnJS(onPress)();
-    });
-
-  const gesture = front ? Gesture.Exclusive(pan, tap) : Gesture.Tap().onEnd(() => runOnJS(onPress)());
-
-  const wrapStyle = useAnimatedStyle(() => {
-    const s = place.value;
-    const x = dragX.value;
-    return {
-      zIndex: Math.round(10 - s),
-      transform: [
-        { translateX: x },
-        { translateY: s * 14 },
-        { rotateZ: `${interpolate(x, [-220, 0, 220], [-10, 0, 10])}deg` },
-        { scale: 1 - s * 0.045 },
-      ],
-    };
-  });
-
-  const faceStyle = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(place.value, [0, 1, 2], ['#113744', '#5C8188', '#D7E0DC']),
-  }));
-
-  const titleStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(place.value, [0, 1, 2], ['#F5F2E8', '#F5F2E8', '#113744']),
-  }));
-
-  const metaStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(place.value, [0, 1, 2], ['rgba(245,242,232,0.7)', 'rgba(245,242,232,0.78)', '#5A574F']),
-  }));
-
-  const eyeStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(place.value, [0, 1, 2], ['#F8D6D4', '#F8D6D4', '#113744']),
-  }));
-
-  return (
-    <GestureDetector gesture={gesture}>
-    <Reanimated.View style={[{ position: 'absolute', left: 0, right: 0, top: 0 }, wrapStyle]}>
-      <Reanimated.View style={[{ borderRadius: 18, padding: 16, minHeight: 164 }, faceStyle]}>
-          <Reanimated.Text
-            style={[
-              af,
-              {
-                fontFamily: IL_FONTS.bold,
-                fontSize: 10,
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-              },
-              eyeStyle,
-            ]}
-          >
-            {slot === 0 ? 'Now' : `Next · ${slot + 1}`}
-          </Reanimated.Text>
-          <Reanimated.Text
-            style={[
-              {
-                marginTop: 8,
-                fontFamily: IL_FONTS.display,
-                fontSize: 22,
-                lineHeight: 28,
-              },
-              titleStyle,
-            ]}
-          >
-            {item.title}
-          </Reanimated.Text>
-          <Reanimated.Text
-            style={[
-              {
-                marginTop: 6,
-                fontFamily: IL_FONTS.regular,
-                fontSize: 13,
-                lineHeight: 18,
-              },
-              metaStyle,
-            ]}
-          >
-            {item.meta}
-          </Reanimated.Text>
-          {slot === 0 ? (
-            <Reanimated.Text
-              style={[
-                {
-                  marginTop: 16,
-                  fontFamily: IL_FONTS.semibold,
-                  fontSize: 14,
-                  lineHeight: 18,
-                },
-                titleStyle,
-              ]}
-            >
-              Start this task →
-            </Reanimated.Text>
-          ) : null}
-          {front ? (
-            <Reanimated.Text
-              style={[
-                {
-                  marginTop: 6,
-                  fontFamily: IL_FONTS.regular,
-                  fontSize: 12,
-                  lineHeight: 16,
-                },
-                metaStyle,
-              ]}
-            >
-              Swipe left or right to skip
-            </Reanimated.Text>
-          ) : null}
-        </Reanimated.View>
-    </Reanimated.View>
-    </GestureDetector>
-  );
-}
-
-function InkWhisper({ name, onClose, onOpen }) {
-  const full = `Nine days to Day 1, ${name}. Start with the 27 Principles video — it’s the language the whole program speaks.`;
-  const [n, setN] = useState(0);
-  const [blink, setBlink] = useState(true);
-  const done = n >= full.length;
-
-  useEffect(() => {
-    setN(0);
-    const type = setInterval(() => {
-      setN((prev) => {
-        if (prev >= full.length) {
-          clearInterval(type);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 32);
-    return () => clearInterval(type);
-  }, [full]);
-
-  useEffect(() => {
-    if (done) {
-      setBlink(false);
-      return undefined;
-    }
-    const pulse = setInterval(() => setBlink((v) => !v), 420);
-    return () => clearInterval(pulse);
-  }, [done]);
-
-  return (
-    <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <GuideFace size={40} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <ILText role="label" color={G.ink}>
-            IL Guide’s Whisper
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-            Cohort Guide
-          </ILText>
-        </View>
-        <Pressable onPress={onClose} hitSlop={8}>
-          <MaterialIcons name="close" size={18} color={G.meta} />
-        </Pressable>
-      </View>
-      <ILText role="body" color={G.ink} style={{ marginTop: 12, fontSize: 16, lineHeight: 24, minHeight: 72 }}>
-        {full.slice(0, n)}
-        {!done && blink ? (
-          <ILText role="body" color={G.cta} style={{ fontSize: 16, lineHeight: 24 }}>
-            |
-          </ILText>
-        ) : null}
-      </ILText>
-      <Pressable onPress={onOpen} style={{ marginTop: 12 }}>
-        <ILText role="label" color={G.cta}>
-          Start the video →
-        </ILText>
-      </Pressable>
-    </WhiteCard>
-  );
-}
-
-function BhagCard({ nav }) {
-  const demo = useCourseDemo();
-  const pKey = practiceKey('lep-bhag');
-  const saved = demo.getSubmission('lep', pKey);
-  const bhag = saved?.data?.note?.trim();
-
-  return (
-    <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <MaterialIcons name="auto-awesome" size={16} color={G.cta} />
-        <ILText role="eyebrow" color={G.ink} style={[af, { fontSize: 10, marginLeft: 8 }]}>
-          Your B-HAG (Big Hairy Audacious Goal)
-        </ILText>
-      </View>
-
-      {bhag ? (
-        <>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            {bhag}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            Saved · your north star for every LEP conversation
-          </ILText>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: G.cta, marginRight: 8 }} />
-              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                Primary LEP focus track
-              </ILText>
-            </View>
-            <LinkRow label="Refine it →" onPress={() => nav.goPractice('lep', 'lep-bhag')} />
-          </View>
-        </>
-      ) : (
-        <>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-          >
-            Name the goal big enough to scare you
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            Principle 01 · Ask for what you want — start with one sentence.
-          </ILText>
-          <View style={{ flexDirection: 'row', marginTop: 16, flexWrap: 'wrap', gap: 10 }}>
-            <Pressable
-              onPress={() =>
-                nav.goWatch({
-                  assetKey: TODAY_MESSAGE.assetKey,
-                  title: TODAY_MESSAGE.title,
-                  sub: TODAY_MESSAGE.sub,
-                })
-              }
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                backgroundColor: G.mutedFill,
-              }}
-            >
-              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
-                Watch Principle 01
-              </ILText>
-            </Pressable>
-            <Pressable
-              onPress={() => nav.goPractice('lep', 'lep-bhag')}
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                borderRadius: 999,
-                backgroundColor: G.cta,
-              }}
-            >
-              <ILText role="label" color="#FFFFFF" style={{ fontSize: 13 }}>
-                Write my BHAG →
-              </ILText>
-            </Pressable>
-          </View>
-        </>
-      )}
-    </WhiteCard>
-  );
-}
 
 function Section({ title, sub, action, onAction }) {
   return (

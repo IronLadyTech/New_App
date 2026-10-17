@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
-import { updateUserProfile } from '../../services/firestore';
+import { lockLepBatchChoice } from '../../utils/lockLepBatch';
 import { BATCHES } from './ChooseBatchDateScreen';
 
 const PAGE = '#F7F6E4';
@@ -140,25 +140,8 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     BATCHES[0];
 
   useEffect(() => {
-    const cmsBatchId = batch?.cmsBatchId || (batch?.id && batch?.day1Date ? batch.id : null);
-    if (!cmsBatchId) return;
-    const lep = profile?.programAccess?.lep || {};
-    patchProfile({
-      cmsBatchId,
-      programAccess: {
-        ...(profile?.programAccess || {}),
-        lep: { ...lep, cmsBatchId },
-      },
-    });
-    if (user?.uid && user.uid !== 'preview') {
-      updateUserProfile(user.uid, {
-        cmsBatchId,
-        programAccess: {
-          ...(profile?.programAccess || {}),
-          lep: { ...lep, cmsBatchId },
-        },
-      }).catch(() => {});
-    }
+    if (!batch?.day1Date && !batch?.cmsBatchId && !batch?.id) return;
+    lockLepBatchChoice({ user, profile, patchProfile, picked: batch }).catch(() => {});
   }, [batch?.cmsBatchId, batch?.id, batch?.day1Date, user?.uid]);
 
   const finish = () => {

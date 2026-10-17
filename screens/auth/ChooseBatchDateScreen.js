@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { subscribeToBatches } from '../../services/cms';
 import { cmsBatchToSignupCard } from '../../utils/cmsBatchDisplay';
+import { formatDateIST } from '../../utils/lepBatchSchedule';
+import { zohoLepBatchKeyFromDay1 } from '../../utils/lepDeskBatchDate';
 import { Animated, Modal, Platform, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -19,42 +21,6 @@ const LINE = '#EAE8DC';
 const DASH = '#DCD7C8';
 const CTA = '#ED1D24';
 const RADIO_OFF = '#DCD7C8';
-
-export const BATCHES = [
-  {
-    id: 'sep20',
-    title: 'Sat 20 Sep – Sun 21 Sep',
-    hours: 'Two full days · 9:00 AM – 7:00 PM IST',
-    weeks: 'Then weekly sessions until 18 Oct',
-    filling: true,
-    day1: 'Sat 20 Sep · 9:00 AM – 7:00 PM IST',
-    day2: 'Sun 21 Sep · 9:00 AM – 7:00 PM IST',
-  },
-  {
-    id: 'sep27',
-    title: 'Sat 27 Sep – Sun 28 Sep',
-    hours: 'Two full days · 9:00 AM – 7:00 PM IST',
-    weeks: 'Then weekly sessions until 25 Oct',
-    day1: 'Sat 27 Sep · 9:00 AM – 7:00 PM IST',
-    day2: 'Sun 28 Sep · 9:00 AM – 7:00 PM IST',
-  },
-  {
-    id: 'oct4',
-    title: 'Sat 4 Oct – Sun 5 Oct',
-    hours: 'Two full days · 9:00 AM – 7:00 PM IST',
-    weeks: 'Then weekly sessions until 1 Nov',
-    day1: 'Sat 4 Oct · 9:00 AM – 7:00 PM IST',
-    day2: 'Sun 5 Oct · 9:00 AM – 7:00 PM IST',
-  },
-  {
-    id: 'oct11',
-    title: 'Sat 11 Oct – Sun 12 Oct',
-    hours: 'Two full days · 9:00 AM – 7:00 PM IST',
-    weeks: 'Then weekly sessions until 8 Nov',
-    day1: 'Sat 11 Oct · 9:00 AM – 7:00 PM IST',
-    day2: 'Sun 12 Oct · 9:00 AM – 7:00 PM IST',
-  },
-];
 
 const androidFix = Platform.OS === 'android' ? { includeFontPadding: false } : null;
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -81,6 +47,9 @@ function batchFromDate(d) {
   const key = `${day1.getFullYear()}-${String(day1.getMonth() + 1).padStart(2, '0')}-${String(day1.getDate()).padStart(2, '0')}`;
   return {
     id: `custom-${key}`,
+    cmsBatchId: `custom-${key}`,
+    day1Date: key,
+    zohoBatchKey: zohoLepBatchKeyFromDay1(key),
     title: `${fmtDay(day1)} – ${fmtDay(day2)}`,
     hours: 'Two full days · 9:00 AM – 7:00 PM IST',
     weeks: `Then weekly sessions until ${fmtDay(weeks)}`,
@@ -89,6 +58,22 @@ function batchFromDate(d) {
     custom: true,
   };
 }
+
+/** Next Saturdays from today (inclusive if today is Saturday). Keeps fallback cards current. */
+function upcomingSaturdayBatches(count = 4) {
+  const today = startOfDay(new Date());
+  const dow = today.getDay();
+  const toSat = dow === 6 ? 0 : (6 - dow + 7) % 7;
+  const first = addDays(today, toSat);
+  const rows = [];
+  for (let i = 0; i < count; i += 1) {
+    const card = batchFromDate(addDays(first, i * 7));
+    rows.push({ ...card, filling: i === 0 });
+  }
+  return rows;
+}
+
+export const BATCHES = upcomingSaturdayBatches(4);
 
 function monthCells(year, month) {
   const first = new Date(year, month, 1);
@@ -319,7 +304,14 @@ function CalendarPicker({ visible, onClose, onPick }) {
   );
 }
 
-export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
+export default function ChooseBatchDateScreen({
+  navigation,
+  onLock,
+  onBack,
+  onSkip,
+  /** Profile “Change batch” — keep open even when a batch is already assigned. */
+  allowChange = false,
+}) {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const [cmsBatches, setCmsBatches] = useState([]);
@@ -328,18 +320,27 @@ export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
   const [calOpen, setCalOpen] = useState(false);
 
   useEffect(() => {
+    // First-login gate only. Changing an existing batch must stay open.
+    if (allowChange) return;
     if (profile && !needsLepBatchSelection(profile)) {
       if (typeof onBack === 'function') onBack();
       else navigation?.goBack?.();
     }
-  }, [profile, navigation, onBack]);
+  }, [profile, navigation, onBack, allowChange]);
 
   useEffect(() => {
     return subscribeToBatches(
       (rows) => {
+        const today = formatDateIST(new Date());
         const open = rows
-          .filter((b) => b.openForEnrollment !== false && b.day1Date)
-          .map(cmsBatchToSignupCard);
+          .filter(
+            (b) =>
+              b.openForEnrollment !== false &&
+              b.day1Date &&
+              String(b.day1Date).slice(0, 10) >= today
+          )
+          .map(cmsBatchToSignupCard)
+          .sort((a, b) => String(a.day1Date).localeCompare(String(b.day1Date)));
         setCmsBatches(open);
         if (open.length && !open.some((b) => b.id === selected) && !custom) {
           setSelected(open[0].id);
@@ -349,7 +350,8 @@ export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
     );
   }, []);
 
-  const staticOrCms = cmsBatches.length ? cmsBatches : BATCHES;
+  const fallback = useMemo(() => upcomingSaturdayBatches(4), []);
+  const staticOrCms = cmsBatches.length ? cmsBatches : fallback;
   const batches = custom ? [custom, ...staticOrCms] : staticOrCms;
 
   const goBack = () => {
@@ -549,6 +551,18 @@ export default function ChooseBatchDateScreen({ navigation, onLock, onBack }) {
             Lock my seat
           </ILText>
         </Pressable>
+        {__DEV__ && typeof onSkip === 'function' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Skip batch selection"
+            onPress={onSkip}
+            style={{ marginTop: 12, paddingVertical: 8, alignItems: 'center' }}
+          >
+            <ILText role="label" color={CTA} style={{ fontSize: 14 }}>
+              Skip for now
+            </ILText>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

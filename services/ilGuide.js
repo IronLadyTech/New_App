@@ -97,24 +97,13 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
 
   if (context.surface === IL_GUIDE_SURFACES.HOME) {
     const lp = context.lepPractice;
+    const dues = Array.isArray(context.lepDues) ? context.lepDues : [];
+    const openDue = dues.find((d) => d && !d.done);
+    const nextOpen =
+      next && !dues.some((d) => d?.taskId === next.id && d.done) ? next : null;
+
     if (lp && (prog?.id === 'lep' || progName?.includes('LEP'))) {
-      if (lp.ritualsUnlocked && !lp.ritualsDoneToday) {
-        candidates.unshift({
-          id: 'home-lep-rituals',
-          job: IL_GUIDE_JOBS.NUDGE,
-          message: name
-            ? `${name}, start with the 5 Daily Rituals — two minutes now keeps your streak alive.`
-            : 'Start with the 5 Daily Rituals today. That is what counts for your streak.',
-        });
-      } else if (lp.currentStreak >= 3) {
-        candidates.unshift({
-          id: `home-lep-streak-${lp.currentStreak}`,
-          job: IL_GUIDE_JOBS.NUDGE,
-          message: name
-            ? `${lp.currentStreak} days in a row, ${name}. Finish today’s principle revision while the momentum is warm.`
-            : `${lp.currentStreak} days in a row. Finish today’s principle revision while the momentum is warm.`,
-        });
-      } else if (lp.practiceDoneToday < lp.practiceTotalToday) {
+      if (lp.practiceDoneToday < lp.practiceTotalToday) {
         candidates.unshift({
           id: 'home-lep-practice-open',
           job: IL_GUIDE_JOBS.NUDGE,
@@ -122,9 +111,32 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
             ? `${name}, you have ${lp.practiceTotalToday - lp.practiceDoneToday} practice item(s) left today.`
             : `You have ${lp.practiceTotalToday - lp.practiceDoneToday} practice item(s) left today.`,
         });
+      } else if (lp.ritualsUnlocked && !lp.ritualsDoneToday) {
+        candidates.unshift({
+          id: 'home-lep-rituals',
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, start with the 5 Daily Rituals — two minutes now keeps your streak alive.`
+            : 'Start with the 5 Daily Rituals today. That is what counts for your streak.',
+        });
       }
+
+      if (openDue?.title) {
+        candidates.unshift({
+          id: `home-lep-due-${openDue.taskId || openDue.title}`,
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, ${openDue.title} is still open this week. Clear it while you have momentum.`
+            : `${openDue.title} is still open this week. Clear it while you have momentum.`,
+        });
+      }
+
       const lb = context.lepBatch;
-      if (lb?.nextSessionTitle) {
+      if (
+        lb?.nextSessionTitle &&
+        lp.practiceDoneToday >= (lp.practiceTotalToday || 0) &&
+        !openDue
+      ) {
         const when = lb.nextSessionWhen ? ` (${lb.nextSessionWhen})` : '';
         candidates.unshift({
           id: 'home-lep-next-session',
@@ -133,22 +145,36 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
             ? `${name}, next on your batch: ${lb.nextSessionTitle}${when}.`
             : `Next on your batch: ${lb.nextSessionTitle}${when}.`,
         });
+      } else if (
+        lp.practiceDoneToday >= (lp.practiceTotalToday || 0) &&
+        !openDue &&
+        (lp.currentStreak || 0) >= 1
+      ) {
+        candidates.unshift({
+          id: `home-lep-caught-up-${lp.currentStreak || 0}`,
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, today’s practice is done${lp.currentStreak ? ` · ${lp.currentStreak}-day streak` : ''}. You’re clear — come back tomorrow sharp.`
+            : `Today’s practice is done. You’re clear — come back tomorrow sharp.`,
+        });
       }
     }
 
-    if (next && pct < 100) {
+    if (nextOpen && pct < 100) {
       candidates.push({
-        id: `home-progress-${next.id}`,
+        id: `home-progress-${nextOpen.id}`,
         job: IL_GUIDE_JOBS.NUDGE,
         message: name
-          ? `${name}, you're at ${pct}% in ${progName}. Next up: ${next.title}.`
-          : `You're at ${pct}% in ${progName}. Next up: ${next.title}.`,
+          ? `${name}, you're at ${pct}% in ${progName}. Next up: ${nextOpen.title}.`
+          : `You're at ${pct}% in ${progName}. Next up: ${nextOpen.title}.`,
       });
-    } else if (pct >= 100) {
+    } else if (pct >= 100 || (!nextOpen && !openDue)) {
       candidates.push({
         id: 'home-done',
         job: IL_GUIDE_JOBS.NUDGE,
-        message: `${progName} tasks are complete. Check Engage for what's happening in your cohort.`,
+        message: name
+          ? `${name}, you're caught up in ${progName}. Check Engage for what's happening in your cohort.`
+          : `${progName} looks clear. Check Engage for what's happening in your cohort.`,
       });
     }
 
@@ -265,8 +291,22 @@ export async function fetchILGuideWhisper(context) {
     result = localWhisper({ ...context, firstLogin: false }, lastId, quotations);
   }
 
-  if (context.nextTask?.id) {
-    result = { ...result, taskId: context.nextTask.id };
+  const dues = Array.isArray(context.lepDues) ? context.lepDues : [];
+  const resultTaskDone =
+    result?.taskId && dues.some((d) => d?.taskId === result.taskId && d.done);
+  if (resultTaskDone) {
+    result = localWhisper({ ...context, firstLogin: false }, lastId, quotations);
+  }
+
+  const openNextId =
+    context.nextTask?.id && !dues.some((d) => d?.taskId === context.nextTask.id && d.done)
+      ? context.nextTask.id
+      : dues.find((d) => d && !d.done)?.taskId || null;
+  if (openNextId) {
+    result = { ...result, taskId: openNextId };
+  } else if (result?.taskId && dues.some((d) => d?.taskId === result.taskId && d.done)) {
+    const { taskId: _drop, ...rest } = result;
+    result = rest;
   }
 
   await rememberMessage(uid, surface, result.id);

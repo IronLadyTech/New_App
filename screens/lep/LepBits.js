@@ -15,7 +15,7 @@ import { lockedProgramIds } from '../../utils/programAccess';
 export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../guest/GuestBits';
 export { GuestBackBar } from '../guest/GuestBits';
 
-export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false, scrollY, inert }) {
+export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false, scrollY, inert, scrim = true }) {
   const { profile } = useAuth();
   const url = photoUrl || profile?.photoURL || '';
   const initial = String(profile?.displayName || profile?.email || '?')
@@ -32,6 +32,7 @@ export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floa
       floating={floating}
       scrollY={scrollY}
       inert={inert}
+      scrim={scrim}
     />
   );
 }
@@ -363,15 +364,31 @@ export function UnderlineTabs({ items, value, onChange }) {
 }
 
 export function ProgressDark({ kicker, title, percent, foot, right }) {
+  const showRight = right !== null;
+  const rightLabel = right === undefined ? `${percent}%` : right;
   return (
-    <View style={{ backgroundColor: G.dark, borderRadius: 24, padding: 20 }}>
+    <View style={{ backgroundColor: G.dark, borderRadius: 24, padding: 20, overflow: 'hidden' }}>
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          right: -40,
+          top: -50,
+          width: 140,
+          height: 140,
+          borderRadius: 70,
+          backgroundColor: 'rgba(255,255,255,0.06)',
+        }}
+      />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
           {kicker}
         </ILText>
-        <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
-          {right || `${percent}%`}
-        </ILText>
+        {showRight && rightLabel ? (
+          <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
+            {rightLabel}
+          </ILText>
+        ) : null}
       </View>
       <ILText
         role="display"

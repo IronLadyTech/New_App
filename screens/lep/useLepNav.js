@@ -1,5 +1,7 @@
+import { Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { navigateInMemberStack, navigateWatch } from '../../utils/watchNav';
+import { LMS_HOST } from '../../constants/lmsHost';
 
 export function useLepNav() {
   const navigation = useNavigation();
@@ -9,6 +11,7 @@ export function useLepNav() {
     else navigation.navigate('Profile', { screen, params });
   };
   const goIn = (stack, screen, params) => navigateInMemberStack(navigation, stack, screen, params);
+  const openUrl = (url) => Linking.openURL(url).catch(() => {});
   return {
     goProfile: () => navigation.navigate('Profile'),
     goNotifications: () => navigation.navigate('Home', { screen: 'Notifications' }),
@@ -64,6 +67,11 @@ export function useLepNav() {
     goTicket: () => navigation.navigate('Engage', { screen: 'EventTicket' }),
     goProgress: () => navigation.navigate('Profile', { screen: 'LepProgress' }),
     goCertificate: () => navigation.navigate('Profile', { screen: 'LepCertificate' }),
+    goCertificates: () => goProfileScreen('Certificates'),
     goNudges: () => navigation.navigate('Profile', { screen: 'NudgeSettings' }),
+    goFoundationGuides: () => navigation.navigate('Learn'),
+    goHelp: () => openUrl('mailto:support@ironlady.tech?subject=Iron%20Lady%20app%20help'),
+    goPrivacy: () => openUrl(`${LMS_HOST}/privacy`),
+    goTerms: () => openUrl(`${LMS_HOST}/terms`),
   };
 }

@@ -727,6 +727,7 @@ export function DueWeek({ items, sub = 'This week', onSchedule }) {
       <SoftCard style={{ paddingVertical: 2, paddingHorizontal: 14 }}>
         {items.map((item, i) => {
           const [tagBg, tagFg] = TAG_TONE[item.tag] || TAG_TONE.LEP;
+          const done = !!item.done;
           return (
             <Pressable
               key={item.title}
@@ -739,6 +740,7 @@ export function DueWeek({ items, sub = 'This week', onSchedule }) {
                 paddingVertical: 14,
                 borderTopWidth: i ? 1 : 0,
                 borderTopColor: IL_BRAND.line,
+                opacity: done ? 0.55 : 1,
               }}
             >
               <View
@@ -746,12 +748,16 @@ export function DueWeek({ items, sub = 'This week', onSchedule }) {
                   width: 40,
                   height: 40,
                   borderRadius: 12,
-                  backgroundColor: PINK_TILE,
+                  backgroundColor: done ? IL_BRAND.forest : PINK_TILE,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <MaterialIcons name={item.icon} size={19} color={IL_BRAND.red} />
+                <MaterialIcons
+                  name={done ? 'check' : item.icon}
+                  size={19}
+                  color={done ? '#FFFFFF' : IL_BRAND.red}
+                />
               </View>
               <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
                 <ILText role="label">{item.title}</ILText>
@@ -766,7 +772,11 @@ export function DueWeek({ items, sub = 'This week', onSchedule }) {
                   </ILText>
                 </View>
               </View>
-              {item.urgent ? (
+              {done ? (
+                <ILText role="label" color={IL_BRAND.forest} style={{ fontSize: 12 }}>
+                  Done
+                </ILText>
+              ) : item.urgent ? (
                 <View style={{ backgroundColor: PINK_TILE, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
                   <ILText role="label" color={IL_BRAND.red} style={{ fontSize: 12 }}>
                     {item.due}

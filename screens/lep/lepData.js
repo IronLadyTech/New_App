@@ -63,27 +63,19 @@ export const TODAY_MESSAGE = {
   thumb: PREWORK_THUMBS['lep-principles-video'],
 };
 
+/** Before Day 1 only — never include 5 Rituals (LEP_Flow: after Day 1+2). */
 export const PREWORK = [
   {
     n: '01',
     title: 'The 27 Principles',
     sub: 'Mental models for unflinching leadership',
     min: '14m',
-    done: true,
+    done: false,
     practiceId: 'lep-principles-video',
     thumb: PREWORK_THUMBS['lep-principles-video'],
   },
   {
     n: '02',
-    title: 'The 5 Rituals of Iron Ladies',
-    sub: 'Daily energetic mastery',
-    min: '18m',
-    done: true,
-    practiceId: 'lep-rituals',
-    thumb: PREWORK_THUMBS['lep-rituals'],
-  },
-  {
-    n: '03',
     title: 'The Shameless Speech',
     sub: 'Unlearning boardroom modesty and anchoring in unapologetic authority.',
     min: '22 mins',
@@ -198,44 +190,53 @@ export const PRINCIPLES_LOCKED = [
 
 export const LEARN_CONTINUE = [
   {
-    tag: 'PRINCIPLE 04',
-    title: 'The Anatomy of Boardroom Voice & Cadence',
-    left: '8m left',
-    pct: 65,
-    cta: 'Resume →',
-    open: true,
-    practiceId: 'lep-principles-video',
-  },
-  {
-    tag: 'C-SUITE · PRIYANKA SUNDER',
-    title: 'Cybersecurity as a board function',
+    tag: 'C-SUITE · TECHNOLOGY',
+    title: "Technology isn’t a cost. It’s a growth multiplier.",
     left: '',
     pct: 0,
-    cta: 'Unlocks upon enrollment',
+    cta: 'Watch →',
+    open: true,
+    img: COVER.radhika,
+    assetKey: 'csuite:radhika',
+    who: 'Radhika Sharma',
+  },
+  {
+    tag: 'C-SUITE · AI',
+    title: 'AI accelerates innovation. Governance protects everything.',
+    left: '',
+    pct: 0,
+    cta: 'Watch →',
+    open: true,
+    img: COVER.poornima,
+    assetKey: 'csuite:poornima',
+    who: 'Poornima George',
+  },
+];
+
+export const LEARN_FRESH = [
+  {
+    title: 'From chaos to cyber resilience',
+    meta: 'Priyanka Sunder · Unlocks on enrollment',
     open: false,
     img: COVER.priyanka,
     assetKey: 'csuite:priyanka',
     who: 'Priyanka Sunder',
   },
-];
-
-export const LEARN_FRESH = [
-  { title: 'Architecting Sovereign Authority', meta: 'IL Guide · 16 mins · Open principle', open: true, practiceId: 'lep-principles-video' },
   {
-    title: 'From Factory Floors to the Boardroom',
-    meta: 'Priyanka Singla · 21 mins · Enrolled only',
+    title: 'What is your 20-mile march?',
+    meta: 'Suma Bhat · Unlocks on enrollment',
     open: false,
-    img: COVER.speaks05,
-    assetKey: 'podcast:priyanka',
-    who: 'Priyanka Singla',
+    img: COVER.suma,
+    assetKey: 'csuite:suma',
+    who: 'Suma Bhat',
   },
   {
-    title: 'From Invisible to Unstoppable',
-    meta: 'Charu Sharma · 12 mins · Enrolled only',
+    title: 'Pygmalion Effect in Management',
+    meta: 'Kamini Chawla · Unlocks on enrollment',
     open: false,
-    img: COVER.speaks04c,
-    assetKey: 'podcast:charu',
-    who: 'Charu Sharma',
+    img: COVER.kamini,
+    assetKey: 'csuite:kamini',
+    who: 'Kamini Chawla',
   },
 ];
 

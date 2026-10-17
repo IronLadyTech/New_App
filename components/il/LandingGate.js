@@ -44,8 +44,12 @@ export default function LandingGate({ profile, forcedClosed }) {
     }))
     .sort((a, b) => Number(b.enrolled) - Number(a.enrolled));
   const primaryId = programs[0]?.id;
-  // Welcome is separate from IL Guide whisper (`ilGuideOnboarded`).
-  if (!programs.length || profile.welcomeCompletedAt) return null;
+  const needsBatch = needsLepBatchSelection(profile);
+
+  // First login: welcome (+ batch if needed). Stay on batch until one is locked.
+  if (!programs.length) return null;
+  if (profile.welcomeCompletedAt && !needsBatch) return null;
+
   const wrap = (node) => (
     <View
       style={{
@@ -62,7 +66,19 @@ export default function LandingGate({ profile, forcedClosed }) {
       {node}
     </View>
   );
-  if (programs.length >= 2 && step === 'welcome') {
+
+  const openBatchOrContinue = () => {
+    if (needsLepBatchSelection(profile)) setStep('batch');
+    else leave(primaryId || 'lep');
+  };
+
+  // Welcome already done but batch still missing → batch picker only.
+  const gateStep =
+    profile.welcomeCompletedAt && needsBatch && (step === 'welcome' || step === 'picker')
+      ? 'batch'
+      : step;
+
+  if (programs.length >= 2 && gateStep === 'welcome') {
     return wrap(
       <AccountFoundScreen
         onDone={(programId) => {
@@ -92,7 +108,7 @@ export default function LandingGate({ profile, forcedClosed }) {
     );
   }
 
-  if (step === 'picker') {
+  if (gateStep === 'picker') {
     return wrap(
       <JourneyPickerScreen
         route={{ params: { name: profile?.displayName?.split(' ')[0] } }}
@@ -101,7 +117,7 @@ export default function LandingGate({ profile, forcedClosed }) {
     );
   }
 
-  if (step === 'held') {
+  if (gateStep === 'held') {
     return wrap(
       <SeatHeldScreen
         route={{ params: { batch } }}
@@ -113,14 +129,17 @@ export default function LandingGate({ profile, forcedClosed }) {
     );
   }
 
-  if (step === 'batch') {
+  if (gateStep === 'batch') {
     if (!needsLepBatchSelection(profile)) {
       leave(primaryId || 'lep');
       return null;
     }
     return wrap(
       <ChooseBatchDateScreen
-        onBack={() => setStep('welcome')}
+        onBack={() => {
+          if (profile.welcomeCompletedAt) return;
+          setStep('welcome');
+        }}
         onLock={(picked) => {
           setBatch(picked);
           setStep('held');
@@ -129,15 +148,16 @@ export default function LandingGate({ profile, forcedClosed }) {
     );
   }
 
-  const openBatchOrContinue = () => {
-    if (needsLepBatchSelection(profile)) setStep('batch');
-    else leave(primaryId || 'lep');
-  };
-
   return wrap(
     <FirstLoginWelcomeScreen
       onGoBatch={openBatchOrContinue}
-      onDone={() => leave(primaryId || 'lep')}
+      onDone={() => {
+        if (needsLepBatchSelection(profile)) {
+          setStep('batch');
+          return;
+        }
+        leave(primaryId || 'lep');
+      }}
       onBack={() => logout()}
     />
   );

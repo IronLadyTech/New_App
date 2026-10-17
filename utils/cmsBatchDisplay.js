@@ -1,4 +1,5 @@
 import { addCalendarDays } from './lepBatchSchedule';
+import { zohoLepBatchKeyFromDay1 } from './lepDeskBatchDate';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -32,5 +33,6 @@ export function cmsBatchToSignupCard(batch) {
     name: batch.name,
     orientationDate: batch.orientationDate,
     day1Date: batch.day1Date,
+    zohoBatchKey: batch.zohoBatchKey || zohoLepBatchKeyFromDay1(batch.day1Date),
   };
 }

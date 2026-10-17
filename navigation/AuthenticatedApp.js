@@ -11,11 +11,13 @@ import { CourseDemoProvider } from '../context/CourseDemoContext';
 import { ProgramNavProvider } from '../context/ProgramNavContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useNotificationOpen } from '../hooks/useNotificationOpen';
+import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNotifications';
 
 export default function AuthenticatedApp() {
   const { profile, user } = useAuth();
   const [gaveUp, setGaveUp] = useState(false);
   usePushNotifications();
+  useLocalEngagementNotifications();
   useNotificationOpen();
 
   useEffect(() => {

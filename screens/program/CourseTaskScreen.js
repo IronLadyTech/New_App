@@ -33,6 +33,7 @@ import PracticeVideo from '../../components/program/PracticeVideo';
 import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
+import { todayIsoIST } from '../../utils/lepDailyPractice';
 
 function PickCard({ icon, title, sub, onPress }) {
   return (
@@ -285,8 +286,11 @@ export default function CourseTaskScreen({ route, navigation }) {
     if (isErrcTask) {
       demo.saveSubmission(programId, taskId, form);
       setSubmittedAt(Date.now());
-    } else {
-      demo.markDone(programId, taskId);
+    }
+    // Always stamp done so Today’s practice / dues / IL Guide update immediately.
+    demo.markDone(programId, taskId);
+    if (programId === 'lep') {
+      demo.recordLepActiveDay?.(todayIsoIST());
     }
     setDone(true);
   };

@@ -69,6 +69,7 @@ function sessionCard(event) {
   const parts = calendarParts(event.date);
   return {
     id: event.id,
+    code: event.code || null,
     mon: parts ? MONTHS[parts.month - 1] : null,
     day: parts ? String(parts.day) : null,
     title: String(event.title).trim(),

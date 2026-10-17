@@ -62,8 +62,12 @@ function Arrow({ name, onPress, label }) {
  */
 export default function DemoFlowBar({ route, navRef }) {
   const insets = useSafeAreaInsets();
-  const { demo, journey, isGuest, enterJourneyPreview, enterGuest, enterAuthDemo } = useAuth();
+  const { demo, journey, isGuest, user, enterJourneyPreview, enterGuest, enterAuthDemo } =
+    useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Never show over a real Firebase account — demo strip is picker-only.
+  if (!demo || (user?.uid && user.uid !== 'preview')) return null;
+
   const inSignIn = !journey && !isGuest;
 
   const found = STEPS.findIndex((s) =>
@@ -74,7 +78,7 @@ export default function DemoFlowBar({ route, navRef }) {
   );
   // Other sign-in screens (old email login etc.) count as the start of the path.
   const index = found < 0 && inSignIn ? 0 : found;
-  if (index < 0 || (isGuest && !demo)) return null;
+  if (index < 0) return null;
 
   const open = (s) => {
     if (s.kind === 'auth') {

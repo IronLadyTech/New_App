@@ -50,7 +50,7 @@ function Root() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="dark" />
+        <StatusBar style="dark" translucent backgroundColor="transparent" />
         <AppNavigator />
       </AuthProvider>
     </SafeAreaProvider>

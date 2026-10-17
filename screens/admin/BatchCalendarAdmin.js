@@ -123,7 +123,28 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
       const synced = syncAnchorDates(draft);
       if (!synced.name?.trim()) throw new Error('Batch name is required.');
       if (!synced.day1Date) throw new Error('Set orientation or Day 1 date.');
-      if (!synced.sessions?.length) throw new Error('Click “Generate schedule” first.');
+      // Rebuild session dates from the current Day 1 / Orientation so Home stays in sync
+      // when CMS dates change. Keep Zoom links (and any title/time edits) from the draft.
+      const links = {};
+      (synced.sessions || []).forEach((s) => {
+        if (s?.code && s?.joinLink) links[s.code] = s.joinLink;
+      });
+      const sessions = buildLepBatchSessions({
+        anchor: synced.anchor || 'day1',
+        date: synced.anchorDate || synced.day1Date,
+        joinLinks: links,
+      }).map((row) => {
+        const prev = (synced.sessions || []).find((s) => s.code === row.code);
+        if (!prev) return row;
+        return {
+          ...row,
+          title: prev.title || row.title,
+          startTime: prev.startTime || row.startTime,
+          endTime: prev.endTime || row.endTime,
+          joinLink: prev.joinLink || row.joinLink,
+        };
+      });
+      if (!sessions.length) throw new Error('Could not build the LEP session schedule.');
       const id = await saveBatch({
         id: synced.id,
         name: synced.name.trim(),
@@ -131,7 +152,7 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
         orientationDate: synced.orientationDate,
         day1Date: synced.day1Date,
         timezone: synced.timezone,
-        sessions: synced.sessions,
+        sessions,
         notes: synced.notes || '',
         openForEnrollment: synced.openForEnrollment !== false,
         filling: synced.filling === true,
@@ -140,9 +161,12 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
         zohoBatchKey: synced.zohoBatchKey?.trim() || '',
         lmsGroupId: synced.lmsGroupId?.trim() || '',
       });
-      setDraft((d) => ({ ...d, id }));
+      setDraft((d) => ({ ...d, id, sessions, ...synced }));
       onHubBatchChange?.(id);
-      setMsg({ tone: 'ok', text: 'Batch calendar saved. Notification rules use session codes (S0, S1, …).' });
+      setMsg({
+        tone: 'ok',
+        text: 'Batch saved. Home uses the fixed LEP session times; CMS Day 1 + Zoom links apply when you change them.',
+      });
     } catch (e) {
       setMsg({ tone: 'error', text: e.message });
     } finally {
@@ -170,9 +194,9 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
         <>
           <H style={{ marginBottom: 6 }}>Batch calendar</H>
           <T color={A.muted} style={{ marginBottom: 12, maxWidth: 760 }}>
-            LEP v1.5: each batch has <T weight="semibold">Thursday orientation</T>, then that week’s{' '}
-            <T weight="semibold">Saturday & Sunday 9:00 AM–7:00 PM</T> (Day 1 & Day 2), plus all core and optional
-            sessions.
+            Session days and times are fixed in the LEP journey (e.g. Orientation Thu 7:00 PM, Day 1–2 Sat–Sun
+            9:00 AM–7:00 PM). Set this batch’s <T weight="semibold">Day 1 / Orientation date</T> and Zoom links
+            here only when they need to change for that cohort.
           </T>
           <CemHelpCard sectionKey="batches" />
         </>

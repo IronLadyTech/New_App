@@ -11,6 +11,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ironlady.app"
     },
+    "androidStatusBar": {
+      "translucent": true,
+      "backgroundColor": "#00000000"
+    },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",

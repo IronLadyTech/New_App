@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useCourseDemo } from '../context/CourseDemoContext';
-import { isPracticeItemDone } from '../constants/practice';
+import { usePrograms } from '../context/ProgramsContext';
+import { isPracticeItemDone, practiceKey } from '../constants/practice';
+import { isTaskDoneStatus } from '../constants/programs';
 import {
   buildEnrolledDailyPractice,
   buildRegisteredDailyPractice,
@@ -9,11 +11,34 @@ import {
   todayIsoIST,
 } from '../utils/lepDailyPractice';
 
-export function useEnrolledDailyPractice(group, cmsBatch) {
+function usePracticeDoneChecker() {
   const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+
+  return useMemo(() => {
+    const lmsDone = (programId, taskId) => {
+      if (!taskId) return false;
+      if (demo.isDone(programId, taskId)) return true;
+      const sub = getTaskSubmission?.(programId, taskId);
+      if (isTaskDoneStatus(sub?.status)) return true;
+      // Practice keys sometimes stored as submissions too.
+      const practiceSub = getTaskSubmission?.(programId, practiceKey(taskId));
+      return isTaskDoneStatus(practiceSub?.status);
+    };
+    return {
+      isDone: demo.isDone,
+      isDoneOnDay: demo.isDoneOnDay,
+      lmsDone,
+      doneToken: demo.done,
+    };
+  }, [demo, getTaskSubmission]);
+}
+
+export function useEnrolledDailyPractice(group, cmsBatch) {
   const today = todayIsoIST();
   const anchor = orientationIsoFromGroup(group);
   const day1Iso = resolveLepDay1Iso({ cmsBatch, group });
+  const { isDone, isDoneOnDay, lmsDone, doneToken } = usePracticeDoneChecker();
 
   const items = useMemo(
     () => buildEnrolledDailyPractice(today, anchor, day1Iso),
@@ -24,17 +49,17 @@ export function useEnrolledDailyPractice(group, cmsBatch) {
     () =>
       items.map((item) => ({
         ...item,
-        done: isPracticeItemDone(item, today, demo.isDone, demo.isDoneOnDay),
+        done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
       })),
-    [items, today, demo.isDone, demo.isDoneOnDay, demo.done]
+    [items, today, isDone, isDoneOnDay, lmsDone, doneToken]
   );
 }
 
 export function useRegisteredDailyPractice(group, cmsBatch) {
-  const demo = useCourseDemo();
   const today = todayIsoIST();
   const anchor = orientationIsoFromGroup(group);
   const day1Iso = resolveLepDay1Iso({ cmsBatch, group });
+  const { isDone, isDoneOnDay, lmsDone, doneToken } = usePracticeDoneChecker();
 
   const items = useMemo(
     () => buildRegisteredDailyPractice(today, anchor, day1Iso),
@@ -45,8 +70,8 @@ export function useRegisteredDailyPractice(group, cmsBatch) {
     () =>
       items.map((item) => ({
         ...item,
-        done: isPracticeItemDone(item, today, demo.isDone, demo.isDoneOnDay),
+        done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
       })),
-    [items, today, demo.isDone, demo.isDoneOnDay, demo.done]
+    [items, today, isDone, isDoneOnDay, lmsDone, doneToken]
   );
 }

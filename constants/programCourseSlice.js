@@ -6,17 +6,17 @@ import { withLepResources } from './lepResources';
 
 export const COURSE_PHASES = {
   [PROGRAMS.LEP]: [
-    { id: 'pre-program', title: 'Pre-Program Preparation', sub: '3 lessons · before Day 1', openRegistered: true },
-    { id: 'orientation', title: 'Program Orientation', sub: '3 lessons · before Day 1', openRegistered: true },
-    { id: 'day-1', title: 'Day 1 — Personal Transformation', sub: '6 lessons · Week 1', openRegistered: true },
-    { id: 'day-2', title: 'Day 2 — Strategies and Tactics', sub: '6 lessons · Week 1', openRegistered: false },
-    { id: 'week-1', title: 'Week 1 — Consolidation and Closure', sub: '5 lessons · Week 1', openRegistered: false },
-    { id: 'week-2', title: 'Week 2 — Profile, Resume and Pitch', sub: '14 lessons · Week 2', openRegistered: false },
-    { id: 'week-3', title: 'Week 3 — Progress Review and Guiding Stars', sub: '5 lessons · Week 3', openRegistered: false },
-    { id: 'week-4', title: 'Week 4 — Graduation', sub: '6 lessons · Week 4', openRegistered: false },
-    { id: 'community', title: 'Community Sessions', sub: '2 lessons · ongoing', openRegistered: false },
-    { id: 'evaluation', title: 'Final Evaluation', sub: '2 lessons · Week 4', openRegistered: false },
-    { id: 'certificate', title: 'Certificate', sub: '2 lessons · on completion', openRegistered: false },
+    { id: 'pre-program', title: 'Pre-Program Preparation', sub: 'VIA Survey · 3 photographs · CoDeSeF · NSDC', openRegistered: true },
+    { id: 'orientation', title: 'Program Orientation', sub: 'Framework · Access Essentials · Schedule', openRegistered: true },
+    { id: 'day-1', title: 'Day 1 – Personal Transformation', sub: '6 tasks · Day 1 Assignment', openRegistered: true },
+    { id: 'day-2', title: 'Day 2 – Strategies and Tactics', sub: '5 tasks · Day 2 Assignment', openRegistered: false },
+    { id: 'week-1', title: 'Week 1', sub: 'Consolidation and Closure', openRegistered: false },
+    { id: 'week-2', title: 'Week 2', sub: 'Profile / Resume · Elevator Pitch · LinkedIn', openRegistered: false },
+    { id: 'week-3', title: 'Week 3', sub: 'Progress Review · Guiding Stars', openRegistered: false },
+    { id: 'week-4', title: 'Week 4', sub: 'Graduation · Closing Circle', openRegistered: false },
+    { id: 'community', title: 'Community Sessions', sub: 'Ongoing cohort rooms', openRegistered: false },
+    { id: 'evaluation', title: 'Final Evaluation', sub: '27 Principles Quiz · Reflection', openRegistered: false },
+    { id: 'certificate', title: 'Certificate', sub: 'Your LEP certificate', openRegistered: false },
   ],
   [PROGRAMS.BM100]: [
     { id: 'onboarding', title: 'Onboarding', sub: '2 lessons · before Week 1', openRegistered: true },

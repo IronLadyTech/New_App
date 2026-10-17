@@ -21,7 +21,10 @@ function parseLabJourney(raw, legacyLep) {
   if (raw) {
     try {
       const v = JSON.parse(raw);
-      if (v?.program && v?.state) return { program: v.program, state: v.state };
+      if (v?.program && v?.state) {
+        const regStatus = ['enroll', 'batch', 'prework', 'ready'].includes(v.regStatus) ? v.regStatus : null;
+        return { program: v.program, state: v.state, regStatus };
+      }
     } catch {
       /* ignore */
     }
@@ -32,7 +35,7 @@ function parseLabJourney(raw, legacyLep) {
   return null;
 }
 
-function labProfile({ program, state }) {
+function labProfile({ program, state, regStatus }) {
   const enrolled = state === 'enrolled';
   const pay = enrolled ? 'paid' : 'register';
   return {
@@ -47,6 +50,7 @@ function labProfile({ program, state }) {
     labProgram: program,
     labState: state,
     labLep: program === 'lep' ? state : undefined,
+    labRegStatus: regStatus || null,
   };
 }
 
@@ -106,8 +110,14 @@ export function AuthProvider({ children }) {
         return;
       }
       if (!cancelled) {
+        // Real phone/email login ends demo / lab journey so Ananya + flow bar cannot stick.
         setGuestMode(false);
-        AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
+        setLabJourney(null);
+        setDemo(false);
+        setAuthEntry(null);
+        AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(
+          () => {}
+        );
       }
       try {
         const p = await fetchUserProfile(user.uid);
@@ -210,10 +220,11 @@ export function AuthProvider({ children }) {
     await AsyncStorage.setItem(DEMO_KEY, '1');
   }, []);
 
-  const enterJourneyPreview = useCallback(async (program, state) => {
+  const enterJourneyPreview = useCallback(async (program, state, regStatus) => {
     const next = {
       program: ['lep', '100bm', 'mbw'].includes(program) ? program : 'lep',
       state: state === 'enrolled' ? 'enrolled' : 'registered',
+      regStatus: ['enroll', 'batch', 'prework', 'ready'].includes(regStatus) ? regStatus : null,
     };
     leavePreview();
     setGuestMode(false);
