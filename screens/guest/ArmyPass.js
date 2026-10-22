@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, View } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
+import { guestGreetingFirstName } from '../../services/appGuest';
 
 const PAPER = '#FFFDF7';
 const STUB_W = 74;
@@ -49,9 +49,7 @@ export default function ArmyPass() {
   const drop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    AsyncStorage.getItem('il_guest_name')
-      .then((v) => setName((v || '').trim().split(/\s+/)[0] || ''))
-      .catch(() => {});
+    guestGreetingFirstName().then((first) => setName(first)).catch(() => {});
     Animated.spring(drop, { toValue: 1, damping: 11, stiffness: 120, mass: 0.8, useNativeDriver: true }).start();
   }, [drop]);
 

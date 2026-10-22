@@ -28,7 +28,8 @@ export default function GuestStartScreen({ navigation, route }) {
   const onRetry = route?.params?.onRetry;
   const phone = route?.params?.phone || peekPhoneAuth()?.phone;
   const tier = route?.params?.tier || peekPhoneAuth().confirmation?.access?.tier || 'explore';
-  const isExploreGuest = tier === 'explore';
+  const isMcGuest = tier === 'mc';
+  const isExploreGuest = !isMcGuest;
   const shown = formatLocal(phone);
 
   return (
@@ -74,9 +75,9 @@ export default function GuestStartScreen({ navigation, route }) {
             {shown}
           </ILText>{' '}
           is verified.
-          {isExploreGuest
-            ? ' We couldn’t link it to a program yet, so you’re in with free guest access — and your progress is saved to this number.'
-            : ' Welcome back from the Masterclass — your Day 1 and Day 2 recordings are waiting for you inside.'}
+          {isMcGuest
+            ? ' We found your Masterclass registration. Your Day 1 and Day 2 recordings are on the next screen.'
+            : ' We couldn’t link it to a program seat yet, so you’re in with free guest access — progress is saved to this number.'}
         </ILText>
 
         <View
@@ -137,14 +138,16 @@ export default function GuestStartScreen({ navigation, route }) {
             color="#FFFFFF"
             style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
           >
-            Continue as a guest
+            {isMcGuest ? 'Open my Masterclass' : 'Continue as a guest'}
           </ILText>
           <ILText
             role="bodySm"
             color="rgba(255,255,255,0.7)"
             style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}
           >
-            Browse Masterclass previews, community stories and free resources. Your number is saved, so your progress is too.
+            {isMcGuest
+              ? 'Your two evening recordings are on the next screen. You can add a nickname above if you like.'
+              : 'Browse Masterclass previews, community stories and free resources. Your number is saved, so your progress is too.'}
           </ILText>
           <Pressable
             onPress={async () => {

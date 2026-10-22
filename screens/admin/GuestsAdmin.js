@@ -79,7 +79,7 @@ export default function GuestsAdmin() {
       if (filter === 'cx' && !g.needsCx) return false;
       if (filter === 'quiet' && ms(g.lastSeenAt) > quiet) return false;
       if (filter === 'new' && ms(g.firstSeenAt) < week) return false;
-      if (term && !`${g.name || ''} ${g.phone || ''}`.toLowerCase().includes(term)) return false;
+      if (term && !`${g.name || ''} ${g.zohoLeadName || ''} ${g.phone || ''}`.toLowerCase().includes(term)) return false;
       return true;
     });
   }, [rows, filter, q]);
@@ -141,13 +141,13 @@ export default function GuestsAdmin() {
       {shown.map((g) => {
         const digits = String(g.phone || '').replace(/\D/g, '');
         const hello = encodeURIComponent(
-          `Hi${g.name ? ` ${String(g.name).split(' ')[0]}` : ''}, this is the Iron Lady team. Thank you for joining the app! How can we help you take your next step?`
+          `Hi${g.name || g.zohoLeadName ? ` ${String(g.name || g.zohoLeadName).split(' ')[0]}` : ''}, this is the Iron Lady team. Thank you for joining the app! How can we help you take your next step?`
         );
         return (
           <Card key={g.id} style={{ marginBottom: 8, padding: 12 }}>
             <Row gap={10} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
               <View style={{ flex: 1.4, minWidth: 180 }}>
-                <T size={14} weight="semibold">{g.name || 'Name not given yet'}</T>
+                <T size={14} weight="semibold">{g.name || g.zohoLeadName || 'Name not given yet'}</T>
                 <T size={12} color={A.muted}>{g.phone}</T>
               </View>
               <View style={{ flex: 1.6, minWidth: 220 }}>

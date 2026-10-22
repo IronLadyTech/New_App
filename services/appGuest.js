@@ -10,12 +10,17 @@ import { functions } from './firebase';
 
 const PHONE_KEY = 'il_guest_phone';
 const TIER_KEY = 'il_guest_tier';
+const NAME_KEY = 'il_guest_name';
 const OPEN_GAP_MS = 30 * 60 * 1000;
 let lastOpenAt = 0;
 
 export async function saveGuestIdentity({ phone, tier }) {
   try {
-    if (phone) await AsyncStorage.setItem(PHONE_KEY, String(phone));
+    const nextPhone = phone ? String(phone) : '';
+    const prevPhone = await AsyncStorage.getItem(PHONE_KEY);
+    // A different number on this phone: forget the previous guest's name.
+    if (nextPhone && prevPhone && prevPhone !== nextPhone) await AsyncStorage.removeItem(NAME_KEY);
+    if (nextPhone) await AsyncStorage.setItem(PHONE_KEY, nextPhone);
     await AsyncStorage.setItem(TIER_KEY, tier === 'mc' ? 'mc' : 'explore');
   } catch {
     // device storage unavailable — tracking just stays off
@@ -29,6 +34,16 @@ export async function getGuestIdentity() {
     return { phone: phone || null, tier: tier === 'mc' ? 'mc' : 'explore' };
   } catch {
     return { phone: null, tier: 'explore' };
+  }
+}
+
+/** First name for the guest greeting — the name she typed on this phone. */
+export async function guestGreetingFirstName() {
+  try {
+    const raw = String((await AsyncStorage.getItem(NAME_KEY)) || '').trim();
+    return raw.split(/\s+/)[0] || '';
+  } catch {
+    return '';
   }
 }
 
