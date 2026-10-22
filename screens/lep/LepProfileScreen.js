@@ -162,6 +162,7 @@ export default function LepProfileScreen() {
   const facts = {
     ...lead,
     domain: source?.domain || lead.industry || source?.leadershipRole || '',
+    salaryRange: source?.salaryRange || source?.zohoLead?.Annual_Income || '',
     ...localFacts,
   };
   const name = facts.name || lepFullName(profile);
@@ -379,6 +380,7 @@ export default function LepProfileScreen() {
         />
         <ProfileBhagCard
           bhag={bhag}
+          field={facts.domain}
           onSaved={(partial) => {
             setLocalFacts((prev) => ({ ...prev, ...partial }));
             patchProfile(partial);

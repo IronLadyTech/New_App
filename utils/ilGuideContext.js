@@ -2,6 +2,7 @@ import { PROGRAM_JOURNEY, isTaskDoneStatus } from '../constants/programs';
 import {
   getEnrolledPrograms,
   learnerBatchId,
+  learnerBhagText,
   learnerDomainText,
   programPaymentStatus,
 } from './programAccess';
@@ -100,6 +101,13 @@ export function buildILGuideContext({
         }
       : null;
 
+  // What she already told us is used, never asked again; only missing items may be suggested.
+  // Income is never sent to IL Guide.
+  const location = profile?.city || profile?.location || null;
+  const domain = learnerDomainText(profile) || null;
+  const goalText = learnerBhagText(profile) || null;
+  const profileMissing = [!location && 'city', !domain && 'domain', !goalText && 'bhag'].filter(Boolean);
+
   const ctx = {
     participantId: user?.uid,
     surface,
@@ -107,8 +115,10 @@ export function buildILGuideContext({
     name,
     programs,
     primaryProgram: primary,
-    location: profile?.city || profile?.location || null,
-    domain: learnerDomainText(profile) || null,
+    location,
+    domain,
+    goal: goalText ? { text: goalText } : null,
+    profileMissing: profileMissing.length ? profileMissing : null,
     batchId: learnerBatchId(profile),
     phase: profile?.currentPhase || profile?.phase || null,
     nextTask: nextTask

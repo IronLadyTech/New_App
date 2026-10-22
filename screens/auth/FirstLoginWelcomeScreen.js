@@ -32,6 +32,7 @@ import {
   syncWelcomeProfileInBackground,
 } from '../../services/functions';
 import { welcomeSaveFeedback } from '../../utils/participantSyncMessage';
+import { BhagComposer, CityPicker, FieldOfWorkPicker } from '../../components/profile/ProfilePickers';
 
 const GUIDE = require('../../assets/il/il-guide-face.jpg');
 const DARK = '#102C32';
@@ -67,8 +68,8 @@ const FIELD_META = {
   domain: {
     icon: 'work-outline',
     title: 'Field of work',
-    placeholder: 'Your field, for example Technology',
-    empty: 'Add your field of work',
+    placeholder: 'Choose your field of work',
+    empty: 'Choose your field of work',
   },
   bhag: {
     icon: 'flag',
@@ -194,8 +195,8 @@ export default function FirstLoginWelcomeScreen({
     setSaveNoticeError(false);
   };
 
-  const saveEdit = () => {
-    const value = draft.trim();
+  const saveEdit = (picked) => {
+    const value = String(typeof picked === 'string' ? picked : draft).trim();
     if (!editing || !value || saving) return;
     const key = editing;
     const local =
@@ -576,26 +577,13 @@ export default function FirstLoginWelcomeScreen({
                 <ILText role="label" color={IL_BRAND.ink} style={{ fontSize: 13, marginBottom: 8 }}>
                   {FIELD_META[editing].title}
                 </ILText>
-                <TextInput
-                  value={draft}
-                  onChangeText={setDraft}
-                  placeholder={FIELD_META[editing].placeholder}
-                  placeholderTextColor="rgba(16,44,50,0.45)"
-                  autoFocus
-                  multiline={editing === 'bhag'}
-                  textAlignVertical={editing === 'bhag' ? 'top' : 'center'}
-                  style={{
-                    backgroundColor: '#F4F1E8',
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: 'rgba(16,44,50,0.12)',
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    fontSize: 16,
-                    color: IL_BRAND.ink,
-                    minHeight: editing === 'bhag' ? 88 : 48,
-                  }}
-                />
+                {editing === 'city' ? (
+                  <CityPicker value={fields.city} onPick={saveEdit} />
+                ) : editing === 'domain' ? (
+                  <FieldOfWorkPicker value={fields.domain} onPick={saveEdit} />
+                ) : (
+                  <BhagComposer value={draft} onChange={setDraft} field={fields.domain} />
+                )}
                 <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
                   <Pressable
                     accessibilityRole="button"
@@ -616,9 +604,10 @@ export default function FirstLoginWelcomeScreen({
                   >
                     <ILText role="label" color={IL_BRAND.ink}>Cancel</ILText>
                   </Pressable>
+                  {editing === 'bhag' ? (
                   <Pressable
                     accessibilityRole="button"
-                    onPress={saveEdit}
+                    onPress={() => saveEdit()}
                     disabled={saving || !draft.trim()}
                     style={{
                       flex: 1,
@@ -630,9 +619,10 @@ export default function FirstLoginWelcomeScreen({
                     }}
                   >
                     <ILText role="label" color={IL_BRAND.white}>
-                      {saving ? 'Saving…' : 'Save'}
+                      {saving ? 'Saving…' : 'Save my goal'}
                     </ILText>
                   </Pressable>
+                  ) : null}
                 </View>
                 {saveNotice ? (
                   <ILText

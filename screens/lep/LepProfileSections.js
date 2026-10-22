@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, Linking, Modal, Pressable, TextInput, View } from 'react-native';
+import { Alert, Linking, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -18,6 +18,7 @@ import { resolveLepBatchDateLine } from '../../utils/lepDeskBatchDate';
 import { saveWelcomeProfileFields } from '../../services/functions';
 import { welcomeSaveFeedback } from '../../utils/participantSyncMessage';
 import { WhiteCard, RedCta } from './LepBits';
+import { BhagComposer, CityPicker, FieldOfWorkPicker, SalaryPicker } from '../../components/profile/ProfilePickers';
 
 const FILL = '#F7F1E1';
 
@@ -72,8 +73,14 @@ export function ProfileStrengthCard({ facts, onSaved }) {
       key: 'domain',
       title: 'Field of work',
       value: domain,
-      hint: 'Technology, Marketing, Finance…',
-      placeholder: 'Your domain, for example Technology',
+      hint: 'HR, IT & Engineering, Banking & Finance…',
+      placeholder: 'Choose your field of work',
+    },
+    {
+      key: 'salaryRange',
+      title: 'Annual income',
+      value: facts.salaryRange,
+      hint: 'Private — helps us match you with the right peers',
     },
     {
       key: 'experience',
@@ -94,8 +101,8 @@ export function ProfileStrengthCard({ facts, onSaved }) {
     setDraft(String(field.value || '').replace(/\s*years$/i, ''));
   };
 
-  const save = async () => {
-    const value = draft.trim();
+  const save = async (picked) => {
+    const value = String(typeof picked === 'string' ? picked : draft).trim();
     if (!edit || !value || saving) return;
     setSaving(true);
     try {
@@ -104,8 +111,8 @@ export function ProfileStrengthCard({ facts, onSaved }) {
         setEdit(null);
         return;
       }
-      const key = edit.key === 'domain' ? 'domain' : 'city';
-      const local = key === 'domain' ? { domain: value, leadershipRole: value } : { city: value };
+      const key = ['domain', 'salaryRange'].includes(edit.key) ? edit.key : 'city';
+      const local = key === 'domain' ? { domain: value, leadershipRole: value } : { [key]: value };
       onSaved?.(local);
       setEdit(null);
       const result = await saveWelcomeProfileFields({ [key]: value });
@@ -182,6 +189,14 @@ export function ProfileStrengthCard({ facts, onSaved }) {
             <ILText role="label" color={G.ink}>
               {edit?.title}
             </ILText>
+            <ScrollView style={{ maxHeight: 460, marginTop: 12 }} keyboardShouldPersistTaps="handled">
+            {edit?.key === 'city' ? (
+              <CityPicker value={edit.value} onPick={save} />
+            ) : edit?.key === 'domain' ? (
+              <FieldOfWorkPicker value={edit.value} onPick={save} />
+            ) : edit?.key === 'salaryRange' ? (
+              <SalaryPicker value={edit.value} onPick={save} />
+            ) : (
             <TextInput
               value={draft}
               onChangeText={setDraft}
@@ -189,7 +204,6 @@ export function ProfileStrengthCard({ facts, onSaved }) {
               placeholderTextColor={G.meta}
               autoFocus
               style={{
-                marginTop: 12,
                 borderWidth: 1,
                 borderColor: G.line,
                 borderRadius: 12,
@@ -199,8 +213,11 @@ export function ProfileStrengthCard({ facts, onSaved }) {
                 color: G.ink,
               }}
             />
+            )}
+            </ScrollView>
+            {edit?.key === 'experience' ? (
             <Pressable
-              onPress={save}
+              onPress={() => save()}
               disabled={saving || !draft.trim()}
               style={{
                 marginTop: 12,
@@ -215,6 +232,7 @@ export function ProfileStrengthCard({ facts, onSaved }) {
                 {saving ? 'Saving…' : 'Save'}
               </ILText>
             </Pressable>
+            ) : null}
           </Pressable>
         </Pressable>
       </Modal>
@@ -222,7 +240,7 @@ export function ProfileStrengthCard({ facts, onSaved }) {
   );
 }
 
-export function ProfileBhagCard({ bhag, onSaved }) {
+export function ProfileBhagCard({ bhag, field, onSaved }) {
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -294,26 +312,9 @@ export function ProfileBhagCard({ bhag, onSaved }) {
             <ILText role="label" color={G.ink}>
               Your B-HAG
             </ILText>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="One sentence — the goal big enough to scare you"
-              placeholderTextColor={G.meta}
-              autoFocus
-              multiline
-              style={{
-                marginTop: 12,
-                minHeight: 88,
-                borderWidth: 1,
-                borderColor: G.line,
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-                fontSize: 15,
-                color: G.ink,
-                textAlignVertical: 'top',
-              }}
-            />
+            <View style={{ marginTop: 12 }}>
+              <BhagComposer value={draft} onChange={setDraft} field={field} />
+            </View>
             <Pressable
               onPress={save}
               disabled={saving || !draft.trim()}
