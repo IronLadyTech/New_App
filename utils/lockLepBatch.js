@@ -10,7 +10,7 @@ import { orientationFromDay1Saturday } from './lepBatchSchedule';
 
 /**
  * Persist batch choice on the app profile and push Zoho `LEP_Batch`
- * (Wed before Day 1 Sat → +1 month).
+ * (Day 1 Sat → +1 month, e.g. `24/10/2026 - 24/11/2026`).
  */
 export async function lockLepBatchChoice({ user, profile, patchProfile, picked, silent = false }) {
   const day1Date =

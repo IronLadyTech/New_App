@@ -467,7 +467,7 @@ export default function LepProfileScreen() {
                       ? awaitingZoho
                         ? `${dateLine} · syncing to Zoho`
                         : dateLine
-                      : 'Not set in Zoho yet'}
+                      : 'You haven’t selected a batch yet'}
                   </ILText>
                   {dateLine && batchCard.body ? (
                     <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>

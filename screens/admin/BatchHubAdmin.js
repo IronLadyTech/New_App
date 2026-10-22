@@ -20,6 +20,7 @@ import { fetchLepGroups } from '../../services/lmsGroups';
 import { fetchZohoLepBatchKeys } from '../../services/zohoLepBatches';
 import { formatBatchPickerLabel } from '../../utils/cmsBatchLabel';
 import { describeBatchAnchor } from '../../utils/lepBatchSchedule';
+import { inferLepDay1FromGroup } from '../../utils/lepDeskBatchDate';
 import BatchCalendarAdmin from './BatchCalendarAdmin';
 import BatchHubMessagesTab from './batchHub/BatchHubMessagesTab';
 import BatchHubContentTab from './batchHub/BatchHubContentTab';
@@ -282,6 +283,14 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     .filter((g) => !linkedGroups.has(g.id))
     .sort((a, b) => String(b.id).localeCompare(String(a.id)));
   const sizeOf = (b) => (lmsBatches || []).find((g) => g.id === b.lmsGroupId)?.memberCount;
+  // An unlinked LEP batch whose Zoho batch (same Day 1) is already on another CMS batch:
+  // that other batch is the one its learners see.
+  const twin = (() => {
+    if (!batch || batch.lmsGroupId || !batch.day1Date) return null;
+    const group = (lmsBatches || []).find((g) => linkedGroups.has(g.id) && inferLepDay1FromGroup(g) === batch.day1Date);
+    const owner = group && programBatches.find((b) => b.id !== batch.id && b.lmsGroupId === group.id);
+    return owner ? { group, owner } : null;
+  })();
   const isLep = programId === PROGRAMS.LEP;
   const tabs = TABS.filter((t) => (isLep || !t.lepOnly) && (canManage || !t.leadOnly));
   const label = (text) => (
@@ -389,6 +398,15 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
             <T size={13} color={A.danger} weight="semibold">
               Not linked to its learners yet — counts and reminders cannot reach them.
             </T>
+            {twin ? (
+              <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <T size={12} color={A.ink} style={{ flex: 1, minWidth: 260 }}>
+                  The learners of these dates ({twin.group.name} · {twin.group.memberCount} learners) are on another batch, “
+                  {twin.owner.name}”. Make your changes there — this one is a duplicate.
+                </T>
+                <Btn label="Open that batch" small onPress={() => setBatchId(twin.owner.id)} />
+              </Row>
+            ) : null}
             {canEdit && notSetUp.length ? (
               <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <T size={12} color={A.ink}>This is the LMS batch:</T>

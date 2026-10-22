@@ -146,17 +146,16 @@ export function addOneCalendarMonth(iso) {
 }
 
 /**
- * Zoho Leads `LEP_Batch` from Day 1 Saturday:
- * Wed before that Sat → same weekday one month later.
- * e.g. Sat 17–Sun 18 Oct → `14/10/2026 - 14/11/2026`
+ * Zoho Leads `LEP_Batch` from Day 1 Saturday → same date one month later,
+ * the way CX names batches in Zoho.
+ * e.g. Sat 24–Sun 25 Oct → `24/10/2026 - 24/11/2026`
  */
 export function zohoLepBatchKeyFromDay1(day1Iso) {
   const day1 = String(day1Iso || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return '';
-  const start = addCalendarDays(day1, -3); // Wednesday
-  const end = addOneCalendarMonth(start);
-  if (!start || !end) return '';
-  return `${toDmy(start)} - ${toDmy(end)}`;
+  const end = addOneCalendarMonth(day1);
+  if (!end) return '';
+  return `${toDmy(day1)} - ${toDmy(end)}`;
 }
 
 /**
