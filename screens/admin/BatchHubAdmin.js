@@ -20,7 +20,8 @@ import { fetchLepGroups } from '../../services/lmsGroups';
 import { fetchZohoLepBatchKeys } from '../../services/zohoLepBatches';
 import { formatBatchPickerLabel } from '../../utils/cmsBatchLabel';
 import { describeBatchAnchor } from '../../utils/lepBatchSchedule';
-import { inferLepDay1FromGroup } from '../../utils/lepDeskBatchDate';
+import { inferLepDay1FromGroup, zohoLepBatchKeyFromDay1 } from '../../utils/lepDeskBatchDate';
+import { resolveLearnerCmsBatch } from '../../utils/resolveLearnerCmsBatch';
 import BatchCalendarAdmin from './BatchCalendarAdmin';
 import BatchHubMessagesTab from './batchHub/BatchHubMessagesTab';
 import BatchHubContentTab from './batchHub/BatchHubContentTab';
@@ -291,6 +292,19 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     const owner = group && programBatches.find((b) => b.id !== batch.id && b.lmsGroupId === group.id);
     return owner ? { group, owner } : null;
   })();
+  // Another LEP batch with the same Day 1: ask the app's own matching which one a
+  // learner of these dates (Zoho LEP Batch for this Day 1) actually sees.
+  const seenInstead = (() => {
+    if (programId !== PROGRAMS.LEP || !batch?.day1Date) return null;
+    const same = programBatches.filter((b) => String(b.day1Date || '').slice(0, 10) === String(batch.day1Date).slice(0, 10));
+    if (same.length < 2) return null;
+    const key = zohoLepBatchKeyFromDay1(String(batch.day1Date).slice(0, 10));
+    const seen = resolveLearnerCmsBatch(programBatches, {
+      profile: { programAccess: { lep: { zohoRawBatch: key } }, LEP_Batch: key },
+      programId: 'lep',
+    });
+    return seen && seen.id !== batch.id ? seen : null;
+  })();
   const isLep = programId === PROGRAMS.LEP;
   const tabs = TABS.filter((t) => (isLep || !t.lepOnly) && (canManage || !t.leadOnly));
   const label = (text) => (
@@ -392,6 +406,20 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
         </Row>
         {counts?.error ? (
           <T size={11} color={A.muted} style={{ marginTop: 6 }}>Counts appear once the learner-count service is switched on.</T>
+        ) : null}
+        {seenInstead ? (
+          <View style={{ marginTop: 10, backgroundColor: '#FFF4D6', borderRadius: 10, padding: 12 }}>
+            <T size={13} color={A.ink} weight="semibold">
+              Learners of these dates see “{seenInstead.name}”, not this batch.
+            </T>
+            <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <T size={12} color={A.ink} style={{ flex: 1, minWidth: 260 }}>
+                Two batches have the same Day 1. Make your changes (calendar, Zoom links, messages) on “{seenInstead.name}” so
+                learners get them. This one is a duplicate.
+              </T>
+              <Btn label="Open that batch" small onPress={() => setBatchId(seenInstead.id)} />
+            </Row>
+          </View>
         ) : null}
         {batch && !batch.lmsGroupId ? (
           <View style={{ marginTop: 10, backgroundColor: '#FCE8E8', borderRadius: 10, padding: 12 }}>

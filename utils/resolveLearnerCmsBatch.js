@@ -1,5 +1,5 @@
 import { formatZohoLepBatchLabel, inferLepDay1FromZohoRaw } from './lepDeskBatchDate';
-import { learnerBatchId, learnerBatchLabel } from './programAccess';
+import { learnerBatchId, learnerBatchLabel, learnerProgramDates } from './programAccess';
 
 function norm(s) {
   return String(s || '').trim().replace(/\s+/g, ' ');
@@ -72,16 +72,29 @@ export function resolveLearnerCmsBatch(batches, { profile, programId = 'lep' } =
   }
 
   const inferSource = zohoRaw || access?.zohoRawBatch || batchLabel;
-  const day1 = inferLepDay1FromZohoRaw(inferSource);
+  // Zoho LEP Start Date is Day 1 itself — the fallback when the batch text is missing.
+  const day1 = inferLepDay1FromZohoRaw(inferSource) || learnerProgramDates(profile, programId).start;
   if (day1) {
-    const matches = rows.filter((b) => b.day1Date === day1);
+    const matches = rows.filter((b) => String(b.day1Date || '').slice(0, 10) === day1);
     if (matches.length === 1) return matches[0];
-    if (matches.length > 1 && zohoRaw) {
+    if (matches.length > 1) {
+      // Same dates = same cohort. Prefer the exact Zoho batch, then the one linked to
+      // its learners, then the one CX changed last.
       const z = normZoho(zohoRaw);
-      const tight = matches.find((b) => normZoho(b.zohoBatchKey) === z);
-      if (tight) return tight;
+      return (
+        (z && matches.find((b) => normZoho(b.zohoBatchKey) === z)) ||
+        matches.find((b) => norm(b.lmsGroupId)) ||
+        [...matches].sort((a, b) => stamp(b.updatedAt) - stamp(a.updatedAt))[0]
+      );
     }
   }
 
   return null;
+}
+
+function stamp(v) {
+  if (!v) return 0;
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (typeof v.seconds === 'number') return v.seconds * 1000;
+  return Date.parse(v) || 0;
 }
