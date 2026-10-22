@@ -212,3 +212,46 @@ export async function setupLocalEngagementNotifications(profile) {
   }
   return { welcome, streak };
 }
+
+const GUEST_ID = 'il-guest-daily';
+
+/**
+ * Daily evening nudge for app guests (no account) until they finish the 4-day
+ * challenge. Masterclass guests are pointed back to their recordings too.
+ */
+export async function scheduleGuestReminder({ name, tier } = {}) {
+  if (Platform.OS === 'web' || isExpoGo()) return { ok: false, reason: 'unavailable' };
+  const Notifications = notifications();
+  if (!Notifications) return { ok: false, reason: 'unavailable' };
+  try {
+    const allowed = await ensurePermission(Notifications);
+    if (!allowed) return { ok: false, reason: 'denied' };
+    await ensureChannels(Notifications);
+    await Notifications.cancelScheduledNotificationAsync(GUEST_ID).catch(() => {});
+    const who = String(name || '').trim().split(/\s+/)[0];
+    await Notifications.scheduleNotificationAsync({
+      identifier: GUEST_ID,
+      content: {
+        title: who ? `${who}, 10 minutes for you tonight` : '10 minutes for you tonight',
+        body:
+          tier === 'mc'
+            ? 'Rewatch your Masterclass recordings, then take the next day of your leadership challenge.'
+            : 'The next day of your 4-day leadership challenge is waiting in Iron Lady.',
+        color: '#ED1D24',
+        sound: true,
+        data: { go: { to: 'home' }, kind: 'guest' },
+      },
+      trigger: buildStreakTrigger(Notifications),
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e?.message || 'guest_failed' };
+  }
+}
+
+/** She finished the challenge — stop the daily guest nudge. */
+export async function cancelGuestReminder() {
+  const Notifications = notifications();
+  if (!Notifications) return;
+  await Notifications.cancelScheduledNotificationAsync(GUEST_ID).catch(() => {});
+}

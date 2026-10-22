@@ -12,6 +12,7 @@ import GuestChallengeCompleteScreen from '../screens/guest/GuestChallengeComplet
 import GuestChallengeDoneScreen from '../screens/guest/GuestChallengeDoneScreen';
 import GuestDrillScreen from '../screens/guest/GuestDrillScreen';
 import GuestTabBar from '../components/il/GuestTabBar';
+import { useGuestTracking } from '../hooks/useGuestTracking';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -58,6 +59,7 @@ function GuestTabs() {
 }
 
 export default function GuestNavigator() {
+  useGuestTracking();
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="GuestTabs" component={GuestTabs} />

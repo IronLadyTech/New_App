@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,10 +7,16 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import { trackGuest } from '../../services/appGuest';
+import { cancelGuestReminder } from '../../services/localEngagementNotifications';
 
 const FALLBACK = 'By March 2028 I will run the India P&L, not report into it.';
 
 export default function GuestChallengeCompleteScreen({ navigation, route }) {
+  useEffect(() => {
+    trackGuest('challenge-done');
+    cancelGuestReminder();
+  }, []);
   const insets = useSafeAreaInsets();
   const bhag = route?.params?.bhag || FALLBACK;
 

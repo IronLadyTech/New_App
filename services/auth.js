@@ -151,6 +151,7 @@ export async function signInWithAccessToken(token) {
     phoneNumber: credential.user.phoneNumber,
     displayName: credential.user.displayName,
   });
+  refreshMyAccess().catch(() => {});
   return credential.user;
 }
 

@@ -10,6 +10,7 @@ import ILLogoMark from '../../components/il/ILLogoMark';
 import { useAuth } from '../../context/AuthContext';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
 import { G, af } from '../../constants/guestTheme';
+import { registerGuestName, saveGuestIdentity } from '../../services/appGuest';
 
 function formatLocal(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -26,6 +27,8 @@ export default function GuestStartScreen({ navigation, route }) {
   const onGuest = route?.params?.onGuest || enterGuest;
   const onRetry = route?.params?.onRetry;
   const phone = route?.params?.phone || peekPhoneAuth()?.phone;
+  const tier = route?.params?.tier || peekPhoneAuth().confirmation?.access?.tier || 'explore';
+  const isExploreGuest = tier === 'explore';
   const shown = formatLocal(phone);
 
   return (
@@ -70,7 +73,10 @@ export default function GuestStartScreen({ navigation, route }) {
           <ILText role="label" color={G.ink}>
             {shown}
           </ILText>{' '}
-          is verified. We couldn’t link it to a registration yet, so you’re in with free guest access — and your progress is saved to this number.
+          is verified.
+          {isExploreGuest
+            ? ' We couldn’t link it to a program yet, so you’re in with free guest access — and your progress is saved to this number.'
+            : ' Welcome back from the Masterclass — your Day 1 and Day 2 recordings are waiting for you inside.'}
         </ILText>
 
         <View
@@ -141,7 +147,13 @@ export default function GuestStartScreen({ navigation, route }) {
             Browse Masterclass previews, community stories and free resources. Your number is saved, so your progress is too.
           </ILText>
           <Pressable
-            onPress={() => (typeof onGuest === 'function' ? onGuest(name) : navigation.goBack())}
+            onPress={async () => {
+              // Remember the verified number + guest type, then register her name (CMS guest list, Zoho Lead).
+              await saveGuestIdentity({ phone, tier });
+              registerGuestName(name);
+              if (typeof onGuest === 'function') onGuest(name);
+              else navigation.goBack();
+            }}
             style={({ pressed }) => ({
               marginTop: 16,
               backgroundColor: G.cta,

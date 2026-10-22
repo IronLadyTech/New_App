@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { G, af } from '../../constants/guestTheme';
 import { GuestBackBar, Page, PlayDisc, WhiteCard, fillAbs } from './GuestBits';
 import { HERO } from './guestData';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import { trackGuest } from '../../services/appGuest';
 
 const SAMPLE = 'By March 2028 I will run the India P&L, not report into it.';
 const ACTIONS = [
@@ -19,7 +20,11 @@ const ACTIONS = [
   'Learning new capabilities',
 ];
 
-export default function GuestChallengeDayScreen({ navigation }) {
+export default function GuestChallengeDayScreen({ navigation, route }) {
+  // Counted for the CMS guest list (how far each guest got).
+  useEffect(() => {
+    trackGuest('challenge-day', { day: Number(route?.params?.day) || 1 });
+  }, [route?.params?.day]);
   const insets = useSafeAreaInsets();
   const [bhag, setBhag] = useState(SAMPLE);
   const [picked, setPicked] = useState(['Increasing market visibility']);

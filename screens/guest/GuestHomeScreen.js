@@ -39,6 +39,7 @@ import {
 } from './guestData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ArmyPass from './ArmyPass';
+import McRecordingsCard from '../../components/guest/McRecordingsCard';
 
 const navDot = {
   width: 36,
@@ -79,6 +80,7 @@ export default function GuestHomeScreen() {
         }}
       >
         <ArmyPass />
+        <McRecordingsCard onWatch={goWatch} />
         <ILText role="body" color={G.meta} align="center" style={{ marginTop: 12, fontSize: 15, lineHeight: 22 }}>
           Tonight, you take your first step.
         </ILText>

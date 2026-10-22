@@ -605,6 +605,13 @@ service cloud.firestore {
       allow write: if cmsBatchEditor();
     }
 
+    // App guests (no program seat), written only by the server (resolvePhoneAccess,
+    // registerAppGuest, trackAppGuest). CMS staff read the list to follow up.
+    match /app_guests/{phone} {
+      allow read: if cmsViewer();
+      allow write: if false;
+    }
+
     // Learner activity for the CX batch dashboard (app-new services/activityTracking.js).
     // Each learner writes only their own rows; CMS staff read. Nobody deletes from the app.
     match /app_activity/{userId} {

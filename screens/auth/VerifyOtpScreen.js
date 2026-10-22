@@ -93,7 +93,10 @@ export default function VerifyOtpScreen({ navigation, route }) {
     setMessage('');
 
     if (!access || access.guest) {
-      navigation.replace('GuestStart');
+      navigation.replace('GuestStart', {
+        tier: access?.tier || 'explore',
+        phone: peekPhoneAuth().phone,
+      });
       return;
     }
 
