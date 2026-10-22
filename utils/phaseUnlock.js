@@ -7,7 +7,8 @@
  * following the week numbers on each phase. A batch without dates keeps the old
  * behaviour (open on payment) so nobody is locked out by a missing date.
  *
- * CX overrides live on the batch: cms_batches.phaseOverrides[phaseId] = 'open' | 'locked'.
+ * CX overrides live on the batch: cms_batches.phaseOverrides[phaseId] =
+ *   'open' (open now) | 'locked' (hold back) | 'YYYY-MM-DD' (open on this date instead).
  */
 import { addCalendarDays, parseISODate } from './lepBatchSchedule';
 import { LEP_PHASE_DAY_OFFSET } from './lepFlowGates';
@@ -45,8 +46,16 @@ export function phaseFlowFromBatch(programId, cmsBatch, todayIso) {
   return { ...base, startIso };
 }
 
-/** ISO date a phase opens by the calendar, or null when it has no date (always open / no batch dates). */
-export function phaseOpensOn(phaseId, flow) {
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The date CX chose for this phase, when they chose one. */
+export function customOpenDate(phaseId, flow) {
+  const v = flow?.overrides?.[phaseId];
+  return typeof v === 'string' && ISO_DAY.test(v) ? v : null;
+}
+
+/** The calendar date from the batch dates alone, ignoring any date CX chose. */
+export function standardOpensOn(phaseId, flow) {
   if (!flow || !phaseId) return null;
   if (flow.programId === 'lep') {
     const offset = LEP_PHASE_DAY_OFFSET[phaseId];
@@ -55,6 +64,11 @@ export function phaseOpensOn(phaseId, flow) {
   const week = PROGRAM_PHASE_START_WEEK[flow.programId]?.[phaseId];
   if (!week || !flow.startIso) return null;
   return addCalendarDays(flow.startIso, (week - 1) * 7);
+}
+
+/** ISO date a phase opens: CX's chosen date, else the calendar date (null = no date). */
+export function phaseOpensOn(phaseId, flow) {
+  return customOpenDate(phaseId, flow) || standardOpensOn(phaseId, flow);
 }
 
 /**
@@ -67,6 +81,11 @@ export function phaseGate(phase, { enrolled, flow }) {
   const override = flow?.overrides?.[phase.id];
   if (override === 'locked') return { open: false, reason: 'held', opensOn };
   if (override === 'open') return { open: true, reason: 'early', opensOn };
+  if (customOpenDate(phase.id, flow)) {
+    return parseISODate(flow.todayIso) >= parseISODate(opensOn)
+      ? { open: true, reason: 'opened', opensOn }
+      : { open: false, reason: 'date', opensOn };
+  }
 
   if (flow?.programId === 'lep') {
     // LEP without a Day 1 date: only the pre-work phases.
