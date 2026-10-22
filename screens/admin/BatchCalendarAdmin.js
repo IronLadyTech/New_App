@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { LEP_TIMEZONE } from '../../constants/lepSessionTemplate';
 import { deleteBatch, saveBatch, subscribeToBatches } from '../../services/cms';
 import { formatBatchPickerLabel, suggestLmsGroupId } from '../../utils/cmsBatchLabel';
@@ -7,6 +8,7 @@ import {
   buildLepBatchSessions,
   day1FromOrientationThursday,
   describeBatchAnchor,
+  mergeCustomSessions,
   orientationFromDay1Saturday,
 } from '../../utils/lepBatchSchedule';
 import { A, Btn, Card, Field, H, Input, Notice, Row, Select, T } from './adminUi';
@@ -49,11 +51,12 @@ function syncAnchorDates(draft) {
   };
 }
 
-export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBatchChange }) {
+export default function BatchCalendarAdmin({ canEdit, canDelete = canEdit, embed, hubBatchId, onHubBatchChange }) {
   const [batches, setBatches] = useState([]);
   const [draft, setDraft] = useState(emptyDraft());
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showIds, setShowIds] = useState(false);
 
   useEffect(() => subscribeToBatches(setBatches, (e) => setMsg({ tone: 'error', text: e.message })), []);
 
@@ -109,6 +112,30 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
     setMsg({ tone: 'ok', text: `Generated ${sessions.length} sessions (LEP v1.5 template).` });
   };
 
+  const setAnchorDate = (value) => {
+    setDraft((d) => {
+      const synced = syncAnchorDates({ ...d, anchorDate: value });
+      if (!synced.anchorDate) return synced;
+      const links = {};
+      (d.sessions || []).forEach((x) => {
+        if (x.joinLink) links[x.code] = x.joinLink;
+      });
+      return {
+        ...synced,
+        sessions: mergeCustomSessions(
+          buildLepBatchSessions({ anchor: synced.anchor, date: synced.anchorDate, joinLinks: links }),
+          d.sessions
+        ),
+      };
+    });
+  };
+
+  const linkAutomatically = () =>
+    setDraft((d) => ({
+      ...d,
+      lmsGroupId: suggestLmsGroupId({ program: d.program, zohoBatchKey: d.zohoBatchKey || d.name }) || d.lmsGroupId,
+    }));
+
   const updateSession = (code, patch) => {
     setDraft((d) => ({
       ...d,
@@ -129,21 +156,14 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
       (synced.sessions || []).forEach((s) => {
         if (s?.code && s?.joinLink) links[s.code] = s.joinLink;
       });
-      const sessions = buildLepBatchSessions({
-        anchor: synced.anchor || 'day1',
-        date: synced.anchorDate || synced.day1Date,
-        joinLinks: links,
-      }).map((row) => {
-        const prev = (synced.sessions || []).find((s) => s.code === row.code);
-        if (!prev) return row;
-        return {
-          ...row,
-          title: prev.title || row.title,
-          startTime: prev.startTime || row.startTime,
-          endTime: prev.endTime || row.endTime,
-          joinLink: prev.joinLink || row.joinLink,
-        };
-      });
+      const sessions = mergeCustomSessions(
+        buildLepBatchSessions({
+          anchor: synced.anchor || 'day1',
+          date: synced.anchorDate || synced.day1Date,
+          joinLinks: links,
+        }),
+        synced.sessions
+      );
       if (!sessions.length) throw new Error('Could not build the LEP session schedule.');
       const id = await saveBatch({
         id: synced.id,
@@ -175,7 +195,15 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
   };
 
   const remove = async () => {
-    if (!draft.id || !canEdit) return;
+    if (!draft.id || !canDelete) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        `Delete batch "${draft.name || draft.id}"?\n\nIts session dates, Zoom links and reminders stop for every learner in it. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     try {
       await deleteBatch(draft.id);
@@ -230,14 +258,30 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
       ) : null}
 
       <Card style={{ marginBottom: 20 }}>
-        <Field label="Batch name (Delivery Desk / Zoho)">
+        <Field label="Batch name">
           <Input
             value={draft.name}
             onChangeText={(v) => setDraft((d) => ({ ...d, name: v }))}
-            placeholder="e.g. 1st Aug batch"
+            placeholder="e.g. LEP · Orientation Thu 29 Oct"
             editable={canEdit}
           />
         </Field>
+        {draft.lmsGroupId ? (
+          <Notice tone="ok">Linked to its learners — reminders and the dashboard can reach this batch.</Notice>
+        ) : (
+          <Notice tone="error">
+            Not linked to its learners yet, so reminders cannot reach them.
+            {canEdit ? ' Press “Link automatically”, then Save.' : ''}
+          </Notice>
+        )}
+        {canEdit && !draft.lmsGroupId && (draft.zohoBatchKey || draft.name) ? (
+          <Btn label="Link automatically" small onPress={linkAutomatically} style={{ marginBottom: 12, alignSelf: 'flex-start' }} />
+        ) : null}
+        <Pressable onPress={() => setShowIds((v) => !v)} style={{ marginBottom: 12 }}>
+          <T size={12} color={A.muted}>{showIds ? '▼' : '▶'} Advanced: system links (only if support asks)</T>
+        </Pressable>
+        {showIds ? (
+        <>
         <Row gap={12}>
           <View style={{ flex: 1 }}>
             <Field label="Zoho Batch key (optional)">
@@ -280,29 +324,27 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
             style={{ marginBottom: 12 }}
           />
         ) : null}
+        <Field label="Date the schedule starts from">
+          <Select
+            value={draft.anchor}
+            onChange={(v) => setDraft((d) => syncAnchorDates({ ...d, anchor: v }))}
+            options={[
+              { value: 'orientation', label: 'Orientation Thursday (usual)' },
+              { value: 'day1', label: 'Day 1 Saturday' },
+            ]}
+            disabled={!canEdit}
+          />
+        </Field>
+        </>
+        ) : null}
         <Row gap={12}>
-          <View style={{ flex: 1 }}>
-            <Field label="Anchor date type">
-              <Select
-                value={draft.anchor}
-                onChange={(v) => setDraft((d) => syncAnchorDates({ ...d, anchor: v }))}
-                options={[
-                  { value: 'orientation', label: 'Orientation Thursday (recommended)' },
-                  { value: 'day1', label: 'Day 1 Saturday' },
-                ]}
-                disabled={!canEdit}
-              />
-            </Field>
-          </View>
           <View style={{ flex: 1 }}>
             <Field label={draft.anchor === 'orientation' ? 'Orientation Thursday' : 'Day 1 Saturday'}>
               {typeof document !== 'undefined' ? (
                 <input
                   type="date"
                   value={draft.anchorDate}
-                  onChange={(e) =>
-                    setDraft((d) => syncAnchorDates({ ...d, anchorDate: e.target.value }))
-                  }
+                  onChange={(e) => setAnchorDate(e.target.value)}
                   disabled={!canEdit}
                   style={{
                     width: '100%',
@@ -315,7 +357,7 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
               ) : (
                 <Input
                   value={draft.anchorDate}
-                  onChangeText={(v) => setDraft((d) => syncAnchorDates({ ...d, anchorDate: v }))}
+                  onChangeText={setAnchorDate}
                   placeholder="YYYY-MM-DD"
                   editable={canEdit}
                 />
@@ -331,7 +373,7 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
         {canEdit ? (
           <Row gap={8} style={{ marginBottom: 12, flexWrap: 'wrap' }}>
             <Btn
-              label={draft.openForEnrollment !== false ? '✓ On signup list' : 'Hidden from signup'}
+              label={draft.openForEnrollment !== false ? '✓ New learners can pick this batch' : 'New learners cannot pick this batch'}
               kind="ghost"
               small
               onPress={() =>
@@ -339,7 +381,7 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
               }
             />
             <Btn
-              label={draft.filling ? '✓ Filling fast' : 'Filling fast (off)'}
+              label={draft.filling ? '✓ Shows “Filling fast”' : '“Filling fast” badge off'}
               kind="ghost"
               small
               onPress={() => setDraft((d) => ({ ...d, filling: !d.filling }))}
@@ -348,33 +390,38 @@ export default function BatchCalendarAdmin({ canEdit, embed, hubBatchId, onHubBa
         ) : null}
         {canEdit ? (
           <Row gap={8}>
-            <Btn label="Generate LEP v1.5 schedule" onPress={generateSessions} />
             <Btn label="Save batch" onPress={save} loading={busy} />
-            {draft.id ? <Btn label="Delete" kind="ghost" onPress={remove} loading={busy} /> : null}
+            {draft.id && canDelete ? <Btn label="Delete" kind="ghost" onPress={remove} loading={busy} /> : null}
           </Row>
         ) : null}
       </Card>
 
       {(draft.sessions || []).length ? (
         <View>
-          <T weight="semibold" size={13} style={{ marginBottom: 10 }}>
+          <T weight="semibold" size={13} style={{ marginBottom: 4 }}>
             Sessions ({draft.sessions.length})
+          </T>
+          <T size={12} color={A.muted} style={{ marginBottom: 10 }}>
+            Dates come from the Orientation date. Add each Zoom link, then Save.
           </T>
           {draft.sessions.map((s) => (
             <Card key={s.code} style={{ marginBottom: 10, paddingVertical: 12 }}>
               <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <View style={{ flex: 1 }}>
                   <T weight="semibold" size={14}>
-                    {s.code} · {s.title}
+                    {s.title}
+                    {s.kind === 'optional' ? <T size={12} color={A.muted}> · optional</T> : null}
                   </T>
                   <T size={12} color={A.muted}>
-                    {s.weekLabel} · {s.kind === 'optional' ? 'Optional' : 'Core'} · {s.date} · {s.startTime}–
-                    {s.endTime} IST
+                    {s.date
+                      ? new Date(`${s.date}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+                      : ''}{' '}
+                    · {s.startTime}–{s.endTime} IST · <T size={11} color="#A3A7B1">{s.code}</T>
                   </T>
                 </View>
               </Row>
               {canEdit ? (
-                <Field label="Zoom / join link" style={{ marginTop: 10, marginBottom: 0 }}>
+                <Field label="Zoom link" style={{ marginTop: 10, marginBottom: 0 }}>
                   <Input
                     value={s.joinLink || ''}
                     onChangeText={(v) => updateSession(s.code, { joinLink: v })}

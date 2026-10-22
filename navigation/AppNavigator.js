@@ -18,7 +18,7 @@ function GuestBranch() {
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isGuest, demo, journey } = useAuth();
+  const { isAuthenticated, isGuest, demo, journey, cmsPreview } = useAuth();
   const insets = useSafeAreaInsets();
   const navRef = useNavigationContainerRef();
   const [route, setRoute] = useState(null);
@@ -37,7 +37,7 @@ export default function AppNavigator() {
   );
 
   // Demo: the flow bar sits on sign-in screens, every journey and the guest app.
-  const showBar = !!journey || (demo && (isGuest || !isAuthenticated));
+  const showBar = !cmsPreview && (!!journey || (demo && (isGuest || !isAuthenticated)));
 
   return (
     <NavigationContainer ref={navRef} onReady={track} onStateChange={track}>

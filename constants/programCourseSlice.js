@@ -1,5 +1,6 @@
 import { PROGRAMS, TASK_TYPES } from './programs';
-import { currentLepPhaseIdForDate, isLepJourneyPhaseOpen } from '../utils/lepFlowGates';
+import { currentLepPhaseIdForDate } from '../utils/lepFlowGates';
+import { phaseGate } from '../utils/phaseUnlock';
 import { withLepResources } from './lepResources';
 
 /** Real LMS phase + task ids. Content from the web LMS course lists. */
@@ -1835,20 +1836,13 @@ export function coursePhase(programId, phaseId) {
 }
 
 /**
- * @param {{ programId?: string, todayIso?: string, day1Iso?: string|null }} [lepFlow]
- *   When `programId` is LEP, phases also follow batch calendar (LEP_Flow.pdf).
+ * @param {object} [flow] from phaseFlowFromBatch(programId, cmsBatch, todayIso):
+ *   the batch's dates and CX overrides. Without it, phases open on payment alone.
+ *   See utils/phaseUnlock.js for the rule.
  */
-export function isPhaseOpen(phase, enrolled, lepFlow) {
+export function isPhaseOpen(phase, enrolled, flow) {
   if (!phase) return false;
-  if (lepFlow?.programId === PROGRAMS.LEP) {
-    return isLepJourneyPhaseOpen(
-      phase.id,
-      lepFlow.todayIso,
-      lepFlow.day1Iso,
-      enrolled,
-      !!phase.openRegistered
-    );
-  }
+  if (flow?.programId) return phaseGate(phase, { enrolled, flow }).open;
   if (enrolled) return true;
   return !!phase?.openRegistered;
 }
@@ -1860,7 +1854,16 @@ export function currentPhaseId(programId, enrolled, lepFlow) {
     }
     return enrolled ? 'day-1' : 'pre-program';
   }
-  if (programId === PROGRAMS.BM100) return enrolled ? 'phase-2-pitch-strategy' : 'onboarding';
+  // 100BM / MBW with batch dates: the furthest phase open today, in order.
+  if (lepFlow?.programId === programId && lepFlow?.startIso) {
+    let last = coursePhases(programId)[0]?.id || null;
+    for (const phase of coursePhases(programId)) {
+      if (!phaseGate(phase, { enrolled, flow: lepFlow }).open) break;
+      last = phase.id;
+    }
+    return last;
+  }
+  if (programId === PROGRAMS.BM100) return enrolled ? 'phase-1-foundation' : 'onboarding';
   if (programId === PROGRAMS.MBW) return enrolled ? 'quarter-1' : 'pre-preparation';
   return coursePhases(programId)[0]?.id || null;
 }

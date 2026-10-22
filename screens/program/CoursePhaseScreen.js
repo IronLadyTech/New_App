@@ -19,11 +19,14 @@ import {
 } from '../../constants/programCourseSlice';
 import { PROGRAMS } from '../../constants/programs';
 import { useCourseDemo } from '../../context/CourseDemoContext';
+import { usePrograms } from '../../context/ProgramsContext';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { filterLepCourseTasks } from '../../utils/lepRitualsUnlock';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
+import { phaseFlowFromBatch } from '../../utils/phaseUnlock';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
+import { makeTaskDoneChecker } from '../../utils/taskDone';
 
 export default function CoursePhaseScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -33,15 +36,20 @@ export default function CoursePhaseScreen({ route, navigation }) {
   const programId = route.params?.programId || PROGRAMS.LEP;
   const phaseId = route.params?.phaseId;
   const phase = coursePhase(programId, phaseId);
-  const { batch: cmsBatch } = useLearnerCmsBatch(programId === PROGRAMS.LEP ? 'lep' : null);
+  const { batch: cmsBatch } = useLearnerCmsBatch(programId);
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const lepFlow =
     programId === PROGRAMS.LEP
       ? { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() }
-      : null;
+      : phaseFlowFromBatch(programId, cmsBatch, todayIsoIST());
   const tasks = filterLepCourseTasks(courseTasks(programId, phaseId), programId, ritualsUnlocked);
   const open = isPhaseOpen(phase, enrolled, lepFlow);
   const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+  const taskIsDone = React.useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, demo.done, getTaskSubmission]
+  );
 
   return (
     <Page>
@@ -71,7 +79,7 @@ export default function CoursePhaseScreen({ route, navigation }) {
                 item={{
                   title: item.title,
                   meta: item.week ? `${item.kind} · ${item.week}` : item.kind,
-                  done: demo.isDone(programId, item.id),
+                  done: taskIsDone(programId, item.id),
                 }}
                 last={i === tasks.length - 1}
                 onPress={

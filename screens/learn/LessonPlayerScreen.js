@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useVideoProgressTracking } from '../../hooks/useVideoProgressTracking';
 import { Ionicons } from '@expo/vector-icons';
 import { getLesson, markLessonComplete } from '../../services/firestore';
 import { fetchLessonAsset } from '../../services/functions';
@@ -16,10 +17,11 @@ import { useCourseDetail } from '../../hooks/useCourseDetail';
 import LoadingState from '../../components/LoadingState';
 import ErrorState from '../../components/ErrorState';
 
-function LessonVideo({ uri }) {
+function LessonVideo({ uri, trackKey = uri }) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
   });
+  useVideoProgressTracking(player, trackKey);
 
   return (
     <VideoView
@@ -119,7 +121,7 @@ export default function LessonPlayerScreen({ route, navigation }) {
       </View>
 
       {videoUri ? (
-        <LessonVideo uri={videoUri} />
+        <LessonVideo uri={videoUri} trackKey={`lesson:${lessonId}`} />
       ) : (
         <View className="h-48 items-center justify-center bg-ink-900 px-6">
           <Ionicons name="videocam-off-outline" size={40} color="#8593aa" />

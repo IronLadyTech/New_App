@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import {
@@ -9,7 +9,12 @@ import {
   subscribeToEvents,
   saveBatch,
   ensureCmsQaTestPack,
+  fetchBatchLearnerCounts,
+  fetchProgramBatches,
+  ensureCmsBatchForGroup,
+  linkBatchToLmsGroup,
 } from '../../services/cms';
+import { matchLmsGroup } from '../../utils/matchLmsGroup';
 import { CMS_QA_BATCH_ID } from '../../constants/cms';
 import { fetchLepGroups } from '../../services/lmsGroups';
 import { fetchZohoLepBatchKeys } from '../../services/zohoLepBatches';
@@ -19,20 +24,54 @@ import BatchCalendarAdmin from './BatchCalendarAdmin';
 import BatchHubMessagesTab from './batchHub/BatchHubMessagesTab';
 import BatchHubContentTab from './batchHub/BatchHubContentTab';
 import BatchHubPracticeTab from './batchHub/BatchHubPracticeTab';
+import BatchHubEngageTab from './batchHub/BatchHubEngageTab';
+import AppPreview from './AppPreview';
+import BatchSetupWizard from './batchHub/BatchSetupWizard';
+import ZohoSyncBar from './batchHub/ZohoSyncBar';
+import BatchHubUnlockTab from './batchHub/BatchHubUnlockTab';
+import BatchHubCalendarTab from './batchHub/BatchHubCalendarTab';
+import { AppAnalyticsView } from './AnalyticsAdmin';
+import { PROGRAMS } from '../../constants/programs';
 import { A, Btn, Card, Field, H, Input, Notice, Row, Select, T } from './adminUi';
-import { CemHelpCard } from './AdminSectionGuide';
 
 const TABS = [
+  { key: 'content', label: 'Sessions & recordings' },
+  { key: 'calendar', label: 'Session calendar' },
+  { key: 'unlock', label: 'Unlock calendar' },
   { key: 'messages', label: 'Messages' },
-  { key: 'content', label: 'Content' },
-  { key: 'practice', label: 'Practice' },
-  { key: 'setup', label: 'Setup' },
+  { key: 'engage', label: 'Engage' },
+  { key: 'practice', label: 'Practice', lepOnly: true },
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'setup', label: 'Batch setup' },
 ];
 
-export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
+/** Who CX is looking at. Counts come from the batch's real learners. */
+const WHO = [
+  { value: 'all', label: 'All learners', sub: 'in this batch' },
+  { value: 'register', label: 'Part paid', sub: 'registration paid' },
+  { value: 'paid', label: 'Full paid', sub: 'fully enrolled' },
+  { value: 'late', label: 'Late joiners', sub: 'joined after Orientation' },
+];
+
+const PROGRAM_OPTIONS = [
+  { value: PROGRAMS.LEP, label: 'LEP · Leadership Essentials' },
+  { value: PROGRAMS.BM100, label: '100BM · 100 Board Members' },
+  { value: PROGRAMS.MBW, label: 'MBW · Master of Business Warfare' },
+];
+
+/** canEdit: batch dates, Zoom, content (CEM too). canManage: templates and deleting batches (PL/Admin). */
+export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTemplates }) {
   const [batches, setBatches] = useState([]);
   const [batchId, setBatchId] = useState('');
-  const [tab, setTab] = useState('messages');
+  const [tab, setTab] = useState('content');
+  const [programId, setProgramId] = useState(PROGRAMS.LEP);
+  const [learner, setLearner] = useState('all');
+  const [counts, setCounts] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [lmsBatches, setLmsBatches] = useState(null);
+  const [opening, setOpening] = useState(false);
+  const [linkChoice, setLinkChoice] = useState('');
+  const autoLinked = useRef(new Set());
   const [events, setEvents] = useState([]);
   const [content, setContent] = useState([]);
   const [msg, setMsg] = useState(null);
@@ -53,11 +92,87 @@ export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
   useEffect(() => subscribeToEvents(setEvents, () => {}), []);
   useEffect(() => subscribeToContent(setContent, () => {}), []);
 
+  // Default to the newest batch of the chosen program.
   useEffect(() => {
-    if (!batchId && batches.length) setBatchId(batches[0].id);
-  }, [batches, batchId]);
+    if (batchId) return;
+    const first = batches.find((b) => String(b.program || 'LEP').toLowerCase() === programId);
+    if (first) setBatchId(first.id);
+  }, [batches, batchId, programId]);
 
   const batch = useMemo(() => batches.find((b) => b.id === batchId), [batches, batchId]);
+
+  // Real batches for this program from the web LMS (synced from Zoho) — every program.
+  const [syncTick, setSyncTick] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    setLmsBatches(null);
+    fetchProgramBatches(programId)
+      .then((rows) => alive && setLmsBatches(rows))
+      .catch(() => alive && setLmsBatches([]));
+    return () => {
+      alive = false;
+    };
+  }, [programId, syncTick]);
+
+  useEffect(() => {
+    if (!lmsBatches?.length || !canEdit) return;
+    const mine = batches.filter((b) => String(b.program || 'LEP').toLowerCase() === programId);
+    const taken = new Set(mine.map((b) => String(b.lmsGroupId || '')).filter(Boolean));
+    mine
+      .filter((b) => !b.lmsGroupId && !autoLinked.current.has(b.id))
+      .forEach((b) => {
+        autoLinked.current.add(b.id);
+        const match = matchLmsGroup(b, lmsBatches, taken);
+        if (!match) return;
+        taken.add(match.id);
+        linkBatchToLmsGroup(b.id, match.id).catch(() => autoLinked.current.delete(b.id));
+      });
+  }, [lmsBatches, batches, programId, canEdit]);
+
+  const linkManually = async () => {
+    if (!batch?.id || !linkChoice) return;
+    try {
+      await linkBatchToLmsGroup(batch.id, linkChoice);
+      setLinkChoice('');
+      setMsg({ tone: 'ok', text: 'Linked. Its learners, counts and reminders now follow this batch.' });
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not link it. Try again.' });
+    }
+  };
+
+  // Picking a real batch that is not set up yet sets it up (draft, reminders off).
+  const pickBatch = async (value) => {
+    if (!String(value).startsWith('lms:')) {
+      setBatchId(value);
+      return;
+    }
+    const group = (lmsBatches || []).find((g) => `lms:${g.id}` === value);
+    if (!group) return;
+    setOpening(true);
+    setMsg(null);
+    try {
+      const id = await ensureCmsBatchForGroup(group, batches);
+      setBatchId(id);
+      setMsg({ tone: 'ok', text: `“${group.name}” is set up. Check its dates under Batch setup, then add Zoom links.` });
+    } catch (e) {
+      setMsg({ tone: 'error', text: e?.message || 'Could not open that batch. Try again.' });
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  // How many part paid / full paid / late joiners this batch has (numbers only, from the server).
+  useEffect(() => {
+    let alive = true;
+    setCounts(null);
+    if (!batch?.id) return undefined;
+    fetchBatchLearnerCounts(batch.id)
+      .then((res) => alive && setCounts(res))
+      .catch(() => alive && setCounts({ error: true }));
+    return () => {
+      alive = false;
+    };
+  }, [batch?.id, batch?.lmsGroupId]);
 
   const importFromZoho = async () => {
     if (!canEdit) return;
@@ -120,7 +235,7 @@ export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
   };
 
   const setupCmsQa = async () => {
-    if (!canEdit) return;
+    if (!isAdmin) return;
     setBusy(true);
     setMsg(null);
     try {
@@ -142,7 +257,7 @@ export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
     const ok =
       typeof window !== 'undefined'
         ? window.confirm(
-            `Go live for "${batch.name}"?\n\n• Learners on signup list can enroll\n• WELCOME / PAY fire on enroll when automation is on\n• Session reminders use this batch’s dates\n\nConfirm dates and Zoom links are correct.`
+            `Start automatic reminders for "${batch.name}"?\n\n• Learners get session reminders at the times on the Messages tab\n• New learners can pick this batch when they sign up\n\nCheck the dates and Zoom links first.`
           )
         : true;
     if (!ok) return;
@@ -153,7 +268,7 @@ export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
         status: 'live',
         automationEnabled: true,
       });
-      setMsg({ tone: 'ok', text: 'Batch is live.' });
+      setMsg({ tone: 'ok', text: 'Automatic reminders are on for this batch.' });
     } catch (e) {
       setMsg({ tone: 'error', text: e.message });
     } finally {
@@ -161,133 +276,261 @@ export default function BatchHubAdmin({ canEdit, onOpenTemplates }) {
     }
   };
 
+  const programBatches = batches.filter((b) => String(b.program || 'LEP').toLowerCase() === programId);
+  const linkedGroups = new Set(programBatches.map((b) => String(b.lmsGroupId || '')).filter(Boolean));
+  const notSetUp = (lmsBatches || [])
+    .filter((g) => !linkedGroups.has(g.id))
+    .sort((a, b) => String(b.id).localeCompare(String(a.id)));
+  const sizeOf = (b) => (lmsBatches || []).find((g) => g.id === b.lmsGroupId)?.memberCount;
+  const isLep = programId === PROGRAMS.LEP;
+  const tabs = TABS.filter((t) => (isLep || !t.lepOnly) && (canManage || !t.leadOnly));
+  const label = (text) => (
+    <T size={11} weight="bold" color={A.muted} style={{ marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+      {text}
+    </T>
+  );
+
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 28 }}>
-      <H style={{ marginBottom: 6 }}>LEP batch</H>
-      <T color={A.muted} style={{ marginBottom: 12, maxWidth: 760 }}>
-        Select a cohort first. Messages, content, and practice are scoped to that batch — like CX on the web LMS.
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24 }}>
+      <H style={{ marginBottom: 4 }}>Batches</H>
+      <T color={A.muted} style={{ marginBottom: 14, maxWidth: 760 }}>
+        Choose the program, batch and kind of learner. Every tab and the live app on the right follow that choice.
       </T>
-      <CemHelpCard sectionKey="batchHub" />
 
-      {canEdit ? (
-        <Card style={{ marginBottom: 14, padding: 16 }}>
-          <T size={13} weight="semibold" style={{ marginBottom: 6 }}>CMS QA test (no CRM)</T>
-          <T size={12} color={A.muted} style={{ marginBottom: 10 }}>
-            Creates live batch {CMS_QA_BATCH_ID} with full LEP v1.5 sessions and links this mobile for phone login
-            (10 digits, no +91). Use when the number is not in Zoho.
-          </T>
-          <Field label="Mobile for QA">
-            <Input value={qaPhone} onChangeText={setQaPhone} placeholder="8309882198" keyboardType="phone-pad" />
-          </Field>
-          <Btn label="Create / refresh QA batch + phone" onPress={setupCmsQa} loading={busy} small style={{ marginTop: 10 }} />
-        </Card>
-      ) : null}
+      <ZohoSyncBar onSynced={() => setSyncTick((t) => t + 1)} />
 
-      {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
-
-      {!batches.length ? (
-        <Notice tone="neutral">
-          This list is only Firestore cms_batches — not the Delivery Desk iframe. Click Import from Zoho to pull
-          every unique LEP_Batch from CRM (same as the Desk), then fix Zoom links under Setup.
-        </Notice>
-      ) : null}
-
-      <Row gap={12} style={{ marginBottom: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <View style={{ minWidth: 260, flex: 1 }}>
-          <T size={12} weight="semibold" style={{ marginBottom: 6 }}>Batch</T>
-          <Select
-            value={batchId || ''}
-            onChange={setBatchId}
-            options={[
-              { value: '', label: batches.length ? 'Select batch…' : 'No batches — use Setup' },
-              ...batches.map((b) => ({
-                value: b.id,
-                label: formatBatchPickerLabel(b),
-              })),
-            ]}
-          />
-        </View>
-        {canEdit ? (
-          <>
-            <Btn
-              label={batches.length ? 'Import from Zoho' : 'Import from Zoho (Delivery Desk)'}
-              onPress={importFromZoho}
-              loading={busy}
-              small
+      {/* One combination at the top drives every tab and the preview. */}
+      <Card style={{ marginBottom: 14, padding: 14 }}>
+        <Row gap={16} style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <View style={{ minWidth: 200 }}>
+            {label('Program')}
+            <Select
+              value={programId}
+              onChange={(v) => {
+                setProgramId(v);
+                setBatchId('');
+                setTab('content');
+              }}
+              options={PROGRAM_OPTIONS}
             />
-            <Btn label="Import from web LMS" kind="ghost" onPress={importFromLms} loading={busy} small />
-          </>
+          </View>
+          <View style={{ minWidth: 280, flex: 1 }}>
+            {label('Batch')}
+            <Select
+              value={batchId || ''}
+              onChange={pickBatch}
+              disabled={opening}
+              options={[
+                {
+                  value: '',
+                  label:
+                    lmsBatches === null
+                      ? 'Loading batches…'
+                      : programBatches.length || notSetUp.length
+                        ? 'Select batch…'
+                        : 'No batches for this program yet',
+                },
+                ...programBatches.map((b) => {
+                  const n = sizeOf(b);
+                  return { value: b.id, label: `${formatBatchPickerLabel(b)}${n != null ? ` · ${n} learners` : ''}` };
+                }),
+                ...notSetUp.map((g) => ({
+                  value: `lms:${g.id}`,
+                  label: `${g.name} · ${g.memberCount} learners · not set up yet`,
+                })),
+              ]}
+            />
+            {opening ? <T size={11} color={A.muted} style={{ marginTop: 4 }}>Setting up this batch…</T> : null}
+          </View>
+          {batch ? (
+            <View>
+              <StatusBadge on={batch.status === 'live' && batch.automationEnabled === true} />
+              {canEdit && (batch.status !== 'live' || batch.automationEnabled !== true) ? (
+                <Btn label="Start automatic reminders" onPress={goLive} loading={busy} small style={{ marginTop: 8 }} />
+              ) : null}
+            </View>
+          ) : null}
+        </Row>
+        {batch?.day1Date ? (
+          <T size={12} color={A.muted} style={{ marginTop: 10 }}>
+            {describeBatchAnchor(batch)}
+          </T>
         ) : null}
-        {batch ? (
-          <View>
-            <StatusBadge status={batch.status} />
-            {canEdit && batch.status !== 'live' ? (
-              <Btn label="Go live" onPress={goLive} loading={busy} small style={{ marginTop: 8 }} />
+        <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
+          {WHO.map((w) => {
+            const on = learner === w.value;
+            const n = counts?.counts ? counts.counts[w.value] : null;
+            return (
+              <Pressable key={w.value} onPress={() => setLearner(w.value)}>
+                <View
+                  style={{
+                    minWidth: 130,
+                    borderRadius: 14,
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderWidth: 1,
+                    borderColor: on ? A.ink : A.line,
+                    backgroundColor: on ? A.ink : '#FBFAF4',
+                  }}
+                >
+                  <T size={20} weight="bold" color={on ? '#fff' : A.ink}>{n == null ? '–' : n}</T>
+                  <T size={13} weight="semibold" color={on ? '#fff' : A.ink}>{w.label}</T>
+                  <T size={11} color={on ? '#D6D9DE' : A.muted}>{w.sub}</T>
+                </View>
+              </Pressable>
+            );
+          })}
+        </Row>
+        {counts?.error ? (
+          <T size={11} color={A.muted} style={{ marginTop: 6 }}>Counts appear once the learner-count service is switched on.</T>
+        ) : null}
+        {batch && !batch.lmsGroupId ? (
+          <View style={{ marginTop: 10, backgroundColor: '#FCE8E8', borderRadius: 10, padding: 12 }}>
+            <T size={13} color={A.danger} weight="semibold">
+              Not linked to its learners yet — counts and reminders cannot reach them.
+            </T>
+            {canEdit && notSetUp.length ? (
+              <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <T size={12} color={A.ink}>This is the LMS batch:</T>
+                <View style={{ minWidth: 260, flex: 1 }}>
+                  <Select
+                    value={linkChoice}
+                    onChange={setLinkChoice}
+                    options={[
+                      { value: '', label: 'Choose the matching batch…' },
+                      ...notSetUp.map((g) => ({ value: g.id, label: `${g.name} · ${g.memberCount} learners` })),
+                    ]}
+                  />
+                </View>
+                <Btn label="Link" small onPress={linkManually} disabled={!linkChoice} />
+              </Row>
             ) : null}
           </View>
         ) : null}
-      </Row>
+      </Card>
 
-      {batch?.day1Date || batch?.lmsGroupId ? (
-        <View style={{ marginBottom: 14 }}>
-          {batch?.day1Date ? (
-            <T size={12} color={A.muted}>{describeBatchAnchor(batch)}</T>
+      {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
+
+      <Row gap={22} style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <View style={{ flex: 1, minWidth: 420 }}>
+          <Row gap={2} style={{ marginBottom: 14, flexWrap: 'wrap', borderBottomWidth: 1, borderBottomColor: A.line }}>
+            {tabs.map((t) => (
+              <Pressable key={t.key} onPress={() => setTab(t.key)}>
+                <View
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                    borderBottomWidth: 2,
+                    borderBottomColor: tab === t.key ? A.red : 'transparent',
+                    marginBottom: -1,
+                  }}
+                >
+                  <T size={13} weight={tab === t.key ? 'semibold' : 'regular'} color={tab === t.key ? A.ink : A.muted}>
+                    {t.label}
+                  </T>
+                </View>
+              </Pressable>
+            ))}
+          </Row>
+
+          {tab === 'content' ? (
+            <BatchHubContentTab
+              batch={batch}
+              programId={programId}
+              learner={learner}
+              contentItems={content}
+              canEdit={canEdit}
+              onRefresh={() => {}}
+            />
           ) : null}
-          {batch?.lmsGroupId ? (
-            <T size={11} color={A.muted} style={{ marginTop: batch?.day1Date ? 4 : 0 }}>
-              Web LMS: {batch.lmsGroupId}
-            </T>
+          {tab === 'calendar' ? <BatchHubCalendarTab batch={batch} programId={programId} canEdit={canEdit} /> : null}
+          {tab === 'unlock' ? (
+            <BatchHubUnlockTab batch={batch} programId={programId} learner={learner} canEdit={canEdit} />
+          ) : null}
+          {tab === 'messages' ? (
+            isLep ? (
+              <BatchHubMessagesTab batch={batch} events={events} learner={learner} canEdit={canEdit} />
+            ) : (
+              <Notice tone="neutral">Reminders for this program are not in the CMS yet.</Notice>
+            )
+          ) : null}
+          {tab === 'engage' ? (
+            <BatchHubEngageTab batch={batch} programId={programId} learner={learner} contentItems={content} canEdit={canEdit} />
+          ) : null}
+          {tab === 'practice' ? (
+            <BatchHubPracticeTab batch={batch} programId={programId} learner={learner} canEdit={canEdit} canManage={canManage} />
+          ) : null}
+          {tab === 'dashboard' ? (
+            batch?.lmsGroupId ? (
+              <AppAnalyticsView program={programId} batchId={batch.id} />
+            ) : (
+              <Notice tone="neutral">Link this batch to its learners first (top of the page) to see its analytics.</Notice>
+            )
+          ) : null}
+          {tab === 'setup' ? (
+            <>
+              {canEdit && isLep ? (
+                showWizard ? (
+                  <BatchSetupWizard
+                    batches={batches}
+                    onClose={() => setShowWizard(false)}
+                    onCreated={(id) => {
+                      setShowWizard(false);
+                      if (id) setBatchId(id);
+                      setTab('content');
+                    }}
+                  />
+                ) : (
+                  <Btn label="+ Set up a new batch" onPress={() => setShowWizard(true)} style={{ marginBottom: 14, alignSelf: 'flex-start' }} />
+                )
+              ) : null}
+              {isAdmin && isLep ? (
+                <Row gap={8} style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+                  <Btn label="Import every batch from Zoho" kind="ghost" onPress={importFromZoho} loading={busy} small />
+                  <Btn label="Import from web LMS" kind="ghost" onPress={importFromLms} loading={busy} small />
+                </Row>
+              ) : null}
+              {batch && isLep ? (
+                <T size={13} weight="semibold" style={{ marginBottom: 6 }}>Edit “{batch.name}”</T>
+              ) : null}
+              {isLep ? (
+                <Card style={{ padding: 0, overflow: 'hidden' }}>
+                  <BatchCalendarAdmin canEdit={canEdit} canDelete={canManage} embed hubBatchId={batchId} onHubBatchChange={setBatchId} />
+                </Card>
+              ) : (
+                <Notice tone="neutral">The batch calendar for this program is not in the CMS yet.</Notice>
+              )}
+              {/* Developer QA tool — admins only, so CX never creates a test batch by accident. */}
+              {isAdmin && isLep ? (
+                <Card style={{ marginTop: 14, padding: 16 }}>
+                  <T size={13} weight="semibold" style={{ marginBottom: 6 }}>CMS QA test (no CRM)</T>
+                  <T size={12} color={A.muted} style={{ marginBottom: 10 }}>
+                    Creates live batch {CMS_QA_BATCH_ID} with full LEP v1.5 sessions and links this mobile for phone login
+                    (10 digits, no +91). Use when the number is not in Zoho.
+                  </T>
+                  <Field label="Mobile for QA">
+                    <Input value={qaPhone} onChangeText={setQaPhone} placeholder="8309882198" keyboardType="phone-pad" />
+                  </Field>
+                  <Btn label="Create / refresh QA batch + phone" onPress={setupCmsQa} loading={busy} small style={{ marginTop: 10 }} />
+                </Card>
+              ) : null}
+            </>
           ) : null}
         </View>
-      ) : null}
 
-      <Row gap={6} style={{ marginBottom: 16, flexWrap: 'wrap' }}>
-        {TABS.map((t) => (
-          <Pressable key={t.key} onPress={() => setTab(t.key)}>
-            <View
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderRadius: 8,
-                backgroundColor: tab === t.key ? A.navy : A.chip,
-              }}
-            >
-              <T size={13} weight={tab === t.key ? 'semibold' : 'regular'} color={tab === t.key ? '#fff' : A.ink}>
-                {t.label}
-              </T>
-            </View>
-          </Pressable>
-        ))}
-        {onOpenTemplates ? (
-          <Pressable onPress={onOpenTemplates} style={{ marginLeft: 'auto' }}>
-            <T size={12} color={A.navy} style={{ textDecorationLine: 'underline' }}>Program templates</T>
-          </Pressable>
-        ) : null}
-      </Row>
-
-      {tab === 'messages' ? (
-        <BatchHubMessagesTab
-          batch={batch}
-          events={events}
-          canEdit={canEdit}
-          onEditTemplate={onOpenTemplates}
+        <AppPreview
+          programId={programId}
+          batchId={batch?.id || ''}
+          learner={learner}
+          version={`${content.length}|${batch?.updatedAt?.seconds || ''}|${content[0]?.updatedAt?.seconds || ''}`}
         />
-      ) : null}
-      {tab === 'content' ? (
-        <BatchHubContentTab batch={batch} contentItems={content} canEdit={canEdit} onRefresh={() => {}} />
-      ) : null}
-      {tab === 'practice' ? <BatchHubPracticeTab batch={batch} /> : null}
-      {tab === 'setup' ? (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <BatchCalendarAdmin canEdit={canEdit} embed hubBatchId={batchId} onHubBatchChange={setBatchId} />
-        </Card>
-      ) : null}
+      </Row>
     </ScrollView>
   );
 }
 
-function StatusBadge({ status }) {
-  const live = status === 'live';
+function StatusBadge({ on }) {
+  const live = on;
   return (
     <View
       style={{
@@ -297,7 +540,7 @@ function StatusBadge({ status }) {
         backgroundColor: live ? '#E3F1EA' : '#F5F0E6',
       }}
     >
-      <T size={11} weight="bold" color={live ? A.ok : A.muted}>{live ? 'LIVE' : 'DRAFT'}</T>
+      <T size={11} weight="bold" color={live ? A.ok : A.muted}>{live ? 'Reminders on' : 'Reminders off'}</T>
     </View>
   );
 }

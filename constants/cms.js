@@ -10,6 +10,9 @@ export const CMS = {
   CONFIG: 'cms_config',
   BATCHES: 'cms_batches',
   PHONE_ENROLLMENTS: 'cms_phone_enrollments',
+  BATCH_MESSAGES: 'cms_batch_messages',
+  ENGAGE: 'cms_engage',
+  PRACTICE: 'cms_practice',
 };
 
 /** Fixed id for CMS-only QA cohort (not in Zoho / LMS groups). */
@@ -23,6 +26,8 @@ export const CMS_CONFIG_DOCS = {
 /** Roles that can open /admin. Only CMS_EDIT_ROLES can change anything. */
 export const CMS_VIEW_ROLES = ['admin', 'superadmin', 'pl', 'cem'];
 export const CMS_EDIT_ROLES = ['admin', 'superadmin', 'pl'];
+/** CX (CEM) can run batches — dates, Zoom links, recordings, files — but not templates or IL Guide. */
+export const CMS_BATCH_EDIT_ROLES = [...CMS_EDIT_ROLES, 'cem'];
 
 export const ANCHORS = [
   { value: 'sessionStart', label: 'Session start', needsRef: 'session', usesOffset: true },

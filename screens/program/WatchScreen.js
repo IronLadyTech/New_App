@@ -81,7 +81,12 @@ export default function WatchScreen() {
         }}
       >
         {uri ? (
-          <PracticeVideo uri={uri} poster={poster} height={220} />
+          <PracticeVideo
+            uri={uri}
+            poster={poster}
+            height={220}
+            trackKey={params.assetKey || params.taskId || params.practiceId || uri}
+          />
         ) : (
           <ILText role="body" color={G.meta} style={{ marginTop: 24, textAlign: 'center' }}>
             This video is not available in the demo yet.

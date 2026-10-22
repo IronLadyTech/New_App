@@ -1,4 +1,5 @@
 import { PAYMENT_STATUS, getProgramEntry, REGISTRATION_FEE } from '../constants/programs';
+import { lepFirstName, lepFullName } from './lepState';
 import { getEnrolledPrograms, programPaymentStatus } from './programAccess';
 
 function formatInr(amount) {
@@ -21,10 +22,12 @@ function addDays(date, days) {
   return d;
 }
 
-function firstName(profile, user) {
-  const raw =
-    profile?.displayName || user?.displayName || profile?.email?.split('@')[0] || 'there';
-  return String(raw).split(' ')[0];
+function payerContact(profile, user) {
+  return {
+    name: lepFullName(profile) || user?.displayName || '',
+    email: profile?.email || user?.email || '',
+    phone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
+  };
 }
 
 function pickProgram(profile, programId) {
@@ -91,10 +94,11 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
         ? 'REGISTERED · PART PAYMENT RECEIVED'
         : 'REGISTERED · PAYMENT PENDING';
 
+  const greetingName = lepFirstName(profile);
   const headline =
     payStatus === PAYMENT_STATUS.PAID
-      ? `You're all set, ${firstName(profile, user)}.`
-      : `Your seat is held, ${firstName(profile, user)}.`;
+      ? `You're all set, ${greetingName}.`
+      : `Your seat is held, ${greetingName}.`;
 
   const subline =
     payStatus === PAYMENT_STATUS.PAID
@@ -132,8 +136,11 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
     batchSessions,
     paymentUrl,
     supportPhone: profile?.supportPhone || access.supportPhone || null,
+    payer: payerContact(profile, user),
   };
 }
+
+export { payerContact };
 
 /** Local registration-fee receipt so Profile / Orders can show it without a Firestore uid. */
 export function registrationFeeOrder(profile, user) {
@@ -150,7 +157,7 @@ export function registrationFeeOrder(profile, user) {
     transactionId: `ILREG${vm.txnLast4}`,
     receiptNumber: `IL-REG-${vm.txnLast4}`,
     paidAt,
-    payerName: profile?.displayName || user?.displayName || 'Ananya Rao',
+    payerName: lepFullName(profile) || user?.displayName || '',
     payerEmail: profile?.email || user?.email || '',
     payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
     currency: 'INR',
@@ -177,7 +184,7 @@ export function razorpayOneRupeeOrder(profile, user) {
     paidAt,
     gateway: 'razorpay',
     currency: 'INR',
-    payerName: profile?.displayName || user?.displayName || '',
+    payerName: lepFullName(profile) || user?.displayName || '',
     payerEmail: profile?.email || user?.email || '',
     payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
     uid: user?.uid || 'preview',

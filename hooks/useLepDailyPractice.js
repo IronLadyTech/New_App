@@ -10,6 +10,8 @@ import {
   resolveLepDay1Iso,
   todayIsoIST,
 } from '../utils/lepDailyPractice';
+import { useCmsPracticeRows } from './useCmsLearnerItems';
+import { resolveWeekFocus } from '../utils/lepWeekFocus';
 
 function usePracticeDoneChecker() {
   const demo = useCourseDemo();
@@ -39,19 +41,22 @@ export function useEnrolledDailyPractice(group, cmsBatch) {
   const anchor = orientationIsoFromGroup(group);
   const day1Iso = resolveLepDay1Iso({ cmsBatch, group });
   const { isDone, isDoneOnDay, lmsDone, doneToken } = usePracticeDoneChecker();
+  // Practice items CX added in the CMS for this batch / program, after the built-in ones.
+  const cmsRows = useCmsPracticeRows('lep', cmsBatch, today);
+  const cmsKey = cmsRows.map((r) => r.id).join('|');
 
   const items = useMemo(
-    () => buildEnrolledDailyPractice(today, anchor, day1Iso),
-    [today, anchor, day1Iso, group?.id]
+    () => [...buildEnrolledDailyPractice(today, anchor, day1Iso), ...cmsRows],
+    [today, anchor, day1Iso, group?.id, cmsKey]
   );
 
   return useMemo(
     () =>
-      items.map((item) => ({
+      resolveWeekFocus(items, { lmsDone, today, day1Iso }).map((item) => ({
         ...item,
         done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
       })),
-    [items, today, isDone, isDoneOnDay, lmsDone, doneToken]
+    [items, today, day1Iso, isDone, isDoneOnDay, lmsDone, doneToken]
   );
 }
 
@@ -60,10 +65,12 @@ export function useRegisteredDailyPractice(group, cmsBatch) {
   const anchor = orientationIsoFromGroup(group);
   const day1Iso = resolveLepDay1Iso({ cmsBatch, group });
   const { isDone, isDoneOnDay, lmsDone, doneToken } = usePracticeDoneChecker();
+  const cmsRows = useCmsPracticeRows('lep', cmsBatch, today);
+  const cmsKey = cmsRows.map((r) => r.id).join('|');
 
   const items = useMemo(
-    () => buildRegisteredDailyPractice(today, anchor, day1Iso),
-    [today, anchor, day1Iso, group?.id]
+    () => [...buildRegisteredDailyPractice(today, anchor, day1Iso), ...cmsRows],
+    [today, anchor, day1Iso, group?.id, cmsKey]
   );
 
   return useMemo(

@@ -25,6 +25,8 @@ import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
 import { coursePhases, currentPhaseId, isPhaseOpen } from '../../constants/programCourseSlice';
 import ThisPhaseBlock from './ThisPhaseBlock';
+import { useProgramPhaseFlow } from '../../hooks/useProgramPhaseFlow';
+import { phaseLockLabel } from '../../utils/phaseUnlock';
 
 const FACES = [
   require('../../assets/il/portraits/priyanka-sunder.png'),
@@ -159,7 +161,8 @@ function UnlockBm({
 
 function PhaseList({ locked, onEnroll }) {
   const nav = useLepNav();
-  const phaseId = currentPhaseId(PROGRAMS.BM100, !locked);
+  const flow = useProgramPhaseFlow(PROGRAMS.BM100);
+  const phaseId = currentPhaseId(PROGRAMS.BM100, !locked, flow);
   const phases = coursePhases(PROGRAMS.BM100);
   const currentIndex = phases.findIndex((x) => x.id === phaseId);
   return (
@@ -172,13 +175,16 @@ function PhaseList({ locked, onEnroll }) {
       </ILText>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
         {phases.map((p, i) => {
-          const shut = locked && !isPhaseOpen(p, false);
+          // Payment, cohort week and CX overrides decide (utils/phaseUnlock.js).
+          const shut = !isPhaseOpen(p, !locked, flow);
+          const lock = shut ? phaseLockLabel(p, { enrolled: !locked, flow }) : null;
           const now = p.id === phaseId;
           const done = !locked && i < currentIndex;
           return (
             <Pressable
               key={p.id}
-              onPress={shut ? onEnroll : () => nav.goCoursePhase(PROGRAMS.BM100, p.id)}
+              // Only a payment lock leads to enrollment; a date lock just says when it opens.
+              onPress={shut ? (lock?.enroll ? onEnroll : undefined) : () => nav.goCoursePhase(PROGRAMS.BM100, p.id)}
               accessibilityRole="button"
               accessibilityState={{ disabled: shut }}
               style={{
@@ -206,7 +212,7 @@ function PhaseList({ locked, onEnroll }) {
                   {p.title}
                 </ILText>
                 <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                  {p.sub}
+                  {lock && !lock.enroll ? `${p.sub} · ${lock.text}` : p.sub}
                 </ILText>
               </View>
               {shut ? (

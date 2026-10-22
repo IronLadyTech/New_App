@@ -260,7 +260,8 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
   return [
     ...(ritualsUnlocked ? [ritualsPracticeRow()] : []),
     principleRow(todayIso, day1Iso),
-    row(phaseTask),
+    // weekFocus: the hook swaps this for her next unfinished task of this week.
+    row({ ...phaseTask, weekFocus: phaseId }),
   ];
 }
 

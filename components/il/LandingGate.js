@@ -3,16 +3,17 @@ import { View } from 'react-native';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import {
-  getEnrolledPrograms,
+  learnerBatchLabel,
+  learnerEnrollmentLabel,
   needsLepBatchSelection,
   programPaymentStatus,
+  programsOnProfile,
 } from '../../utils/programAccess';
 import { PAYMENT_STATUS } from '../../constants/programs';
 import AccountFoundScreen from '../../screens/auth/AccountFoundScreen';
 import FirstLoginWelcomeScreen from '../../screens/auth/FirstLoginWelcomeScreen';
 import ChooseBatchDateScreen from '../../screens/auth/ChooseBatchDateScreen';
 import SeatHeldScreen from '../../screens/auth/SeatHeldScreen';
-import JourneyPickerScreen from '../../screens/auth/JourneyPickerScreen';
 import { useProgramNav } from '../../context/ProgramNavContext';
 import { useAuth } from '../../context/AuthContext';
 import { updateUserProfile } from '../../services/firestore';
@@ -37,13 +38,38 @@ export default function LandingGate({ profile, forcedClosed }) {
   };
   if (forcedClosed || closed || !profile) return null;
 
-  const programs = getEnrolledPrograms(profile)
+  const programs = programsOnProfile(profile)
     .map((program) => ({
       ...program,
       enrolled: programPaymentStatus(profile, program.id) === PAYMENT_STATUS.PAID,
     }))
     .sort((a, b) => Number(b.enrolled) - Number(a.enrolled));
   const primaryId = programs[0]?.id;
+
+  const accountFoundParams = () => ({
+    phone: profile.phoneNumber,
+    programs: programs.map((p) => {
+      const tier = learnerEnrollmentLabel(profile, p.id);
+      const enrolled = tier === 'Enrolled' || p.enrolled;
+      const batch = learnerBatchLabel(profile, p.id);
+      let meta = p.shortLabel;
+      if (enrolled && batch) meta = batch;
+      else if (!enrolled && tier === 'Registered') {
+        meta = 'Part payment received · batch details open soon';
+      }
+      return {
+        id: p.id,
+        title: p.title,
+        status: enrolled
+          ? p.id === primaryId
+            ? 'Enrolled · opens first'
+            : 'Enrolled'
+          : 'Registered',
+        meta,
+        primary: p.id === primaryId,
+      };
+    }),
+  });
   const needsBatch = needsLepBatchSelection(profile);
 
   // First login: welcome (+ batch if needed). Stay on batch until one is locked.
@@ -74,12 +100,10 @@ export default function LandingGate({ profile, forcedClosed }) {
 
   // Welcome already done but batch still missing → batch picker only.
   const gateStep =
-    profile.welcomeCompletedAt && needsBatch && (step === 'welcome' || step === 'picker')
-      ? 'batch'
-      : step;
+    profile.welcomeCompletedAt && needsBatch && step === 'welcome' ? 'batch' : step;
 
-  if (programs.length >= 2 && gateStep === 'welcome') {
-    return wrap(
+  const renderAccountFound = () =>
+    wrap(
       <AccountFoundScreen
         onDone={(programId) => {
           const id = programId || primaryId;
@@ -88,33 +112,12 @@ export default function LandingGate({ profile, forcedClosed }) {
           else leave(id);
         }}
         onBack={() => logout()}
-        route={{
-          params: {
-            phone: profile.phoneNumber,
-            programs: programs.map((p) => ({
-              id: p.id,
-              title: p.title,
-              status: p.enrolled
-                ? p.id === primaryId
-                  ? 'Enrolled · opens first'
-                  : 'Enrolled'
-                : 'Registered',
-              meta: p.shortLabel,
-              primary: p.id === primaryId,
-            })),
-          },
-        }}
+        route={{ params: accountFoundParams() }}
       />
     );
-  }
 
-  if (gateStep === 'picker') {
-    return wrap(
-      <JourneyPickerScreen
-        route={{ params: { name: profile?.displayName?.split(' ')[0] } }}
-        onPick={leave}
-      />
-    );
+  if (programs.length >= 2 && (gateStep === 'welcome' || gateStep === 'picker')) {
+    return renderAccountFound();
   }
 
   if (gateStep === 'held') {
@@ -122,8 +125,12 @@ export default function LandingGate({ profile, forcedClosed }) {
       <SeatHeldScreen
         route={{ params: { batch } }}
         onContinue={() => {
-          if (entryProgram) leave(entryProgram);
-          else setStep('picker');
+          const target = entryProgram || primaryId || 'lep';
+          if (programs.length >= 2 && !entryProgram) {
+            setStep('welcome');
+            return;
+          }
+          leave(target);
         }}
       />
     );

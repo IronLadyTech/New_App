@@ -9,6 +9,7 @@ import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { GuideFace } from './LepBits';
 import { PODCASTS } from './lepData';
 import { ROLE_OPTIONS } from '../../utils/registeredHomeData';
+import { recordSessionJoin } from '../../services/activityTracking';
 
 const T = {
   bg: '#F4F1E8',
@@ -116,6 +117,8 @@ export default function RegisteredHomeView({
   bhag,
   onBhag,
   topPad,
+  upcomingSession,
+  onOpenSchedule,
 }) {
   return (
     <View style={{ gap: 16 }}>
@@ -419,6 +422,92 @@ export default function RegisteredHomeView({
           </Pressable>
         </View>
       </View>
+
+      {upcomingSession ? (
+        <RegisteredNextSessionCard
+          upcoming={upcomingSession}
+          onAddCalendar={() => {
+            if (upcomingSession.calendarUrl) openDay1Calendar(upcomingSession.calendarUrl);
+            else onOpenSchedule?.();
+          }}
+          onOpenSchedule={onOpenSchedule}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) {
+  const canJoin = Boolean(upcoming.ready && upcoming.joinLink);
+  return (
+    <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <ILText role="label" color={T.muted} style={[af, { fontSize: 11, letterSpacing: 1.1 }]}>
+          {upcoming.kicker}
+        </ILText>
+        <MaterialIcons name="event" size={20} color={T.teal} />
+      </View>
+      <ILText
+        role="title"
+        color={T.ink}
+        style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+      >
+        {upcoming.title}
+      </ILText>
+      <ILText role="body" color={T.muted} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
+        {upcoming.when}
+      </ILText>
+      {upcoming.hours ? (
+        <ILText role="bodySm" color={T.muted} style={{ marginTop: 4, fontSize: 13 }}>
+          {upcoming.hours}
+        </ILText>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Add to calendar"
+        onPress={onAddCalendar}
+        style={{
+          marginTop: 16,
+          minHeight: 48,
+          borderRadius: 999,
+          backgroundColor: T.red,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <ILText role="label" color="#FFFFFF" style={{ fontSize: 16 }}>
+          Add to calendar →
+        </ILText>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={canJoin ? 'Join Zoom session' : 'View schedule'}
+        onPress={() => {
+          if (canJoin) {
+            recordSessionJoin(upcoming.code);
+            Linking.openURL(upcoming.joinLink).catch(() => {});
+          }
+          else onOpenSchedule?.();
+        }}
+        style={{
+          marginTop: 10,
+          minHeight: 48,
+          borderRadius: 999,
+          backgroundColor: T.teal,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 12,
+        }}
+      >
+        <ILText role="label" color="#FFFFFF" style={{ fontSize: 15 }}>
+          {canJoin ? 'Join Zoom session' : 'View full schedule'}
+        </ILText>
+        {!canJoin ? (
+          <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ marginTop: 2, fontSize: 11 }}>
+            Join link unlocks about an hour before your session
+          </ILText>
+        ) : null}
+      </Pressable>
     </View>
   );
 }

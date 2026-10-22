@@ -10,12 +10,44 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { subscribeToAuth, fetchUserProfile, logOut as authLogOut } from '../services/auth';
 import { subscribeToUser } from '../services/firestore';
+import {
+  mergeProgramAccessPreservingPayment,
+  mergeWelcomeProfilePreserving,
+} from '../utils/programAccess';
+import { PAYMENT_STATUS } from '../constants/programs';
 
 const GUEST_KEY = 'il_guest_mode';
 const LAB_LEP_KEY = 'il_lab_lep';
 const LAB_JOURNEY_KEY = 'il_lab_journey';
 const DEMO_KEY = 'il_demo';
 const AuthContext = createContext(null);
+
+/**
+ * CMS preview: /admin shows the real app in a phone frame at
+ * /?cmsPreview=1&program=lep&state=registered|enrolled&batch=<cms_batches id>&late=1.
+ * Kept in memory only — never written to storage, so it cannot stick to a real session,
+ * and the signed-in staff login does not end it.
+ */
+function readCmsPreview() {
+  if (typeof window === 'undefined' || !window.location?.search) return null;
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('cmsPreview') !== '1') return null;
+    const program = ['lep', '100bm', 'mbw'].includes(q.get('program')) ? q.get('program') : 'lep';
+    return {
+      program,
+      state: q.get('state') === 'enrolled' ? 'enrolled' : 'registered',
+      regStatus: null,
+      cmsBatchId: q.get('batch') || null,
+      late: q.get('late') === '1',
+      cmsPreview: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const CMS_PREVIEW = readCmsPreview();
 
 function parseLabJourney(raw, legacyLep) {
   if (raw) {
@@ -35,9 +67,27 @@ function parseLabJourney(raw, legacyLep) {
   return null;
 }
 
-function labProfile({ program, state, regStatus }) {
+function labProfile({ program, state, regStatus, cmsBatchId, late, cmsPreview }) {
   const enrolled = state === 'enrolled';
   const pay = enrolled ? 'paid' : 'register';
+  if (cmsPreview) {
+    // A finished-onboarding learner of the chosen batch, so the preview opens on Home.
+    return {
+      displayName: 'Ananya Rao',
+      firstName: 'Ananya',
+      role: 'student',
+      program,
+      programs: [program],
+      paymentStatus: pay,
+      programAccess: { [program]: { paymentStatus: pay, batchId: cmsBatchId || undefined, joinedLate: late || undefined } },
+      ilGuideOnboarded: true,
+      welcomeCompletedAt: 'cms-preview',
+      labProgram: program,
+      labState: state,
+      labLep: program === 'lep' ? state : undefined,
+      cmsPreview: true,
+    };
+  }
   return {
     displayName: 'Ananya Rao',
     firstName: 'Ananya',
@@ -70,7 +120,7 @@ export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [guestMode, setGuestMode] = useState(false);
-  const [labJourney, setLabJourney] = useState(null);
+  const [labJourney, setLabJourney] = useState(CMS_PREVIEW);
   // Set when a flow was opened from the journey picker, so the demo flow bar shows.
   const [demo, setDemo] = useState(false);
   // Sign-in screen the demo flow bar jumped to (null = start at phone login).
@@ -94,7 +144,7 @@ export function AuthProvider({ children }) {
       AsyncStorage.getItem(DEMO_KEY),
     ])
       .then(([guest, journey, legacyLep, demoFlag]) => {
-        if (cancelled) return;
+        if (cancelled || CMS_PREVIEW) return;
         const lab = parseLabJourney(journey, legacyLep);
         setLabJourney(lab);
         setGuestMode(guest === '1' && !lab);
@@ -109,7 +159,7 @@ export function AuthProvider({ children }) {
         setInitializing(false);
         return;
       }
-      if (!cancelled) {
+      if (!cancelled && !CMS_PREVIEW) {
         // Real phone/email login ends demo / lab journey so Ananya + flow bar cannot stick.
         setGuestMode(false);
         setLabJourney(null);
@@ -143,13 +193,27 @@ export function AuthProvider({ children }) {
     const unsub = subscribeToUser(
       firebaseUser.uid,
       (data) =>
-        setProfile((prev) => ({
-          ...data,
-          ilGuideOnboarded:
-            data?.ilGuideOnboarded === true ||
-            prev?.ilGuideOnboarded === true ||
-            onboardedRef.current,
-        })),
+        setProfile((prev) => {
+          const programAccess = mergeProgramAccessPreservingPayment(
+            prev?.programAccess,
+            data?.programAccess
+          );
+          const paymentStatus =
+            prev?.paymentStatus === PAYMENT_STATUS.PAID
+              ? prev.paymentStatus
+              : data?.paymentStatus;
+          const welcome = mergeWelcomeProfilePreserving(prev, data);
+          return {
+            ...data,
+            ...welcome,
+            programAccess,
+            paymentStatus,
+            ilGuideOnboarded:
+              data?.ilGuideOnboarded === true ||
+              prev?.ilGuideOnboarded === true ||
+              onboardedRef.current,
+          };
+        }),
       (err) => setError(err.message)
     );
     return unsub;
@@ -242,17 +306,36 @@ export function AuthProvider({ children }) {
 
   const patchProfile = useCallback((partial) => {
     if (partial?.ilGuideOnboarded === true) onboardedRef.current = true;
-    setProfile((prev) => (prev ? { ...prev, ...partial } : { ...partial }));
+    setProfile((prev) => {
+      if (!prev) return { ...partial };
+      const next = { ...prev, ...partial };
+      if (partial.programAccess) {
+        next.programAccess = mergeProgramAccessPreservingPayment(
+          prev.programAccess,
+          partial.programAccess
+        );
+      }
+      if (
+        prev.paymentStatus === PAYMENT_STATUS.PAID &&
+        partial.paymentStatus &&
+        partial.paymentStatus !== PAYMENT_STATUS.PAID
+      ) {
+        next.paymentStatus = prev.paymentStatus;
+      }
+      return next;
+    });
   }, []);
 
   const resolvedProfile = useMemo(() => {
     if (!labJourney) return profile;
     const lab = labProfile(labJourney);
     const pid = lab.program;
-    const live = profile?.programAccess?.[pid] || {};
+    // The CMS preview is a made-up learner — never mix in the staff member's own access.
+    const live = labJourney.cmsPreview ? {} : profile?.programAccess?.[pid] || {};
     return {
       ...(profile || {}),
       ...lab,
+      ...(labJourney.cmsPreview ? { uid: profile?.uid || firebaseUser?.uid } : {}),
       programs: [pid],
       program: pid,
       phoneNumber: profile?.phoneNumber || profile?.phone || lab.phoneNumber,
@@ -271,7 +354,7 @@ export function AuthProvider({ children }) {
         },
       },
     };
-  }, [profile, labJourney]);
+  }, [profile, labJourney, firebaseUser?.uid]);
 
   const value = useMemo(
     () => ({
@@ -284,6 +367,7 @@ export function AuthProvider({ children }) {
       demo,
       authEntry,
       journey: labJourney,
+      cmsPreview: Boolean(labJourney?.cmsPreview),
       isGuest: guestMode && !firebaseUser && !preview && !labJourney,
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
         resolvedProfile?.role

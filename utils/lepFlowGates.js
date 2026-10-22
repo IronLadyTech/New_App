@@ -17,16 +17,21 @@ export {
   resolveLepDay1Iso,
 };
 
-/** First calendar day (IST) a journey phase may open. */
+/**
+ * First calendar day (IST) a journey phase may open. Weeks open one at a time, each
+ * on its Monday: Week 1 the Monday after Day 2, then every 7 days — matching the
+ * session calendar (Week 1 ends with Differentiated Brand, Week 2 with Shameless
+ * Pitch, Week 3 with Leadership Habits, Week 4 with Graduation).
+ */
 export const LEP_PHASE_DAY_OFFSET = {
   'pre-program': -14,
   orientation: -2,
   'day-1': 0,
   'day-2': 1,
   'week-1': 2,
-  'week-2': 2,
-  'week-3': 7,
-  'week-4': 14,
+  'week-2': 9,
+  'week-3': 16,
+  'week-4': 23,
   community: 2,
   evaluation: 28,
   certificate: 28,
@@ -107,5 +112,7 @@ export function lepFlowContextFromBatch({ cmsBatch, group, zohoRawBatch } = {}) 
   return {
     programId: 'lep',
     day1Iso,
+    // Phases CX opened early or held back for this batch (CMS → Unlock calendar).
+    overrides: cmsBatch?.phaseOverrides || {},
   };
 }

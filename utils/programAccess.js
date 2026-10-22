@@ -54,6 +54,35 @@ function expandProgramValues(value) {
     .filter(Boolean);
 }
 
+function paymentTier(status) {
+  const n = normalizePaymentStatus(status);
+  if (n === PAYMENT_STATUS.PAID) return 2;
+  if (n === PAYMENT_STATUS.REGISTER) return 1;
+  return 0;
+}
+
+/** Keep the stronger payment tier when Firestore/Zoho sync lags behind Razorpay. */
+export function mergeProgramAccessPreservingPayment(prevAccess = {}, incomingAccess = {}) {
+  const keys = new Set([
+    ...Object.keys(prevAccess || {}),
+    ...Object.keys(incomingAccess || {}),
+  ]);
+  const out = { ...(prevAccess || {}) };
+  keys.forEach((pid) => {
+    const prev = prevAccess?.[pid] || {};
+    const inc = incomingAccess?.[pid] || {};
+    const merged = { ...prev, ...inc };
+    if (paymentTier(prev.paymentStatus) > paymentTier(inc.paymentStatus)) {
+      merged.paymentStatus = prev.paymentStatus;
+      if (prev.fullPaidAt) merged.fullPaidAt = prev.fullPaidAt;
+      if (prev.razorpayPaymentId) merged.razorpayPaymentId = prev.razorpayPaymentId;
+      if (prev.razorpayOrderId) merged.razorpayOrderId = prev.razorpayOrderId;
+    }
+    out[pid] = merged;
+  });
+  return out;
+}
+
 function normalizePaymentStatus(value) {
   const v = (value || '').toString().toLowerCase().trim();
   if (['paid', 'full', 'complete', 'full_payment', 'paid_full'].includes(v)) {
@@ -388,6 +417,8 @@ export function learnerBhagText(profile) {
       if (text) return text;
     }
   }
+  const fromMirror = acceptedBhag(profile?.zohoLead?.Month_B_HAG || profile?.zohoLead?.LMS_BHAG);
+  if (fromMirror) return fromMirror;
   // App-saved goal before Zoho catch-up (welcome / profile).
   return acceptedBhag(profile?.bhag) || '';
 }
@@ -414,11 +445,58 @@ export function learnerDomainText(profile) {
       profile.industry ||
       profile.roleTitle ||
       profile.jobTitle ||
+      profile.zohoLead?.Industry ||
+      profile.zohoLead?.LMS_Domain ||
       profile.Industry_Field_of_Work ||
       profile['Industry/Field of Work']
   );
   if (fromApp) return fromApp;
   return usableLeadText(readLeadField(profile, DOMAIN_LEAD_FIELDS)) || '';
+}
+
+/** City / location for welcome + profile (Zoho + app-saved). */
+export function learnerCityText(profile) {
+  if (!profile || typeof profile !== 'object') return '';
+  return (
+    usableLeadText(
+      profile.city ||
+        profile.City ||
+        profile.location ||
+        profile.currentCity ||
+        profile.zohoLead?.City ||
+        readLeadField(profile, ['City', 'Location', 'Current_City', 'Current City'])
+    ) || ''
+  );
+}
+
+/** Welcome screen: city, field of work, 3-month goal. */
+export function readWelcomeFields(source) {
+  if (!source || typeof source !== 'object') {
+    return { city: '', domain: '', bhag: '' };
+  }
+  return {
+    city: learnerCityText(source),
+    domain: learnerDomainText(source),
+    bhag: learnerBhagText(source),
+  };
+}
+
+/** Keep learner-edited welcome fields when Firestore snapshots omit them. */
+export function mergeWelcomeProfilePreserving(prev, incoming) {
+  const next = readWelcomeFields(incoming);
+  const keep = readWelcomeFields(prev);
+  const city = next.city || keep.city;
+  const domain = next.domain || keep.domain;
+  const bhag = next.bhag || keep.bhag;
+  return {
+    city,
+    domain,
+    bhag,
+    leadershipRole:
+      usableLeadText(incoming?.leadershipRole) ||
+      usableLeadText(prev?.leadershipRole) ||
+      domain,
+  };
 }
 
 const ENROLLMENT_DETAIL_FIELDS = ['Program Enrollment Details', 'Program_Enrollment_Details'];

@@ -27,6 +27,21 @@ import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { isLepEnrolled } from '../../utils/lepState';
 import { isLepRitualsPracticeId } from '../../utils/lepRitualsUnlock';
 import { getPracticeVideoUrl } from '../../utils/resolveVideoUrl';
+import { cmsPracticeItem } from '../../hooks/useCmsLearnerItems';
+
+/** A practice item CX added in the CMS, in the shape of the built-in PRACTICE entries. */
+function fromCms(practiceId, programId) {
+  const item = cmsPracticeItem(practiceId);
+  if (!item) return null;
+  return {
+    programId: programId || item.program || 'lep',
+    title: item.title,
+    kind: 'Daily practice',
+    steps: [item.how || 'Do it once today, then mark it done.'],
+    videoUrl: item.videoUrl || null,
+    videoLabel: item.videoUrl ? 'Watch first' : undefined,
+  };
+}
 
 const TAG = { lep: 'LEP', '100bm': '100BM', mbw: 'MBW' };
 
@@ -38,14 +53,15 @@ export default function PracticeScreen() {
   const demo = useCourseDemo();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
-  const p = PRACTICE[params.practiceId];
+  const p = PRACTICE[params.practiceId] || fromCms(params.practiceId, params.programId);
+  const fromCmsItem = !PRACTICE[params.practiceId] && !!p;
   const programId = p?.programId || params.programId;
   const practiceId = params.practiceId;
   const lepEnrolled = programId === 'lep' ? isLepEnrolled(profile) : true;
   const videoUri = p?.videoUrl ? getPracticeVideoUrl(practiceId, lepEnrolled) || p.videoUrl : null;
   const pKey = practiceId ? practiceKey(practiceId) : '';
   const today = todayIsoIST();
-  const dailyKey = practiceId && DAILY_RESET_PRACTICE_IDS.has(practiceId)
+  const dailyKey = practiceId && (DAILY_RESET_PRACTICE_IDS.has(practiceId) || fromCmsItem)
     ? practiceDailyKey(practiceId, today)
     : null;
   const done = p
@@ -168,7 +184,7 @@ export default function PracticeScreen() {
               <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
                 {p.videoLabel || 'Watch first'}
               </ILText>
-              <PracticeVideo uri={videoUri} poster={p.thumb} height={210} />
+              <PracticeVideo uri={videoUri} poster={p.thumb} height={210} trackKey={`${programId}:${practiceId}`} />
             </View>
           ) : null}
 

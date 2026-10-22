@@ -7,6 +7,9 @@ const STREAK_ID = 'il-daily-streak';
 const WELCOME_ID = 'il-welcome-install';
 const STREAK_CHANNEL = 'streak';
 const DEFAULT_CHANNEL = 'default';
+/** 7:00 PM local — Duolingo-style streak nudge. */
+const STREAK_HOUR = 19;
+const STREAK_MINUTE = 0;
 
 /**
  * Never require expo-notifications in Expo Go on Android — SDK 53+ throws
@@ -60,7 +63,13 @@ async function ensureChannels(Notifications) {
 async function ensurePermission(Notifications) {
   const { status: existing } = await Notifications.getPermissionsAsync();
   if (existing === 'granted') return true;
-  const { status } = await Notifications.requestPermissionsAsync();
+  const { status } = await Notifications.requestPermissionsAsync({
+    ios: {
+      allowAlert: true,
+      allowBadge: true,
+      allowSound: true,
+    },
+  });
   return status === 'granted';
 }
 
@@ -68,7 +77,36 @@ function triggerTypes(Notifications) {
   return Notifications.SchedulableTriggerInputTypes || {
     TIME_INTERVAL: 'timeInterval',
     DAILY: 'daily',
+    CALENDAR: 'calendar',
   };
+}
+
+/** Daily 7 PM — Android `daily`; iOS repeating `calendar` (daily trigger is Android-only in native). */
+function buildStreakTrigger(Notifications) {
+  const Types = triggerTypes(Notifications);
+  if (Platform.OS === 'ios') {
+    return {
+      type: Types.CALENDAR,
+      repeats: true,
+      hour: STREAK_HOUR,
+      minute: STREAK_MINUTE,
+    };
+  }
+  return {
+    type: Types.DAILY,
+    hour: STREAK_HOUR,
+    minute: STREAK_MINUTE,
+    channelId: STREAK_CHANNEL,
+  };
+}
+
+async function streakIsScheduled(Notifications) {
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    return (pending || []).some((req) => req?.identifier === STREAK_ID);
+  } catch {
+    return false;
+  }
 }
 
 function firstName(profile) {
@@ -135,7 +173,6 @@ export async function scheduleDailyStreakNotification(profile) {
     await ensureChannels(Notifications);
 
     const name = firstName(profile);
-    // Cancel previous schedule so copy stays fresh with the learner’s name.
     await Notifications.cancelScheduledNotificationAsync(STREAK_ID).catch(() => {});
 
     await Notifications.scheduleNotificationAsync({
@@ -147,14 +184,13 @@ export async function scheduleDailyStreakNotification(profile) {
         sound: true,
         data: { go: { to: 'myProgram' }, kind: 'streak' },
       },
-      trigger: {
-        type: triggerTypes(Notifications).DAILY,
-        hour: 19,
-        minute: 0,
-        channelId: STREAK_CHANNEL,
-      },
+      trigger: buildStreakTrigger(Notifications),
     });
 
+    const scheduled = await streakIsScheduled(Notifications);
+    if (!scheduled) {
+      return { ok: false, reason: 'not_scheduled' };
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: e?.message || 'streak_failed' };

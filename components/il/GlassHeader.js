@@ -243,7 +243,17 @@ export default function GlassHeader({
       pointerEvents={inert ? 'none' : 'box-none'}
       style={[
         { paddingTop: top + GAP_TOP, paddingHorizontal: SIDE, paddingBottom: floating ? 0 : 10 },
-        floating && { position: 'absolute', left: 0, right: 0, top: 0, zIndex: 30, elevation: 30 },
+        floating && {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          zIndex: 30,
+          elevation: 30,
+          // Android: absolute header without height must not stretch to full screen (blocks taps).
+          alignSelf: 'flex-start',
+          width: '100%',
+        },
         melting && { opacity: wrapOp, transform: [{ translateY: wrapY }] },
       ]}
     >

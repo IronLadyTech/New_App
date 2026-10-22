@@ -6,7 +6,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Pressable from '../il/Press';
 import { useVideoLandscape } from '../../hooks/useVideoOrientation';
+import { useVideoProgressTracking } from '../../hooks/useVideoProgressTracking';
 import {
+  allowYoutubeEmbedRequest,
   toPlayerSource,
   youtubeEmbedHtml,
   youtubeIdFromUri,
@@ -23,10 +25,11 @@ function fit16x9(maxW, maxH) {
   return { width: maxW, height: maxW * (9 / 16) };
 }
 
-function NativeVideo({ source, width, height }) {
+function NativeVideo({ source, width, height, trackKey }) {
   const player = useVideoPlayer(source, (p) => {
     p.loop = false;
   });
+  useVideoProgressTracking(player, trackKey);
 
   return (
     <VideoView
@@ -63,6 +66,10 @@ function YoutubeEmbed({ uri, width, height }) {
       automaticallyAdjustContentInsets={false}
       contentInsetAdjustmentBehavior="never"
       scrollEnabled={false}
+      // Learners never leave for YouTube: logo, title and suggestion taps are dropped.
+      setSupportMultipleWindows={false}
+      onShouldStartLoadWithRequest={allowYoutubeEmbedRequest}
+      onOpenWindow={() => {}}
     />
   );
 }
@@ -100,7 +107,7 @@ function PlayOverlay({ onPress }) {
   );
 }
 
-function VideoFrame({ uri, fill, poster, started, onStart }) {
+function VideoFrame({ uri, fill, poster, started, onStart, trackKey }) {
   const youtubeId = youtubeIdFromUri(uri);
   const showPoster = !!poster;
   const showYoutubeGate = youtubeId && !started;
@@ -136,7 +143,7 @@ function VideoFrame({ uri, fill, poster, started, onStart }) {
         youtubeId ? (
           <YoutubeEmbed uri={uri} width={box.width} height={box.height} />
         ) : (
-          <NativeVideo source={toPlayerSource(uri)} width={box.width} height={box.height} />
+          <NativeVideo source={toPlayerSource(uri)} width={box.width} height={box.height} trackKey={trackKey} />
         )
       ) : null}
     </View>
@@ -167,7 +174,8 @@ function RotateButton({ onPress, style }) {
   );
 }
 
-export default function PracticeVideo({ uri, poster }) {
+/** trackKey names the video on the CX dashboard (task / practice / asset id); falls back to the uri. */
+export default function PracticeVideo({ uri, poster, trackKey = uri }) {
   const [landscape, setLandscape] = useState(false);
   const [started, setStarted] = useState(!youtubeIdFromUri(uri));
   const [stage, setStage] = useState({ width: 0, height: 0 });
@@ -196,6 +204,7 @@ export default function PracticeVideo({ uri, poster }) {
             poster={poster}
             started={started}
             onStart={beginPlayback}
+            trackKey={trackKey}
           />
           <RotateButton
             onPress={() => {
@@ -233,7 +242,7 @@ export default function PracticeVideo({ uri, poster }) {
           >
             {frame.width > 0 && frame.height > 0 ? (
               <View style={{ width: frame.width, height: frame.height }}>
-                <VideoFrame uri={uri} fill poster={poster} started={started} onStart={beginPlayback} />
+                <VideoFrame uri={uri} fill poster={poster} started={started} onStart={beginPlayback} trackKey={trackKey} />
               </View>
             ) : null}
           </View>

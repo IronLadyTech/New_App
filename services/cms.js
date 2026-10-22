@@ -14,10 +14,13 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { auth, db, storage } from './firebase';
+import { auth, db, functions, storage } from './firebase';
 import { CMS, CMS_QA_BATCH_ID } from '../constants/cms';
 import {
   cmsBatchNameFromGroup,
@@ -26,6 +29,7 @@ import {
   inferLepDay1FromZohoRaw,
 } from '../utils/lepDeskBatchDate';
 import { buildLepBatchSessions, orientationFromDay1Saturday } from '../utils/lepBatchSchedule';
+import { inferProgramStartFromZohoRaw } from '../utils/programStartDate';
 
 function stamp() {
   return { updatedAt: serverTimestamp(), updatedBy: auth.currentUser?.email || auth.currentUser?.uid || null };
@@ -135,8 +139,11 @@ function cmsRowIsLive(row) {
   return row?.published !== false;
 }
 
-/** Published CMS files linked to a learner task (linkedTaskIds = T12 or lep-orientation-schedule). */
-export async function fetchPublishedCmsForTask(programId, taskId) {
+/**
+ * Published CMS files linked to a learner task (linkedTaskIds = T12 or lep-orientation-schedule).
+ * Rows uploaded "for this batch" carry a batchId and only reach learners of that cms_batches doc.
+ */
+export async function fetchPublishedCmsForTask(programId, taskId, learnerBatchId = null) {
   const wantKeys = matchKeysForAppTask(taskId);
   if (!wantKeys.size) return [];
 
@@ -149,6 +156,7 @@ export async function fetchPublishedCmsForTask(programId, taskId) {
     .filter((row) => {
       if (!cmsRowIsLive(row)) return false;
       if (row.program !== 'ALL' && row.program !== cmsProgram) return false;
+      if (row.batchId && row.batchId !== learnerBatchId) return false;
       const ids = linkedTaskIdsFromRow(row).map((x) => x.toLowerCase());
       return ids.some((id) => wantKeys.has(id));
     });
@@ -440,4 +448,194 @@ export async function deleteContent(item) {
     }
   }
   await deleteDoc(doc(db, CMS.CONTENT, item.id));
+}
+
+// ---------- Learner counts (numbers only — via Cloud Function) ----------
+
+/** { linked, counts: { all, register, paid, late, unknown } } for one cms_batches doc. */
+export async function fetchBatchLearnerCounts(batchId) {
+  const { data } = await httpsCallable(functions, 'cmsBatchLearnerCounts')({ batchId });
+  return data;
+}
+
+// ---------- Messages CX schedules for a batch (sent by the scheduler) ----------
+
+export function subscribeToBatchMessages(batchId, onData, onError) {
+  if (!batchId) {
+    onData([]);
+    return () => {};
+  }
+  return onSnapshot(
+    query(collection(db, CMS.BATCH_MESSAGES), where('batchId', '==', batchId)),
+    (snap) =>
+      onData(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => String(a.sendAt || '').localeCompare(String(b.sendAt || '')))
+      ),
+    onError
+  );
+}
+
+/** audience: 'all' | 'register' | 'paid' | 'late'. sendAt: ISO time (now = send on the next run). */
+export async function scheduleBatchMessage({ batchId, program, audience, sendAt, title, body }) {
+  const created = await addDoc(collection(db, CMS.BATCH_MESSAGES), {
+    batchId,
+    program: program || 'LEP',
+    audience: audience || 'all',
+    sendAt,
+    title: String(title || '').trim(),
+    body: String(body || '').trim(),
+    status: 'scheduled',
+    ...stamp(),
+    createdAt: serverTimestamp(),
+  });
+  return created.id;
+}
+
+export function cancelBatchMessage(id) {
+  return updateDoc(doc(db, CMS.BATCH_MESSAGES, id), { status: 'cancelled', ...stamp() });
+}
+
+// ---------- Engage posts and practice items CX adds ----------
+
+function subscribeToCmsList(collectionName, program, onData, onError) {
+  return onSnapshot(
+    query(collection(db, collectionName), where('program', '==', program)),
+    (snap) =>
+      onData(
+        snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      ),
+    onError
+  );
+}
+
+/** Staff: every Engage post for a program (drafts too). */
+export function subscribeToEngagePosts(program, onData, onError) {
+  return subscribeToCmsList(CMS.ENGAGE, program, onData, onError);
+}
+
+/** Staff: every practice item for a program. */
+export function subscribeToPracticeItems(program, onData, onError) {
+  return subscribeToCmsList(CMS.PRACTICE, program, onData, onError);
+}
+
+/** Learners: live posts or practice items for a program (rules return published only). */
+export async function fetchPublishedCmsList(collectionName, program) {
+  const snap = await getDocs(
+    query(collection(db, collectionName), where('program', '==', program), where('published', '==', true))
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function saveCmsListItem(collectionName, item) {
+  const { id, ...data } = item;
+  if (id) {
+    await setDoc(doc(db, collectionName, id), { ...data, ...stamp() }, { merge: true });
+    return id;
+  }
+  const created = await addDoc(collection(db, collectionName), {
+    published: true,
+    ...data,
+    ...stamp(),
+    createdAt: serverTimestamp(),
+  });
+  return created.id;
+}
+
+export function removeCmsListItem(collectionName, id) {
+  return deleteDoc(doc(db, collectionName, id));
+}
+
+/** Upload a browser File (photo, video) to cms/{program}/ and return its download URL. */
+export function uploadCmsFile(file, program, onProgress) {
+  const safe = file.name.replace(/[^A-Za-z0-9._-]/g, '_');
+  const path = `cms/${program || 'ALL'}/${Date.now()}_${safe}`;
+  const task = uploadBytesResumable(ref(storage, path), file, { contentType: file.type });
+  return new Promise((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (s) => onProgress?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0),
+      reject,
+      async () => {
+        try {
+          resolve({ url: await getDownloadURL(task.snapshot.ref), storagePath: path });
+        } catch (e) {
+          reject(e);
+        }
+      }
+    );
+  });
+}
+
+// ---------- Real batches from the LMS (synced from Zoho), every program ----------
+
+const CMS_PROGRAM_LABEL = { lep: 'LEP', '100bm': '100BM', mbw: 'MBW' };
+
+/** [{ id, name, program, zohoRawBatch, memberCount }] for 'lep' | '100bm' | 'mbw'. */
+export async function fetchProgramBatches(program) {
+  const { data } = await httpsCallable(functions, 'cmsListProgramBatches')({ program });
+  return Array.isArray(data?.batches) ? data.batches : [];
+}
+
+/**
+ * The cms_batches doc for a real LMS batch — created on first use as a draft with
+ * reminders off, linked to its learners. LEP batches get their session calendar
+ * from the Zoho batch dates; 100BM / MBW start without one.
+ */
+export async function ensureCmsBatchForGroup(group, existingBatches = []) {
+  const already = existingBatches.find((b) => String(b.lmsGroupId || '') === group.id);
+  if (already) return already.id;
+  const program = CMS_PROGRAM_LABEL[group.program] || 'LEP';
+  const base = {
+    name: program === 'LEP' ? cmsBatchNameFromGroup(group) : group.name,
+    program,
+    timezone: 'Asia/Kolkata',
+    notes: 'Set up from the web LMS batch',
+    lmsGroupId: group.id,
+    zohoBatchKey: group.zohoRawBatch || '',
+    openForEnrollment: false,
+    filling: false,
+    status: 'draft',
+    automationEnabled: false,
+    sessions: [],
+  };
+  if (program !== 'LEP') {
+    // 100BM / MBW open phases week by week from this date (CX can change it in Unlock calendar).
+    const startDate = inferProgramStartFromZohoRaw(group.zohoRawBatch);
+    if (startDate) base.startDate = startDate;
+  }
+  if (program === 'LEP') {
+    const day1Date = inferLepDay1FromGroup(group);
+    if (day1Date) {
+      base.day1Date = day1Date;
+      base.orientationDate = orientationFromDay1Saturday(day1Date);
+      base.sessions = buildLepBatchSessions({ anchor: 'day1', date: day1Date, joinLinks: {} });
+    }
+  }
+  return saveBatch(base);
+}
+
+/** Link a CMS batch to its web LMS batch — only that field, nothing else on the batch changes. */
+export function linkBatchToLmsGroup(batchId, groupId) {
+  return setDoc(doc(db, CMS.BATCHES, batchId), { lmsGroupId: groupId, ...stamp() }, { merge: true });
+}
+
+// ---------- Zoho batch sync (runs nightly on the server; "Sync now" at most hourly) ----------
+
+export async function fetchZohoSyncStatus() {
+  const { data } = await httpsCallable(functions, 'cmsZohoSync')({ action: 'status' });
+  return data?.status || null;
+}
+
+export async function runZohoSyncNow() {
+  const { data } = await httpsCallable(functions, 'cmsZohoSync')({ action: 'run' });
+  return data;
+}
+
+/** Save a few fields on a batch (start date, phase overrides) — nothing else changes. */
+export function saveBatchFields(batchId, fields) {
+  return setDoc(doc(db, CMS.BATCHES, batchId), { ...fields, ...stamp() }, { merge: true });
 }

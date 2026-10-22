@@ -57,10 +57,28 @@ export function useILGuideWhisper(surface, extraContext = null) {
     surface === IL_GUIDE_SURFACES.ONBOARD ||
     (surface === IL_GUIDE_SURFACES.HOME && !profile?.ilGuideOnboarded);
 
-  // Stable key so parent object identity does not retrigger fetches every render.
+  // Stable key — ignore noisy fields (streak ticks) so the card does not re-fetch and swap.
   const extraKey = useMemo(() => {
+    if (!extraContext || typeof extraContext !== 'object') return '';
     try {
-      return JSON.stringify(extraContext || null);
+      const ctx = extraContext;
+      const slim = {
+        programId: ctx.programId,
+        regStatus: ctx.regStatus,
+        cmsBatchId: ctx.cmsBatchId,
+        day1Date: ctx.day1Date,
+        journeyNextTask: ctx.journeyNextTask,
+        openPractice: ctx.openPractice,
+        lepDues: Array.isArray(ctx.lepDues)
+          ? ctx.lepDues.map((d) => ({
+              taskId: d?.taskId,
+              done: d?.done,
+              urgent: d?.urgent,
+              title: d?.title,
+            }))
+          : null,
+      };
+      return JSON.stringify(slim);
     } catch {
       return '';
     }
@@ -128,8 +146,16 @@ export function useILGuideWhisper(surface, extraContext = null) {
         setWhisper(null);
         setHidden(true);
       } else {
-        setWhisper(result);
-        setHidden(false);
+        const prev = whisperRef.current;
+        if (
+          prev?.id === result.id &&
+          prev?.message === result.message
+        ) {
+          setHidden(false);
+        } else {
+          setWhisper(result);
+          setHidden(false);
+        }
       }
     } catch {
       if (!whisperRef.current) setWhisper(null);

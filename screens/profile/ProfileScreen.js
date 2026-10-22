@@ -70,19 +70,6 @@ export default function ProfileScreen({ navigation }) {
     (p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.REGISTER
   );
 
-  useEffect(() => {
-    if (!user?.uid) return undefined;
-    let cancelled = false;
-    (async () => {
-      await refreshMyAccess();
-      const fresh = await fetchUserProfile(user.uid).catch(() => null);
-      if (!cancelled && fresh) patchProfile(fresh);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.uid, patchProfile]);
-
   const initial = (profile?.displayName || profile?.email || '?').charAt(0).toUpperCase();
 
   const onPickPhoto = async () => {
@@ -273,10 +260,10 @@ export default function ProfileScreen({ navigation }) {
             const batch = learnerBatchLabel(freshProfile || profile, 'lep');
             const hint =
               data?.ok === false
-                ? data?.reason || 'Zoho sync did not complete. Try again in a minute.'
+                ? 'We could not refresh right now. Try again in a minute.'
                 : batch
-                  ? `Batch on file: ${batch}.`
-                  : 'Synced with Zoho. If batch is still missing, ask CEM to set Batch on your Lead.';
+                  ? `Your batch: ${batch}.`
+                  : 'You are up to date. If your batch is missing, contact support@ironlady.tech.';
             Alert.alert('Access refreshed', hint);
           }}
         />

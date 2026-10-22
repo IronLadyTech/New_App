@@ -36,6 +36,7 @@ import { PROGRAMS } from '../../constants/programs';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import CourseCurriculum from './CourseCurriculum';
+import { recordSessionJoin } from '../../services/activityTracking';
 
 /** Registered learners: Orientation + Day 1 + Day 2 only (unlocked). */
 const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
@@ -257,7 +258,10 @@ function SessionsBody({ enrolled = false, onEnroll }) {
       ) : (
         upcoming.map((s) => {
           const open = () => {
-            if (s.linkUrl) Linking.openURL(s.linkUrl).catch(() => {});
+            if (s.linkUrl) {
+              recordSessionJoin(s.code);
+              Linking.openURL(s.linkUrl).catch(() => {});
+            }
           };
           return (
             <WhiteCard

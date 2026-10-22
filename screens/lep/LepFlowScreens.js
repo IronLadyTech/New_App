@@ -36,6 +36,7 @@ import {
 } from '../../utils/lepBatchScheduleView';
 import { resolveCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
+import { recordSessionJoin } from '../../services/activityTracking';
 
 function Shell({ title, sub, right, children }) {
   const insets = useSafeAreaInsets();
@@ -68,7 +69,10 @@ function scheduleItemAllowed(item, enrolled, registeredCodes) {
 
 function ScheduleRow({ item, nav }) {
   const openJoin = () => {
-    if (item.joinLink) Linking.openURL(item.joinLink).catch(() => {});
+    if (item.joinLink) {
+      recordSessionJoin(item.code);
+      Linking.openURL(item.joinLink).catch(() => {});
+    }
     else if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
     else nav.goCheckin();
   };

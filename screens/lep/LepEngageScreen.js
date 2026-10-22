@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   Image,
   Linking,
@@ -31,10 +31,32 @@ import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { filterLepPrework } from '../../utils/lepRitualsUnlock';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
 import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
+import CmsEngageFeed from '../../components/lep/CmsEngageFeed';
+import { useNavigation } from '@react-navigation/native';
 
 const STORY_CARD_W = 220;
 const STORY_THUMB_H = 124;
 const STORY_TITLE_H = 36; // 2 lines @ 18
+
+/** Rounded hero on cream page — avoids Android hairline flicker while scrolling. */
+function EngageHeroShell({ children, style }) {
+  return (
+    <View style={{ alignSelf: 'stretch', backgroundColor: G.page, overflow: 'hidden' }}>
+      <View
+        style={{
+          width: '100%',
+          backgroundColor: G.dark,
+          borderBottomLeftRadius: 24,
+          borderBottomRightRadius: 24,
+          overflow: 'hidden',
+          ...style,
+        }}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
 
 function StoryVideoCard({ img, title, meta, time, onPress }) {
   return (
@@ -104,7 +126,9 @@ export default function LepEngageScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
-  const enrolled = isLepEnrolled(profile);
+  const enrolledLatch = useRef(isLepEnrolled(profile));
+  if (isLepEnrolled(profile)) enrolledLatch.current = true;
+  const enrolled = enrolledLatch.current;
 
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
@@ -126,9 +150,10 @@ export default function LepEngageScreen() {
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
         contentContainerStyle={{
           paddingTop: 0,
-          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8) + 8,
         }}
       >
         {enrolled ? (
@@ -147,20 +172,16 @@ function openArmyCalendar(event) {
 }
 
 function EnrolledEngage({ nav, topPad }) {
-  const { featured, nextOffline, highlights } = useArmyEventCalendar();
+  const navigation = useNavigation();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const { featured, nextOffline, highlights, loading: calendarLoading } = useArmyEventCalendar();
   const chapter = nextOffline;
   const spotlight = highlights.slice(0, 2);
 
   return (
     <>
-      {/* Full-bleed hero — same pattern as enrolled Home (no side inset). */}
-      <View
+      <EngageHeroShell
         style={{
-          width: '100%',
-          alignSelf: 'stretch',
-          backgroundColor: G.dark,
-          borderBottomLeftRadius: 24,
-          borderBottomRightRadius: 24,
           paddingTop: topPad + 28,
           paddingBottom: 22,
           paddingHorizontal: 20,
@@ -188,9 +209,13 @@ function EnrolledEngage({ nav, topPad }) {
         <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 16, lineHeight: 22 }}>
           Live sessions, chapters, and the women building with you
         </ILText>
-      </View>
+      </EngageHeroShell>
 
       <View style={{ paddingHorizontal: 20 }}>
+      <CmsEngageFeed programId="lep" cmsBatch={cmsBatch} navigation={navigation} />
+      {calendarLoading && !featured && spotlight.length === 0 ? (
+        <View style={{ marginTop: 14, minHeight: 8 }} />
+      ) : null}
       {featured ? (
         <WhiteCard
           style={{
@@ -428,24 +453,29 @@ function EnrolledEngage({ nav, topPad }) {
 }
 
 function RegisteredEngage({ nav, topPad }) {
+  const navigation = useNavigation();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
-  const prework = useMemo(() => filterLepPrework(PREWORK, ritualsUnlocked), [ritualsUnlocked]);
-  const { upcoming } = useArmyEventCalendar();
+  const ritualsLatch = useRef(ritualsUnlocked);
+  if (ritualsUnlocked) ritualsLatch.current = true;
+  const ritualsEffective = ritualsLatch.current;
+  const prework = useMemo(
+    () => filterLepPrework(PREWORK, ritualsEffective),
+    [ritualsEffective, ritualsUnlocked]
+  );
+  const { upcoming, loading: calendarLoading } = useArmyEventCalendar();
   const eventRows = useMemo(() => upcoming.slice(0, 6), [upcoming]);
+  const eventsLatch = useRef(eventRows);
+  if (eventRows.length) eventsLatch.current = eventRows;
+  const stableEventRows = eventRows.length ? eventRows : eventsLatch.current;
 
   return (
     <>
-      <View
+      <EngageHeroShell
         style={{
-          width: '100%',
-          alignSelf: 'stretch',
-          backgroundColor: G.dark,
           paddingHorizontal: 20,
           paddingTop: topPad + 20,
           paddingBottom: 22,
-          borderBottomLeftRadius: 24,
-          borderBottomRightRadius: 24,
           flexDirection: 'row',
           alignItems: 'center',
         }}
@@ -459,9 +489,10 @@ function RegisteredEngage({ nav, topPad }) {
           </ILText>
         </View>
         <SoftChip onDark>Registered</SoftChip>
-      </View>
+      </EngageHeroShell>
 
       <View style={{ paddingHorizontal: 20 }}>
+      <CmsEngageFeed programId="lep" cmsBatch={cmsBatch} navigation={navigation} />
       <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           Iron Lady Speaks
@@ -474,7 +505,13 @@ function RegisteredEngage({ nav, topPad }) {
         Conversations with women who made the leap
       </ILText>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        style={{ marginTop: 12, marginHorizontal: -20 }}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
           {PODCASTS.map((ep) => (
             <Pressable
@@ -524,12 +561,14 @@ function RegisteredEngage({ nav, topPad }) {
           Events
         </ILText>
       </View>
-      {eventRows.length === 0 ? (
+      {calendarLoading && stableEventRows.length === 0 ? (
+        <View style={{ marginTop: 12, minHeight: 72 }} />
+      ) : stableEventRows.length === 0 ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13 }}>
           Upcoming Army events load from the Iron Lady calendar.
         </ILText>
       ) : (
-        eventRows.map((ev) => {
+        stableEventRows.map((ev) => {
           const day = String(Number(ev.dateIso.slice(8, 10)));
           const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][
             Number(ev.dateIso.slice(5, 7)) - 1

@@ -145,12 +145,14 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
   }, [batch?.cmsBatchId, batch?.id, batch?.day1Date, user?.uid]);
 
   const finish = () => {
-    if (navigation?.navigate) {
-      navigation.navigate('JourneyPicker', { name, batch });
-      return;
-    }
     if (typeof onContinue === 'function') {
       onContinue();
+      return;
+    }
+    const isLab = !user?.uid || user.uid === 'preview';
+    if (isLab && navigation?.navigate) {
+      navigation.navigate('JourneyPicker', { name, batch });
+      return;
     }
     if (navigation?.canGoBack?.()) navigation.goBack();
   };

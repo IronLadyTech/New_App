@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useVideoProgressTracking } from '../../hooks/useVideoProgressTracking';
 import { usePrograms } from '../../context/ProgramsContext';
 import { fetchLessonAsset } from '../../services/functions';
 import LoadingState from '../../components/LoadingState';
@@ -22,10 +23,11 @@ import {
   isTaskDoneStatus,
 } from '../../constants/programs';
 
-function LessonVideo({ uri }) {
+function LessonVideo({ uri, trackKey = uri }) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
   });
+  useVideoProgressTracking(player, trackKey);
   return (
     <VideoView
       style={{ width: '100%', height: 200, backgroundColor: '#000' }}
@@ -154,7 +156,7 @@ export default function TaskSubmitScreen({ route, navigation }) {
           </View>
         ) : videoUri ? (
           <View className="mt-4 overflow-hidden rounded-xl">
-            <LessonVideo uri={videoUri} />
+            <LessonVideo uri={videoUri} trackKey={`${programId}:${taskId}`} />
           </View>
         ) : assetReason ? (
           <View className="mt-4 rounded-xl bg-ink-100 p-3">

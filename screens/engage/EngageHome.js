@@ -401,7 +401,7 @@ function RegisteredEventsList() {
         const hi = Boolean(ev.highlight);
         return (
           <View key={ev.id}>
-            {i > 0 ? <View style={{ height: 1, backgroundColor: IL_BRAND.line, marginVertical: 8 }} /> : null}
+            {i > 0 ? <View style={{ height: 10 }} /> : null}
             <Pressable
               style={{
                 flexDirection: 'row',

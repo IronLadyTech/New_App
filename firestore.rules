@@ -541,6 +541,11 @@ service cloud.firestore {
         || userRole() in ['admin', 'superadmin', 'pl'];
     }
 
+    // CX (CEM) runs batches: dates, Zoom links, recordings, task files. Not templates or config.
+    function cmsBatchEditor() {
+      return cmsEditor() || userRole() == 'cem';
+    }
+
     function cmsViewer() {
       return isBootstrapSuperAdmin()
         || userRole() in ['admin', 'superadmin', 'pl', 'cem', 'moderator'];
@@ -559,7 +564,7 @@ service cloud.firestore {
     // Task attachments: staff see drafts; learners and demo preview see live items only.
     match /cms_content/{id} {
       allow read: if cmsViewer() || cmsPublished();
-      allow write: if cmsEditor();
+      allow write: if cmsBatchEditor();
     }
 
     // ilGuide is read by the app; notificationPolicy by staff only.
@@ -574,7 +579,47 @@ service cloud.firestore {
           resource.data.openForEnrollment != false
           || resource.data.status == 'live'
         ));
-      allow write: if cmsEditor();
+      allow create, update: if cmsBatchEditor();
+      allow delete: if cmsEditor();
+    }
+
+    // Messages CX schedules for one batch. The scheduler (Admin SDK) sends them and
+    // marks them sent; CX can only edit or cancel what has not gone out yet.
+    match /cms_batch_messages/{id} {
+      allow read: if cmsViewer();
+      allow create: if cmsBatchEditor() && request.resource.data.status == 'scheduled';
+      allow update: if cmsBatchEditor()
+        && resource.data.status == 'scheduled'
+        && request.resource.data.status in ['scheduled', 'cancelled'];
+      allow delete: if cmsBatchEditor() && resource.data.status == 'scheduled';
+    }
+
+    // Engage posts and practice items CX adds. Learners read the published ones.
+    match /cms_engage/{id} {
+      allow read: if cmsViewer() || (isSignedIn() && resource.data.published == true);
+      allow write: if cmsBatchEditor();
+    }
+
+    match /cms_practice/{id} {
+      allow read: if cmsViewer() || (isSignedIn() && resource.data.published == true);
+      allow write: if cmsBatchEditor();
+    }
+
+    // Learner activity for the CX batch dashboard (app-new services/activityTracking.js).
+    // Each learner writes only their own rows; CMS staff read. Nobody deletes from the app.
+    match /app_activity/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || cmsViewer());
+      allow create, update: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.uid == userId;
+      allow delete: if false;
+
+      match /{kind}/{docId} {
+        allow read: if isSignedIn() && (request.auth.uid == userId || cmsViewer());
+        allow create, update: if isSignedIn() && request.auth.uid == userId
+          && kind in ['days', 'videos']
+          && request.resource.data.uid == userId;
+        allow delete: if false;
+      }
     }
 
     // CMS-only QA phone seats (resolvePhoneAccess on Cloud Functions — not read in app).

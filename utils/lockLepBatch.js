@@ -1,6 +1,7 @@
 import { Alert } from 'react-native';
 import { updateUserProfile } from '../services/firestore';
-import { formatCallableError, updateMyWelcomeProfile } from '../services/functions';
+import { updateMyWelcomeProfile } from '../services/functions';
+import { batchZohoFeedback } from './participantSyncMessage';
 import {
   formatZohoLepBatchLabel,
   zohoLepBatchKeyFromDay1,
@@ -61,29 +62,14 @@ export async function lockLepBatchChoice({ user, profile, patchProfile, picked, 
         patchProfile?.({ zohoLeadId: zoho.zohoLeadId });
         await updateUserProfile(user.uid, { zohoLeadId: zoho.zohoLeadId }).catch(() => {});
       }
-      if (zoho?.zoho === true && !silent) {
-        // Quiet success — profile + Zoho both updated.
-      } else if (zoho && zoho.zoho === false && !silent) {
-        Alert.alert(
-          'Not synced to Zoho',
-          [
-            'Your batch is saved in the app only.',
-            'Zoho LEP_Batch was NOT updated.',
-            zoho.reason ? `\n${zoho.reason}` : '',
-            '\nTap Change batch date and try again, or check the Lead phone/email matches this login.',
-          ].join('\n')
-        );
+      if (!silent) {
+        const { message, showAlert } = batchZohoFeedback(zoho);
+        if (showAlert && message) Alert.alert('Batch saved', message);
       }
     } catch (err) {
       if (!silent) {
-        Alert.alert(
-          'Not synced to Zoho',
-          [
-            'Your batch is saved in the app only.',
-            'Zoho LEP_Batch was NOT updated.',
-            `\n${formatCallableError(err, 'Could not reach Zoho. Try again in a moment.')}`,
-          ].join('\n')
-        );
+        const { message, showAlert } = batchZohoFeedback(null, err);
+        if (showAlert && message) Alert.alert('Batch saved', message);
       }
       zoho = { ok: false, zoho: false, reason: err?.message };
     }

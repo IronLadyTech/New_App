@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { setupLocalEngagementNotifications } from '../services/localEngagementNotifications';
 import {
   addPushTokenListener,
   isExpoGo,
@@ -12,7 +13,7 @@ import {
  * Skipped in Expo Go — remote push was removed there from SDK 53.
  */
 export function usePushNotifications() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const registeredRef = useRef(false);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export function usePushNotifications() {
         if (cancelled) return;
         if (result.ok) {
           registeredRef.current = true;
+          setupLocalEngagementNotifications(profile).catch(() => {});
         } else if (result.reason) {
           console.warn('[push] token not saved:', result.reason);
         }

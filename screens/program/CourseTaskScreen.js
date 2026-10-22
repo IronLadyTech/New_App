@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useNavigation } from '@react-navigation/native';
+import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { Page, RedCta, WhiteCard } from '../lep/LepBits';
 import { COURSE_LABEL, courseTask, nextCourseTask } from '../../constants/programCourseSlice';
 import { PROGRAMS, TASK_TYPES } from '../../constants/programs';
 import { useCourseDemo } from '../../context/CourseDemoContext';
+import { usePrograms } from '../../context/ProgramsContext';
 import { useLepNav } from '../lep/useLepNav';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
@@ -34,6 +36,31 @@ import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
+import { isProgramTaskDone } from '../../utils/taskDone';
+
+/** Map journey UI state → LMS submitProgramTask fields. */
+function lmsFieldsForJourneyTask(task, { text, link, form, checked, picked }) {
+  const type = task?.type;
+  if (type === TASK_TYPES.WATCH_ONLY) {
+    return { watchCompleted: true, watchProgress: 1 };
+  }
+  if (type === TASK_TYPES.CHECKLIST) {
+    return { checkedItems: checked };
+  }
+  if (type === TASK_TYPES.EDITABLE_TEMPLATE) {
+    return { form };
+  }
+  if (type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST) {
+    return { linkValue: String(link || '').trim() };
+  }
+  if (type === TASK_TYPES.TEXT) {
+    return { textValue: String(text || '').trim() };
+  }
+  if (type === TASK_TYPES.FILE_UPLOAD || type === TASK_TYPES.VIDEO_RECORD) {
+    return { note: picked || 'Completed in app' };
+  }
+  return { note: 'Completed in app' };
+}
 
 function PickCard({ icon, title, sub, onPress }) {
   return (
@@ -75,13 +102,9 @@ function PickCard({ icon, title, sub, onPress }) {
   );
 }
 
-function openTaskFile(url) {
-  if (!url) return;
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    window.open(url, '_blank', 'noopener,noreferrer');
-    return;
-  }
-  Linking.openURL(url).catch(() => {});
+// Videos open in the in-app player; other files as before (see utils/openLink).
+function openTaskFile(url, navigation, title) {
+  openLink(url, { navigation, title });
 }
 
 function fileKind(url, cmsType) {
@@ -144,7 +167,7 @@ function TaskFiles({ task, skipReadingDocument = false }) {
           onPress={() =>
             isInAppDocument(item.url)
               ? openTaskDocument(navigation, item)
-              : openTaskFile(item.url)
+              : openTaskFile(item.url, navigation, item.title)
           }
         />
       ))}
@@ -177,9 +200,11 @@ export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
   const demo = useCourseDemo();
+  const { getTaskSubmission, submitTask } = usePrograms();
   const programId = route.params?.programId || PROGRAMS.LEP;
   const taskId = route.params?.taskId;
   const { batch: cmsBatch } = useLearnerCmsBatch(programId === PROGRAMS.LEP ? 'lep' : 'lep');
+  const cmsBatchId = cmsBatch?.id || null;
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const task = courseTask(programId, taskId);
   const ritualsTaskLocked =
@@ -197,12 +222,13 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [submittedAt, setSubmittedAt] = useState(null);
   const [cmsLinks, setCmsLinks] = useState([]);
   const [cmsHint, setCmsHint] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!taskId) return undefined;
     let cancelled = false;
     setCmsHint(null);
-    fetchPublishedCmsForTask(programId, taskId)
+    fetchPublishedCmsForTask(programId, taskId, cmsBatchId)
       .then((rows) => {
         if (cancelled) return;
         const links = rows
@@ -231,7 +257,7 @@ export default function CourseTaskScreen({ route, navigation }) {
     return () => {
       cancelled = true;
     };
-  }, [programId, taskId]);
+  }, [programId, taskId, cmsBatchId]);
 
   const taskForFiles = useMemo(() => {
     if (!task) return task;
@@ -279,20 +305,42 @@ export default function CourseTaskScreen({ route, navigation }) {
       setForm(initialFormForTemplate(task?.templateId) || {});
       setSubmittedAt(null);
     }
-    setDone(demo.isDone(programId, taskId));
-  }, [programId, taskId, task?.templateId]);
+    setDone(
+      isProgramTaskDone(programId, taskId, {
+        isDone: demo.isDone,
+        getTaskSubmission,
+      })
+    );
+  }, [programId, taskId, task?.templateId, demo.isDone, demo.done, getTaskSubmission]);
 
-  const submit = () => {
-    if (isErrcTask) {
-      demo.saveSubmission(programId, taskId, form);
-      setSubmittedAt(Date.now());
+  const submit = async () => {
+    if (syncing || !task?.id) return;
+    setSyncing(true);
+    try {
+      await submitTask(
+        programId,
+        task,
+        lmsFieldsForJourneyTask(task, { text, link, form, checked, picked })
+      );
+      if (isErrcTask) {
+        demo.saveSubmission(programId, taskId, form);
+        setSubmittedAt(Date.now());
+      }
+      demo.markDone(programId, taskId);
+      if (programId === 'lep') {
+        demo.recordLepActiveDay?.(todayIsoIST());
+      }
+      setDone(true);
+    } catch (e) {
+      Alert.alert(
+        'Not saved yet',
+        e?.message
+          ? `LMS sync failed: ${e.message}\n\nYour answers are still here — tap Submit again when you're back online.`
+          : "LMS sync failed. Tap Submit again when you're back online."
+      );
+    } finally {
+      setSyncing(false);
     }
-    // Always stamp done so Today’s practice / dues / IL Guide update immediately.
-    demo.markDone(programId, taskId);
-    if (programId === 'lep') {
-      demo.recordLepActiveDay?.(todayIsoIST());
-    }
-    setDone(true);
   };
 
   if (!task || ritualsTaskLocked) {
@@ -410,7 +458,7 @@ export default function CourseTaskScreen({ route, navigation }) {
             <ILText role="label" color={G.ink} style={{ marginBottom: 8 }}>
               Watch first
             </ILText>
-            <PracticeVideo uri={videoUri} poster={videoPoster} height={200} />
+            <PracticeVideo uri={videoUri} poster={videoPoster} height={200} trackKey={`${programId}:${taskId}`} />
           </View>
         ) : null}
 
@@ -448,7 +496,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         {type === TASK_TYPES.WATCH_ONLY ? (
           <View style={{ marginTop: 18 }}>
             {videoUri ? (
-              <PracticeVideo uri={videoUri} poster={videoPoster} height={210} />
+              <PracticeVideo uri={videoUri} poster={videoPoster} height={210} trackKey={`${programId}:${taskId}`} />
             ) : (
               <ILText role="bodySm" color={G.meta} style={{ fontSize: 13 }}>
                 Loading session recording…
@@ -583,8 +631,11 @@ export default function CourseTaskScreen({ route, navigation }) {
             </>
           ) : (
             <>
-              <View style={{ opacity: ready ? 1 : 0.45 }}>
-                <RedCta label={cta} onPress={ready ? submit : () => {}} />
+              <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
+                <RedCta
+                  label={syncing ? 'Saving…' : cta}
+                  onPress={ready && !syncing ? submit : () => {}}
+                />
               </View>
               {done && isErrcTask ? (
                 <Pressable

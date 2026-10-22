@@ -25,6 +25,8 @@ import {
   SessionRow,
   SoftCard,
 } from './ProgramKit';
+import { useProgramPhaseFlow } from '../../hooks/useProgramPhaseFlow';
+import { phaseLockLabel } from '../../utils/phaseUnlock';
 
 const MBW_YEAR = [
   [
@@ -170,19 +172,22 @@ function EnrollCard({ title, body, onPress }) {
 
 function CoursePhaseList({ programId, enrolled, onLocked }) {
   const nav = useLepNav();
-  const phaseId = currentPhaseId(programId, enrolled);
+  const flow = useProgramPhaseFlow(programId);
+  const phaseId = currentPhaseId(programId, enrolled, flow);
   const phases = coursePhases(programId);
   const nowIndex = phases.findIndex((p) => p.id === phaseId);
   return (
     <View style={{ marginTop: 12 }}>
       {phases.map((p, i) => {
-        const shut = !isPhaseOpen(p, enrolled);
+        const shut = !isPhaseOpen(p, enrolled, flow);
+        const lock = shut ? phaseLockLabel(p, { enrolled, flow }) : null;
         const now = p.id === phaseId;
         const done = enrolled && i < nowIndex;
         return (
           <Pressable
             key={p.id}
-            onPress={shut ? onLocked : () => nav.goCoursePhase(programId, p.id)}
+            // Only a payment lock leads to enrollment; a date lock just says when it opens.
+            onPress={shut ? (lock?.enroll ? onLocked : undefined) : () => nav.goCoursePhase(programId, p.id)}
             accessibilityRole="button"
             accessibilityState={{ disabled: shut }}
             style={{
@@ -205,7 +210,7 @@ function CoursePhaseList({ programId, enrolled, onLocked }) {
             />
             <View style={{ marginLeft: 12, flex: 1 }}>
               <ILText role="eyebrow" color={now ? IL_BRAND.red : IL_BRAND.dim} style={{ fontSize: 10 }}>
-                {shut ? 'Locked · opens on enrollment' : done ? 'Done' : now ? 'Now' : 'Next'}
+                {shut ? `Locked · ${lock?.text || 'opening soon'}` : done ? 'Done' : now ? 'Now' : 'Next'}
               </ILText>
               <ILText role="label" style={{ marginTop: 2 }}>
                 {p.title}

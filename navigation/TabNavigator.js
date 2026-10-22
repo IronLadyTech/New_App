@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ILTabBar from '../components/il/ILTabBar';
 
@@ -10,7 +11,8 @@ export default function TabNavigator() {
       tabBar={(props) => <ILTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        freezeOnBlur: true,
+        // Frozen screens on Android have caused “dead” taps after tab switches in some RN builds.
+        freezeOnBlur: Platform.OS !== 'android',
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',

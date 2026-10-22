@@ -12,6 +12,7 @@ import { ProgramNavProvider } from '../context/ProgramNavContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useNotificationOpen } from '../hooks/useNotificationOpen';
 import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNotifications';
+import { useActivityTracking } from '../hooks/useActivityTracking';
 
 export default function AuthenticatedApp() {
   const { profile, user } = useAuth();
@@ -19,6 +20,7 @@ export default function AuthenticatedApp() {
   usePushNotifications();
   useLocalEngagementNotifications();
   useNotificationOpen();
+  useActivityTracking();
 
   useEffect(() => {
     const timer = setTimeout(() => setGaveUp(true), 8000);

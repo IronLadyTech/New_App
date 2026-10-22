@@ -9,6 +9,39 @@ function call(name, data = {}) {
   return httpsCallable(functions, name)(data);
 }
 
+const WELCOME_SAVE_TIMEOUT_MS = 10_000;
+
+export function isCallableTimeout(err) {
+  const code = String(err?.code || '');
+  const msg = String(err?.message || '').toLowerCase();
+  return (
+    code === 'functions/deadline-exceeded' ||
+    code === 'client-timeout' ||
+    msg.includes('deadline-exceeded') ||
+    msg.includes('timeout')
+  );
+}
+
+function withTimeout(promise, ms, label = 'client-timeout') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err = new Error('Request timed out');
+      err.code = label;
+      reject(err);
+    }, ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      }
+    );
+  });
+}
+
 function formatCallableError(err, fallback) {
   const code = err?.code || '';
   if (__DEV__ && code) {
@@ -52,6 +85,34 @@ export async function resolvePhoneAccess(phone) {
 export async function updateMyWelcomeProfile(fields) {
   const { data } = await call('updateMyWelcomeProfile', fields);
   return data;
+}
+
+/**
+ * Save welcome fields (waits up to ~10s). Server writes Firestore before Zoho.
+ */
+export async function saveWelcomeProfileFields(fields) {
+  try {
+    return await withTimeout(updateMyWelcomeProfile(fields), WELCOME_SAVE_TIMEOUT_MS);
+  } catch (err) {
+    if (__DEV__) console.warn('[saveWelcomeProfileFields]', err?.code || err?.message || err);
+    if (isCallableTimeout(err)) {
+      return { ok: true, zoho: false, reasonCode: 'timeout' };
+    }
+    throw err;
+  }
+}
+
+/** Fire-and-forget welcome sync — use on Continue so navigation is instant. */
+export function syncWelcomeProfileInBackground(fields, onResult) {
+  saveWelcomeProfileFields(fields)
+    .then((data) => {
+      onResult?.(data);
+      return data;
+    })
+    .catch(() => {
+      onResult?.({ ok: true, zoho: false, reasonCode: 'timeout' });
+      return null;
+    });
 }
 
 /** Staff test: deliver CMS event to a learner (in-app row + optional FCM). Requires deployed function. */

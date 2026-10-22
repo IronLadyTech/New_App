@@ -10,6 +10,32 @@ export function youtubeIdFromUri(uri) {
   return m ? m[1] : null;
 }
 
+/** Direct video files and streams that expo-video plays in the app. */
+export function isDirectVideoUri(uri) {
+  if (!uri) return false;
+  return /\.(mp4|m3u8|mov|webm|m4v)(\?|#|$)/i.test(String(uri));
+}
+
+/** Any link the app must play itself rather than hand to YouTube or a browser. */
+export function isInAppVideoUri(uri) {
+  return Boolean(youtubeIdFromUri(uri) || isDirectVideoUri(uri));
+}
+
+/**
+ * Pages inside the YouTube player that would take the learner to YouTube itself
+ * (logo, title, channel, "watch on YouTube", sign-in). The embed must never load them.
+ */
+const LEAVES_PLAYER = /(youtube\.com\/(watch|channel|c\/|@|shorts|results|user|playlist|redirect)|youtu\.be\/|m\.youtube\.com|accounts\.google|play\.google|^intent:|^vnd\.youtube|^youtube:)/i;
+
+/** WebView guard for the embed: stay on the player, never navigate out to YouTube. */
+export function allowYoutubeEmbedRequest(request) {
+  const url = String(request?.url || '');
+  if (LEAVES_PLAYER.test(url)) return false;
+  // The page itself (loaded from html + baseUrl) and the player iframe are the only top-level loads.
+  if (request?.isTopFrame === false) return true;
+  return url === 'about:blank' || url.startsWith(YOUTUBE_EMBED_ORIGIN) || url.startsWith('data:');
+}
+
 export function isHlsUri(uri) {
   if (!uri) return false;
   const u = String(uri).toLowerCase();
@@ -25,7 +51,8 @@ export function toPlayerSource(uri) {
 
 export function youtubeEmbedUri(id) {
   const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&origin=${origin}`;
+  // rel=0 keeps suggestions to the same channel; iv_load_policy=3 hides annotation links.
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&origin=${origin}`;
 }
 
 /** HTML wrapper so WebView has a valid baseUrl (fixes YouTube Error 153). */

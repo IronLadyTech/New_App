@@ -1,6 +1,7 @@
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ILLogoMark from './il/ILLogoMark';
 import { IL_BRAND } from '../constants/ironLadyBrand';
 
 /**
@@ -15,15 +16,8 @@ export default function IronLadyHeader({
   return (
     <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
       <View className="flex-row items-center">
-        <View
-          style={{ backgroundColor: IL_BRAND.red }}
-          className="mr-2.5 h-9 w-9 items-center justify-center rounded-md"
-        >
-          <Text
-            style={{ color: IL_BRAND.white, fontSize: 7, fontWeight: '800', lineHeight: 9 }}
-          >
-            IRON{'\n'}LADY
-          </Text>
+        <View className="mr-2.5">
+          <ILLogoMark size={36} />
         </View>
         <Text
           style={{ color: IL_BRAND.forest, fontSize: 22, fontWeight: '600' }}

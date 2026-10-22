@@ -1,8 +1,10 @@
 import React from 'react';
-import { Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants';
 import { formatEventWhen } from '../utils/eventVisibility';
+import { openLink } from '../utils/openLink';
 
 const TYPE_LABELS = {
   general: 'Event',
@@ -15,11 +17,11 @@ const TYPE_LABELS = {
 export default function EventCard({ event }) {
   const when = formatEventWhen(event);
   const typeLabel = TYPE_LABELS[event?.type] || 'Event';
+  const navigation = useNavigation();
   const hasLink = Boolean(event?.linkUrl || event?.meetingUrl);
 
-  const openLink = () => {
-    const url = event.linkUrl || event.meetingUrl;
-    if (url) Linking.openURL(url);
+  const openEventLink = () => {
+    openLink(event.linkUrl || event.meetingUrl, { navigation, title: event?.title });
   };
 
   return (
@@ -45,7 +47,7 @@ export default function EventCard({ event }) {
 
       {hasLink ? (
         <TouchableOpacity
-          onPress={openLink}
+          onPress={openEventLink}
           className="mt-3 flex-row items-center self-start"
           activeOpacity={0.7}
         >

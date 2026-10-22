@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, Platform, Text, View } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, Text, View } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -379,6 +379,23 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
 
         {width > 0 ? (
           <>
+            {items.map((item, index) => (
+              <Pressable
+                key={`tap-${item.key}`}
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: index === safeIndex }}
+                onPress={() => snapTo(index)}
+                style={{
+                  position: 'absolute',
+                  left: SIDE + index * slot,
+                  width: slot,
+                  top: BAR_TOP,
+                  height: PILL_H,
+                  zIndex: 2,
+                }}
+              />
+            ))}
             <Animated.View
               pointerEvents="none"
               style={{
@@ -391,6 +408,7 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
                 backgroundColor: ACCENT,
                 alignItems: 'center',
                 justifyContent: 'center',
+                zIndex: 3,
                 // Squash along the direction of travel.
                 transform: [
                   { translateX: beadX },

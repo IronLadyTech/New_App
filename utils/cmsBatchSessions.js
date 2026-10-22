@@ -1,5 +1,5 @@
 import { splitBatchSessions } from './eventVisibility';
-import { buildLepBatchSessions } from './lepBatchSchedule';
+import { buildLepBatchSessions, mergeCustomSessions } from './lepBatchSchedule';
 
 function sessionAsCalendarEvent(session, batch) {
   if (!session?.date || !session?.title) return null;
@@ -44,7 +44,7 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
   const day1 = String(batch?.day1Date || day1Iso || '').slice(0, 10);
   const orientation = batch?.orientationDate ? String(batch.orientationDate).slice(0, 10) : '';
   if (!day1 && !orientation) {
-    return (Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => s?.date && s?.title);
+    return (Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => s?.date && s?.title && !s.cancelled);
   }
 
   const joinLinks = collectJoinLinks(batch);
@@ -60,9 +60,9 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
       .map((s) => [s.code, s])
   );
 
-  return built.map((row) => {
+  const patched = built.map((row) => {
     const cms = savedByCode[row.code];
-    // Template keeps title + clock. CMS only patches join link (and optional reschedule).
+    // Template keeps title + clock. CMS patches join link, title and reschedules.
     const overrideTime = Boolean(cms?.startTime && cms.startTime !== row.startTime);
     const overrideEnd = Boolean(cms?.endTime && cms.endTime !== row.endTime);
     const overrideTitle = Boolean(cms?.title && cms.title !== row.title);
@@ -72,8 +72,12 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
       startTime: overrideTime ? cms.startTime : row.startTime,
       endTime: overrideEnd ? cms.endTime : row.endTime,
       joinLink: String(cms?.joinLink || row.joinLink || '').trim(),
+      ...(cms?.custom ? { custom: true, date: cms.date } : {}),
+      ...(cms?.cancelled ? { cancelled: true } : {}),
     };
   });
+  // Moved dates, cancellations and sessions CX added in the CMS calendar.
+  return mergeCustomSessions(patched, Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => !s.cancelled);
 }
 
 /** Core + optional sessions from template + CMS anchor → calendar cards. */
@@ -106,10 +110,12 @@ export function nextRawCmsSession(batch, now = new Date(), opts = {}) {
     month: '2-digit',
     day: '2-digit',
   }).format(now);
+  const codes = opts.sessionCodes;
   return (
     resolveCmsBatchSessions(batch, opts)
       .filter((s) => s?.date && s?.title && String(s.date).slice(0, 10) >= today)
       .filter((s) => !s.kind || s.kind === 'core')
+      .filter((s) => !codes || codes.has(s.code))
       .sort((a, b) =>
         `${String(a.date).slice(0, 10)} ${a.startTime || ''}`.localeCompare(
           `${String(b.date).slice(0, 10)} ${b.startTime || ''}`

@@ -35,6 +35,7 @@ import {
   learnerProgramDates,
   zohoLeadBatchLabel,
 } from '../../utils/programAccess';
+import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import { updateUserProfile } from '../../services/firestore';
 import { updateMyWelcomeProfile } from '../../services/functions';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
@@ -76,6 +77,7 @@ import { nextJourneyTask } from '../../utils/ilGuideJourney';
 import { makeTaskDoneChecker } from '../../utils/taskDone';
 import PracticeDeck from '../../components/lep/PracticeDeck';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
+import { recordSessionJoin } from '../../services/activityTracking';
 
 export default function LepHomeScreen() {
   const { profile } = useAuth();
@@ -112,6 +114,8 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
       <Animated.ScrollView
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: false,
           listener: (e) => onScrollY?.(e.nativeEvent.contentOffset.y),
@@ -155,14 +159,50 @@ function RegisteredHome({ cmsBatch, preview }) {
       profileDone: isLepProfileInfoDone(profile),
     });
   }, [preview, name, profile, cmsBatch, bhag, getTaskSubmission]);
+  const lepAccess = profile?.programAccess?.lep || {};
+  const batchLabel = zohoLeadBatchLabel(profile, 'lep');
+  const day1Iso = useMemo(() => {
+    if (preview && preview !== 'live') return model.day1Iso || '';
+    return (
+      (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
+      model.day1Iso ||
+      learnerProgramDates(profile, 'lep').start ||
+      String(lepAccess.day1Date || '').slice(0, 10) ||
+      inferLepDay1FromZohoRaw(lepAccess.zohoRawBatch || lepAccess.zohoBatchKey || batchLabel || '') ||
+      ''
+    );
+  }, [preview, cmsBatch?.day1Date, model.day1Iso, profile, lepAccess, batchLabel]);
+  const upcomingSession = useMemo(
+    () =>
+      buildUpcomingSessionCard(cmsBatch, {
+        day1Iso,
+        registeredIntensiveOnly: true,
+      }),
+    [cmsBatch, day1Iso]
+  );
   const guideContext = useMemo(
     () => ({
       programId: PROGRAMS.LEP,
       regStatus: model.status,
       cmsBatchId: cmsBatch?.id || profile?.cmsBatchId || null,
-      day1Date: cmsBatch?.day1Date || model.day1Iso || null,
+      day1Date: day1Iso || null,
+      lepBatch:
+        day1Iso || cmsBatch
+          ? {
+              nextSessionTitle: upcomingSession.title,
+              nextSessionWhen: [upcomingSession.when, upcomingSession.hours].filter(Boolean).join(' · '),
+            }
+          : null,
     }),
-    [model.status, model.day1Iso, cmsBatch, profile?.cmsBatchId]
+    [
+      model.status,
+      day1Iso,
+      cmsBatch,
+      profile?.cmsBatchId,
+      upcomingSession.title,
+      upcomingSession.when,
+      upcomingSession.hours,
+    ]
   );
 
   // Domain already comes from welcome / Zoho profile — only ask when it is missing.
@@ -242,7 +282,8 @@ function RegisteredHome({ cmsBatch, preview }) {
         scrollY={scrollY}
         headerGone={headerGone}
         onScrollY={(y) => {
-          const gone = y > 110;
+          // Stop the faded floating header from eating taps once it is off-screen.
+          const gone = y > 56;
           setHeaderGone((prev) => (prev === gone ? prev : gone));
         }}
       >
@@ -268,6 +309,8 @@ function RegisteredHome({ cmsBatch, preview }) {
           bhag={String(bhag).trim()}
           onBhag={() => nav.goPractice('lep', 'lep-bhag')}
           topPad={headerPad}
+          upcomingSession={day1Iso || model.dated ? upcomingSession : null}
+          onOpenSchedule={nav.goSchedule}
         />
       </RegisteredShell>
       {batchOpen ? (
@@ -497,7 +540,7 @@ function EnrolledHome() {
       scrollY={scrollY}
       headerGone={headerGone}
       onScrollY={(y) => {
-        const gone = y > 110;
+        const gone = y > 56;
         setHeaderGone((prev) => (prev === gone ? prev : gone));
       }}
     >
@@ -540,7 +583,6 @@ function EnrolledHome() {
         surface={IL_GUIDE_SURFACES.HOME}
         guideContext={guideContext}
         fallbackQuote={whisperFallback}
-        instant={false}
         subtitle="Your guide"
       />
 
@@ -736,8 +778,10 @@ function EnrolledHome() {
         </View>
         <Pressable
           onPress={() => {
-            if (upcoming.joinLink) Linking.openURL(upcoming.joinLink).catch(() => {});
-            else nav.goSchedule();
+            if (upcoming.joinLink) {
+              recordSessionJoin(upcoming.code);
+              Linking.openURL(upcoming.joinLink).catch(() => {});
+            } else nav.goSchedule();
           }}
           style={{
             marginTop: 10,

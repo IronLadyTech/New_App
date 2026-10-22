@@ -28,9 +28,8 @@ export default function ILGuideWhisperLep({
 }) {
   const nav = useLepNav();
   const staticQuote = String(fallbackQuote || '').trim();
-  const useInstant = instant !== undefined ? Boolean(instant) : Boolean(staticQuote);
-
-  if (useInstant && staticQuote) {
+  // Local copy wins — no cloud fetch, no late swap that looks like re-typing.
+  if (staticQuote) {
     return (
       <StaticWhisperCard
         message={staticQuote}
@@ -48,7 +47,6 @@ export default function ILGuideWhisperLep({
     <DynamicWhisperCard
       surface={surface}
       guideContext={guideContext}
-      fallbackQuote={staticQuote}
       subtitle={subtitle}
       style={style}
       nav={nav}
@@ -141,31 +139,27 @@ function openWhisperTarget(nav, target) {
 function DynamicWhisperCard({
   surface,
   guideContext,
-  fallbackQuote,
   subtitle,
   style,
   nav,
   children,
 }) {
-  const { whisper, loading, hidden, dismiss } = useILGuideWhisper(surface, guideContext);
+  const { whisper, hidden, dismiss } = useILGuideWhisper(surface, guideContext);
   const apiMessage = String(whisper?.message || '').trim();
-  const localHint = String(fallbackQuote || '').trim();
   const apiTaskId = whisper?.taskId || taskIdFromWhisperId(whisper?.id);
-  // If cloud still nudges a task this profile already finished, use the live local hint.
   const apiTaskDone = Boolean(
     apiTaskId &&
       Array.isArray(guideContext?.lepDues) &&
       guideContext.lepDues.some((d) => d?.taskId === apiTaskId && d.done)
   );
-  const useLocal = !apiMessage || apiTaskDone;
-  const shown = useLocal ? localHint || apiMessage : apiMessage;
+  const shown = apiTaskDone ? '' : apiMessage;
+
   const openTarget = resolveWhisperOpenTarget(guideContext, {
     message: shown,
-    apiTaskId: useLocal ? null : apiTaskId,
+    apiTaskId: apiTaskDone ? null : apiTaskId,
   });
 
   if (hidden && !shown) return null;
-  if (!shown && loading) return null;
   if (!shown) return null;
 
   return (
@@ -173,7 +167,7 @@ function DynamicWhisperCard({
       message={shown}
       subtitle={subtitle}
       style={style}
-      onDismiss={whisper && !useLocal ? dismiss : undefined}
+      onDismiss={dismiss}
       onOpenNext={openTarget ? () => openWhisperTarget(nav, openTarget) : undefined}
       openNextLabel={openTarget?.label}
     >

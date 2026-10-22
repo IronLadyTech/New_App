@@ -76,3 +76,40 @@ export function describeBatchAnchor(batch) {
   if (!batch?.day1Date) return '';
   return `Day 1 (Sat): ${batch.day1Date} · Orientation (Thu): ${batch.orientationDate || orientationFromDay1Saturday(batch.day1Date)}`;
 }
+
+/**
+ * Keep what CX changed when the schedule is rebuilt from Day 1:
+ *   custom    — CX moved the date or changed the time: keep their date/time
+ *   cancelled — CX cancelled this session: keep it cancelled
+ *   extra     — a session CX added (code not in the standard schedule): keep it
+ * Zoom links and title edits are kept too.
+ */
+export function mergeCustomSessions(built, previous = []) {
+  const prevByCode = Object.fromEntries((previous || []).filter((s) => s?.code).map((s) => [s.code, s]));
+  const builtCodes = new Set(built.map((s) => s.code));
+  const merged = built.map((row) => {
+    const prev = prevByCode[row.code];
+    if (!prev) return row;
+    const out = {
+      ...row,
+      title: prev.title || row.title,
+      joinLink: prev.joinLink || row.joinLink || '',
+      ...(prev.cancelled ? { cancelled: true } : {}),
+    };
+    if (prev.custom && prev.date) {
+      const startTime = prev.startTime || row.startTime;
+      const endTime = prev.endTime || row.endTime;
+      Object.assign(out, {
+        custom: true,
+        date: prev.date,
+        startTime,
+        endTime,
+        startAt: toISTIso(prev.date, startTime),
+        endAt: toISTIso(prev.date, endTime),
+      });
+    }
+    return out;
+  });
+  const extras = (previous || []).filter((s) => s?.code && s.extra && !builtCodes.has(s.code));
+  return [...merged, ...extras].sort((a, b) => String(a.startAt || '').localeCompare(String(b.startAt || '')));
+}

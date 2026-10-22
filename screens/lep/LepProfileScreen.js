@@ -36,8 +36,6 @@ import {
 } from '../../utils/programAccess';
 import { buildProgramBatchCard, programBatchPhase, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
 import { db } from '../../services/firebase';
-import { fetchUserProfile } from '../../services/auth';
-import { refreshMyAccess } from '../../services/functions';
 import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
 import { LepHeader, Page, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
@@ -178,19 +176,6 @@ export default function LepProfileScreen() {
     cmsBatch,
     zohoLive: zohoLeadBatchLabel(source, PROGRAMS.LEP),
   });
-
-  useEffect(() => {
-    if (!user?.uid) return undefined;
-    let cancelled = false;
-    (async () => {
-      await refreshMyAccess();
-      const fresh = await fetchUserProfile(user.uid).catch(() => null);
-      if (!cancelled && fresh) patchProfile(fresh);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.uid, patchProfile]);
 
   const photoUrl = profile?.photoURL || '';
   const initial = String(name || '?').trim().charAt(0).toUpperCase();

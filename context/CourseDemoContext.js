@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { todayIsoIST } from '../utils/lepDailyPractice';
 import { lepActiveDayKey } from '../utils/lepPracticeStreak';
+import { recordPracticeDone } from '../services/activityTracking';
 
 const KEY = 'il_course_demo_done';
 const SUB_KEY = 'il_course_demo_submissions';
@@ -34,6 +35,8 @@ export function CourseDemoProvider({ children }) {
       AsyncStorage.setItem(KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
+    // Mirror to the server for the CX dashboard; no-op outside a real learner session.
+    recordPracticeDone(programId, taskId);
   }, []);
 
   const isDone = useCallback(

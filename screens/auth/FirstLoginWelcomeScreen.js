@@ -1,5 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Image, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  AppState,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -13,11 +22,16 @@ import { fetchUserProfile } from '../../services/auth';
 import {
   getEnrolledPrograms,
   learnerBatchLabel,
-  learnerBhagText,
   needsLepBatchSelection,
   programPaymentStatus,
+  readWelcomeFields,
 } from '../../utils/programAccess';
-import { formatCallableError, refreshMyAccess, updateMyWelcomeProfile } from '../../services/functions';
+import {
+  refreshMyAccess,
+  saveWelcomeProfileFields,
+  syncWelcomeProfileInBackground,
+} from '../../services/functions';
+import { welcomeSaveFeedback } from '../../utils/participantSyncMessage';
 
 const GUIDE = require('../../assets/il/il-guide-face.jpg');
 const DARK = '#102C32';
@@ -29,68 +43,8 @@ const RING_TO = '#FF5C61';
 const SEAL = '#FF9EA1';
 const SEAL_DISC = '#113744';
 const GLOW = 'rgba(235,193,102,0.35)';
-const CHIP_INK = '#F3EDE4';
-
-/** Staff notes in Zoho are not a learner's answer. */
-function learnerValue(value) {
-  const text = String(value || '').trim().replace(/[,;\s]+$/, '');
-  if (!text) return '';
-  const v = text.toLowerCase().replace(/\s+/g, ' ');
-  if (
-    v.includes('check with the learner') ||
-    v.includes('please check') ||
-    ['n/a', 'na', 'none', 'nil', '-', '--', 'tbd', 'unknown', 'not available'].includes(v)
-  ) {
-    return '';
-  }
-  return text;
-}
-
-function welcomeFields(source) {
-  if (!source || typeof source !== 'object') return { city: '', domain: '', bhag: '' };
-  return {
-    city: learnerValue(source.city || source.City || source.location || source.currentCity),
-    domain: learnerValue(
-      source.domain ||
-        source.leadershipRole ||
-        source.Industry_Field_of_Work ||
-        source['Industry/Field of Work'] ||
-        source.fieldOfWork ||
-        source.workDomain ||
-        source.industry
-    ),
-    // Prefer Zoho B-HAG, then the value the learner just saved on the profile.
-    bhag: learnerValue(learnerBhagText(source) || source.bhag),
-  };
-}
-
-function fieldsFromZoho(profile, data) {
-  const stored = welcomeFields(profile);
-  const live = [data, data?.profile, data?.user, data?.access].filter(Boolean).reduce(
-    (acc, bag) => {
-      const next = welcomeFields(bag);
-      return {
-        city: acc.city || next.city,
-        domain: acc.domain || next.domain,
-        bhag: acc.bhag || next.bhag,
-      };
-    },
-    { city: '', domain: '', bhag: '' }
-  );
-  // A Zoho read replaces what the app stored. An empty read keeps the stored value.
-  if (data && (data.ok === true || data.throttled === true)) {
-    return {
-      city: live.city || stored.city,
-      domain: live.domain || stored.domain,
-      bhag: live.bhag || stored.bhag,
-    };
-  }
-  return {
-    city: stored.city || live.city,
-    domain: stored.domain || live.domain,
-    bhag: stored.bhag || live.bhag,
-  };
-}
+const CARD_FILL = '#F4F1E8';
+const INK_MUTED = 'rgba(16, 44, 50, 0.55)';
 
 function welcomeBadges(profile) {
   return getEnrolledPrograms(profile)
@@ -103,30 +57,77 @@ function welcomeBadges(profile) {
     .filter(Boolean);
 }
 
-function Chip({ icon, label, onPress }) {
+const FIELD_META = {
+  city: {
+    icon: 'place',
+    title: 'Current city',
+    placeholder: 'Your city, for example Bengaluru',
+    empty: 'Add your city',
+  },
+  domain: {
+    icon: 'work-outline',
+    title: 'Field of work',
+    placeholder: 'Your field, for example Technology',
+    empty: 'Add your field of work',
+  },
+  bhag: {
+    icon: 'flag',
+    title: '3-month goal (B-HAG)',
+    placeholder: 'Your goal for the next 3 months',
+    empty: 'Add your 3-month goal',
+  },
+};
+
+function WelcomeFieldRow({ fieldKey, value, active, onPress }) {
+  const meta = FIELD_META[fieldKey];
+  const filled = Boolean(String(value || '').trim());
+  const display = filled ? value : meta.empty;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${label}, edit`}
+      accessibilityLabel={`${meta.title}, edit`}
       onPress={onPress}
       style={{
+        alignSelf: 'stretch',
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        borderRadius: 16,
-        paddingHorizontal: 14,
-        paddingVertical: 11,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 14,
+        backgroundColor: active ? 'rgba(237, 29, 36, 0.08)' : IL_BRAND.white,
       }}
     >
-      <MaterialIcons name={icon} size={15} color={ROSE} />
-      <ILText
-        role="label"
-        color={CHIP_INK}
-        style={{ marginLeft: 8, marginRight: 8, fontSize: 13, lineHeight: 16 }}
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: active ? 'rgba(237, 29, 36, 0.12)' : CARD_FILL,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        {label}
-      </ILText>
-      <MaterialIcons name="edit" size={13} color={ROSE} />
+        <MaterialIcons name={meta.icon} size={18} color={active ? CTA : IL_BRAND.forest} />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 10, minWidth: 0 }}>
+        <ILText role="eyebrow" color={INK_MUTED} style={{ fontSize: 10, letterSpacing: 0.5 }}>
+          {meta.title.toUpperCase()}
+        </ILText>
+        <ILText
+          role="body"
+          color={filled ? IL_BRAND.ink : INK_MUTED}
+          style={{
+            marginTop: 3,
+            fontSize: 15,
+            lineHeight: 21,
+            fontFamily: filled ? IL_FONTS.semibold : IL_FONTS.regular,
+          }}
+          numberOfLines={fieldKey === 'bhag' ? 4 : 2}
+        >
+          {display}
+        </ILText>
+      </View>
+      <MaterialIcons name="chevron-right" size={22} color={INK_MUTED} />
     </Pressable>
   );
 }
@@ -146,97 +147,116 @@ export default function FirstLoginWelcomeScreen({
       .trim()
       .split(/\s+/)[0] ||
     'there';
-  const synced = fieldsFromZoho(profile);
   const badges =
     !user?.uid || user.uid === 'preview' || isPreview
       ? ['Registered · Leadership Essentials Program']
       : welcomeBadges(profile);
-  const city = synced.city;
-  const domain = synced.domain;
-  const bhag = synced.bhag;
-  const needsDetails = !city || !domain || !bhag;
+  const [fields, setFields] = useState(() => readWelcomeFields(profile));
+  const hasCity = Boolean(String(fields.city || '').trim());
+  const hasDomain = Boolean(String(fields.domain || '').trim());
+  const hasBhag = Boolean(String(fields.bhag || '').trim());
+  const previewFlow = !user?.uid || user.uid === 'preview' || isPreview;
+  const canContinue = previewFlow || (hasCity && hasDomain);
   const pickBatch = needsLepBatchSelection(profile);
   const batchLabel = learnerBatchLabel(profile, 'lep');
   const [syncing, setSyncing] = useState(false);
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const [saveNotice, setSaveNotice] = useState('');
+  const [saveNoticeError, setSaveNoticeError] = useState(false);
   const editingRef = useRef(null);
+  const profileRef = useRef(profile);
+  const syncRanRef = useRef(false);
   editingRef.current = editing;
+  profileRef.current = profile;
+
+  useEffect(() => {
+    if (editing) return;
+    const fromProfile = readWelcomeFields(profile);
+    setFields((prev) => ({
+      city: fromProfile.city || prev.city,
+      domain: fromProfile.domain || prev.domain,
+      bhag: fromProfile.bhag || prev.bhag,
+    }));
+  }, [profile, editing]);
+
+  const displayValue = (key) => {
+    if (editing === key) return draft;
+    return fields[key] || '';
+  };
 
   const beginEdit = (key) => {
     if (!user?.uid || user.uid === 'preview' || isPreview) return;
-    const current = key === 'city' ? city : key === 'domain' ? domain : bhag;
     setEditing(key);
-    setDraft(current);
-    setSaveError('');
+    setDraft(fields[key] || '');
+    setSaveNotice('');
+    setSaveNoticeError(false);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     const value = draft.trim();
     if (!editing || !value || saving) return;
-    setSaving(true);
-    setSaveError('');
-    // Keep the typed value on the profile immediately so the chip updates even if Zoho is slow.
+    const key = editing;
     const local =
-      editing === 'domain'
-        ? { domain: value, leadershipRole: value }
-        : { [editing]: value };
+      key === 'domain' ? { domain: value, leadershipRole: value } : { [key]: value };
+    setFields((prev) => ({ ...prev, [key]: value }));
     patchProfile(local);
-    try {
-      const result = await updateMyWelcomeProfile({ [editing]: value });
-      if (result?.ok === false || result?.zoho === false) {
-        setSaveError(result?.reason || 'Saved on your profile — Zoho sync pending');
-        setEditing(null);
-        return;
-      }
-      setEditing(null);
-    } catch (err) {
-      setSaveError(formatCallableError(err, 'Saved on your profile — Zoho sync pending'));
-      setEditing(null);
-    } finally {
-      setSaving(false);
-    }
+    setEditing(null);
+    setSaving(false);
+    setSaveNotice('');
+    setSaveNoticeError(false);
+
+    if (previewFlow) return;
+
+    setSaving(true);
+    saveWelcomeProfileFields({ [key]: value })
+      .then((result) => {
+        const feedback = welcomeSaveFeedback(result);
+        setSaveNotice(feedback.message);
+        setSaveNoticeError(feedback.isError);
+        if (result?.zohoLeadId) patchProfile({ zohoLeadId: result.zohoLeadId });
+        if (feedback.zohoSynced) refreshMyAccess().catch(() => {});
+      })
+      .catch((err) => {
+        const feedback = welcomeSaveFeedback(null, err);
+        setSaveNotice(feedback.message);
+        setSaveNoticeError(feedback.isError);
+      })
+      .finally(() => setSaving(false));
   };
 
   const syncFromZoho = useCallback(async () => {
     if (!user?.uid || user.uid === 'preview' || isPreview || editingRef.current) return;
     setSyncing(true);
     try {
-      const data = await refreshMyAccess();
       const fresh = await fetchUserProfile(user.uid).catch(() => null);
-      const next = fieldsFromZoho(fresh, data);
-      const pinnedCms =
-        profile?.cmsBatchId ||
-        profile?.programAccess?.lep?.cmsBatchId ||
-        fresh?.cmsBatchId ||
-        fresh?.programAccess?.lep?.cmsBatchId;
+      const next = readWelcomeFields(fresh || profileRef.current);
+      setFields((prev) => ({
+        city: next.city || prev.city,
+        domain: next.domain || prev.domain,
+        bhag: next.bhag || prev.bhag,
+      }));
       const patch = {};
       if (next.city) patch.city = next.city;
-      if (next.domain) patch.domain = next.domain;
-      if (next.bhag) patch.bhag = next.bhag;
-      if (fresh?.programAccess) {
-        patch.programAccess = fresh.programAccess;
-        if (pinnedCms && patch.programAccess.lep) {
-          patch.programAccess.lep = {
-            ...patch.programAccess.lep,
-            cmsBatchId: pinnedCms,
-            batchId: pinnedCms,
-          };
-        }
+      if (next.domain) {
+        patch.domain = next.domain;
+        patch.leadershipRole = next.domain;
       }
-      if (fresh?.cmsBatchId) patch.cmsBatchId = fresh.cmsBatchId;
-      else if (pinnedCms) patch.cmsBatchId = pinnedCms;
+      if (next.bhag) patch.bhag = next.bhag;
       if (Object.keys(patch).length) patchProfile(patch);
+      refreshMyAccess().catch(() => {});
     } finally {
       setSyncing(false);
     }
   }, [user?.uid, isPreview, patchProfile]);
 
   useEffect(() => {
+    if (!user?.uid || user.uid === 'preview' || isPreview) return;
+    if (syncRanRef.current) return;
+    syncRanRef.current = true;
     syncFromZoho();
-  }, [syncFromZoho]);
+  }, [user?.uid, isPreview, syncFromZoho]);
 
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -267,6 +287,24 @@ export default function FirstLoginWelcomeScreen({
   };
 
   const goBatch = () => {
+    if (!canContinue) return;
+    const payload = {
+      city: String(fields.city || '').trim(),
+      domain: String(fields.domain || '').trim(),
+    };
+    const bhagVal = String(fields.bhag || '').trim();
+    if (bhagVal) payload.bhag = bhagVal;
+    patchProfile({
+      city: payload.city,
+      domain: payload.domain,
+      leadershipRole: payload.domain,
+      ...(payload.bhag ? { bhag: payload.bhag } : {}),
+    });
+    if (payload.city && payload.domain && !previewFlow) {
+      syncWelcomeProfileInBackground(payload, (result) => {
+        if (result?.zohoLeadId) patchProfile({ zohoLeadId: result.zohoLeadId });
+      });
+    }
     if (!pickBatch) {
       finishWelcome();
       return;
@@ -449,17 +487,17 @@ export default function FirstLoginWelcomeScreen({
             </View>
           </View>
 
-          <View
-            style={{
-              width: 14,
-              height: 14,
-              backgroundColor: IL_BRAND.white,
-              transform: [{ rotate: '45deg' }],
-              marginTop: 12,
-              marginBottom: -8,
-              zIndex: 1,
-            }}
-          />
+          <View style={{ alignSelf: 'stretch', marginTop: 12, alignItems: 'center' }}>
+            <View
+              style={{
+                width: 14,
+                height: 14,
+                backgroundColor: IL_BRAND.white,
+                transform: [{ rotate: '45deg' }],
+                marginBottom: -7,
+              }}
+            />
+          </View>
           <View
             style={{
               alignSelf: 'stretch',
@@ -467,6 +505,7 @@ export default function FirstLoginWelcomeScreen({
               borderRadius: 26,
               paddingHorizontal: 22,
               paddingVertical: 20,
+              overflow: 'hidden',
             }}
           >
             <ILText
@@ -486,95 +525,173 @@ export default function FirstLoginWelcomeScreen({
           <View
             style={{
               alignSelf: 'stretch',
-              alignItems: 'center',
-              marginTop: 22,
-              backgroundColor: 'rgba(255,255,255,0.06)',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.10)',
-              borderRadius: 24,
+              marginTop: 18,
+              backgroundColor: IL_BRAND.white,
+              borderRadius: 26,
               paddingHorizontal: 16,
-              paddingTop: 16,
+              paddingTop: 18,
               paddingBottom: 14,
             }}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-              <View style={{ marginRight: 10 }}>
-                <Chip icon="place" label={city || 'Add your city'} onPress={() => beginEdit('city')} />
-              </View>
-              <Chip icon="work-outline" label={domain || 'Add your field of work'} onPress={() => beginEdit('domain')} />
-            </View>
-            <View style={{ marginTop: 10 }}>
-              <Chip icon="flag" label={bhag ? `Goal: ${bhag}` : 'Add your 3-month goal'} onPress={() => beginEdit('bhag')} />
+            <ILText
+              role="eyebrow"
+              color={CTA}
+              style={{ fontSize: 10, letterSpacing: 1, marginBottom: 4, marginLeft: 2 }}
+            >
+              YOUR DETAILS
+            </ILText>
+            <ILText role="bodySm" color={INK_MUTED} style={{ marginBottom: 10, marginLeft: 2, fontSize: 13 }}>
+              Tap a row to add or update
+            </ILText>
+            <View
+              style={{
+                backgroundColor: CARD_FILL,
+                borderRadius: 18,
+                padding: 8,
+                gap: 8,
+              }}
+            >
+              {['city', 'domain', 'bhag'].map((key) => (
+                <WelcomeFieldRow
+                  key={key}
+                  fieldKey={key}
+                  value={displayValue(key)}
+                  active={editing === key}
+                  onPress={() => beginEdit(key)}
+                />
+              ))}
             </View>
             {editing ? (
-              <View style={{ alignSelf: 'stretch', marginTop: 12 }}>
+              <View
+                style={{
+                  alignSelf: 'stretch',
+                  marginTop: 8,
+                  backgroundColor: CARD_FILL,
+                  borderRadius: 18,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: 'rgba(16, 44, 50, 0.08)',
+                }}
+              >
+                <ILText role="label" color={IL_BRAND.ink} style={{ fontSize: 13, marginBottom: 8 }}>
+                  {FIELD_META[editing].title}
+                </ILText>
                 <TextInput
                   value={draft}
                   onChangeText={setDraft}
-                  placeholder={
-                    editing === 'city'
-                      ? 'Your city, for example Bengaluru'
-                      : editing === 'domain'
-                        ? 'Your field of work, for example Technology'
-                        : 'Your goal for the next 3 months'
-                  }
+                  placeholder={FIELD_META[editing].placeholder}
                   placeholderTextColor="rgba(16,44,50,0.45)"
                   autoFocus
+                  multiline={editing === 'bhag'}
+                  textAlignVertical={editing === 'bhag' ? 'top' : 'center'}
                   style={{
-                    backgroundColor: IL_BRAND.white,
-                    borderRadius: 14,
+                    backgroundColor: '#F4F1E8',
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: 'rgba(16,44,50,0.12)',
                     paddingHorizontal: 14,
                     paddingVertical: 12,
-                    fontSize: 15,
+                    fontSize: 16,
                     color: IL_BRAND.ink,
+                    minHeight: editing === 'bhag' ? 88 : 48,
                   }}
                 />
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={saveEdit}
-                  disabled={saving || !draft.trim()}
-                  style={{
-                    marginTop: 8,
-                    backgroundColor: CTA,
-                    borderRadius: 14,
-                    paddingVertical: 12,
-                    alignItems: 'center',
-                    opacity: saving || !draft.trim() ? 0.5 : 1,
-                  }}
-                >
-                  <ILText role="label" color={IL_BRAND.white}>
-                    {saving ? 'Saving…' : 'Save'}
-                  </ILText>
-                </Pressable>
-                {saveError ? (
+                <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setEditing(null);
+                      setDraft('');
+                      setSaveNotice('');
+                      setSaveNoticeError(false);
+                    }}
+                    style={{
+                      flex: 1,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: 'rgba(16,44,50,0.15)',
+                    }}
+                  >
+                    <ILText role="label" color={IL_BRAND.ink}>Cancel</ILText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={saveEdit}
+                    disabled={saving || !draft.trim()}
+                    style={{
+                      flex: 1,
+                      backgroundColor: CTA,
+                      borderRadius: 12,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      opacity: saving || !draft.trim() ? 0.5 : 1,
+                    }}
+                  >
+                    <ILText role="label" color={IL_BRAND.white}>
+                      {saving ? 'Saving…' : 'Save'}
+                    </ILText>
+                  </Pressable>
+                </View>
+                {saveNotice ? (
                   <ILText
                     role="bodySm"
-                    color={ROSE}
+                    color={saveNoticeError ? CTA : '#1B7A4A'}
                     align="center"
-                    style={{ marginTop: 8, fontSize: 12 }}
+                    style={{ marginTop: 8, fontSize: 12, lineHeight: 18 }}
                   >
-                    {saveError}
+                    {saveNotice}
                   </ILText>
                 ) : null}
               </View>
             ) : null}
-            <ILText
-              role="bodySm"
-              color="rgba(232,168,160,0.72)"
-              align="center"
-              style={{ marginTop: 12, fontSize: 13 }}
+            <View
+              style={{
+                height: 36,
+                marginTop: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: 4,
+              }}
             >
-              {syncing
-                ? 'Checking Zoho for your city, field of work, and 3-month goal.'
-                : needsDetails
-                  ? 'Your registration details appear here. Tap a line to update them.'
-                  : 'From Zoho. Tap a line to update it.'}
-            </ILText>
+              {syncing ? (
+                <>
+                  <ActivityIndicator size="small" color={CTA} />
+                  <ILText
+                    role="bodySm"
+                    color={INK_MUTED}
+                    numberOfLines={1}
+                    style={{ marginLeft: 8, fontSize: 12, flexShrink: 1 }}
+                  >
+                    Checking your saved details…
+                  </ILText>
+                </>
+              ) : (
+                <ILText
+                  role="bodySm"
+                  color={canContinue ? (hasBhag ? '#1B7A4A' : INK_MUTED) : INK_MUTED}
+                  align="center"
+                  numberOfLines={2}
+                  style={{ fontSize: 12, lineHeight: 17 }}
+                >
+                  {!canContinue
+                    ? hasCity || hasDomain
+                      ? 'Add your city and field of work to continue.'
+                      : 'Start with your city and field of work — then you can continue.'
+                    : hasBhag
+                      ? 'All set — you can edit anytime from Profile.'
+                      : 'You can continue. Add your 3-month goal anytime from Profile.'}
+                </ILText>
+              )}
+            </View>
           </View>
 
           <ILButton
             label={pickBatch ? 'Choose my batch date' : 'Continue to my dashboard'}
             onPress={goBatch}
+            disabled={!canContinue}
             style={{
               alignSelf: 'stretch',
               backgroundColor: CTA,

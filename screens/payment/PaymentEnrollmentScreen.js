@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
+import { profilePatchAfterFullPayment } from '../../utils/paymentSuccessPatch';
 import { useCourses } from '../../context/CoursesContext';
 import IronLadyHeader from '../../components/IronLadyHeader';
 import RazorpayCheckoutModal from '../../components/RazorpayCheckoutModal';
@@ -65,7 +66,7 @@ function BatchDayRow({ dayLabel, title, subtitle }) {
 }
 
 export default function PaymentEnrollmentScreen({ navigation, route }) {
-  const { profile, user } = useAuth();
+  const { profile, user, patchProfile } = useAuth();
   const { visibleEvents } = useCourses();
   const programId = route?.params?.programId;
   const [paying, setPaying] = useState(false);
@@ -80,20 +81,32 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
     [profile, user, programId, visibleEvents]
   );
 
-  const buildCheckout = () =>
-    buildLocalCheckout({
+  const buildCheckout = () => {
+    const payer = vm.payer || {};
+    return buildLocalCheckout({
       programId: vm.programId,
-      name: profile?.displayName || user?.displayName,
-      email: profile?.email || user?.email,
-      contact: profile?.phoneNumber || profile?.phone || user?.phoneNumber,
+      name: payer.name,
+      email: payer.email,
+      contact: payer.phone,
       description: `${vm.programTitle} — programme balance`,
     });
+  };
+
+  const mergeCheckoutSession = (cloudOrder) => {
+    const local = buildCheckout();
+    if (!cloudOrder) return local;
+    return {
+      ...local,
+      ...cloudOrder,
+      prefill: { ...local.prefill, ...(cloudOrder.prefill || {}) },
+    };
+  };
 
   const onPayBalance = async () => {
     setPaying(true);
     try {
       const cloudOrder = await createRazorpayOrder(vm.programId);
-      const session = cloudOrder || buildCheckout();
+      const session = mergeCheckoutSession(cloudOrder);
 
       if (isWebCheckout) {
         const result = await openRazorpayInBrowser(session);
@@ -113,22 +126,22 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
   const onPaymentSuccess = async ({ orderId, paymentId, signature }) => {
     setCheckout(null);
+    patchProfile(
+      profilePatchAfterFullPayment(profile, vm.programId, { paymentId, orderId })
+    );
     setPaying(true);
-    let saved = null;
-    try {
-      if (orderId && signature) {
-        await verifyRazorpayPayment({
-          orderId,
-          paymentId,
-          signature,
-          programId: vm.programId,
-        });
-        await refreshMyAccess();
-      }
-    } catch {
-      // Receipt is still saved even if Cloud Function verify is not deployed.
-    }
 
+    const verifyTask =
+      orderId && signature
+        ? verifyRazorpayPayment({
+            orderId,
+            paymentId,
+            signature,
+            programId: vm.programId,
+          }).catch(() => null)
+        : Promise.resolve(null);
+
+    let saved = null;
     try {
       saved = await savePaymentOrder({
         uid: user?.uid,
@@ -138,25 +151,31 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
         programId: vm.programId,
         programTitle: vm.programTitle,
         description: `${vm.programTitle} — programme balance`,
-        payerName: profile?.displayName || user?.displayName || '',
-        payerEmail: profile?.email || user?.email || '',
-        payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
+        payerName: vm.payer?.name || '',
+        payerEmail: vm.payer?.email || '',
+        payerPhone: vm.payer?.phone || '',
       });
     } catch (err) {
+      setPaying(false);
       Alert.alert(
         'Payment received',
-        `${paymentId || 'Paid'} — receipt could not be saved (${err.message}).`,
-        [{ text: 'OK' }]
+        `${paymentId || 'Paid'} — receipt could not be saved (${err.message}). Your enrolment is updating.`,
+        [{ text: 'Continue', onPress: () => navigation.getParent()?.navigate('Home') }]
       );
-      setPaying(false);
+      verifyTask.then(() => refreshMyAccess().catch(() => {}));
       return;
     }
 
+    verifyTask.then(() => refreshMyAccess().catch(() => {}));
     setPaying(false);
     Alert.alert(
-      'Payment received',
-      `Transaction ${paymentId} is on your receipt.`,
+      'You’re enrolled',
+      'Payment received. Your full programme access is unlocked.',
       [
+        {
+          text: 'Continue to Home',
+          onPress: () => navigation.getParent()?.navigate('Home'),
+        },
         {
           text: 'View receipt',
           onPress: () =>
@@ -279,22 +298,26 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
             />
           </View>
 
-          {vm.showPayButton ? (
-            <TouchableOpacity
-              style={[styles.payButton, paying && styles.payButtonDisabled]}
-              onPress={onPayBalance}
-              activeOpacity={0.9}
-              disabled={paying}
-            >
-              {paying ? (
-                <ActivityIndicator color={IL_BRAND.white} />
-              ) : (
-                <Text style={styles.payButtonText}>
-                  Pay {vm.programBalanceLabel}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ) : null}
+          <View style={styles.payButtonSlot}>
+            {vm.showPayButton ? (
+              <TouchableOpacity
+                style={[styles.payButton, paying && styles.payButtonDisabled]}
+                onPress={onPayBalance}
+                activeOpacity={0.9}
+                disabled={paying}
+              >
+                {paying ? (
+                  <ActivityIndicator color={IL_BRAND.white} />
+                ) : (
+                  <Text style={styles.payButtonText}>
+                    Pay {vm.programBalanceLabel}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.payButtonPlaceholder} />
+            )}
+          </View>
 
           <TouchableOpacity onPress={onTalkToTeam} style={styles.supportLink}>
             <Text style={styles.supportText}>
@@ -469,8 +492,15 @@ const styles = StyleSheet.create({
     backgroundColor: IL_BRAND.progressFill,
     borderRadius: 4,
   },
-  payButton: {
+  payButtonSlot: {
     marginTop: 20,
+    minHeight: 54,
+    justifyContent: 'center',
+  },
+  payButtonPlaceholder: {
+    minHeight: 54,
+  },
+  payButton: {
     backgroundColor: IL_BRAND.red,
     borderRadius: 28,
     paddingVertical: 16,

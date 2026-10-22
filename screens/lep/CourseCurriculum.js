@@ -15,6 +15,7 @@ import {
 import { useCourseDemo } from '../../context/CourseDemoContext';
 import { ProgressDark, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
+import { phaseLockLabel } from '../../utils/phaseUnlock';
 
 function taskIcon(kind) {
   const k = String(kind || '').toLowerCase();
@@ -107,9 +108,9 @@ export default function CourseCurriculum({
       ) : null}
 
       {(phases.length ? phases : []).map((phase, i) => {
-        // Enrolled: every phase is open. Registered: calendar + openRegistered gates.
+        // Payment, batch calendar and CX overrides decide (utils/phaseUnlock.js).
         const shut = enrolled
-          ? false
+          ? !isPhaseOpen(phase, true, lepFlow)
           : phase.openRegistered === false ||
               (phase.openRegistered == null && i >= 3) ||
               !isPhaseOpen(phase, false, lepFlow);
@@ -140,13 +141,15 @@ export default function CourseCurriculum({
         }
 
         if (shut) {
+          // Say when it opens; only a payment lock leads to enrollment.
+          const lock = lepFlow ? phaseLockLabel(phase, { enrolled, flow: lepFlow }) : null;
           return (
             <LockedPhaseCard
               key={phase.id}
               index={i}
               phase={phase}
-              hint={unlockHint(prevTitle)}
-              onPress={!enrolled ? nav.goEnroll : undefined}
+              hint={lock && !lock.enroll ? lock.text : unlockHint(prevTitle)}
+              onPress={!enrolled && (!lock || lock.enroll) ? nav.goEnroll : undefined}
             />
           );
         }

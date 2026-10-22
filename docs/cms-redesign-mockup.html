@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Iron Lady CMS mockup</title>
+<style>
+  :root {
+    --red: #ED1D24; --red-soft: #FDECEC; --cream: #F7F6E4; --ink: #1E2430; --muted: #6B7280;
+    --line: #E5E2D3; --navy: #17324D; --ok: #1F8A4C; --ok-soft: #E3F4EA; --warn: #9A5B00; --warn-soft: #FFF3DC;
+    --lock: #8A8F98; --card: #FFFFFF; --page: #F4F3EC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--page); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .side { background: var(--navy); color: #fff; padding: 22px 0; display: flex; flex-direction: column; }
+  .brand { padding: 0 20px 22px; } .brand b { font-size: 18px; display: block; } .brand span { font-size: 12px; color: #C8C2B6; }
+  .nav a { display: block; padding: 11px 20px; color: #fff; text-decoration: none; border-left: 3px solid transparent; }
+  .nav a small { display: block; color: #A8B4C0; font-size: 11px; }
+  .nav a.on { background: rgba(255,255,255,.12); border-left-color: var(--red); font-weight: 600; }
+  .nav .adv { margin-top: 18px; padding: 8px 20px 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8FA0B2; }
+  .who { margin-top: auto; padding: 0 20px; font-size: 12px; color: #C8C2B6; }
+  main { padding: 22px 26px 40px; min-width: 0; }
+  h1 { font: 600 24px Georgia, serif; margin: 0 0 4px; }
+  .lead { color: var(--muted); margin: 0 0 14px; }
+
+  .picker { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-bottom: 16px; }
+  .picker .top { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; }
+  .lbl { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  select, .inp { padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .picker select { min-width: 220px; }
+  .who-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .whobtn { border: 1px solid var(--line); background: #FBFAF4; border-radius: 14px; padding: 8px 14px; cursor: pointer; text-align: left; min-width: 120px; }
+  .whobtn b { display: block; font-size: 20px; }
+  .whobtn span { font-size: 12px; color: var(--muted); }
+  .whobtn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .whobtn.on span { color: #D6D9DE; }
+  .status { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+  .status.on { background: var(--ok-soft); color: var(--ok); } .status.off { background: #F1F0EA; color: var(--muted); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 22px; align-items: start; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs button { border: 0; background: none; padding: 10px 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs button.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--red); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1; min-width: 0; }
+  .title { font-weight: 600; } .sub { color: var(--muted); font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); } .chip.miss { background: var(--red-soft); color: var(--red); }
+  .chip.wait { background: #F1F0EA; color: var(--muted); } .chip.lock { background: #EEF0F3; color: var(--lock); }
+  .chip.aud { background: #EEF3F8; color: var(--navy); }
+  .banner { border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; font-size: 13px; }
+  .banner.warn { background: var(--warn-soft); color: var(--warn); } .banner.info { background: #EEF3F8; color: var(--navy); }
+  .banner.ok { background: var(--ok-soft); color: var(--ok); }
+  .btn { border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 7px 13px; border-radius: 10px; cursor: pointer; font-size: 13px; }
+  .btn.ghost { background: #fff; color: var(--ink); border-color: var(--line); }
+  .btn.red { background: var(--red); border-color: var(--red); }
+  .btn.big { padding: 10px 16px; font-size: 14px; }
+  .date { width: 64px; text-align: center; border-radius: 12px; background: var(--cream); padding: 6px 0; flex: none; }
+  .date b { display: block; font-size: 18px; } .date small { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .locked { opacity: .55; }
+  .paste { display: flex; gap: 8px; margin-top: 10px; } .paste input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px dashed #C9C4AE; border-radius: 10px; background: #FFFEF8; }
+
+  /* Messages grouped under their session */
+  .msg { display: grid; grid-template-columns: 150px 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+  .msg:first-of-type { border-top: 0; }
+  .msg .when { font-weight: 700; font-size: 13px; } .msg .when small { display: block; font-weight: 400; color: var(--muted); }
+  .bubble { background: #F7F6E4; border-radius: 12px; padding: 8px 12px; font-size: 13px; }
+  details { margin-top: 12px; } summary { cursor: pointer; color: var(--navy); font-weight: 600; font-size: 13px; }
+
+  /* Add forms */
+  .form { background: #FFFEF8; border: 1px dashed #C9C4AE; border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .form h3 { margin: 0 0 10px; font-size: 15px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .field { margin-bottom: 10px; } .field .inp, .field textarea, .field select { width: 100%; }
+  textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 60px; resize: vertical; background: #fff; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: #FBFAF4; flex-wrap: wrap; }
+  .seg button { border: 0; background: transparent; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; }
+  .seg button.on { background: var(--ink); color: #fff; }
+  .kinds { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
+  .kind { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 12px; cursor: pointer; text-align: left; }
+  .kind b { display: block; } .kind span { font-size: 12px; color: var(--muted); }
+  .kind.on { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-soft); }
+
+  /* Setup wizard */
+  .steps { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .step { flex: 1; min-width: 150px; border-radius: 12px; padding: 10px 12px; background: #fff; border: 1px solid var(--line); font-size: 13px; }
+  .step b { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .step.on { border-color: var(--red); } .step.done { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+  .stat b { display: block; font-size: 24px; } .stat span { font-size: 12px; color: var(--muted); }
+
+  /* Phone */
+  .preview { position: sticky; top: 18px; }
+  .preview h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; justify-content: space-between; }
+  .phone { width: 340px; height: 690px; border-radius: 42px; background: #111; padding: 12px; box-shadow: 0 18px 40px rgba(0,0,0,.18); }
+  .screen { width: 100%; height: 100%; border-radius: 32px; background: var(--cream); overflow: hidden; display: flex; flex-direction: column; }
+  .pstatus { height: 30px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12px; font-weight: 600; }
+  .pscroll { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
+  .ptabs { display: flex; justify-content: space-around; padding: 10px 6px 14px; background: rgba(255,255,255,.85); border-top: 1px solid var(--line); }
+  .ptabs button { border: 0; background: none; font-size: 11px; color: var(--muted); cursor: pointer; padding: 4px 6px; }
+  .ptabs button.on { color: var(--red); font-weight: 700; }
+  .hello { font-family: Georgia, serif; font-size: 22px; margin: 6px 0 2px; }
+  .whisper { background: #fff; border-radius: 18px; padding: 12px 14px; border: 1px solid var(--line); margin: 12px 0; }
+  .whisper .from { font-size: 11px; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: .06em; }
+  .whisper p { margin: 6px 0 10px; }
+  .pbtn { display: inline-block; background: var(--red); color: #fff; border-radius: 999px; padding: 7px 14px; font-size: 12px; font-weight: 600; border: 0; }
+  .pcard { background: #fff; border-radius: 16px; padding: 12px; border: 1px solid var(--line); margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+  .pcard .d { width: 44px; text-align: center; background: var(--red); color: #fff; border-radius: 12px; padding: 5px 0; flex: none; }
+  .pcard .d b { display: block; font-size: 16px; } .pcard .d small { font-size: 9px; text-transform: uppercase; }
+  .ph { font-weight: 700; margin: 14px 0 8px; font-size: 13px; }
+  .bar { height: 8px; border-radius: 99px; background: #E9E5D3; overflow: hidden; } .bar i { display: block; height: 100%; background: var(--red); }
+  .phase { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 6px; font-size: 13px; }
+  .vid { background: #222; color: #fff; border-radius: 14px; height: 110px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; position: relative; }
+  .vid::after { content: "▶"; width: 38px; height: 38px; border-radius: 50%; background: rgba(237,29,36,.92); display: flex; align-items: center; justify-content: center; }
+  .vid small { position: absolute; left: 10px; bottom: 8px; font-size: 11px; opacity: .85; }
+  .pitem { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 6px; display: flex; gap: 10px; align-items: center; font-size: 13px; }
+  .pitem i { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--red); flex: none; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } .preview { position: static; display: flex; flex-direction: column; align-items: center; } }
+  @media (max-width: 760px) {
+    .app { grid-template-columns: 1fr; } .side { display: none; } main { padding: 16px; }
+    .picker select { min-width: 0; width: 100%; } .grid4, .kinds { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid2 { grid-template-columns: 1fr; } .msg { grid-template-columns: 1fr; } .phone { width: 100%; max-width: 340px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><b>Iron Lady</b><span>CMS · Customer Experience</span></div>
+    <nav class="nav">
+      <a class="on">Batches<small>Everything for one batch</small></a>
+      <div class="adv">Advanced · Program Lead</div>
+      <a>Program templates<small>Default reminders per program</small></a>
+      <a>IL Guide settings<small>Playbook · quotations</small></a>
+    </nav>
+    <div class="who">ananya@ironlady.tech<br/>CEM · batches</div>
+  </aside>
+
+  <main>
+    <h1>Batches</h1>
+    <p class="lead">Pick a batch. Choose who you want to look at. Everything below — and the phone — follows that choice.</p>
+
+    <section class="picker">
+      <div class="top">
+        <div><span class="lbl">Program</span>
+          <select id="program">
+            <option value="lep">LEP · Leadership Essentials</option>
+            <option value="bm">100BM · 100 Board Members</option>
+            <option value="mbw">MBW · Master of Business Warfare</option>
+          </select>
+        </div>
+        <div><span class="lbl">Batch</span><select id="batch"></select></div>
+        <div id="remStatus"></div>
+      </div>
+      <div class="who-row" id="who"></div>
+    </section>
+
+    <div class="layout">
+      <section>
+        <div class="tabs" id="tabs">
+          <button data-t="content" class="on">Sessions &amp; recordings</button>
+          <button data-t="messages">Messages</button>
+          <button data-t="engage">Engage</button>
+          <button data-t="practice">Practice</button>
+          <button data-t="dash">Dashboard</button>
+          <button data-t="setup">Batch setup</button>
+        </div>
+        <div id="panel"></div>
+      </section>
+
+      <aside class="preview">
+        <h4><span>What she sees in the app</span><span id="previewWho"></span></h4>
+        <div class="phone"><div class="screen">
+          <div class="pstatus"><span>9:41</span><span>●●● 5G</span></div>
+          <div class="pscroll" id="phone"></div>
+          <div class="ptabs" id="ptabs">
+            <button data-p="home" class="on">Home</button>
+            <button data-p="program">My Program</button>
+            <button data-p="practice">Practice</button>
+            <button data-p="engage">Engage</button>
+          </div>
+        </div></div>
+      </aside>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- Sample data ---------- */
+const PROGRAMS = {
+  lep: {
+    name: 'LEP',
+    batches: [
+      { id: 'lep-oct29', name: 'LEP · Orientation Thu 29 Oct 2026', counts: { register: 12, paid: 34, late: 5 }, on: true },
+      { id: 'lep-nov12', name: 'LEP · Orientation Thu 12 Nov 2026', counts: { register: 19, paid: 12, late: 0 }, on: false },
+    ],
+    sessions: [
+      { title: 'Orientation', d: 'Thu', n: 29, m: 'Oct', time: '7:00 PM', open: 'register', rec: true },
+      { title: 'Full Day — Day 1', d: 'Sat', n: 31, m: 'Oct', time: '9:00 AM', open: 'register', rec: false },
+      { title: 'Full Day — Day 2', d: 'Sun', n: 1, m: 'Nov', time: '9:00 AM', open: 'register', rec: false },
+      { title: 'Closure · Completion & Review', d: 'Tue', n: 3, m: 'Nov', time: '7:00 PM', open: 'paid', rec: null },
+      { title: 'Differentiated Brand', d: 'Sat', n: 7, m: 'Nov', time: '9:00 AM', open: 'paid', rec: null },
+      { title: 'Shameless Pitch', d: 'Sat', n: 14, m: 'Nov', time: '6:30 PM', open: 'paid', rec: null },
+      { title: 'Graduation', d: 'Sat', n: 28, m: 'Nov', time: '7:30 PM', open: 'paid', rec: null },
+    ],
+    phases: [['Pre-Program', 'register'], ['Orientation', 'register'], ['Day 1', 'register'], ['Day 2', 'paid'], ['Week 1', 'paid'], ['Week 2', 'paid'], ['Weeks 3–4', 'paid']],
+    next: { register: 'Fill the CoDeSeF Sheet', paid: 'Day 1 Assignment', late: 'Complete your VIA Survey' },
+    goal: 'become CHRO of a listed company by 2028',
+  },
+  bm: {
+    name: '100BM',
+    batches: [{ id: 'bm-sep', name: '100BM · Cohort starting 12 Sep 2026', counts: { register: 6, paid: 32, late: 3 }, on: true }],
+    sessions: [
+      { title: 'Onboarding call', d: 'Sat', n: 12, m: 'Sep', time: '10:00 AM', open: 'register', rec: true },
+      { title: 'Session 1 — Board Member Image Creation', d: 'Sat', n: 19, m: 'Sep', time: '10:00 AM', open: 'paid', rec: true },
+      { title: 'Session 2 — Mid Level Performance Excellence', d: 'Sat', n: 10, m: 'Oct', time: '10:00 AM', open: 'paid', rec: false },
+      { title: 'Session 3 — Leadership Super Power', d: 'Sat', n: 31, m: 'Oct', time: '10:00 AM', open: 'paid', rec: null },
+    ],
+    phases: [['Onboarding', 'register'], ['Phase 1 — Foundation', 'paid'], ['Phase 2 — Pitch & Strategy', 'paid'], ['Phase 3 — Board Ready', 'paid'], ['Graduation', 'paid']],
+    next: { register: 'Resume Preparation', paid: 'Theme Management', late: 'Core Story Practice Session' },
+    goal: 'secure an independent board seat',
+  },
+  mbw: {
+    name: 'MBW',
+    batches: [{ id: 'mbw-aug', name: 'MBW · Cohort starting 1 Aug 2026', counts: { register: 4, paid: 20, late: 2 }, on: true }],
+    sessions: [
+      { title: 'Orientation Session by Rajesh', d: 'Sat', n: 1, m: 'Aug', time: '11:00 AM', open: 'register', rec: true },
+      { title: 'Quarter 1 · Foundations', d: 'Sat', n: 22, m: 'Aug', time: '11:00 AM', open: 'paid', rec: true },
+      { title: 'Quarter 1 · Strategy Review', d: 'Sat', n: 31, m: 'Oct', time: '11:00 AM', open: 'paid', rec: null },
+    ],
+    phases: [['Pre-Preparation', 'register'], ['Quarter 1', 'paid'], ['Quarter 2', 'paid'], ['Quarter 3', 'paid'], ['Quarter 4', 'paid'], ['Graduation', 'paid']],
+    next: { register: '27 Principles', paid: 'ERRC', late: 'Orientation Session by Rajesh' },
+    goal: 'scale the business to 10 crore revenue',
+  },
+};
+
+// Automatic reminders, grouped under their session. Same three for every session.
+const AUTO = [
+  { when: 'Evening before', at: '7:00 PM', text: (s) => `Tomorrow: ${s.title} at ${s.time}. See you there.` },
+  { when: '1 hour before', at: '', text: (s) => `${s.title} starts in 1 hour. Join from the Iron Lady app.` },
+  { when: '10 minutes before', at: '', text: () => 'Starting in 10 minutes. Join from the Iron Lady app.' },
+];
+
+// Messages CX adds themselves.
+const CUSTOM = [
+  { when: 'Mon 2 Nov · 11:00 AM', title: 'Welcome — let’s get you up to speed', body: 'Welcome to your batch. Start with your VIA Survey; the Day 1 recording is waiting in My Program.', who: 'late' },
+  { when: 'Sun 1 Nov · 9:00 PM', title: 'Day 2 is ready when you are', body: 'Day 2 and the rest of your journey open when you complete your enrollment.', who: 'register' },
+];
+
+const ENGAGE = [
+  { kind: 'Event', title: 'Bengaluru Chapter Meetup', meta: 'Sat 7 Nov · 5:00 PM · Indiranagar', where: 'Whole program', who: 'all' },
+  { kind: 'Announcement', title: 'Day 1 photos are up — thank you for an amazing day', meta: 'Posted today', where: 'This batch', who: 'all' },
+  { kind: 'Video', title: 'C-Suite Talk: Leading through change', meta: '18 min · plays in the app', where: 'Whole program', who: 'all' },
+  { kind: 'Highlight', title: 'Kavya’s Shameless Pitch landed her a panel slot', meta: 'Win from your batch', where: 'This batch', who: 'paid' },
+];
+
+const PRACTICE = [
+  { title: '5 Daily Rituals', how: 'Tick each ritual', days: 'Every day · Mon 2 Nov – Sat 28 Nov', who: 'paid', video: true },
+  { title: 'A-Game Table', how: 'Fill one row', days: 'Every day · from Sat 31 Oct', who: 'all', video: false },
+  { title: 'Gratitude note', how: 'Write one line', days: 'Weekdays · Week 1 only', who: 'all', video: false },
+];
+
+/* ---------- State ---------- */
+const WHO = [
+  { v: 'all', label: 'All learners' },
+  { v: 'register', label: 'Part paid' },
+  { v: 'paid', label: 'Full paid' },
+  { v: 'late', label: 'Late joiners' },
+];
+const state = { program: 'lep', batch: null, who: 'all', tab: 'content', ptab: 'home', engageKind: 'Event', setupStep: 1 };
+const $ = (id) => document.getElementById(id);
+const P = () => PROGRAMS[state.program];
+const B = () => P().batches.find((b) => b.id === state.batch) || P().batches[0];
+const viewAs = () => (state.who === 'all' ? 'paid' : state.who); // the phone shows one learner
+const whoLabel = (v) => WHO.find((w) => w.v === v)?.label || v;
+const isLocked = (s) => s.open === 'paid' && state.who === 'register';
+const reaches = (who) => state.who === 'all' || who === 'all' || who === state.who || (state.who === 'late' && who === 'paid');
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1800); }
+
+/* ---------- Picker with counts ---------- */
+function fillBatches() {
+  $('batch').innerHTML = P().batches.map((b) => `<option value="${b.id}">${b.name}</option>`).join('');
+  state.batch = P().batches[0].id;
+}
+function renderPicker() {
+  const c = B().counts;
+  const total = c.register + c.paid;
+  const counts = { all: total, register: c.register, paid: c.paid, late: c.late };
+  const sub = { all: 'in this batch', register: 'registration paid', paid: 'fully enrolled', late: 'joined after Orientation' };
+  $('who').innerHTML = WHO.map((w) => `<button class="whobtn ${state.who === w.v ? 'on' : ''}" data-v="${w.v}"><b>${counts[w.v]}</b>${w.label}<br/><span>${sub[w.v]}</span></button>`).join('');
+  $('remStatus').innerHTML = B().on
+    ? '<span class="status on">● Automatic reminders on</span>'
+    : '<span class="status off">○ Automatic reminders off</span> <button class="btn red" style="margin-left:6px" onclick="toast(\'Reminders switched on for this batch\')">Start automatic reminders</button>';
+}
+$('program').onchange = (e) => { state.program = e.target.value; fillBatches(); render(); };
+$('batch').onchange = (e) => { state.batch = e.target.value; render(); };
+$('who').onclick = (e) => { const b = e.target.closest('.whobtn'); if (!b) return; state.who = b.dataset.v; render(); };
+$('tabs').onclick = (e) => {
+  const t = e.target.dataset.t; if (!t) return;
+  state.tab = t;
+  [...$('tabs').children].forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+  if (t === 'engage') setPhoneTab('engage');
+  if (t === 'practice') setPhoneTab('practice');
+  renderPanel();
+};
+$('ptabs').onclick = (e) => { const p = e.target.dataset.p; if (p) setPhoneTab(p); };
+function setPhoneTab(p) { state.ptab = p; [...$('ptabs').children].forEach((b) => b.classList.toggle('on', b.dataset.p === p)); renderPhone(); }
+
+function whoPicker(name, value = 'all') {
+  return `<div class="seg" data-name="${name}">${WHO.map((w) => `<button type="button" class="${w.v === value ? 'on' : ''}" onclick="pickSeg(this)">${w.label}</button>`).join('')}</div>`;
+}
+window.pickSeg = (btn) => { [...btn.parentElement.children].forEach((b) => b.classList.toggle('on', b === btn)); };
+
+/* ---------- Tabs ---------- */
+function contentPanel() {
+  const missing = P().sessions.filter((s) => s.rec === false && !isLocked(s)).length;
+  return `
+    ${missing ? `<div class="banner warn">${missing} session${missing > 1 ? 's need' : ' needs'} a recording. Paste the link below — learners always watch inside the app.</div>` : `<div class="banner ok">Every session that has happened has its recording.</div>`}
+    ${state.who === 'register' ? `<div class="banner info">Part-paid learners see only the first sessions. Greyed ones open when they complete enrollment.</div>` : ''}
+    ${P().sessions.map((s, i) => `
+      <div class="card ${isLocked(s) ? 'locked' : ''}"><div class="row">
+        <div class="date"><small>${s.d}</small><b>${s.n}</b><small>${s.m}</small></div>
+        <div class="grow">
+          <div class="title">${s.title}</div><div class="sub">${s.time} India time</div>
+          <div class="row" style="margin-top:8px">
+            ${isLocked(s) ? '<span class="chip lock">🔒 Full-paid learners only</span>'
+              : s.rec === null ? '<span class="chip wait">Recording · add after the session</span>'
+              : s.rec ? '<span class="chip ok">✓ Recording added</span>' : '<span class="chip miss">✕ Recording missing</span>'}
+          </div>
+          ${s.rec === false && !isLocked(s) ? `<div class="paste"><input id="rec${i}" placeholder="Paste the recording link (Zoom, Drive or YouTube)" /><button class="btn red" onclick="addRec(${i})">Add recording</button></div>` : ''}
+        </div>
+      </div></div>`).join('')}
+    <button class="btn ghost">+ Add a file or worksheet for this batch</button>`;
+}
+window.addRec = (i) => {
+  const input = $('rec' + i);
+  if (!input.value.trim()) { input.focus(); toast('Paste a link first'); return; }
+  P().sessions[i].rec = true; toast('Recording added — learners can watch it in the app now'); render();
+};
+
+function messagesPanel() {
+  const sessions = P().sessions.filter((s) => !isLocked(s));
+  const custom = CUSTOM.filter((m) => reaches(m.who));
+  return `
+    ${B().on ? '<div class="banner ok">Automatic reminders are on — each session below sends its reminders by itself.</div>'
+      : '<div class="banner warn">Automatic reminders are off for this batch. Press “Start automatic reminders” at the top when dates and Zoom links are right.</div>'}
+
+    <div class="form">
+      <h3>+ Send a message to this batch</h3>
+      <div class="field"><span class="lbl">Who gets it</span>${whoPicker('to', state.who)}</div>
+      <div class="grid2">
+        <div class="field"><span class="lbl">When</span><select class="inp"><option>Now</option><option>Pick a date and time…</option></select></div>
+        <div class="field"><span class="lbl">Heading</span><input class="inp" placeholder="e.g. Day 2 starts at 9 sharp" /></div>
+      </div>
+      <div class="field"><span class="lbl">Message</span><textarea placeholder="Write it the way you would say it to her."></textarea></div>
+      <div class="row"><button class="btn red" onclick="toast('Scheduled for this batch')">Schedule</button><button class="btn ghost" onclick="toast('Test sent to your phone')">Send test to my phone</button>
+        <span class="sub">Goes to the app as a notification. Shown in the phone on the right.</span></div>
+    </div>
+
+    ${custom.length ? `<span class="lbl" style="margin-top:6px">Messages you added</span>${custom.map((m) => `
+      <div class="card"><div class="row"><div class="grow"><div class="title">${m.title}</div><div class="sub">${m.when}</div></div><span class="chip aud">${whoLabel(m.who)}</span><button class="btn ghost">Edit</button></div>
+      <div class="bubble" style="margin-top:8px">${m.body}</div></div>`).join('')}` : ''}
+
+    <span class="lbl" style="margin-top:14px">Automatic session reminders</span>
+    ${sessions.map((s) => `
+      <div class="card">
+        <div class="row" style="margin-bottom:6px"><div class="date"><small>${s.d}</small><b>${s.n}</b><small>${s.m}</small></div>
+          <div class="grow"><div class="title">${s.title}</div><div class="sub">${s.d} ${s.n} ${s.m} · ${s.time}</div></div>
+          <span class="chip ${B().on ? 'ok' : 'wait'}">${B().on ? '3 reminders · automatic' : 'Off'}</span></div>
+        ${AUTO.map((a) => `<div class="msg"><div class="when">${a.when}<small>${a.at || 'before ' + s.time}</small></div><div class="bubble">${a.text(s)}</div><button class="btn ghost" onclick="toast('Test sent to your phone')">Test</button></div>`).join('')}
+      </div>`).join('')}
+    <details><summary>Messages that need attendance data (not sent yet)</summary>
+      <p class="sub">“Well done” after a session and “We missed you” only go to the right people once attendance comes from Zoom. Until then they stay off, so no one is told she was absent when she was there.</p>
+    </details>`;
+}
+
+function engagePanel() {
+  const kinds = [
+    ['Event', 'Meetup, webinar, chapter event'],
+    ['Announcement', 'News for the batch'],
+    ['Video', 'Talk or story — plays in the app'],
+    ['Highlight', 'A learner win, a photo'],
+  ];
+  const k = state.engageKind;
+  const extra = {
+    Event: `<div class="grid2"><div class="field"><span class="lbl">Date &amp; time</span><input class="inp" placeholder="Sat 7 Nov, 5:00 PM" /></div><div class="field"><span class="lbl">Place or join link</span><input class="inp" placeholder="Indiranagar, Bengaluru — or a Zoom link" /></div></div>`,
+    Announcement: '',
+    Video: `<div class="field"><span class="lbl">Video</span><input class="inp" placeholder="Paste a YouTube link or upload a video file" /><div class="sub">Plays inside the app. Learners are never sent to YouTube.</div></div>`,
+    Highlight: `<div class="field"><span class="lbl">Photo (optional)</span><input class="inp" placeholder="Drop a photo here" /></div>`,
+  }[k];
+  const items = ENGAGE.filter((e) => reaches(e.who));
+  return `
+    <div class="kinds">${kinds.map(([n, d]) => `<button class="kind ${k === n ? 'on' : ''}" onclick="state.engageKind='${n}'; renderPanel()"><b>+ ${n}</b><span>${d}</span></button>`).join('')}</div>
+    <div class="form">
+      <h3>New ${k.toLowerCase()}</h3>
+      <div class="field"><span class="lbl">Title</span><input class="inp" placeholder="What should she read first?" /></div>
+      ${extra}
+      <div class="field"><span class="lbl">Details</span><textarea placeholder="A short note"></textarea></div>
+      <div class="grid2">
+        <div class="field"><span class="lbl">Show in</span><div class="seg"><button type="button" class="on" onclick="pickSeg(this)">This batch</button><button type="button" onclick="pickSeg(this)">Whole program</button></div></div>
+        <div class="field"><span class="lbl">Who sees it</span>${whoPicker('engageWho')}</div>
+      </div>
+      <div class="row"><button class="btn red" onclick="toast('Posted — it is on her Engage tab now')">Post</button><span class="sub">Appears on the Engage tab right away.</span></div>
+    </div>
+    <span class="lbl">On Engage now</span>
+    ${items.map((e) => `<div class="card"><div class="row"><span class="chip wait">${e.kind}</span><div class="grow"><div class="title">${e.title}</div><div class="sub">${e.meta}</div></div><span class="chip aud">${e.where} · ${whoLabel(e.who)}</span><button class="btn ghost">Edit</button><button class="btn ghost">Remove</button></div></div>`).join('')}`;
+}
+
+function practicePanel() {
+  const items = PRACTICE.filter((p) => reaches(p.who));
+  return `
+    <div class="banner info">Daily practice is what she ticks on her Practice tab. Add an item, choose the days and who gets it.</div>
+    <div class="form">
+      <h3>+ Add a practice item</h3>
+      <div class="grid2">
+        <div class="field"><span class="lbl">Name</span><input class="inp" placeholder="e.g. 5 Daily Rituals" /></div>
+        <div class="field"><span class="lbl">What she does</span><input class="inp" placeholder="e.g. Tick each ritual" /></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><span class="lbl">Which days</span><select class="inp"><option>Every day</option><option>Weekdays</option><option>Pick dates…</option></select></div>
+        <div class="field"><span class="lbl">From – to</span><input class="inp" placeholder="Mon 2 Nov – Sat 28 Nov" /></div>
+      </div>
+      <div class="field"><span class="lbl">How-to video (optional)</span><input class="inp" placeholder="Paste a YouTube link or upload — plays in the app" /></div>
+      <div class="field"><span class="lbl">Who gets it</span>${whoPicker('practiceWho')}</div>
+      <div class="row"><button class="btn red" onclick="toast('Added to her Practice tab')">Add</button></div>
+    </div>
+    <span class="lbl">Practice for this batch</span>
+    ${items.map((p) => `<div class="card"><div class="row"><div class="grow"><div class="title">${p.title}</div><div class="sub">${p.how} · ${p.days}</div></div>${p.video ? '<span class="chip ok">▶ Video</span>' : ''}<span class="chip aud">${whoLabel(p.who)}</span><button class="btn ghost">Edit</button></div></div>`).join('')}`;
+}
+
+function dashPanel() {
+  const c = B().counts; const n = c.register + c.paid;
+  return `
+    <div class="grid4">
+      <div class="card stat"><b>${n}</b><span>Learners</span></div>
+      <div class="card stat"><b>${Math.round(n * 0.87)}</b><span>Opened the app</span></div>
+      <div class="card stat"><b>${Math.round(n * 0.65)}</b><span>Active this week</span></div>
+      <div class="card stat"><b>68%</b><span>Tasks done</span></div>
+    </div>
+    <div class="card"><b>Needs a call today</b><div class="sub" style="margin-top:6px">Meera K. — has not opened the app · Sunita R. — away 6 days · Divya P. — late joiner, catching up</div></div>`;
+}
+
+function setupPanel() {
+  const st = state.setupStep;
+  const step = (n, t, d) => `<div class="step ${st === n ? 'on' : st > n ? 'done' : ''}"><b>Step ${n}</b>${st > n ? '✓ ' : ''}${t}<div class="sub">${d}</div></div>`;
+  const body = {
+    1: `<div class="field"><span class="lbl">Which batch is starting?</span>
+          <select class="inp"><option>LEP_Batch: 29/10/2026 – 28/11/2026 (from Zoho)</option><option>LEP_Batch: 12/11/2026 – 12/12/2026 (from Zoho)</option></select>
+          <div class="sub">The list comes from Zoho. Linking to learners happens by itself.</div></div>
+        <button class="btn red big" onclick="state.setupStep=2; renderPanel()">Next</button>`,
+    2: `<div class="field"><span class="lbl">Orientation date (Thursday)</span><input class="inp" type="date" value="2026-10-29" /></div>
+        <div class="banner ok">✓ That makes Day 1 Sat 31 Oct, Day 2 Sun 1 Nov and Graduation Sat 28 Nov. All 7 session dates are filled in.</div>
+        <button class="btn ghost" onclick="state.setupStep=1; renderPanel()">Back</button> <button class="btn red big" onclick="state.setupStep=3; renderPanel()">Next</button>`,
+    3: `${P().sessions.map((s) => `<div class="row" style="margin-bottom:8px"><div style="width:240px"><b>${s.title}</b><div class="sub">${s.d} ${s.n} ${s.m} · ${s.time}</div></div><input class="inp grow" placeholder="Zoom link" /></div>`).join('')}
+        <div class="sub" style="margin-bottom:10px">You can add Zoom links later too.</div>
+        <button class="btn ghost" onclick="state.setupStep=2; renderPanel()">Back</button> <button class="btn red big" onclick="state.setupStep=4; renderPanel()">Save batch</button>`,
+    4: `<div class="banner ok">✓ Batch ready. Learners are linked, dates are set.</div>
+        <p>Last step: when you are happy with the dates and Zoom links, press <b>Start automatic reminders</b> at the top.</p>
+        <button class="btn ghost" onclick="state.setupStep=1; renderPanel()">Set up another batch</button>`,
+  }[st];
+  return `<div class="steps">${step(1, 'Pick the batch', 'from Zoho')}${step(2, 'Orientation date', 'dates fill in')}${step(3, 'Zoom links', 'optional now')}${step(4, 'Done', '')}</div><div class="card">${body}</div>`;
+}
+
+function renderPanel() {
+  $('panel').innerHTML = ({ content: contentPanel, messages: messagesPanel, engage: engagePanel, practice: practicePanel, dash: dashPanel, setup: setupPanel })[state.tab]();
+}
+
+/* ---------- Phone ---------- */
+function whisper() {
+  const p = P(); const v = viewAs();
+  if (v === 'register') return { msg: `Priya, you have finished everything open to you. Enroll to unlock Day 2 and the rest of your journey toward your goal to ${p.goal}.`, cta: 'See what’s next' };
+  if (v === 'late') return { msg: `Welcome, Priya — let’s get you up to speed. Start with “${p.next.late}”; the earlier session recordings are waiting in My Program.`, cta: 'Start catching up' };
+  return { msg: `Priya, a 6-day streak — real consistency. Next: “${p.next.paid}”, one more step toward your goal to ${p.goal}.`, cta: 'Open next step' };
+}
+function renderPhone() {
+  const p = P(); const v = viewAs(); const w = whisper();
+  const open = p.sessions.filter((s) => !(s.open === 'paid' && v === 'register'));
+  const up = open.find((s) => s.rec === null) || open[open.length - 1];
+  let html = '';
+  if (state.ptab === 'home') {
+    const pct = { register: 34, paid: 58, late: 12 }[v];
+    html = `<div class="hello">Good morning, Priya</div><div class="sub">${p.name} · ${whoLabel(v)}</div>
+      <div class="whisper"><div class="from">IL Guide</div><p>${w.msg}</p><button class="pbtn">${w.cta}</button></div>
+      <div class="ph">Coming up</div>${up ? `<div class="pcard"><div class="d"><small>${up.m}</small><b>${up.n}</b></div><div><b>${up.title}</b><div class="sub">${up.d} · ${up.time}</div></div></div>` : ''}
+      <div class="ph">Your journey · ${pct}%</div><div class="bar"><i style="width:${pct}%"></i></div>`;
+  } else if (state.ptab === 'program') {
+    html = `<div class="hello">My Program</div>
+      ${p.phases.map(([t, o]) => `<div class="phase ${o === 'paid' && v === 'register' ? 'locked' : ''}"><span>${t}</span><span>${o === 'paid' && v === 'register' ? '🔒' : '›'}</span></div>`).join('')}
+      <div class="ph">Session recordings</div>${open.filter((s) => s.rec).map((s) => `<div class="vid"><small>${s.title} · plays in app</small></div>`).join('') || '<div class="sub">Recordings appear after each session.</div>'}`;
+  } else if (state.ptab === 'practice') {
+    html = `<div class="hello">Today’s practice</div>${PRACTICE.filter((x) => x.who === 'all' || x.who === v || (v === 'late' && x.who === 'paid')).map((x) => `<div class="pitem"><i></i><div><b>${x.title}</b><div class="sub">${x.how}</div></div></div>`).join('')}`;
+  } else {
+    html = `<div class="hello">Engage</div>${ENGAGE.filter((e) => e.who === 'all' || e.who === v || (v === 'late' && e.who === 'paid')).map((e) => e.kind === 'Video'
+      ? `<div class="vid"><small>${e.title}</small></div>`
+      : `<div class="pcard"><div><span class="chip wait">${e.kind}</span><div style="margin-top:4px"><b>${e.title}</b></div><div class="sub">${e.meta}</div></div></div>`).join('')}`;
+  }
+  $('phone').innerHTML = html;
+  $('previewWho').textContent = state.who === 'all' ? 'Full paid (showing one learner)' : whoLabel(state.who);
+}
+
+function render() { renderPicker(); renderPanel(); renderPhone(); }
+fillBatches();
+render();
+</script>
+</body>
+</html>

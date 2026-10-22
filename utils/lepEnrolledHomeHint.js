@@ -55,6 +55,9 @@ function durationHours(startTime, endTime) {
   return Math.max(1, Math.round(b - a));
 }
 
+/** Orientation + intensive weekend only (registered home / pre–Day 1 My Program). */
+export const LEP_REGISTERED_INTENSIVE_CODES = new Set(['S0', 'S1', 'S2']);
+
 /**
  * Enrolled home “Next live session” card.
  *
@@ -64,14 +67,17 @@ function durationHours(startTime, endTime) {
  * (or a rare time/title override) when ops change something.
  *
  * @param {object|null} cmsBatch
- * @param {{ day1Iso?: string }} [opts] — Day 1 from Zoho LEP_Reg_Date when CMS row is missing
+ * @param {{ day1Iso?: string, registeredIntensiveOnly?: boolean }} [opts]
  */
 export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
   const day1 = String(cmsBatch?.day1Date || opts.day1Iso || '').slice(0, 10);
   const day2 = day1 ? addCalendarDays(day1, 1) : '';
   const anchor = cmsBatch || (day1 ? { day1Date: day1, sessions: [] } : null);
-  const raw = nextRawCmsSession(anchor, new Date(), { day1Iso: day1 });
-  const card = nextCmsBatchSession(anchor, new Date(), { day1Iso: day1 });
+  const sessionCodes = opts.registeredIntensiveOnly ? LEP_REGISTERED_INTENSIVE_CODES : null;
+  const raw = nextRawCmsSession(anchor, new Date(), { day1Iso: day1, sessionCodes });
+  const card = sessionCodes
+    ? null
+    : nextCmsBatchSession(anchor, new Date(), { day1Iso: day1 });
 
   if (raw || card?.title) {
     const dateIso = raw?.date ? String(raw.date).slice(0, 10) : '';
@@ -99,6 +105,19 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
       calendarUrl,
       ready: Boolean(joinLink),
       code: raw?.code || '',
+    };
+  }
+
+  if (sessionCodes && day1 && !raw) {
+    return {
+      kicker: 'Live sessions',
+      title: 'Orientation, Day 1 & Day 2',
+      when: 'Your intensive weekends are on your calendar',
+      hours: '',
+      joinLink: '',
+      calendarUrl: day1CalendarUrl(day1, '9:00 AM'),
+      ready: false,
+      code: '',
     };
   }
 

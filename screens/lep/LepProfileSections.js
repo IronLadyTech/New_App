@@ -15,7 +15,8 @@ import {
 import { buildProgramBatchCard } from '../../utils/lepBatchHero';
 import { formatLepDay } from '../../utils/registeredHomeData';
 import { resolveLepBatchDateLine } from '../../utils/lepDeskBatchDate';
-import { updateMyWelcomeProfile } from '../../services/functions';
+import { saveWelcomeProfileFields } from '../../services/functions';
+import { welcomeSaveFeedback } from '../../utils/participantSyncMessage';
 import { WhiteCard, RedCta } from './LepBits';
 
 const FILL = '#F7F1E1';
@@ -107,12 +108,14 @@ export function ProfileStrengthCard({ facts, onSaved }) {
       const local = key === 'domain' ? { domain: value, leadershipRole: value } : { city: value };
       onSaved?.(local);
       setEdit(null);
-      const result = await updateMyWelcomeProfile({ [key]: value });
-      if (result?.ok === false) {
-        Alert.alert('Saved on your profile', result?.reason || 'Zoho sync pending — pull to refresh later.');
+      const result = await saveWelcomeProfileFields({ [key]: value });
+      const feedback = welcomeSaveFeedback(result);
+      if (feedback.message && (feedback.isError || !feedback.zohoSynced)) {
+        Alert.alert(feedback.isError ? 'Could not save' : 'Saved', feedback.message);
       }
     } catch (err) {
-      Alert.alert('Saved on your profile', err?.message || 'Zoho sync pending — try again later.');
+      const feedback = welcomeSaveFeedback(null, err);
+      Alert.alert('Could not save', feedback.message);
     } finally {
       setSaving(false);
     }
@@ -236,12 +239,14 @@ export function ProfileBhagCard({ bhag, onSaved }) {
     try {
       onSaved?.({ bhag: value });
       setEdit(false);
-      const result = await updateMyWelcomeProfile({ bhag: value });
-      if (result?.ok === false) {
-        Alert.alert('Saved on your profile', result?.reason || 'Zoho sync pending — pull to refresh later.');
+      const result = await saveWelcomeProfileFields({ bhag: value });
+      const feedback = welcomeSaveFeedback(result);
+      if (feedback.message && (feedback.isError || !feedback.zohoSynced)) {
+        Alert.alert(feedback.isError ? 'Could not save' : 'Saved', feedback.message);
       }
     } catch (err) {
-      Alert.alert('Saved on your profile', err?.message || 'Zoho sync pending — try again later.');
+      const feedback = welcomeSaveFeedback(null, err);
+      Alert.alert('Could not save', feedback.message);
     } finally {
       setSaving(false);
     }
@@ -362,8 +367,16 @@ export function EnrollmentStatusCard({ program, source, group, cmsBatch, onEnrol
         <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
           ENROLLMENT STATUS
         </ILText>
-        <View style={{ backgroundColor: G.pink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
+        <View
+          style={{
+            backgroundColor: G.pink,
+            borderRadius: 999,
+            paddingHorizontal: 10,
+            paddingVertical: 4,
+            maxWidth: '52%',
+          }}
+        >
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]} numberOfLines={2}>
             {enrolled ? 'Enrolled' : 'Seat reserved · Pending enrollment'}
           </ILText>
         </View>
@@ -449,11 +462,9 @@ export function EnrollmentStatusCard({ program, source, group, cmsBatch, onEnrol
           </Pressable>
         </View>
       )}
-      {!enrolled ? (
-        <View style={{ marginTop: 14 }}>
-          <RedCta label="Complete your enrollment →" onPress={onEnroll} />
-        </View>
-      ) : null}
+      <View style={{ marginTop: 14, minHeight: enrolled ? 0 : 52 }}>
+        {!enrolled ? <RedCta label="Complete your enrollment →" onPress={onEnroll} /> : null}
+      </View>
       <Pressable
         onPress={onHelp}
         style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
