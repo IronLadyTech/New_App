@@ -39,6 +39,9 @@ il-guide-api/**/__pycache__/
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (iOS only — android/ is committed for EAS + notification plugin)
 /ios
-/android
+android/build/
+android/.gradle/
+android/app/build/
+android/.cxx/

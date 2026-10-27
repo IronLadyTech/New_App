@@ -11,6 +11,10 @@ web-build/
 .expo/
 android/build/
 android/.gradle/
+android/app/build/
+android/.cxx/
+reports/
+research_notes/
 **/.gradle/
 **/*.apk
 **/*.aab
