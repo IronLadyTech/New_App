@@ -39,14 +39,26 @@ export const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-let auth;
-try {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
-} catch {
-  auth = getAuth(app);
+function createNativeAuth() {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+  if (typeof getReactNativePersistence === 'function') {
+    try {
+      return initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+    } catch (err) {
+      const msg = String(err?.message || '');
+      if (!/already exists/i.test(msg)) {
+        console.warn('[firebase] initializeAuth:', msg);
+      }
+    }
+  }
+  return getAuth(app);
 }
+
+const auth = createNativeAuth();
 
 // Match web LMS: long-polling helps on flaky mobile networks
 export const db = initializeFirestore(app, {
