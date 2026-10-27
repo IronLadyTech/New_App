@@ -26,7 +26,18 @@ const ANDROID_FIREBASE = {
   appId: '1:829229653695:android:66df2d9eca9a9066eff00a',
 };
 
-const native = Platform.OS === 'android' ? ANDROID_FIREBASE : WEB_FIREBASE;
+/** From GoogleService-Info.plist — required for native iOS auth / FCM. */
+const IOS_FIREBASE = {
+  apiKey: 'AIzaSyAERbe0Sm0tRzK3WYuwn3mrmczYZR0hs2o',
+  appId: '1:829229653695:ios:94a2598fe833fa34eff00a',
+};
+
+const native =
+  Platform.OS === 'android'
+    ? ANDROID_FIREBASE
+    : Platform.OS === 'ios'
+      ? IOS_FIREBASE
+      : WEB_FIREBASE;
 
 export const firebaseConfig = {
   apiKey: native.apiKey,

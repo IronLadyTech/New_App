@@ -9,7 +9,8 @@
     "scheme": "lmsapp",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ironlady.app"
+      "bundleIdentifier": "com.ironlady.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "androidStatusBar": {
       "translucent": true,
