@@ -871,22 +871,21 @@ function NextVideoCard({ item, onPress }) {
             Next to watch
           </ILText>
         </View>
+        {/* Corner, not centre — the thumbnails carry their title in the middle. */}
         <View
           style={{
             position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: 48,
-            height: 48,
-            marginLeft: -24,
-            marginTop: -24,
-            borderRadius: 24,
+            left: 10,
+            bottom: 10,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             backgroundColor: G.cta,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <MaterialIcons name="play-arrow" size={26} color="#FFFFFF" />
+          <MaterialIcons name="play-arrow" size={24} color="#FFFFFF" />
         </View>
         <ILText role="label" color="#FFFFFF" style={{ position: 'absolute', right: 12, bottom: 10, fontSize: 13 }}>
           {item.min}

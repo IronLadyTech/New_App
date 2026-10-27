@@ -50,17 +50,19 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/android-icon-monochrome.png",
+          "icon": "./assets/android-icon-foreground.png",
+          "largeIcon": "./assets/icon.png",
           "color": "#ED1D24",
           "defaultChannel": "default"
         }
       ],
-      "./plugins/withIronLadyNotificationBrand.js",
       "expo-font",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Iron Lady to use a photo for your profile."
+          "photosPermission": "Allow Iron Lady to use a photo for your profile or a video for your task.",
+          "cameraPermission": "Allow Iron Lady to use the camera to record your task video.",
+          "microphonePermission": "Allow Iron Lady to use the microphone for your task video."
         }
       ],
       [

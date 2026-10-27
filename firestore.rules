@@ -598,6 +598,13 @@ service cloud.firestore {
       allow write: if cmsBatchEditor();
     }
 
+    // Guest app content CX edits (Masterclass recordings, home slides). Guests are often
+    // not signed in, so published items are public — it is marketing copy, nothing private.
+    match /cms_guest/{id} {
+      allow read: if cmsViewer() || resource.data.published == true;
+      allow write: if cmsBatchEditor();
+    }
+
     match /cms_practice/{id} {
       allow read: if cmsViewer() || (isSignedIn() && resource.data.published == true);
       allow write: if cmsBatchEditor();

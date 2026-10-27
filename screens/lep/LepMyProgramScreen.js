@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
@@ -53,7 +53,7 @@ const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
 // Registered = partial payment = partial unlock. Everything after these stays locked.
 const REG_OPEN_PHASES = 3;
 
-export default function LepMyProgramScreen() {
+export default function LepMyProgramScreen({ route }) {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
@@ -63,7 +63,11 @@ export default function LepMyProgramScreen() {
   const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
   const alumniGraduate =
     enrolled && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
-  const [tab, setTab] = useState('Journey');
+  const [tab, setTab] = useState(route?.params?.tab || 'Journey');
+  // Links (CMS preview, notifications) can ask for a tab, e.g. { tab: 'Sessions' }.
+  useEffect(() => {
+    if (route?.params?.tab) setTab(route.params.tab);
+  }, [route?.params?.tab]);
 
   return (
     <Page>

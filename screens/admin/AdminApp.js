@@ -15,12 +15,14 @@ import ILGuideAdmin from './ILGuideAdmin';
 import BatchHubAdmin from './BatchHubAdmin';
 import AnalyticsAdmin from './AnalyticsAdmin';
 import GuestsAdmin from './GuestsAdmin';
+import GuestContentAdmin from './GuestContentAdmin';
 import { AdminWorkflowStrip } from './AdminSectionGuide';
 
 const SECTIONS = [
   { key: 'hub', label: 'Batches', hint: 'Content · messages · Engage · live preview', Screen: BatchHubAdmin },
   { key: 'analytics', label: 'App analytics', hint: 'Who opens the app · activity · practice', Screen: AnalyticsAdmin },
   { key: 'guests', label: 'App guests', hint: 'Guests · Masterclass · follow-up', Screen: GuestsAdmin },
+  { key: 'guestContent', label: 'Guest app', hint: 'Recordings · home slides · events', Screen: GuestContentAdmin },
   // Program Lead tools — CX does not need these day to day.
   { key: 'templates', label: 'Program templates', hint: 'Default reminder rules', Screen: NotificationsAdmin, advanced: true },
   { key: 'ilguide', label: 'IL Guide settings', hint: 'Playbook · quotations', Screen: ILGuideAdmin, advanced: true },
@@ -149,6 +151,9 @@ export default function AdminApp() {
             canManage={canEdit}
             isAdmin={isAdmin}
             onOpenTemplates={() => go('templates')} />
+        ) : section === 'guestContent' ? (
+          // CX edit guest content too, like batches.
+          <GuestContentAdmin canEdit={canEditBatch} />
         ) : (
           <Active canEdit={canEdit} />
         )}

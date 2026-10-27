@@ -109,7 +109,7 @@ export default function CourseCurriculum({
             Course
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 2 }}>
-            Phase by phase, from Moodle
+            Phase by phase · tap one to see its tasks
           </ILText>
         </>
       ) : null}
@@ -121,11 +121,12 @@ export default function CourseCurriculum({
           : phase.openRegistered === false ||
               (phase.openRegistered == null && i >= 3) ||
               !isPhaseOpen(phase, false, lepFlow);
-        const done = enrolled && i < currentIndex;
         const now = phase.id === phaseId;
         const expanded = phase.id === activeId;
         const tasks = courseTasks(programId, phase.id);
         const doneCount = tasks.filter((t) => taskIsDone(programId, t.id)).length;
+        // Earlier phases only get a tick once their tasks are done, so it agrees with the % above.
+        const done = enrolled && i < currentIndex && doneCount >= tasks.length;
         const nextTask = tasks.find((t) => !taskIsDone(programId, t.id));
         const prevTitle = phases[i - 1]?.title;
 

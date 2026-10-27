@@ -42,7 +42,7 @@ import {
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
-import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
+import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 
 export default function LepLearnScreen() {
@@ -1489,9 +1489,11 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
                 {featured.eyebrow}
               </ILText>
             </View>
-            <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ fontSize: 12 }}>
-              {featured.mode === 'offline' ? 'In person' : 'Live · Online'}
-            </ILText>
+            {armyEventModeLabel(featured) ? (
+              <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ fontSize: 12 }}>
+                {armyEventModeLabel(featured)}
+              </ILText>
+            ) : null}
           </View>
           <ILText
             role="display"

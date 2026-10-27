@@ -6,6 +6,7 @@ import {
   importCmsBatchesFromZohoBatchKeys,
   subscribeToBatches,
   subscribeToContent,
+  backfillContentPublished,
   subscribeToEvents,
   saveBatch,
   ensureCmsQaTestPack,
@@ -79,6 +80,16 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [qaPhone, setQaPhone] = useState('8309882198');
+  // Where the phone preview opens: the item CX just saved, else the screen this tab edits.
+  const [savedFocus, setSavedFocus] = useState(null);
+  useEffect(() => setSavedFocus(null), [tab, batchId]);
+  const previewFocus =
+    savedFocus ||
+    (tab === 'content' && programId === PROGRAMS.LEP
+      ? { to: 'sessions' }
+      : tab === 'engage'
+        ? { to: 'engage' }
+        : null);
 
   useEffect(
     () =>
@@ -93,6 +104,9 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
   }, [batches.length]);
   useEffect(() => subscribeToEvents(setEvents, () => {}), []);
   useEffect(() => subscribeToContent(setContent, () => {}), []);
+  useEffect(() => {
+    if (canEdit && content.length) backfillContentPublished(content).catch(() => {});
+  }, [canEdit, content]);
 
   // Default to the newest batch of the chosen program.
   useEffect(() => {
@@ -487,6 +501,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
               contentItems={content}
               canEdit={canEdit}
               onRefresh={() => {}}
+              onSaved={setSavedFocus}
             />
           ) : null}
           {tab === 'calendar' ? <BatchHubCalendarTab batch={batch} programId={programId} canEdit={canEdit} /> : null}
@@ -568,6 +583,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
           programId={programId}
           batchId={batch?.id || ''}
           learner={learner}
+          focus={previewFocus}
           version={`${content.length}|${batch?.updatedAt?.seconds || ''}|${content[0]?.updatedAt?.seconds || ''}`}
         />
       </Row>

@@ -30,7 +30,7 @@ import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { filterLepPrework } from '../../utils/lepRitualsUnlock';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
-import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
+import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
 import CmsEngageFeed from '../../components/lep/CmsEngageFeed';
 import { useNavigation } from '@react-navigation/native';
 
@@ -232,9 +232,11 @@ function EnrolledEngage({ nav, topPad }) {
                 {featured.eyebrow}
               </ILText>
             </View>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }} numberOfLines={1}>
-              {featured.mode === 'offline' ? 'In person' : 'Live · Online'}
-            </ILText>
+            {armyEventModeLabel(featured) ? (
+              <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }} numberOfLines={1}>
+                {armyEventModeLabel(featured)}
+              </ILText>
+            ) : null}
           </View>
           <ILText
             role="title"

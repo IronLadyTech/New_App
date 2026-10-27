@@ -13,7 +13,23 @@ export const CMS = {
   BATCH_MESSAGES: 'cms_batch_messages',
   ENGAGE: 'cms_engage',
   PRACTICE: 'cms_practice',
+  GUEST: 'cms_guest',
 };
+
+/** What CX edits for the guest app (cms_guest `kind`). Events come from the Army Google Sheet. */
+export const GUEST_KINDS = {
+  MC_RECORDING: 'mc_recording',
+  HOME_SLIDE: 'home_slide',
+};
+
+/** Where a guest home slide's button goes: a program page, or any link. */
+export const GUEST_SLIDE_TARGETS = [
+  { value: 'mc', label: 'Masterclass page' },
+  { value: 'lep', label: 'LEP page' },
+  { value: '100bm', label: '100BM page' },
+  { value: 'mbw', label: 'MBW page' },
+  { value: 'link', label: 'A link (website, form, WhatsApp)' },
+];
 
 /** Fixed id for CMS-only QA cohort (not in Zoho / LMS groups). */
 export const CMS_QA_BATCH_ID = 'lep-cms-qa-oct2026';

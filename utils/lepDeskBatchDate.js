@@ -4,11 +4,11 @@ import {
   parseISODate,
 } from './lepBatchSchedule';
 
-/** Zoho LEP start (LEP_Reg_Date): Wednesday before Day 1 Saturday. */
+/** Zoho LEP cohort start / LEP_Reg_Date / LEP_Batch range start = Day 1 Saturday. */
 export function lepZohoCohortStartFromDay1(day1Iso) {
   const day1 = String(day1Iso || '').slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return '';
-  return addCalendarDays(day1, -3);
+  return day1;
 }
 
 export function lepZohoCohortEndFromDay1(day1Iso) {
@@ -158,8 +158,8 @@ export function addOneCalendarMonth(iso) {
 }
 
 /**
- * Zoho-style batch range from Day 1 Saturday: Wed cohort start → +1 month (matches LEP_Reg_Date / LEP_End_Date).
- * e.g. Day 1 Sat 31 Oct → `28/10/2026 - 28/11/2026`
+ * Zoho-style batch range from Day 1 Saturday → same calendar day +1 month (LEP_Reg_Date / LEP_End_Date).
+ * e.g. Day 1 Sat 31 Oct → `31/10/2026 - 30/11/2026`
  */
 export function zohoLepBatchKeyFromDay1(day1Iso) {
   const start = lepZohoCohortStartFromDay1(day1Iso);

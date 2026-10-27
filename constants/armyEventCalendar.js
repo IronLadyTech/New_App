@@ -6,6 +6,9 @@ function csvUrl(gid) {
 }
 
 /** Year-specific Event Planner tabs (same workbook the team edits). */
+/** Where CX edit events — the app reads the CSV export of these tabs. */
+export const ARMY_EVENTS_SHEET_EDIT_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
+
 export const ARMY_EVENTS_SHEETS = [
   { year: 2026, gid: '7358671', name: 'Event Planner 2026', csvUrl: csvUrl('7358671') },
   { year: 2027, gid: '2046982350', name: 'Event Planner 2027', csvUrl: csvUrl('2046982350') },

@@ -36,6 +36,7 @@ import PracticeVideo from '../../components/program/PracticeVideo';
 import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
+import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { isProgramTaskDone } from '../../utils/taskDone';
 import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose } from '../../utils/lepTaskInsideCopy';
@@ -49,7 +50,7 @@ import {
 } from '../../utils/lepAlumniTaskCopy';
 
 /** Map journey UI state → LMS submitProgramTask fields. */
-function lmsFieldsForJourneyTask(task, { text, link, form, checked, picked }) {
+function lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded }) {
   const type = task?.type;
   if (type === TASK_TYPES.WATCH_ONLY) {
     return { watchCompleted: true, watchProgress: 1 };
@@ -67,7 +68,7 @@ function lmsFieldsForJourneyTask(task, { text, link, form, checked, picked }) {
     return { textValue: String(text || '').trim() };
   }
   if (type === TASK_TYPES.FILE_UPLOAD || type === TASK_TYPES.VIDEO_RECORD) {
-    return { note: picked || 'Completed in app' };
+    return uploaded || { note: 'Completed in app' };
   }
   return { note: 'Completed in app' };
 }
@@ -206,11 +207,27 @@ function ChosenChip({ label }) {
   );
 }
 
+function chosenLabel(picked) {
+  const size = picked?.size ? ` · ${(picked.size / (1024 * 1024)).toFixed(1)} MB` : '';
+  return `${picked?.name || 'Chosen file'}${size}`;
+}
+
+/** What she already handed in, so a resubmit is a choice, not a guess. */
+function SubmittedFileChip({ submission }) {
+  const url = submission?.videoUrl || submission?.fileUrl;
+  if (!url) return null;
+  return (
+    <Pressable onPress={() => Linking.openURL(url).catch(() => {})} accessibilityRole="link">
+      <ChosenChip label={`Submitted: ${submission.fileName || 'your file'} · tap to open`} />
+    </Pressable>
+  );
+}
+
 export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
   const demo = useCourseDemo();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { getTaskSubmission, submitTask } = usePrograms();
   const programId = route.params?.programId || PROGRAMS.LEP;
   const taskId = route.params?.taskId;
@@ -234,8 +251,13 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [link, setLink] = useState('');
   const [form, setForm] = useState({});
   const [checked, setChecked] = useState([]);
-  const [picked, setPicked] = useState('');
-  const [watched, setWatched] = useState(false);
+  /** { uri, name, mimeType, size } chosen for a file / video task — uploaded on Submit. */
+  const [picked, setPicked] = useState(null);
+  const [uploadPct, setUploadPct] = useState(null);
+  // Furthest point watched (0–1), and whether playback started — "Mark watched" waits for 90%.
+  const [watchMax, setWatchMax] = useState(null);
+  const [watchStarted, setWatchStarted] = useState(false);
+  const [watchUntracked, setWatchUntracked] = useState(false);
   const [videoUri, setVideoUri] = useState(null);
   const [done, setDone] = useState(false);
   const [submittedAt, setSubmittedAt] = useState(null);
@@ -311,8 +333,11 @@ export default function CourseTaskScreen({ route, navigation }) {
     setText('');
     setLink('');
     setChecked([]);
-    setPicked('');
-    setWatched(false);
+    setPicked(null);
+    setUploadPct(null);
+    setWatchMax(null);
+    setWatchStarted(false);
+    setWatchUntracked(false);
 
     const saved = isErrcTask ? demo.getSubmission(programId, taskId) : null;
     const savedErrcOk =
@@ -340,14 +365,44 @@ export default function CourseTaskScreen({ route, navigation }) {
     );
   }, [programId, taskId, task?.templateId, demo.isDone, demo.done, getTaskSubmission]);
 
+  // Some players (an old YouTube embed) report no progress — never leave the learner stuck.
+  useEffect(() => {
+    if (!watchStarted || watchMax !== null) return undefined;
+    const t = setTimeout(() => setWatchUntracked(true), 30000);
+    return () => clearTimeout(t);
+  }, [watchStarted, watchMax]);
+
+  const pickFile = async (source) => {
+    try {
+      const chosen = source === 'file' ? await pickTaskDocument() : await pickTaskVideo(source);
+      if (chosen) setPicked(chosen);
+    } catch (e) {
+      Alert.alert(e?.code === 'permission' ? 'Permission needed' : 'Could not use that file', e?.message || 'Try again.');
+    }
+  };
+
   const submit = async () => {
     if (syncing || !task?.id) return;
     setSyncing(true);
     try {
+      let uploaded = null;
+      const isUpload = task.type === TASK_TYPES.FILE_UPLOAD || task.type === TASK_TYPES.VIDEO_RECORD;
+      // Preview / demo learners have no Storage folder; real learners always upload.
+      if (isUpload && picked && user?.uid && user.uid !== 'preview') {
+        setUploadPct(0);
+        uploaded = await uploadTaskSubmission({
+          programId,
+          userId: user.uid,
+          taskId: task.id,
+          kind: task.type === TASK_TYPES.VIDEO_RECORD ? 'video' : 'file',
+          picked,
+          onProgress: setUploadPct,
+        });
+      }
       await submitTask(
         programId,
         task,
-        lmsFieldsForJourneyTask(task, { text, link, form, checked, picked })
+        lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded })
       );
       if (isErrcTask) {
         demo.saveSubmission(programId, taskId, form);
@@ -367,6 +422,7 @@ export default function CourseTaskScreen({ route, navigation }) {
       );
     } finally {
       setSyncing(false);
+      setUploadPct(null);
     }
   };
 
@@ -392,6 +448,8 @@ export default function CourseTaskScreen({ route, navigation }) {
 
   const type = task.type;
   const items = task.checklistItems || [];
+  // Watched 90%, or the player cannot report progress (never strand her).
+  const canMarkWatched = !!videoUri && ((watchMax || 0) >= 0.9 || watchUntracked);
   const ready =
     type === TASK_TYPES.TEXT
       ? !!text.trim()
@@ -400,12 +458,12 @@ export default function CourseTaskScreen({ route, navigation }) {
         : type === TASK_TYPES.CHECKLIST
           ? items.length > 0 && checked.length >= items.length
           : type === TASK_TYPES.WATCH_ONLY
-            ? watched
+            ? canMarkWatched
             : type === TASK_TYPES.EDITABLE_TEMPLATE
               ? task.templateId
                 ? isTemplateComplete(task.templateId, form)
                 : isGenericTemplateComplete(form)
-              : !!picked || done;
+              : !!picked; // file / video: a (re)submission needs a file chosen now
 
   const baseCta =
     type === TASK_TYPES.WATCH_ONLY
@@ -593,27 +651,26 @@ export default function CourseTaskScreen({ route, navigation }) {
         {type === TASK_TYPES.WATCH_ONLY ? (
           <View style={{ marginTop: 18 }}>
             {videoUri ? (
-              <PracticeVideo uri={videoUri} poster={videoPoster} height={210} trackKey={`${programId}:${taskId}`} />
+              <PracticeVideo
+                uri={videoUri}
+                poster={videoPoster}
+                height={210}
+                trackKey={`${programId}:${taskId}`}
+                onStart={() => setWatchStarted(true)}
+                onProgress={(f) => setWatchMax((m) => Math.max(m || 0, f))}
+              />
             ) : (
               <ILText role="bodySm" color={G.meta} style={{ fontSize: 13 }}>
                 Loading session recording…
               </ILText>
             )}
-            <Pressable
-              onPress={() => videoUri && setWatched(true)}
-              accessibilityRole="button"
-              style={{
-                marginTop: 12,
-                borderRadius: 999,
-                paddingVertical: 14,
-                backgroundColor: watched ? G.dark : videoUri ? G.cta : G.dash,
-                alignItems: 'center',
-              }}
-            >
-              <ILText role="label" color="#FFFFFF">
-                {watched ? 'Marked watched' : 'Mark watched'}
+            {!canMarkWatched && videoUri && !done ? (
+              <ILText role="bodySm" color={G.meta} align="center" style={{ marginTop: 10, fontSize: 12 }}>
+                {watchMax
+                  ? `Watched ${Math.round(watchMax * 100)}% — keep going to mark it watched.`
+                  : 'Watch the video to mark it watched.'}
               </ILText>
-            </Pressable>
+            ) : null}
           </View>
         ) : null}
 
@@ -653,19 +710,21 @@ export default function CourseTaskScreen({ route, navigation }) {
 
         {type === TASK_TYPES.VIDEO_RECORD ? (
           <View style={{ marginTop: 8 }}>
-            <PickCard
-              icon="videocam"
-              title="Record video"
-              sub="Use the camera on this phone"
-              onPress={() => setPicked('Recorded just now · 0:42')}
-            />
+            {Platform.OS !== 'web' ? (
+              <PickCard
+                icon="videocam"
+                title="Record video"
+                sub="Use the camera on this phone · up to 5 min"
+                onPress={() => pickFile('camera')}
+              />
+            ) : null}
             <PickCard
               icon="video-library"
               title="Choose from library"
-              sub="Pick a video already on this phone"
-              onPress={() => setPicked(`${task.title}.mov`)}
+              sub="Pick a video already on this phone · up to 200 MB"
+              onPress={() => pickFile('library')}
             />
-            {picked ? <ChosenChip label={picked} /> : null}
+            {picked ? <ChosenChip label={chosenLabel(picked)} /> : <SubmittedFileChip submission={getTaskSubmission(programId, taskId)} />}
           </View>
         ) : null}
 
@@ -674,10 +733,10 @@ export default function CourseTaskScreen({ route, navigation }) {
             <PickCard
               icon="attach-file"
               title="Choose file"
-              sub="PDF or Word · demo pick"
-              onPress={() => setPicked(`${task.title}.pdf`)}
+              sub="PDF, Word or photo · up to 15 MB"
+              onPress={() => pickFile('file')}
             />
-            {picked ? <ChosenChip label={picked} /> : null}
+            {picked ? <ChosenChip label={chosenLabel(picked)} /> : <SubmittedFileChip submission={getTaskSubmission(programId, taskId)} />}
           </View>
         ) : null}
 
@@ -730,7 +789,7 @@ export default function CourseTaskScreen({ route, navigation }) {
             <>
               <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
                 <RedCta
-                  label={syncing ? 'Saving…' : cta}
+                  label={syncing ? (uploadPct !== null ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
                   onPress={ready && !syncing ? submit : () => {}}
                 />
               </View>

@@ -61,7 +61,16 @@ function StatusChip({ tone, label }) {
  * Sessions & content for one batch, seen as one kind of learner.
  * `learner` is 'register' | 'paid' | 'late' — part-paid hides what she cannot open yet.
  */
-export default function BatchHubContentTab({ batch, programId = PROGRAMS.LEP, learner = 'paid', contentItems, canEdit, onRefresh }) {
+/** onSaved({ to, taskId?, label }) — after a save, so the app preview can open where it shows. */
+export default function BatchHubContentTab({
+  batch,
+  programId = PROGRAMS.LEP,
+  learner = 'paid',
+  contentItems,
+  canEdit,
+  onRefresh,
+  onSaved,
+}) {
   const [openPhase, setOpenPhase] = useState(null);
   const partPaid = learner === 'register';
   const phases = useMemo(() => coursePhases(programId), [programId]);
@@ -139,7 +148,10 @@ export default function BatchHubContentTab({ batch, programId = PROGRAMS.LEP, le
                         sessionCode={s.code}
                         sessionTitle={s.title}
                         existing={rec}
-                        onRefresh={onRefresh}
+                        onRefresh={() => {
+                          onRefresh?.();
+                          onSaved?.({ to: 'sessions', label: `${s.title || s.code} recording` });
+                        }}
                       />
                     ) : null}
                   </View>
@@ -188,7 +200,15 @@ export default function BatchHubContentTab({ batch, programId = PROGRAMS.LEP, le
                         <T size={11} color={A.muted} style={{ marginTop: 4 }}>No file yet</T>
                       )}
                       {canEdit ? (
-                        <TaskUploadInline taskId={task.id} cmsProgram={cmsProgram} batchId={batch.id} onDone={onRefresh} />
+                        <TaskUploadInline
+                          taskId={task.id}
+                          cmsProgram={cmsProgram}
+                          batchId={batch.id}
+                          onDone={() => {
+                            onRefresh?.();
+                            onSaved?.({ to: 'task', taskId: task.id, label: task.title });
+                          }}
+                        />
                       ) : null}
                     </View>
                   );

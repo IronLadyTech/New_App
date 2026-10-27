@@ -122,7 +122,7 @@ function firstName(profile) {
 
 /**
  * One-time welcome after install / first open.
- * Large Iron Lady logo on Android comes from manifest large_notification_icon.
+ * Full-color Iron Lady logo in the notification header/shade: app.json expo-notifications largeIcon → notification_large_icon.
  */
 export async function scheduleWelcomeNotification() {
   const Notifications = notifications();

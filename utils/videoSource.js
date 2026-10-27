@@ -52,7 +52,8 @@ export function toPlayerSource(uri) {
 export function youtubeEmbedUri(id) {
   const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
   // rel=0 keeps suggestions to the same channel; iv_load_policy=3 hides annotation links.
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&origin=${origin}`;
+  // enablejsapi=1 lets the wrapper page hear playback progress (youtubeEmbedHtml).
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`;
 }
 
 /** HTML wrapper so WebView has a valid baseUrl (fixes YouTube Error 153). */
@@ -84,6 +85,34 @@ export function youtubeEmbedHtml(id, { width, height } = {}) {
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
       allowfullscreen
     ></iframe>
+    <script>
+      // Ask the player for its state ("listening"), then relay time/duration to the app.
+      (function () {
+        var f = document.querySelector('iframe');
+        var duration = 0;
+        var heard = false;
+        function send(m) {
+          if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(m));
+        }
+        window.addEventListener('message', function (e) {
+          if (String(e.origin).indexOf('youtube') === -1) return;
+          var d;
+          try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch (_) { return; }
+          heard = true;
+          var info = d && d.info;
+          if (!info) return;
+          if (info.duration) duration = info.duration;
+          if (typeof info.currentTime === 'number' && duration) send({ yt: 'progress', t: info.currentTime, d: duration });
+          if (info.playerState === 0) send({ yt: 'ended' });
+        });
+        // The player only answers once it is ready, so keep asking until it does (≤ 20 s).
+        var tries = 0;
+        var ask = setInterval(function () {
+          if (heard || ++tries > 40) return clearInterval(ask);
+          f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
+        }, 500);
+      })();
+    </script>
   </body>
 </html>`;
 }

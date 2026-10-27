@@ -27,6 +27,10 @@ export function navigateFromGo(go) {
     });
     return true;
   }
+  if (go.to === 'sessions') {
+    rootRef.navigate('MyProgram', { screen: 'LepProgram', params: { tab: 'Sessions' } });
+    return true;
+  }
   if (go.to === 'schedule') {
     rootRef.navigate('MyProgram', { screen: 'LepProgram' });
     return true;

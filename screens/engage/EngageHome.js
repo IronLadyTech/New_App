@@ -11,7 +11,7 @@ import { CSUITE_HOME } from '../guest/guestData';
 import { useLepNav } from '../lep/useLepNav';
 import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
-import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
+import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
 
 const CIRCLES = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 const INDUSTRIES = ['Finance', 'Technology', 'Marketing'];
@@ -191,9 +191,11 @@ function EnrolledEngage({ navigation, onWatch }) {
             <ILText role="eyebrow" color={IL_BRAND.red} style={{ fontSize: 10 }} numberOfLines={1}>
               {featured.eyebrow}
             </ILText>
-            <ILText role="bodySm" color={IL_BRAND.muted}>
-              {featured.mode === 'offline' ? 'In person' : 'Live · Online'}
-            </ILText>
+            {armyEventModeLabel(featured) ? (
+              <ILText role="bodySm" color={IL_BRAND.muted}>
+                {armyEventModeLabel(featured)}
+              </ILText>
+            ) : null}
           </View>
           <ILText role="title" style={{ marginTop: 8 }}>
             {featured.title}

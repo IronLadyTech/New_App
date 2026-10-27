@@ -48,7 +48,13 @@ if (!manifest.includes('default_notification_icon')) {
 if (!manifest.includes('@drawable/notification_icon')) {
   fail('AndroidManifest does not point to @drawable/notification_icon');
 }
-ok('AndroidManifest wires notification_icon + FCM meta-data');
+if (!manifest.includes('expo.modules.notifications.large_notification_icon')) {
+  fail('AndroidManifest missing expo large_notification_icon (set largeIcon in app.json)');
+}
+if (!manifest.includes('@drawable/notification_large_icon')) {
+  fail('AndroidManifest does not point to @drawable/notification_large_icon');
+}
+ok('AndroidManifest wires notification_icon, large icon, and FCM meta-data');
 
 const densities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'];
 let found = 0;
@@ -65,6 +71,20 @@ for (const d of densities) {
 }
 if (found < 3) fail('Too few notification_icon densities generated');
 
+let largeFound = 0;
+for (const d of densities) {
+  const file = path.join(androidRes, `drawable-${d}`, 'notification_large_icon.png');
+  if (!fs.existsSync(file)) {
+    console.warn('WARN: missing', file);
+    continue;
+  }
+  const stat = fs.statSync(file);
+  if (stat.size < 200) fail(`${file} too small (${stat.size} bytes)`);
+  largeFound++;
+  ok(`drawable-${d}/notification_large_icon.png (${stat.size} bytes)`);
+}
+if (largeFound < 3) fail('Too few notification_large_icon densities generated');
+
 const colorXml = path.join(androidRes, 'values', 'colors.xml');
 if (fs.existsSync(colorXml)) {
   const colors = fs.readFileSync(colorXml, 'utf8');
@@ -74,6 +94,6 @@ if (fs.existsSync(colorXml)) {
   ok('notification_icon_color in colors.xml');
 }
 
-console.log('\nPre-build check passed. Tray icon should tint with brand color on device.');
-console.log('Full-color logo in the left circle is not supported on Android — expect red silhouette.');
+console.log('\nPre-build check passed.');
+console.log('Tray: brand silhouette (foreground). Shade header/right: full logo via notification_large_icon.');
 console.log('Next: eas build -p android --profile preview (after this passes).');

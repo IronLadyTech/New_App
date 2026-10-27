@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { BackHandler, Platform, View } from 'react-native';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import {
@@ -26,6 +26,20 @@ export default function LandingGate({ profile, forcedClosed }) {
   const [batch, setBatch] = React.useState(null);
   const [entryProgram, setEntryProgram] = React.useState(null);
   const [closed, setClosed] = React.useState(false);
+  // The gate is an overlay, not a screen, so Android back would act on the hidden tabs.
+  // Each step sets what back does; null lets the system handle it (leaves the app).
+  const backRef = React.useRef(null);
+  backRef.current = null;
+  React.useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (!backRef.current) return false;
+      backRef.current();
+      return true;
+    });
+    return () => sub.remove();
+    // Re-subscribe on each step: handlers run newest-first, so this stays ahead of React Navigation's.
+  }, [step]);
   const leave = (programId) => {
     if (typeof programId === 'string') setProgram(programId);
     const stamp = new Date().toISOString();
@@ -121,19 +135,17 @@ export default function LandingGate({ profile, forcedClosed }) {
   }
 
   if (gateStep === 'held') {
-    return wrap(
-      <SeatHeldScreen
-        route={{ params: { batch } }}
-        onContinue={() => {
-          const target = entryProgram || primaryId || 'lep';
-          if (programs.length >= 2 && !entryProgram) {
-            setStep('welcome');
-            return;
-          }
-          leave(target);
-        }}
-      />
-    );
+    const continueFromHeld = () => {
+      const target = entryProgram || primaryId || 'lep';
+      if (programs.length >= 2 && !entryProgram) {
+        setStep('welcome');
+        return;
+      }
+      leave(target);
+    };
+    // The seat is already saved here; back dismisses the confirmation like Continue.
+    backRef.current = continueFromHeld;
+    return wrap(<SeatHeldScreen route={{ params: { batch } }} onContinue={continueFromHeld} />);
   }
 
   if (gateStep === 'batch') {
@@ -141,6 +153,8 @@ export default function LandingGate({ profile, forcedClosed }) {
       leave(primaryId || 'lep');
       return null;
     }
+    // Back returns to welcome, like the on-screen arrow; with welcome done this is the first step.
+    if (!profile.welcomeCompletedAt) backRef.current = () => setStep('welcome');
     return wrap(
       <ChooseBatchDateScreen
         onBack={() => {

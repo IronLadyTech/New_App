@@ -167,7 +167,8 @@ export function enrolledWhisperFallback({
 
   const openPractice = (practice || []).find((p) => !p.done);
   if (openPractice?.title) {
-    return `${hi}finish ${openPractice.title} today — that keeps your streak honest.`;
+    // Titles already start with a verb ("Complete your VIA Survey"), so don't prefix "finish".
+    return `${hi}today's next step: ${openPractice.title} — that keeps your streak honest.`;
   }
 
   const openDues = (dueItems || []).filter((d) => !d.done);

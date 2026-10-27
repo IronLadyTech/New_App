@@ -15,7 +15,14 @@ export const LEARNER_VIEWS = [
   { value: 'late', label: 'Late joiner', hint: 'Full paid, joined after the batch started' },
 ];
 
-export function previewUrl({ programId, batchId, learner, reloadKey = 0 }) {
+/** focus: { to: 'sessions' | 'task' | 'engage' | 'learn', taskId? } — the screen the preview opens on. */
+export function previewUrl({ programId, batchId, learner, focus, guestTier, reloadKey = 0 }) {
+  if (guestTier) {
+    // The guest app (utils/guestPreview.js): 'mc' = a Masterclass lead, who also sees recordings.
+    const g = new URLSearchParams({ cmsPreview: '1', state: 'guest', tier: guestTier, r: String(reloadKey) });
+    if (focus?.to === 'engage') g.set('go', 'engage');
+    return `/?${g.toString()}`;
+  }
   const q = new URLSearchParams({
     cmsPreview: '1',
     program: programId || 'lep',
@@ -24,10 +31,31 @@ export function previewUrl({ programId, batchId, learner, reloadKey = 0 }) {
   });
   if (batchId) q.set('batch', batchId);
   if (learner === 'late') q.set('late', '1');
+  if (focus?.to) q.set('go', focus.to);
+  if (focus?.taskId) q.set('task', focus.taskId);
   return `/?${q.toString()}`;
 }
 
-export default function AppPreview({ programId, batchId, learner, version = '' }) {
+/** Plain words for CX: which screen the phone is on and what to look for there. */
+function focusCopy(focus) {
+  if (!focus?.to) return null;
+  const where = {
+    sessions: 'My Program → Sessions',
+    task: `the task “${focus.label || 'task'}”`,
+    engage: 'Engage',
+    learn: 'Learn',
+  }[focus.to];
+  if (!focus.label) return `Showing ${where} — what learners see there.`;
+  const look =
+    focus.to === 'sessions'
+      ? 'Check the recording shows on its session.'
+      : focus.to === 'task'
+        ? 'Check the file is listed on the task.'
+        : 'Check it shows here.';
+  return `Saved “${focus.label}”. The phone now shows ${where}. ${look}`;
+}
+
+export default function AppPreview({ programId, batchId, learner, focus = null, guestTier = null, version = '' }) {
   const [reloadKey, setReloadKey] = useState(0);
   // Something was saved (content or batch changed) — show it without pressing Refresh.
   const lastVersion = useRef(version);
@@ -37,11 +65,21 @@ export default function AppPreview({ programId, batchId, learner, version = '' }
     const t = setTimeout(() => setReloadKey((k) => k + 1), 600);
     return () => clearTimeout(t);
   }, [version]);
+  const focusKey = `${focus?.to || ''}|${focus?.taskId || ''}`;
   const src = useMemo(
-    () => previewUrl({ programId, batchId, learner, reloadKey }),
-    [programId, batchId, learner, reloadKey]
+    () => previewUrl({ programId, batchId, learner, focus, guestTier, reloadKey }),
+    [programId, batchId, learner, focusKey, guestTier, reloadKey]
   );
-  const view = LEARNER_VIEWS.find((v) => v.value === learner);
+  const view = guestTier
+    ? {
+        label: guestTier === 'mc' ? 'Guest · Masterclass lead' : 'Guest',
+        hint:
+          guestTier === 'mc'
+            ? 'A guest who joined the Masterclass — she also sees the recordings'
+            : 'A guest exploring the app',
+      }
+    : LEARNER_VIEWS.find((v) => v.value === learner);
+  const focusLine = focusCopy(focus);
 
   return (
     <View style={{ width: 372 }}>
@@ -58,6 +96,22 @@ export default function AppPreview({ programId, batchId, learner, version = '' }
           </Pressable>
         ) : null}
       </View>
+      {focusLine ? (
+        <View
+          style={{
+            backgroundColor: focus?.label ? '#E3F1EA' : '#F5F0E6',
+            borderRadius: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            marginBottom: 8,
+          }}
+        >
+          <T size={12} color={A.navy} style={{ lineHeight: 17 }}>
+            {focus?.label ? '✓ ' : ''}
+            {focusLine}
+          </T>
+        </View>
+      ) : null}
       <View
         style={{
           width: 372,
@@ -83,7 +137,8 @@ export default function AppPreview({ programId, batchId, learner, version = '' }
         </View>
       </View>
       <T size={11} color={A.muted} style={{ marginTop: 8, lineHeight: 16 }}>
-        {view?.hint}. A preview learner — nothing here is counted on the dashboard. It refreshes by itself after you save.
+        {view?.hint}. A preview {guestTier ? 'guest' : 'learner'} — nothing here is counted on the dashboard. It
+        refreshes by itself after you save.
       </T>
     </View>
   );

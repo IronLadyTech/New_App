@@ -446,6 +446,13 @@ export function upcomingHighlightEvents(events, { fromIso, limit = 4 } = {}) {
     .slice(0, limit);
 }
 
+/** "Live · Online" / "In person" for a card corner — '' when the eyebrow already says it. */
+export function armyEventModeLabel(event) {
+  const label = event?.mode === 'offline' ? 'In person' : 'Live · Online';
+  const eyebrow = String(event?.eyebrow || '').toUpperCase();
+  return eyebrow.includes('ONLINE') || eyebrow.includes('IN PERSON') ? '' : label;
+}
+
 export function armyEventCalendarUrl(event) {
   if (!event?.dateIso) return '';
   const compact = event.dateIso.replace(/-/g, '');

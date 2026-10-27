@@ -135,8 +135,17 @@ function linkedTaskIdsFromRow(row) {
   return [];
 }
 
-function cmsRowIsLive(row) {
-  return row?.published !== false;
+/**
+ * Staff: stamp `published: true` on legacy rows that never had the field, so learner
+ * queries (which must filter on published == true) can see them. Returns how many changed.
+ */
+export async function backfillContentPublished(rows) {
+  const missing = rows.filter((row) => row?.id && !('published' in row)).slice(0, 500);
+  if (!missing.length) return 0;
+  const batch = writeBatch(db);
+  missing.forEach((row) => batch.update(doc(db, CMS.CONTENT, row.id), { published: true }));
+  await batch.commit();
+  return missing.length;
 }
 
 /**
@@ -148,14 +157,19 @@ export async function fetchPublishedCmsForTask(programId, taskId, learnerBatchId
   if (!wantKeys.size) return [];
 
   const cmsProgram = CMS_PROGRAM_FOR_APP[programId] || String(programId || '').toUpperCase();
-  // No published filter in the query — rules return live rows only; includes legacy docs without `published`.
-  const snap = await getDocs(collection(db, CMS.CONTENT));
+  // Fetch only this program's published rows (drafts never reach the device).
+  // Legacy rows without `published` are backfilled by backfillContentPublished.
+  const snap = await getDocs(
+    query(
+      collection(db, CMS.CONTENT),
+      where('program', 'in', ['ALL', cmsProgram]),
+      where('published', '==', true)
+    )
+  );
 
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((row) => {
-      if (!cmsRowIsLive(row)) return false;
-      if (row.program !== 'ALL' && row.program !== cmsProgram) return false;
       if (row.batchId && row.batchId !== learnerBatchId) return false;
       const ids = linkedTaskIdsFromRow(row).map((x) => x.toLowerCase());
       return ids.some((id) => wantKeys.has(id));

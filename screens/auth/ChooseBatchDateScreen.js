@@ -68,7 +68,8 @@ function upcomingSaturdayBatches(count = 4) {
   const rows = [];
   for (let i = 0; i < count; i += 1) {
     const card = batchFromDate(addDays(first, i * 7));
-    rows.push({ ...card, filling: i === 0 });
+    // Standard Saturdays, not a date the learner picked — no "Your date" tag.
+    rows.push({ ...card, custom: false, filling: i === 0 });
   }
   return rows;
 }

@@ -44,7 +44,7 @@ export const ENR_PRACTICE = [
 export function practiceSummary(items) {
   const done = items.filter((i) => i.done).length;
   const mins = items.reduce((sum, i) => sum + (Number((i.meta.match(/(\d+)\s*min/) || [])[1]) || 0), 0);
-  return `${done} of ${items.length} done · about ${mins} min`;
+  return mins ? `${done} of ${items.length} done · about ${mins} min` : `${done} of ${items.length} done`;
 }
 
 export const DUE_WEEK = [

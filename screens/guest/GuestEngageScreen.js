@@ -24,6 +24,22 @@ import { useGuestActions } from './useGuestActions';
 import { CoverThumb } from '../lep/LepBits';
 import { CSUITE_HOME, EPISODES, HERO, WINS } from './guestData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import * as Linking from 'expo-linking';
+import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
+import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
+
+const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+/** Online events plus in-person ones in the chosen city (Army event sheet). */
+function guestEventsForCity(upcoming, city) {
+  const want = String(city || '').toLowerCase();
+  return upcoming
+    .filter((ev) => ev.mode !== 'offline' || !want || String(ev.city || '').toLowerCase() === want)
+    .slice()
+    // The source list puts spotlights first; guests read a calendar, so soonest first.
+    .sort((a, b) => String(a.dateIso).localeCompare(String(b.dateIso)))
+    .slice(0, 4);
+}
 
 const TABS = ['Podcast', 'Events', 'C-suite'];
 const CITIES = ['Bengaluru', 'Mumbai', 'Pune', 'Hyderabad'];
@@ -272,6 +288,8 @@ function PodcastPane({ goWatch }) {
 }
 
 function EventsPane({ city, setCity }) {
+  const { upcoming } = useArmyEventCalendar();
+  const live = guestEventsForCity(upcoming, city);
   return (
     <>
         <View style={{ marginTop: 28 }}>
@@ -379,20 +397,31 @@ function EventsPane({ city, setCity }) {
           <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 18, fontSize: 10 }]}>
             Coming up
           </ILText>
-          <EventRow
-            stamp={['SEP', '27']}
-            kicker="Chapter"
-            title="Bengaluru Chapter meetup"
-            meta="Sat 27 Sep · 6 PM · open to everyone"
-            cta="RSVP"
-          />
-          <EventRow
-            stamp={['WEEKLY', 'Tue']}
-            kicker="Masterclass"
-            title="Masterclass · live"
-            meta="Tue 7 PM + Wed 6:30 PM · online"
-            cta="Save seat"
-          />
+          {/* Live from the Army event sheet — the same calendar enrolled learners see. */}
+          {live.length ? (
+            live.map((ev) => (
+              <EventRow
+                key={ev.id}
+                stamp={[MON[Number(ev.dateIso.slice(5, 7)) - 1], String(Number(ev.dateIso.slice(8, 10)))]}
+                kicker={ev.mode === 'offline' ? `${ev.city || 'Chapter'} · in person` : 'Online'}
+                title={ev.title}
+                meta={ev.whenLabel || ev.meta}
+                cta="Add to calendar"
+                onPress={() => {
+                  const url = armyEventCalendarUrl(ev);
+                  if (url) Linking.openURL(url).catch(() => {});
+                }}
+              />
+            ))
+          ) : (
+            <EventRow
+              stamp={['WEEKLY', 'Tue']}
+              kicker="Masterclass"
+              title="Masterclass · live"
+              meta="Tue 7 PM + Wed 6:30 PM · online"
+              cta="Save seat"
+            />
+          )}
           <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 16, fontSize: 10 }]}>
             Past highlight
           </ILText>
@@ -443,9 +472,10 @@ function CsuitePane({ goWatch }) {
   );
 }
 
-function EventRow({ stamp, kicker, title, meta, cta }) {
+function EventRow({ stamp, kicker, title, meta, cta, onPress }) {
   return (
     <WhiteCard
+      onPress={onPress}
       style={{
         marginTop: 10,
         borderRadius: 20,

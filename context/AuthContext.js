@@ -8,6 +8,7 @@ import React, {
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GUEST_PREVIEW } from '../utils/guestPreview';
 import { subscribeToAuth, fetchUserProfile, logOut as authLogOut } from '../services/auth';
 import { subscribeToUser } from '../services/firestore';
 import {
@@ -34,7 +35,11 @@ function readCmsPreview() {
     const q = new URLSearchParams(window.location.search);
     if (q.get('cmsPreview') !== '1') return null;
     const program = ['lep', '100bm', 'mbw'].includes(q.get('program')) ? q.get('program') : 'lep';
+    // &go=sessions|task|engage|learn (+ &task=<id>): open where the item CX just saved shows.
+    const to = ['sessions', 'task', 'engage', 'learn'].includes(q.get('go')) ? q.get('go') : null;
+    const previewGo = to && (to !== 'task' || q.get('task')) ? { to, programId: program, taskId: q.get('task') || '' } : null;
     return {
+      previewGo,
       program,
       state: q.get('state') === 'enrolled' ? 'enrolled' : 'registered',
       regStatus: null,
@@ -47,7 +52,7 @@ function readCmsPreview() {
   }
 }
 
-const CMS_PREVIEW = readCmsPreview();
+const CMS_PREVIEW = GUEST_PREVIEW ? null : readCmsPreview();
 
 function parseLabJourney(raw, legacyLep) {
   if (raw) {
@@ -362,13 +367,13 @@ export function AuthProvider({ children }) {
       accountProfile: profile,
       profile: resolvedProfile,
       role: resolvedProfile?.role || (guestMode ? 'guest' : 'student'),
-      isAuthenticated: !!firebaseUser || preview || !!labJourney,
+      isAuthenticated: !GUEST_PREVIEW && (!!firebaseUser || preview || !!labJourney),
       isPreview: preview,
       demo,
       authEntry,
       journey: labJourney,
       cmsPreview: Boolean(labJourney?.cmsPreview),
-      isGuest: guestMode && !firebaseUser && !preview && !labJourney,
+      isGuest: !!GUEST_PREVIEW || (guestMode && !firebaseUser && !preview && !labJourney),
       isStaff: ['teacher', 'admin', 'moderator', 'superadmin'].includes(
         resolvedProfile?.role
       ),

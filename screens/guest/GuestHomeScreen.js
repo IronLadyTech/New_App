@@ -38,6 +38,28 @@ import {
   TOPICS,
 } from './guestData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
+import * as Linking from 'expo-linking';
+import { GUEST_KINDS } from '../../constants/cms';
+import { useGuestCms } from '../../hooks/useGuestCms';
+
+/** A CMS home slide (CMS → Guest app → Home slides) in the shape the pager draws. */
+function slideFromCms(row) {
+  const chips = Array.isArray(row.chips)
+    ? row.chips
+    : String(row.chips || '').split(',').map((c) => c.trim()).filter(Boolean);
+  return {
+    key: row.id,
+    kicker: row.kicker || '',
+    program: row.program || '',
+    title: row.title || '',
+    body: row.body || '',
+    chips,
+    cta: row.cta || 'Explore',
+    id: row.target || 'mc',
+    url: row.url || '',
+    img: row.imageUrl ? { uri: row.imageUrl } : row.target === 'mc' ? MC_COVER : undefined,
+  };
+}
 import ArmyPass from './ArmyPass';
 import McRecordingsCard from '../../components/guest/McRecordingsCard';
 
@@ -57,12 +79,14 @@ export default function GuestHomeScreen() {
   const headerPad = useGlassHeaderPad();
   const { width } = useWindowDimensions();
   const { findRegistration, goProgram, goDrill, goChallenge, goEngage, goWatch } = useGuestActions();
+  const cmsSlides = useGuestCms(GUEST_KINDS.HOME_SLIDE, null);
+  const slides = cmsSlides ? cmsSlides.map(slideFromCms) : HOME_SLIDES;
   const [slide, setSlide] = useState(0);
   const pager = useRef(null);
   const cardW = width - 40;
 
   const goSlide = (next) => {
-    const n = Math.max(0, Math.min(HOME_SLIDES.length - 1, next));
+    const n = Math.max(0, Math.min(slides.length - 1, next));
     pager.current?.scrollTo({ x: n * cardW, animated: true });
     setSlide(n);
   };
@@ -137,8 +161,8 @@ export default function GuestHomeScreen() {
               setSlide(Math.round(e.nativeEvent.contentOffset.x / cardW))
             }
           >
-            {HOME_SLIDES.map((s) => (
-              <View key={s.program} style={{ width: cardW }}>
+            {slides.map((s) => (
+              <View key={s.key || s.program} style={{ width: cardW }}>
                 <View style={{ borderRadius: 24, overflow: 'hidden', height: 360 }}>
                   <Image source={s.img || HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                   <LinearGradient
@@ -204,7 +228,9 @@ export default function GuestHomeScreen() {
                       ))}
                     </View>
                     <Pressable
-                      onPress={() => goProgram(s.id)}
+                      onPress={() =>
+                        s.id === 'link' ? s.url && Linking.openURL(s.url).catch(() => {}) : goProgram(s.id)
+                      }
                       style={{
                         marginTop: 'auto',
                         backgroundColor: '#FFFFFF',
@@ -230,7 +256,7 @@ export default function GuestHomeScreen() {
               <MaterialIcons name="chevron-left" size={18} color={G.ink} />
             </Pressable>
             <View style={{ flexDirection: 'row', marginHorizontal: 12 }}>
-              {HOME_SLIDES.map((_, i) => (
+              {slides.map((_, i) => (
                 <View
                   key={i}
                   style={{

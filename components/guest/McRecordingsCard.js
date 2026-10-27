@@ -6,6 +6,16 @@ import ILText from '../il/ILText';
 import { G } from '../../constants/guestTheme';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import { MC_RECORDINGS } from '../../constants/masterclassRecordings';
+import { GUEST_KINDS } from '../../constants/cms';
+import { useGuestCms } from '../../hooks/useGuestCms';
+
+/** Built-in recordings, shaped like CMS rows — used until CX adds their own. */
+const DEFAULT_ROWS = MC_RECORDINGS.map((r) => ({
+  id: r.id,
+  title: `Day ${r.day} recording`,
+  url: r.videoUrl,
+  body: 'Plays here in the app',
+}));
 import { getGuestIdentity, trackGuest } from '../../services/appGuest';
 import { WhiteCard } from '../../screens/guest/GuestBits';
 
@@ -15,6 +25,8 @@ import { WhiteCard } from '../../screens/guest/GuestBits';
  */
 export default function McRecordingsCard({ onWatch }) {
   const [show, setShow] = useState(false);
+  // CMS → Guest app → Masterclass recordings; the built-in two until CX adds theirs.
+  const recordings = useGuestCms(GUEST_KINDS.MC_RECORDING, DEFAULT_ROWS);
   useEffect(() => {
     getGuestIdentity().then(({ tier }) => setShow(tier === 'mc'));
   }, []);
@@ -28,13 +40,13 @@ export default function McRecordingsCard({ onWatch }) {
           YOUR MASTERCLASS RECORDINGS
         </ILText>
       </View>
-      {MC_RECORDINGS.map((r) => (
+      {recordings.map((r) => (
         <Pressable
           key={r.id}
           accessibilityRole="button"
           onPress={() => {
             trackGuest('recording');
-            onWatch?.({ videoUrl: r.videoUrl, title: r.title });
+            onWatch?.({ videoUrl: r.url, title: r.title });
           }}
           style={{
             marginTop: 10,
@@ -50,10 +62,10 @@ export default function McRecordingsCard({ onWatch }) {
           </View>
           <View style={{ marginLeft: 12, flex: 1 }}>
             <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold }}>
-              Day {r.day} recording
+              {r.title}
             </ILText>
             <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              Plays here in the app
+              {r.body || 'Plays here in the app'}
             </ILText>
           </View>
           <MaterialIcons name="chevron-right" size={22} color={G.meta} />

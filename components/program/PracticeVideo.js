@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Image, Modal, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { VideoView, useVideoPlayer } from 'expo-video';
+import { useEventListener } from 'expo';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Pressable from '../il/Press';
@@ -25,11 +26,20 @@ function fit16x9(maxW, maxH) {
   return { width: maxW, height: maxW * (9 / 16) };
 }
 
-function NativeVideo({ source, width, height, trackKey }) {
+function NativeVideo({ source, width, height, trackKey, onStart, onProgress }) {
   const player = useVideoPlayer(source, (p) => {
     p.loop = false;
   });
   useVideoProgressTracking(player, trackKey);
+  // Furthest point reached, for "watch before you mark it" (timeUpdate interval set by the hook).
+  useEventListener(player, 'playingChange', ({ isPlaying }) => {
+    if (isPlaying) onStart?.();
+  });
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+    const duration = player?.duration;
+    if (duration && duration >= 1) onProgress?.(Math.min(1, currentTime / duration));
+  });
+  useEventListener(player, 'playToEnd', () => onProgress?.(1));
 
   return (
     <VideoView
@@ -42,7 +52,7 @@ function NativeVideo({ source, width, height, trackKey }) {
   );
 }
 
-function YoutubeEmbed({ uri, width, height }) {
+function YoutubeEmbed({ uri, width, height, onProgress }) {
   const id = youtubeIdFromUri(uri);
   const html = useMemo(
     () => (id && width > 0 && height > 0 ? youtubeEmbedHtml(id, { width, height }) : null),
@@ -70,6 +80,16 @@ function YoutubeEmbed({ uri, width, height }) {
       setSupportMultipleWindows={false}
       onShouldStartLoadWithRequest={allowYoutubeEmbedRequest}
       onOpenWindow={() => {}}
+      // youtubeEmbedHtml posts { yt: 'progress', t, d } as the player plays.
+      onMessage={(e) => {
+        try {
+          const m = JSON.parse(e.nativeEvent.data);
+          if (m?.yt === 'progress' && m.d > 0) onProgress?.(Math.min(1, m.t / m.d));
+          if (m?.yt === 'ended') onProgress?.(1);
+        } catch {
+          /* not ours */
+        }
+      }}
     />
   );
 }
@@ -107,7 +127,7 @@ function PlayOverlay({ onPress }) {
   );
 }
 
-function VideoFrame({ uri, fill, poster, started, onStart, trackKey }) {
+function VideoFrame({ uri, fill, poster, started, onStart, trackKey, onPlaybackStart, onProgress }) {
   const youtubeId = youtubeIdFromUri(uri);
   const showPoster = !!poster;
   const showYoutubeGate = youtubeId && !started;
@@ -141,9 +161,16 @@ function VideoFrame({ uri, fill, poster, started, onStart, trackKey }) {
       {showYoutubeGate ? <PlayOverlay onPress={onStart} /> : null}
       {!showYoutubeGate && box.width > 0 && box.height > 0 ? (
         youtubeId ? (
-          <YoutubeEmbed uri={uri} width={box.width} height={box.height} />
+          <YoutubeEmbed uri={uri} width={box.width} height={box.height} onProgress={onProgress} />
         ) : (
-          <NativeVideo source={toPlayerSource(uri)} width={box.width} height={box.height} trackKey={trackKey} />
+          <NativeVideo
+            source={toPlayerSource(uri)}
+            width={box.width}
+            height={box.height}
+            trackKey={trackKey}
+            onStart={onPlaybackStart}
+            onProgress={onProgress}
+          />
         )
       ) : null}
     </View>
@@ -174,8 +201,11 @@ function RotateButton({ onPress, style }) {
   );
 }
 
-/** trackKey names the video on the CX dashboard (task / practice / asset id); falls back to the uri. */
-export default function PracticeVideo({ uri, poster, trackKey = uri }) {
+/**
+ * trackKey names the video on the CX dashboard (task / practice / asset id); falls back to the uri.
+ * onStart() when playback begins; onProgress(0–1) as it plays — both optional.
+ */
+export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, onProgress }) {
   const [landscape, setLandscape] = useState(false);
   const [started, setStarted] = useState(!youtubeIdFromUri(uri));
   const [stage, setStage] = useState({ width: 0, height: 0 });
@@ -186,7 +216,10 @@ export default function PracticeVideo({ uri, poster, trackKey = uri }) {
   if (!uri) return null;
 
   const closeLandscape = () => setLandscape(false);
-  const beginPlayback = () => setStarted(true);
+  const beginPlayback = () => {
+    setStarted(true);
+    onStart?.();
+  };
 
   return (
     <>
@@ -205,6 +238,8 @@ export default function PracticeVideo({ uri, poster, trackKey = uri }) {
             started={started}
             onStart={beginPlayback}
             trackKey={trackKey}
+            onPlaybackStart={onStart}
+            onProgress={onProgress}
           />
           <RotateButton
             onPress={() => {
@@ -242,7 +277,16 @@ export default function PracticeVideo({ uri, poster, trackKey = uri }) {
           >
             {frame.width > 0 && frame.height > 0 ? (
               <View style={{ width: frame.width, height: frame.height }}>
-                <VideoFrame uri={uri} fill poster={poster} started={started} onStart={beginPlayback} trackKey={trackKey} />
+                <VideoFrame
+                  uri={uri}
+                  fill
+                  poster={poster}
+                  started={started}
+                  onStart={beginPlayback}
+                  trackKey={trackKey}
+                  onPlaybackStart={onStart}
+                  onProgress={onProgress}
+                />
               </View>
             ) : null}
           </View>

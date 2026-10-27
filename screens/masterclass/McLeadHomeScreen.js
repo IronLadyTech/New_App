@@ -8,6 +8,8 @@ import ILHeader from '../../components/il/ILHeader';
 import ILText from '../../components/il/ILText';
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { MC_RECORDINGS } from '../../constants/masterclassRecordings';
+import { GUEST_KINDS } from '../../constants/cms';
+import { useGuestCms } from '../../hooks/useGuestCms';
 import { useAuth } from '../../context/AuthContext';
 import { lepFirstName } from '../../utils/lepState';
 import { navigateWatch } from '../../utils/watchNav';
@@ -17,6 +19,8 @@ export default function McLeadHomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { profile } = useAuth();
+  // Same list CX edits in CMS → Guest app; the built-in two until they add theirs.
+  const recordings = useGuestCms(GUEST_KINDS.MC_RECORDING, MC_RECORDINGS);
   const name = lepFirstName(profile);
   const status = profile?.leadStatus || profile?.programAccess?.mc?.leadStatus || 'MC';
 
@@ -24,7 +28,7 @@ export default function McLeadHomeScreen() {
     navigateWatch(navigation, {
       title: item.title,
       sub: `Masterclass · ${item.duration}`,
-      videoUrl: item.videoUrl,
+      videoUrl: item.videoUrl || item.url,
       assetKey: item.id,
     });
   };
@@ -54,7 +58,7 @@ export default function McLeadHomeScreen() {
           <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
             Your recordings
           </ILText>
-          {MC_RECORDINGS.map((item, index) => (
+          {recordings.map((item, index) => (
             <Pressable
               key={item.id}
               onPress={() => openRecording(item)}
@@ -84,7 +88,7 @@ export default function McLeadHomeScreen() {
                   {item.title}
                 </ILText>
                 <ILText role="bodySm" color="rgba(255,255,255,0.72)" style={{ marginTop: 4 }}>
-                  {item.duration}
+                  {item.duration || item.body}
                 </ILText>
               </View>
               <MaterialIcons name="chevron-right" size={24} color="rgba(255,255,255,0.6)" />

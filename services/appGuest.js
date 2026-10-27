@@ -7,6 +7,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from './firebase';
+import { GUEST_PREVIEW } from '../utils/guestPreview';
 
 const PHONE_KEY = 'il_guest_phone';
 const TIER_KEY = 'il_guest_tier';
@@ -29,6 +30,8 @@ export async function saveGuestIdentity({ phone, tier }) {
 
 /** { phone, tier } — tier 'mc' means Masterclass recordings are unlocked. */
 export async function getGuestIdentity() {
+  // CMS preview: show the chosen tier, and no phone — so nothing is tracked or registered.
+  if (GUEST_PREVIEW) return { phone: null, tier: GUEST_PREVIEW.tier };
   try {
     const [phone, tier] = await Promise.all([AsyncStorage.getItem(PHONE_KEY), AsyncStorage.getItem(TIER_KEY)]);
     return { phone: phone || null, tier: tier === 'mc' ? 'mc' : 'explore' };
