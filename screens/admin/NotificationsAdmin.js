@@ -491,6 +491,30 @@ function EventEditor({ initial, content, canEdit, onClose, onSaved, onError }) {
               </Col>
             ) : null}
           </Row>
+          {e.anchor.type === 'daily' || e.anchor.type === 'weekly' ? (
+            // Days from Day 1 (0 = Day 1, 2 = Week 1 Monday). Empty = Day 1 to the last session
+            // (rituals: from Week 1 Monday). Same rule as LMS functions/lepTimeAnchors.js.
+            <Row>
+              {[
+                ['fromDay', 'From day', 'Empty = Day 1 (rituals: Week 1 Monday)'],
+                ['toDay', 'To day', 'Empty = the last session'],
+              ].map(([key, label, hint]) => (
+                <Col key={key} min={120}>
+                  <Field label={label} hint={hint}>
+                    <Input
+                      value={e.anchor[key] ?? ''}
+                      onChangeText={(v) => {
+                        const n = v.replace(/[^\d-]/g, '');
+                        setAnchor(key)(n === '' || n === '-' ? null : Number(n));
+                      }}
+                      placeholder="—"
+                      editable={!ro}
+                    />
+                  </Field>
+                </Col>
+              ))}
+            </Row>
+          ) : null}
           {anchorDef.usesTrigger ? (
             <Field label="Trigger">
               <Select

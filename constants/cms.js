@@ -234,9 +234,9 @@ export const LEP_DEFAULT_EVENTS = [
   }),
   // Rituals and score (section 10)
   rule('RITUALS-AM', '5 Rituals daily nudge', {
-    anchor: { type: 'daily', time: '07:00' },
+    anchor: { type: 'daily', time: '07:00', fromDay: 2, toDay: 28 },
     body: 'Good morning {{name}}. Tick today’s 5 Rituals.',
-    notes: 'Week 1 Monday to Week 4 Saturday.',
+    notes: 'Week 1 Monday (Day 2) to Week 4 Saturday (Day 28). Sent by the scheduler.',
   }),
   rule('RITUALS-PM', '5 Rituals evening nudge', {
     anchor: { type: 'daily', time: '20:30' },
@@ -415,9 +415,13 @@ export function describeAnchor(anchor = {}) {
         ? `${day}Day 1${at}`
         : `On Day 1${at}`;
     case 'daily':
-      return `Every day${at}`;
-    case 'weekly':
-      return `Every ${anchor.weekday || 'Sat'}${at}`;
+    case 'weekly': {
+      const every = anchor.type === 'daily' ? 'Every day' : `Every ${anchor.weekday || 'Sat'}`;
+      const from = Number.isFinite(anchor.fromDay) ? `Day ${anchor.fromDay}` : null;
+      const to = Number.isFinite(anchor.toDay) ? `Day ${anchor.toDay}` : null;
+      const range = from || to ? ` · ${from || 'Day 1'} to ${to || 'the last session'}` : '';
+      return `${every}${at}${range}`;
+    }
     case 'event': {
       const t = TRIGGERS.find((x) => x.value === anchor.trigger);
       return t ? `When: ${t.label.toLowerCase()}` : 'On event';

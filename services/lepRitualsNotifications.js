@@ -24,16 +24,19 @@ async function ensurePermission(Notifications) {
 }
 
 /**
- * Local reminders after 5 Rituals unlock: 8:00 morning nudge + Sunday 9:00 weekly score reminder.
- * Server CMS rules (RITUALS-AM / RITUALS-PM) still need unlock checks on the scheduler.
+ * Local reminders after 5 Rituals unlock: 8:00 morning nudge + Monday 9:00 weekly score reminder.
+ * serverDaily: her batch has automatic reminders on, so the scheduler sends the morning
+ * nudge (CMS RITUALS-AM) — skip the phone's own, or she gets two.
  */
-export async function scheduleLepRitualsNotifications() {
+export async function scheduleLepRitualsNotifications({ serverDaily = false } = {}) {
   const Notifications = notifications();
   if (!Notifications) return { ok: false, reason: 'unavailable' };
 
   try {
+    // Re-run when the mode changes (batch switched to automatic, or back).
+    const mode = serverDaily ? 'server' : 'local';
     const already = await AsyncStorage.getItem(FLAG);
-    if (already === '1') return { ok: true, skipped: true };
+    if (already === mode || (already === '1' && mode === 'local')) return { ok: true, skipped: true };
 
     const allowed = await ensurePermission(Notifications);
     if (!allowed) return { ok: false, reason: 'denied' };
@@ -48,7 +51,7 @@ export async function scheduleLepRitualsNotifications() {
     const Types = Notifications.SchedulableTriggerInputTypes || { DAILY: 'daily', CALENDAR: 'calendar' };
 
     await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
-    await Notifications.scheduleNotificationAsync({
+    if (!serverDaily) await Notifications.scheduleNotificationAsync({
       identifier: DAILY_ID,
       content: {
         title: '5 Daily Rituals',
@@ -77,7 +80,7 @@ export async function scheduleLepRitualsNotifications() {
           : { type: Types.CALENDAR, repeats: true, weekday: 1, hour: 9, minute: 0, channelId: CHANNEL },
     });
 
-    await AsyncStorage.setItem(FLAG, '1');
+    await AsyncStorage.setItem(FLAG, mode);
     return { ok: true };
   } catch (e) {
     return { ok: false, reason: e?.message || 'schedule_failed' };

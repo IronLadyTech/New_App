@@ -37,6 +37,10 @@ import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
+import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
+
+/** The sheet's "After" line for an LEP task (LEP-Messages-Complete-v6 → Task notifications). */
+const LEP_AFTER_COPY = Object.fromEntries(LEP_TASK_SCHEDULE.tasks.map((t) => [t.id, t.after]));
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { isProgramTaskDone } from '../../utils/taskDone';
 import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose } from '../../utils/lepTaskInsideCopy';
@@ -776,9 +780,16 @@ export default function CourseTaskScreen({ route, navigation }) {
                 }}
               >
                 <MaterialIcons name="check-circle" size={20} color={G.cta} />
-                <ILText role="label" color={G.ink} style={{ marginLeft: 8 }}>
-                  Submitted
-                </ILText>
+                <View style={{ marginLeft: 8, flex: 1 }}>
+                  <ILText role="label" color={G.ink}>
+                    Submitted
+                  </ILText>
+                  {programId === PROGRAMS.LEP && LEP_AFTER_COPY[taskId] ? (
+                    <ILText role="bodySm" color={G.ink} style={{ marginTop: 2, fontSize: 13, lineHeight: 18 }}>
+                      {LEP_AFTER_COPY[taskId]}
+                    </ILText>
+                  ) : null}
+                </View>
               </View>
               <RedCta
                 label={next ? `Next task · ${next.title}` : 'Back to this phase'}

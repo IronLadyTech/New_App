@@ -1,10 +1,12 @@
 /**
  * Every reminder for one batch as a dated, plain-language list for the CMS.
  *
- * Mirrors what the scheduler actually sends (LMS functions/lepReminderRules.js and
- * lepNotificationAnchors.js) — change both together, or CX will see promises the
- * scheduler does not keep.
+ * Mirrors what the scheduler actually sends (LMS functions/lepReminderRules.js,
+ * lepNotificationAnchors.js and lepTimeAnchors.js) — change both together, or CX will
+ * see promises the scheduler does not keep.
  */
+
+import LEP_TASK_SCHEDULE from '../constants/lepTaskSchedule.json';
 
 const CORE_SESSION_CODES = new Set(['S0', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']);
 const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
@@ -22,6 +24,102 @@ const AUDIENCE = {
 };
 
 const HELD_REASON = 'Not sent yet — needs attendance and task data, so it never reaches the wrong person';
+const DATA_REASON = 'Not sent yet — its text needs data the app does not send yet (score, task list…)';
+
+// --- Clock-time rules (day1 / daily / weekly) — same as LMS functions/lepTimeAnchors.js ---
+const DAY_MS = 24 * 60 * 60 * 1000;
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const RITUALS_CODES = new Set(['RITUALS-AM', 'RITUALS-PM']);
+const TIME_ANCHOR_VARS = new Set(['name', 'batch', 'date']);
+
+function addDays(day, n) {
+  return new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+}
+
+function istMs(day, hhmm) {
+  const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
+  return m ? Date.parse(`${day}T${m[1].padStart(2, '0')}:${m[2]}:00+05:30`) : null;
+}
+
+/** Days (YYYY-MM-DD, offset from Day 1) a day1 / daily / weekly rule fires on. */
+function timeFireDays(batch, event) {
+  const anchor = event.anchor || {};
+  const day1 = String(batch?.day1Date || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return [];
+  if (anchor.type === 'day1') {
+    const n = Number(anchor.dayOffset) || 0;
+    return [{ day: addDays(day1, n), offset: n }];
+  }
+  const lastCore = (batch.sessions || [])
+    .filter((x) => CORE_SESSION_CODES.has(x.code) && !x.cancelled)
+    .map((x) => String(x.date || '').slice(0, 10))
+    .filter((d) => d >= day1)
+    .sort()
+    .pop();
+  const from = Number.isFinite(anchor.fromDay) ? anchor.fromDay : RITUALS_CODES.has(event.code) ? 2 : 0;
+  const to = Number.isFinite(anchor.toDay)
+    ? anchor.toDay
+    : lastCore
+      ? Math.round((Date.parse(`${lastCore}T00:00:00Z`) - Date.parse(`${day1}T00:00:00Z`)) / DAY_MS)
+      : 28;
+  const weekday = WEEKDAYS.indexOf(anchor.weekday || 'Sat');
+  const out = [];
+  for (let n = from; n <= to; n += 1) {
+    const day = addDays(day1, n);
+    if (anchor.type === 'weekly' && new Date(`${day}T00:00:00Z`).getUTCDay() !== weekday) continue;
+    out.push({ day, offset: n });
+  }
+  return out;
+}
+
+// --- Task reminders (taskOpen / taskDue) — same as LMS functions/lepTaskReminders.js ---
+const REGISTER_PHASES = new Set(['pre-program', 'orientation']);
+
+function taskReminderKind(event) {
+  const a = event?.anchor || {};
+  if (a.ref && a.ref !== '*') return null;
+  if (event.code === 'MAND-OVERDUE' || event.priority === 'mandatory') return null;
+  if (a.type === 'taskOpen') return 'open';
+  if (a.type === 'taskDue') return (Number(a.dayOffset) || 0) >= 1 ? 'overdue' : 'due';
+  return null;
+}
+
+function phaseOpenIso(batch, phaseId) {
+  const o = batch?.phaseOverrides?.[phaseId];
+  if (o === 'locked' || o === 'open') return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(o || ''))) return o;
+  const day1 = String(batch?.day1Date || '').slice(0, 10);
+  const n = LEP_TASK_SCHEDULE.phaseOpenDay[phaseId];
+  return /^\d{4}-\d{2}-\d{2}$/.test(day1) && Number.isFinite(n) ? addDays(day1, n) : null;
+}
+
+function taskDueIso(batch, task) {
+  if (!task.dueSession || batch?.phaseOverrides?.[task.phase] === 'locked') return null;
+  const s = (batch?.sessions || []).find((x) => x.code === task.dueSession && !x.cancelled);
+  const d = String(s?.date || '').slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+}
+
+/** [{ kind, day, tasks }] — one per day, phases opening together share one. */
+function taskReminderGroups(batch, event, learner) {
+  const kind = taskReminderKind(event);
+  const shift = Number(event.anchor?.dayOffset) || 0;
+  const groups = new Map();
+  for (const task of LEP_TASK_SCHEDULE.tasks) {
+    if (learner === 'register' && !REGISTER_PHASES.has(task.phase)) continue;
+    const base = kind === 'open' ? phaseOpenIso(batch, task.phase) : taskDueIso(batch, task);
+    if (!base) continue;
+    const day = addDays(base, shift);
+    if (!groups.has(day)) groups.set(day, { kind, day, tasks: [] });
+    groups.get(day).tasks.push(task);
+  }
+  return [...groups.values()];
+}
+
+function fillableWith(event, available) {
+  const text = `${event?.title || ''} ${event?.body || ''}`;
+  return [...text.matchAll(/\{\{(\w+)\}\}/g)].every((m) => available.has(m[1]));
+}
 
 function parseMs(iso) {
   const t = iso ? Date.parse(iso) : NaN;
@@ -127,6 +225,92 @@ export function buildBatchMessagePlan(batch, events, { learner = 'paid', now = D
     const anchor = ev.anchor || {};
     const condition = String(ev.condition || 'all');
     const sendable = SENDABLE_CONDITIONS.has(condition === 'all' ? '' : condition);
+    if (String(batch?.program || 'LEP').toUpperCase() === 'LEP' && taskReminderKind(ev)) {
+      const groups = taskReminderGroups(batch, ev, learner);
+      if (!groups.length || istMs(groups[0].day, anchor.time) == null) {
+        other.push({
+          key: ev.id || ev.code,
+          title: ev.name || ev.title || ev.code,
+          when: describeRepeat(anchor),
+          audience: 'Everyone',
+          body: fill(ev.body, { name: sampleName, task: 'her next task', pendingTasks: 'her pending tasks' }),
+          status: 'Needs Day 1, the session dates and a time (HH:MM) to send',
+        });
+        continue;
+      }
+      for (const g of groups) {
+        const fireAtMs = istMs(g.day, anchor.time);
+        const when = istParts(fireAtMs);
+        const [first] = g.tasks;
+        const n = g.tasks.length;
+        const past = fireAtMs < now;
+        rows.push({
+          key: `${ev.id || ev.code}|${g.day}`,
+          code: ev.code,
+          fireAtMs,
+          day: when.day,
+          dayKey: when.dayKey,
+          time: when.time,
+          title: g.kind === 'open' ? (n > 1 ? `${n} tasks open` : `New: ${first.title}`) : g.kind === 'due' ? (n > 1 ? `Due today · ${n} tasks` : 'Due today') : ev.title || 'Task overdue',
+          body: g.kind === 'open' ? first.opens : g.kind === 'due' ? first.due : `Still pending: ${g.tasks.slice(0, 2).map((t) => t.title).join(', ')}${n > 2 ? ` and ${n - 2} more` : ''}`,
+          sessionTitle: g.tasks.map((t) => t.title).join(' · '),
+          audience: g.kind === 'open' ? 'Everyone' : 'Only those who have not handed it in',
+          channels: channelLabel(ev.channels),
+          status: !automatic ? 'Will send once automatic reminders are on' : past ? 'Sent' : 'Sends automatically',
+          sends: automatic,
+          held: false,
+          past,
+        });
+      }
+      continue;
+    }
+    if (['day1', 'daily', 'weekly'].includes(anchor.type)) {
+      const fillable = fillableWith(ev, TIME_ANCHOR_VARS);
+      const allDays = timeFireDays(batch, ev);
+      const days = allDays.filter((d) => learner !== 'register' || d.offset <= 1);
+      if (!sendable || !fillable || !days.length || istMs(days[0].day, anchor.time) == null) {
+        const partPaidOnly = allDays.length && !days.length && istMs(allDays[0].day, anchor.time) != null;
+        other.push({
+          key: ev.id || ev.code,
+          title: ev.name || ev.title || ev.code,
+          when: describeRepeat(anchor),
+          audience: AUDIENCE[condition] || 'Everyone',
+          body: fill(ev.body, { name: sampleName, session: 'the session', time: '', task: 'her next task', joinLink: '' }),
+          status: !sendable
+            ? HELD_REASON
+            : !fillable
+              ? DATA_REASON
+              : partPaidOnly
+                ? 'Part-paid learners get reminders only up to Day 2'
+                : 'Needs a Day 1 date and a time (HH:MM) to send',
+        });
+        continue;
+      }
+      for (const { day } of days) {
+        const fireAtMs = istMs(day, anchor.time);
+        const when = istParts(fireAtMs);
+        const vars = { name: sampleName, batch: batch?.name || '', date: day };
+        const past = fireAtMs < now;
+        rows.push({
+          key: `${ev.id || ev.code}|${day}`,
+          code: ev.code,
+          fireAtMs,
+          day: when.day,
+          dayKey: when.dayKey,
+          time: when.time,
+          title: fill(ev.title || ev.name, vars),
+          body: fill(ev.body, vars),
+          sessionTitle: describeRepeat(anchor),
+          audience: AUDIENCE[condition] || 'Everyone',
+          channels: channelLabel(ev.channels),
+          status: !automatic ? 'Will send once automatic reminders are on' : past ? 'Sent' : 'Sends automatically',
+          sends: automatic,
+          held: false,
+          past,
+        });
+      }
+      continue;
+    }
     if (anchor.type !== 'sessionStart' && anchor.type !== 'sessionEnd') {
       other.push({
         key: ev.id || ev.code,

@@ -416,10 +416,12 @@ function EnrolledHome() {
     learnerProgramDates(profile, 'lep').start ||
     String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10) ||
     '';
+  // Batches with automatic reminders get the morning nudge from the scheduler instead.
+  const serverDailyRituals = cmsBatch?.status === 'live' && cmsBatch?.automationEnabled === true;
   useEffect(() => {
     if (!ritualsUnlocked) return;
-    scheduleLepRitualsNotifications().catch(() => {});
-  }, [ritualsUnlocked]);
+    scheduleLepRitualsNotifications({ serverDaily: serverDailyRituals }).catch(() => {});
+  }, [ritualsUnlocked, serverDailyRituals]);
 
   const day1Offset = useMemo(
     () => (day1Iso ? daysFromDay1(practiceTodayIso(), day1Iso) : null),

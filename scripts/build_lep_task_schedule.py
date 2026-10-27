@@ -1,0 +1,136 @@
+"""
+Build the LEP task notification schedule from its two sources:
+
+  - constants/programCourseSlice.js  the 54 LEP tasks (id, phase, order, title)
+  - utils/lepFlowGates.js            the day each phase opens (days from Day 1)
+  - LEP-Messages-Complete-v6.xlsx    "Task notifications": Before / After / Due copy
+
+and the due rule from the sheet's "Task messages" tab: every task is due before a
+session (pre-work before Day 1, Day 1-2 work before Tuesday's review, ...). The
+due session is a code (S1, S3 ...); the scheduler reads that session's real date
+from the batch, so a rescheduled session moves the due date with it.
+
+Writes constants/lepTaskSchedule.json (app) and, when given, a second path for the
+scheduler (LMS functions/lepTaskSchedule.json). Re-run after changing tasks or copy:
+
+    python scripts/build_lep_task_schedule.py ../LMS/new_lms/functions/lepTaskSchedule.json
+"""
+import difflib
+import json
+import os
+import re
+import sys
+
+import openpyxl
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SHEET = os.path.join(ROOT, 'LEP-Messages-Complete-v6.xlsx')
+
+# Due session per phase ("Task messages" → Due by). None = no due reminder.
+PHASE_DUE = {
+    'pre-program': 'S1',   # before Day 1
+    'orientation': 'S1',   # before Day 1
+    'day-1': 'S3',         # before Tuesday's review
+    'day-2': 'S3',
+    'week-1': 'S4',        # end of Week 1 (Differentiated Brand)
+    'week-2': 'S6',        # before Wednesday's Progress Update
+    'week-3': 'S7',        # before Leadership and Habits
+    'week-4': 'S8',        # before Certification
+    'evaluation': 'S8',    # quizzes before the certificate
+    'community': None,
+    'certificate': None,
+}
+
+# Tasks whose sheet "Due by" differs from their phase (matched on the sheet's task name).
+TASK_DUE = {
+    'your 0 5 league roadmap': 'S5',                  # before Shameless Pitch
+    '0 5 league roadmap worked sample': 'S5',
+    'feedback differentiated brand statement': 'S6',  # after the S4 session
+    'week 2 engagement form': 'S5',                   # end of Week 2
+    'challenge for week 2 game of excellence': 'S5',
+    'feedback shameless pitching': 'S7',              # after the S5 session
+    'guiding stars': 'S8',                            # before Certification
+    'feedback guiding stars': 'S8',
+    'a game table daily ritual': None,                # every evening, not a due date
+    'week 5 engagement form': None,                   # after the program
+    'join the iron lady alumni': None,                # within the week after certification
+}
+
+
+def norm(s):
+    s = s.lower().replace('(reading)', '').replace('—', ' ').replace('–', ' ')
+    return re.sub(r'[^a-z0-9]+', ' ', s).strip()
+
+
+def read(path):
+    with open(os.path.join(ROOT, path), encoding='utf-8') as f:
+        return f.read()
+
+
+def lep_tasks():
+    src = read('constants/programCourseSlice.js')
+    start = src.index('[PROGRAMS.LEP]: withLepResources([')
+    block = src[start:src.index('[PROGRAMS.BM100]: [', start)]
+    found = re.findall(
+        r'id: "([^"]+)",\s*phase: "([^"]+)",\s*order: (\d+),\s*title: "([^"]+)"', block
+    )
+    return [{'id': i, 'phase': p, 'order': int(o), 'title': t} for i, p, o, t in found]
+
+
+def lep_phases():
+    src = read('constants/programCourseSlice.js')
+    block = src[src.index('[PROGRAMS.LEP]: ['):src.index('[PROGRAMS.BM100]: [')]
+    return {i: t for i, t in re.findall(r"\{ id: '([^']+)', title: '([^']+)'", block)}
+
+
+def phase_open_days():
+    src = read('utils/lepFlowGates.js')
+    block = src[src.index('LEP_PHASE_DAY_OFFSET = {'):]
+    block = block[:block.index('};')]
+    return {k: int(v) for k, v in re.findall(r"'?([a-z0-9-]+)'?: (-?\d+)", block)}
+
+
+def sheet_copy():
+    wb = openpyxl.load_workbook(SHEET, read_only=True, data_only=True)
+    rows = [r for r in wb['Task notifications'].iter_rows(values_only=True)][3:]
+    return [
+        {'name': r[2], 'opens': r[3], 'after': r[4], 'due': r[5]}
+        for r in rows
+        if r and r[0] and r[2]
+    ]
+
+
+def main(extra_out):
+    tasks = lep_tasks()
+    by_title = {norm(t['title']): t for t in tasks}
+    out, used = [], set()
+    for row in sheet_copy():
+        match = difflib.get_close_matches(norm(row['name']), by_title.keys(), n=1, cutoff=0.6)
+        if not match:
+            raise SystemExit(f'No app task for sheet row: {row["name"]}')
+        task = by_title[match[0]]
+        if task['id'] in used:
+            raise SystemExit(f'Two sheet rows match {task["id"]}')
+        used.add(task['id'])
+        key = norm(row['name'])
+        due = TASK_DUE[key] if key in TASK_DUE else PHASE_DUE.get(task['phase'])
+        out.append({**task, 'dueSession': due, 'opens': row['opens'], 'due': row['due'], 'after': row['after']})
+    missing = [t['id'] for t in tasks if t['id'] not in used]
+    if missing:
+        raise SystemExit(f'Tasks without sheet copy: {missing}')
+
+    data = {
+        'about': 'Generated by scripts/build_lep_task_schedule.py — do not edit by hand.',
+        'phaseOpenDay': phase_open_days(),
+        'phaseTitle': lep_phases(),
+        'tasks': sorted(out, key=lambda t: (list(PHASE_DUE).index(t['phase']), t['order'])),
+    }
+    text = json.dumps(data, ensure_ascii=False, indent=2) + '\n'
+    for path in [os.path.join(ROOT, 'constants', 'lepTaskSchedule.json'), *extra_out]:
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
+            f.write(text)
+        print('wrote', path, len(out), 'tasks')
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
