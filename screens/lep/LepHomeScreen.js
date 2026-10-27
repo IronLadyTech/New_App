@@ -21,6 +21,11 @@ import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
 import { buildLepEnrolledHero } from '../../utils/lepBatchHero';
 import {
+  resolveLepDay1Iso,
+  resolveLepEnrolledCohortPhase,
+} from '../../utils/lepEnrolledCohortPhase';
+import LepAlumniGate from './LepAlumniGate';
+import {
   buildPreviewRegisteredHome,
   buildRegisteredHome,
   day1CalendarUrl,
@@ -78,13 +83,26 @@ import { makeTaskDoneChecker } from '../../utils/taskDone';
 import PracticeDeck from '../../components/lep/PracticeDeck';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { scheduleLepRitualsNotifications } from '../../services/lepRitualsNotifications';
+
+function EnrolledRoute() {
+  const { profile } = useAuth();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const day1Iso = useMemo(() => resolveLepDay1Iso(profile, cmsBatch), [profile, cmsBatch]);
+  const cohortPhase = useMemo(
+    () => resolveLepEnrolledCohortPhase(profile, day1Iso),
+    [profile, day1Iso]
+  );
+  if (cohortPhase === 'alumni') return <LepAlumniGate />;
+  return <EnrolledHome />;
+}
 
 export default function LepHomeScreen() {
   const { profile } = useAuth();
   const { batch } = useLearnerCmsBatch('lep');
   const forced = profile?.labRegStatus || null;
-  // Enrolled keeps the original enrolled home. Registered-only UI is for part-paid.
-  if (!forced && isLepEnrolled(profile)) return <EnrolledHome />;
+  // Enrolled: alumni cohort → dedicated Alumni home; else pre-launch / in-cohort enrolled home.
+  if (!forced && isLepEnrolled(profile)) return <EnrolledRoute />;
   return <RegisteredHome cmsBatch={batch} preview={forced} />;
 }
 
@@ -398,14 +416,33 @@ function EnrolledHome() {
     learnerProgramDates(profile, 'lep').start ||
     String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10) ||
     '';
+  useEffect(() => {
+    if (!ritualsUnlocked) return;
+    scheduleLepRitualsNotifications().catch(() => {});
+  }, [ritualsUnlocked]);
+
   const day1Offset = useMemo(
     () => (day1Iso ? daysFromDay1(practiceTodayIso(), day1Iso) : null),
     [day1Iso]
   );
+  const cohortPhase = useMemo(
+    () => resolveLepEnrolledCohortPhase(profile, day1Iso),
+    [profile, day1Iso]
+  );
+  // Pre–Day 1 blocks only before the cohort starts.
+  const showPrelaunchBlocks = cohortPhase === 'prelaunch';
   // Keep “Watch these 2” visible until both videos are done (even on Day 1 launch day).
-  const showWatchThese = prework.some((item) => !item.done);
+  const showWatchThese = showPrelaunchBlocks && prework.some((item) => !item.done);
   const streak = useLepPracticeStreak();
   const hero = buildLepEnrolledHero(profile, group);
+  const heroChip =
+    cohortPhase === 'active' && day1Offset != null && day1Offset >= 0
+      ? day1Offset === 0
+        ? 'Day 1 · live today'
+        : day1Offset === 1
+          ? 'Day 2 · live today'
+          : `Day ${day1Offset + 1} of your cohort`
+      : hero.launchChip;
   const dueWeek = useMemo(() => buildLepDueWeek(cmsBatch || (day1Iso ? { day1Date: day1Iso } : null)), [
     cmsBatch,
     day1Iso,
@@ -563,7 +600,7 @@ function EnrolledHome() {
           ) : (
             <View />
           )}
-          {hero.launchChip ? <SoftChip onDark>{hero.launchChip}</SoftChip> : null}
+          {heroChip ? <SoftChip onDark>{heroChip}</SoftChip> : null}
         </View>
         <ILText
           role="display"
@@ -590,6 +627,7 @@ function EnrolledHome() {
         items={practice}
         streakLabel={streak.streakLabel}
         onOpen={nav.goToday}
+        onStreakPress={nav.goProgress}
         onItem={nav.goPracticeItem}
         note={
           day1Iso
@@ -618,6 +656,7 @@ function EnrolledHome() {
         }))}
       />
 
+      <Pressable onPress={nav.goProgress}>
       <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
         <WeekRing done={streak.weekActiveDays} total={streak.weekTotal} />
         <View style={{ flex: 1, marginLeft: 12 }}>
@@ -655,6 +694,7 @@ function EnrolledHome() {
           </View>
         </View>
       </WhiteCard>
+      </Pressable>
 
       {showWatchThese ? (
         <>
@@ -732,71 +772,75 @@ function EnrolledHome() {
         </>
       ) : null}
 
-      <Section title="Get ready" sub="Day 1 checklist" />
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
-        {readyItems.map((item, i) => (
-          <CheckRow
-            key={item.title}
-            item={item}
-            last={i === readyItems.length - 1}
-            onPress={() => toggleReady(item.title)}
-          />
-        ))}
-      </WhiteCard>
+      {showPrelaunchBlocks ? (
+        <>
+          <Section title="Get ready" sub="Day 1 checklist" />
+          <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
+            {readyItems.map((item, i) => (
+              <CheckRow
+                key={item.title}
+                item={item}
+                last={i === readyItems.length - 1}
+                onPress={() => toggleReady(item.title)}
+              />
+            ))}
+          </WhiteCard>
+        </>
+      ) : null}
 
       <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-            {upcoming.kicker}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
+              {upcoming.kicker}
+            </ILText>
+            <MaterialIcons name="groups" size={18} color={G.ink} />
+          </View>
+          <ILText
+            role="title"
+            color={G.ink}
+            style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+          >
+            {upcoming.title}
           </ILText>
-          <MaterialIcons name="groups" size={18} color={G.ink} />
-        </View>
-        <ILText
-          role="title"
-          color={G.ink}
-          style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-        >
-          {upcoming.title}
-        </ILText>
-        <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 14 }}>
-          {upcoming.when}
-        </ILText>
-        {upcoming.hours ? (
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-            {upcoming.hours}
+          <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 14 }}>
+            {upcoming.when}
           </ILText>
-        ) : null}
-        <View style={{ marginTop: 16 }}>
-          <RedCta
-            label="Add to calendar"
-            icon="event"
+          {upcoming.hours ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              {upcoming.hours}
+            </ILText>
+          ) : null}
+          <View style={{ marginTop: 16 }}>
+            <RedCta
+              label="Add to calendar"
+              icon="event"
+              onPress={() => {
+                if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
+                else nav.goSchedule();
+              }}
+            />
+          </View>
+          <Pressable
             onPress={() => {
-              if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
-              else nav.goSchedule();
+              if (upcoming.joinLink) {
+                recordSessionJoin(upcoming.code);
+                Linking.openURL(upcoming.joinLink).catch(() => {});
+              } else nav.goSchedule();
             }}
-          />
-        </View>
-        <Pressable
-          onPress={() => {
-            if (upcoming.joinLink) {
-              recordSessionJoin(upcoming.code);
-              Linking.openURL(upcoming.joinLink).catch(() => {});
-            } else nav.goSchedule();
-          }}
-          style={{
-            marginTop: 10,
-            backgroundColor: G.dark,
-            borderRadius: 999,
-            paddingVertical: 14,
-            alignItems: 'center',
-          }}
-        >
-          <ILText role="label" color="#FFFFFF">
-            {upcoming.ready ? 'Join Zoom session' : 'Zoom Boardroom link'}
-          </ILText>
-          <ILText role="bodySm" color="rgba(255,255,255,0.6)" style={{ marginTop: 2, fontSize: 11 }}>
-            {upcoming.ready ? 'Opens your batch join link' : 'Unlocks when the host posts the link'}
-          </ILText>
+            style={{
+              marginTop: 10,
+              backgroundColor: G.dark,
+              borderRadius: 999,
+              paddingVertical: 14,
+              alignItems: 'center',
+            }}
+          >
+            <ILText role="label" color="#FFFFFF">
+              {upcoming.ready ? 'Join Zoom session' : 'Zoom Boardroom link'}
+            </ILText>
+            <ILText role="bodySm" color="rgba(255,255,255,0.6)" style={{ marginTop: 2, fontSize: 11 }}>
+              {upcoming.ready ? 'Opens your batch join link' : 'Unlocks when the host posts the link'}
+            </ILText>
         </Pressable>
       </WhiteCard>
 

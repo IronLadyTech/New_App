@@ -363,7 +363,7 @@ export function UnderlineTabs({ items, value, onChange }) {
   );
 }
 
-export function ProgressDark({ kicker, title, percent, foot, right }) {
+export function ProgressDark({ kicker, title, percent, foot, right, hideBar }) {
   const showRight = right !== null;
   const rightLabel = right === undefined ? `${percent}%` : right;
   return (
@@ -397,17 +397,19 @@ export function ProgressDark({ kicker, title, percent, foot, right }) {
       >
         {title}
       </ILText>
-      <View
-        style={{
-          height: 4,
-          borderRadius: 2,
-          backgroundColor: 'rgba(255,255,255,0.16)',
-          marginTop: 14,
-          overflow: 'hidden',
-        }}
-      >
-        <View style={{ width: `${percent}%`, height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
-      </View>
+      {!hideBar ? (
+        <View
+          style={{
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: 'rgba(255,255,255,0.16)',
+            marginTop: 14,
+            overflow: 'hidden',
+          }}
+        >
+          <View style={{ width: `${percent}%`, height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
+        </View>
+      ) : null}
       {foot ? (
         <ILText role="bodySm" color="rgba(255,255,255,0.7)" style={{ marginTop: 12, fontSize: 13 }}>
           {foot}

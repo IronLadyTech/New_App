@@ -3,6 +3,18 @@ import {
   day1FromOrientationThursday,
   parseISODate,
 } from './lepBatchSchedule';
+
+/** Zoho LEP start (LEP_Reg_Date): Wednesday before Day 1 Saturday. */
+export function lepZohoCohortStartFromDay1(day1Iso) {
+  const day1 = String(day1Iso || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return '';
+  return addCalendarDays(day1, -3);
+}
+
+export function lepZohoCohortEndFromDay1(day1Iso) {
+  const start = lepZohoCohortStartFromDay1(day1Iso);
+  return start ? addOneCalendarMonth(start) : '';
+}
 import { learnerProgramDates } from './programAccess';
 
 const MONTHS = {
@@ -146,46 +158,61 @@ export function addOneCalendarMonth(iso) {
 }
 
 /**
- * Zoho Leads `LEP_Batch` from Day 1 Saturday → same date one month later,
- * the way CX names batches in Zoho.
- * e.g. Sat 24–Sun 25 Oct → `24/10/2026 - 24/11/2026`
+ * Zoho-style batch range from Day 1 Saturday: Wed cohort start → +1 month (matches LEP_Reg_Date / LEP_End_Date).
+ * e.g. Day 1 Sat 31 Oct → `28/10/2026 - 28/11/2026`
  */
 export function zohoLepBatchKeyFromDay1(day1Iso) {
-  const day1 = String(day1Iso || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day1)) return '';
-  const end = addOneCalendarMonth(day1);
-  if (!end) return '';
-  return `${toDmy(day1)} - ${toDmy(end)}`;
+  const start = lepZohoCohortStartFromDay1(day1Iso);
+  const end = lepZohoCohortEndFromDay1(day1Iso);
+  if (!start || !end) return '';
+  return `${toDmy(start)} - ${toDmy(end)}`;
+}
+
+const BATCH_RANGE_RE = /^\d{1,2}\/\d{1,2}\/\d{2,4}\s*[-–—]\s*\d{1,2}\/\d{1,2}\/\d{2,4}$/;
+
+function firstBatchRange(...values) {
+  for (const value of values) {
+    const text = String(value || '').trim();
+    if (BATCH_RANGE_RE.test(text)) return text;
+  }
+  return '';
 }
 
 /**
  * One LEP batch date-range line for Profile (Your batches + Enrollment Status).
- * Prefer live Zoho, then in-app pick, then CMS batch / Day 1.
+ * Prefer the learner's latest in-app pick, then live Zoho, then CMS / Day 1.
  */
 export function resolveLepBatchDateLine({ profile, cmsBatch, zohoLive } = {}) {
   const lep = profile?.programAccess?.lep || {};
+  const live = String(zohoLive || '').trim();
+  const localPick = firstBatchRange(
+    lep.zohoBatchKey,
+    lep.zohoRawBatch,
+    lep.day1Date ? zohoLepBatchKeyFromDay1(lep.day1Date) : ''
+  );
+  if (localPick) {
+    return {
+      dateLine: localPick,
+      fromZoho: Boolean(live && live === localPick),
+      awaitingZoho: !live || live !== localPick,
+    };
+  }
+
   const zohoDates = learnerProgramDates(profile, 'lep');
   const startDmy = toDmy(zohoDates.start);
   const endDmy = toDmy(zohoDates.end);
   const fromStartEnd =
     startDmy && endDmy
       ? `${startDmy} - ${endDmy}`
-      : zohoDates.start
-        ? zohoLepBatchKeyFromDay1(zohoDates.start)
+      : startDmy && zohoDates.start
+        ? `${startDmy} - ${toDmy(addOneCalendarMonth(zohoDates.start))}`
         : '';
-  const candidates = [
-    zohoLive,
-    lep.zohoRawBatch,
-    lep.zohoBatchKey,
+  const dateLine = firstBatchRange(
+    live,
     cmsBatch?.zohoBatchKey,
     fromStartEnd,
-    lep.day1Date ? zohoLepBatchKeyFromDay1(lep.day1Date) : '',
-    cmsBatch?.day1Date ? zohoLepBatchKeyFromDay1(cmsBatch.day1Date) : '',
-  ]
-    .map((v) => String(v || '').trim())
-    .filter(Boolean);
-  const dateLine = candidates.find((v) => /^\d{1,2}\/\d{1,2}\/\d{2,4}\s*[-–—]\s*\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(v)) || '';
-  const live = String(zohoLive || '').trim();
+    cmsBatch?.day1Date ? zohoLepBatchKeyFromDay1(cmsBatch.day1Date) : ''
+  );
   return {
     dateLine,
     fromZoho: Boolean(dateLine && live && dateLine === live),

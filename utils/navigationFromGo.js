@@ -21,7 +21,10 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'payment') {
-    rootRef.navigate('Profile', { screen: 'PaymentEnrollment' });
+    rootRef.navigate('Profile', {
+      screen: 'PaymentEnrollment',
+      params: go.programId ? { programId: go.programId } : undefined,
+    });
     return true;
   }
   if (go.to === 'schedule') {
@@ -42,6 +45,14 @@ export function navigateFromGo(go) {
   }
   if (go.to === 'guide') {
     rootRef.navigate('Home');
+    return true;
+  }
+  if (go.to === 'home' && go.screen) {
+    rootRef.navigate('Home', { screen: go.screen });
+    return true;
+  }
+  if (go.to === 'profile' && go.screen) {
+    rootRef.navigate('Profile', { screen: go.screen });
     return true;
   }
   return false;

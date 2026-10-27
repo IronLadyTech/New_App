@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { getPaymentOrder } from '../../services/firestore';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { getProgramEntry } from '../../constants/programs';
 
 function formatWhen(value) {
   const d = value?.toDate?.() || (value ? new Date(value) : null);
@@ -148,7 +149,10 @@ export default function OrderReceiptScreen({ navigation, route }) {
               PROGRAMME
             </Text>
             <Row label="Programme" value={order.programTitle} />
-            <Row label="Programme ID" value={order.programId} />
+            <Row
+              label="Programme code"
+              value={getProgramEntry(order.programId)?.code || order.programId}
+            />
             <Row label="Amount" value={`₹ ${Number(order.amountRupees || 0).toLocaleString('en-IN')}`} />
             <Row label="Currency" value={order.currency || 'INR'} />
           </View>

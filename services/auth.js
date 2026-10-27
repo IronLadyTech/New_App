@@ -1,7 +1,6 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPhoneNumber,
   signInWithCustomToken,
   signOut,
   updateProfile,
@@ -153,39 +152,6 @@ export async function signInWithAccessToken(token) {
   });
   refreshMyAccess().catch(() => {});
   return credential.user;
-}
-
-export async function sendPhoneOtp(phoneNumber, recaptchaVerifier) {
-  const normalized = normalizePhoneE164(phoneNumber);
-  if (!normalized) {
-    throw new Error('Enter a valid mobile number with country code (e.g. +91…).');
-  }
-  return signInWithPhoneNumber(auth, normalized, recaptchaVerifier);
-}
-
-export async function confirmPhoneOtp(confirmation, code) {
-  const trimmed = String(code || '').trim();
-  if (!/^\d{6}$/.test(trimmed)) {
-    throw new Error('Enter the 6-digit code from SMS.');
-  }
-  const credential = await confirmation.confirm(trimmed);
-  await ensureUserProfile(credential.user, {
-    phoneNumber: credential.user.phoneNumber,
-  });
-  refreshMyAccess();
-  return credential.user;
-}
-
-function normalizePhoneE164(value) {
-  const raw = String(value || '').trim();
-  if (!raw) return null;
-  const digits = raw.replace(/[^\d+]/g, '');
-  if (digits.startsWith('+') && digits.length >= 11) return digits;
-  const only = digits.replace(/\D/g, '');
-  if (only.length === 10) return `+91${only}`;
-  if (only.length === 12 && only.startsWith('91')) return `+${only}`;
-  if (only.length >= 11 && only.length <= 15) return `+${only}`;
-  return null;
 }
 
 export async function logOut() {

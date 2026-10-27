@@ -574,11 +574,9 @@ service cloud.firestore {
     }
 
     match /cms_batches/{id} {
-      allow read: if cmsViewer()
-        || (isSignedIn() && (
-          resource.data.openForEnrollment != false
-          || resource.data.status == 'live'
-        ));
+      // Any signed-in learner reads batch dates and sessions (draft batches too), so the
+      // app's one query for all batches is never refused because of one draft batch.
+      allow read: if cmsViewer() || isSignedIn();
       allow create, update: if cmsBatchEditor();
       allow delete: if cmsEditor();
     }

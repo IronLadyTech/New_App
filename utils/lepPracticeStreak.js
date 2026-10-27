@@ -9,7 +9,8 @@ export function activeDaysFromDone(doneMap = {}) {
     const rest = fullKey.slice(4);
     const dated =
       /(?:practice-day:[^:]+|active-day):(\d{4}-\d{2}-\d{2})$/.exec(rest) ||
-      /^active-day:(\d{4}-\d{2}-\d{2})$/.exec(rest);
+      /^active-day:(\d{4}-\d{2}-\d{2})$/.exec(rest) ||
+      /^ritual-mark:[^:]+:(\d{4}-\d{2}-\d{2})$/.exec(rest);
     if (dated) days.add(dated[1]);
   });
   return [...days].sort();

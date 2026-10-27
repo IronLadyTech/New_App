@@ -14,6 +14,10 @@ export default function ProfileStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileHome" component={LepProfileScreen} />
       <Stack.Screen name="LepProgress" component={LepProgressScreen} />
+      <Stack.Screen
+        name="WeeklyBrief"
+        getComponent={() => require('../screens/lep/LepWeeklyBriefScreen').default}
+      />
       <Stack.Screen name="NudgeSettings" component={LepNudgeSettingsScreen} />
       <Stack.Screen name="LepCertificate" component={LepCertificateScreen} />
       <Stack.Screen
@@ -27,6 +31,10 @@ export default function ProfileStack() {
       <Stack.Screen
         name="PaymentEnrollment"
         getComponent={() => require('../screens/payment/PaymentEnrollmentScreen').default}
+      />
+      <Stack.Screen
+        name="Confirm100bmCohort"
+        getComponent={() => require('../screens/profile/Confirm100bmCohortScreen').default}
       />
       <Stack.Screen
         name="Orders"

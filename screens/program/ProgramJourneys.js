@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { programStage, useProgramRoutes } from '../../context/ProgramNavContext';
+import { learnerEnrollmentLabel } from '../../utils/programAccess';
 import { useAuth } from '../../context/AuthContext';
 import { getEnrolledProgramIds } from '../../utils/programAccess';
 import { useLepNav } from '../lep/useLepNav';
@@ -741,10 +742,18 @@ function usePrograms() {
 }
 
 function ProgramCard({ id, state, lead, locked, onPress }) {
+  const { profile } = useAuth();
   const card = PROGRAM_CARD[id];
+  const accessLabel = locked ? 'Locked' : learnerEnrollmentLabel(profile, id);
+  const kickerFromAccess =
+    accessLabel === 'Enrolled'
+      ? 'Enrolled'
+      : accessLabel === 'Registered'
+        ? 'Registered · seat held'
+        : accessLabel;
   const copy = locked
     ? { kicker: 'Locked', sub: 'Not linked to this number', pct: 0 }
-    : card[state] || card.enrolled;
+    : { ...(card[state] || card.enrolled), kicker: kickerFromAccess };
   const Shell = !locked && lead ? DarkPanel : SoftCard;
   return (
     <Pressable

@@ -13,6 +13,14 @@ const ICONS = {
   Programs: { icon: 'layers', outline: 'layers-outline' },
 };
 
+/** Tab stacks keep nested screens (e.g. Week 2 phase) until we explicitly return to root. */
+const TAB_ROOT_SCREEN = {
+  Home: 'LepHome',
+  MyProgram: 'LepProgram',
+  Learn: 'LepLearn',
+  Engage: 'LepEngage',
+};
+
 export default function ILTabBar({ state, descriptors, navigation }) {
   const iconFor = useCallback((name) => ICONS[name] || { icon: 'home', outline: 'home-outline' }, []);
   const items = useLiquidItems(state, descriptors, iconFor);
@@ -33,7 +41,9 @@ export default function ILTabBar({ state, descriptors, navigation }) {
           canPreventDefault: true,
         });
         if (event.defaultPrevented) return;
-        navigation.navigate(item.name);
+        const root = TAB_ROOT_SCREEN[item.name];
+        if (root) navigation.navigate(item.name, { screen: root });
+        else navigation.navigate(item.name);
       }}
     />
   );

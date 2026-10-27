@@ -196,14 +196,30 @@ function namedOnProfile(profile, programId) {
   return expandProgramValues(profile.programs).some((value) => normalizeProgramId(value) === id);
 }
 
+function paymentFromZohoLead(profile, programId) {
+  const zoho = zohoPaymentDetail(profile, programId);
+  const raw = String(zoho.status || '').toLowerCase();
+  if (!raw) return null;
+  if (/full|paid\s*in\s*full|complete|100\s*%|fully/i.test(raw)) return PAYMENT_STATUS.PAID;
+  if (/register|registration|partial|part|balance|due|pending/i.test(raw)) return PAYMENT_STATUS.REGISTER;
+  return null;
+}
+
 export function programPaymentStatus(profile, programId) {
   const id = normalizeProgramId(programId);
   const perProgram = id ? profile?.programAccess?.[id]?.paymentStatus : null;
-  if (perProgram) return normalizePaymentStatus(perProgram);
-  // Flat payment is the old single-program field. Do not lend it to 100BM or MBW
-  // when the learner only paid for LEP.
-  if (namedOnProfile(profile, id)) return normalizePaymentStatus(profile?.paymentStatus);
-  return PAYMENT_STATUS.UNPAID;
+  let tier = perProgram
+    ? normalizePaymentStatus(perProgram)
+    : namedOnProfile(profile, id)
+      ? normalizePaymentStatus(profile?.paymentStatus)
+      : PAYMENT_STATUS.UNPAID;
+  const fromZoho = paymentFromZohoLead(profile, id);
+  // Zoho balance-due must not show as fully enrolled in the app.
+  if (tier === PAYMENT_STATUS.PAID && fromZoho === PAYMENT_STATUS.REGISTER) {
+    tier = PAYMENT_STATUS.REGISTER;
+  }
+  if (tier === PAYMENT_STATUS.UNPAID && fromZoho) tier = fromZoho;
+  return tier;
 }
 
 /** Enrolled + not unpaid → can open tasks (matches web canOpenProgramTasks). */
@@ -256,8 +272,18 @@ const ZOHO_LEAD_FIELDS = {
     end: ['LEP_End_Date', 'LEP End Date'],
     status: ['LEP_Status', 'LEP Status'],
     active: ['LEP_Active_Status', 'LEP Active Status'],
-    amount: ['LEP_Payment_Amount', 'LEP Payment Amount'],
-    txn: ['LEP_Registration_Transaction_Id', 'LEP Registration Transaction Id'],
+    amount: [
+      'LEP_Full_Amount',
+      'LEP Enrollment Amount',
+      'LEP_Payment_Amount',
+      'LEP Payment Amount',
+    ],
+    txn: [
+      'LEP_Enrollment_Transaction_Id',
+      'LEP Enrollment Transaction Id',
+      'LEP_Registration_Transaction_Id',
+      'LEP Registration Transaction Id',
+    ],
     paidOn: ['LEP_Registration_Date', 'LEP Registration Date'],
     payStatus: [
       'LEP_Registration_Payment_Status',
@@ -445,6 +471,7 @@ export function learnerDomainText(profile) {
       profile.industry ||
       profile.roleTitle ||
       profile.jobTitle ||
+      profile.zohoLead?.Industry_Field_of_Work ||
       profile.zohoLead?.Industry ||
       profile.zohoLead?.LMS_Domain ||
       profile.Industry_Field_of_Work ||
@@ -538,14 +565,14 @@ export function learnerEnrollmentLabel(profile, programId) {
   const pid = normalizeProgramId(programId);
   if (!pid || !getEnrolledProgramIds(profile).has(pid)) return 'Locked';
 
+  const pay = programPaymentStatus(profile, pid);
+  if (pay === PAYMENT_STATUS.PAID) return 'Enrolled';
+  if (pay === PAYMENT_STATUS.REGISTER) return 'Registered';
+
   const enrolled = programIdsFromFields(profile, ENROLLMENT_DETAIL_FIELDS);
   const registered = programIdsFromFields(profile, REGISTRATION_DETAIL_FIELDS);
   if (enrolled.has(pid)) return 'Enrolled';
   if (registered.has(pid)) return 'Registered';
-
-  const pay = programPaymentStatus(profile, pid);
-  if (pay === PAYMENT_STATUS.PAID) return 'Enrolled';
-  if (pay === PAYMENT_STATUS.REGISTER) return 'Registered';
   return 'Locked';
 }
 
@@ -586,15 +613,22 @@ export function learnerProgramDates(profile, programId) {
 /** Name, role, city, and experience from the Zoho lead. Empty staff notes are dropped. */
 export function learnerLeadDetails(profile) {
   const experience = usableLeadText(
-    readLeadField(profile, [
-      'Total Years Of Experience.',
-      'Total Years Of Experience',
-      'Total_Years_Of_Experience',
-      'Years_of_Experience',
-      'Experience',
-      'experience',
-    ])
+    profile?.experience ||
+      profile?.zohoLead?.Total_Years_Of_Experience ||
+      readLeadField(profile, [
+        'Total Years Of Experience.',
+        'Total Years Of Experience',
+        'Total_Years_Of_Experience',
+        'Years_of_Experience',
+        'Experience',
+        'experience',
+      ])
   );
+  const experienceLabel = experience
+    ? /\byears?\b/i.test(experience)
+      ? experience
+      : `${experience.replace(/\s*years?$/i, '')} years`
+    : '';
   return {
     name: usableLeadText(readLeadField(profile, ['Full_Name', 'Full Name', 'Lead Name', 'displayName'])),
     city: usableLeadText(readLeadField(profile, ['City', 'city'])),
@@ -604,7 +638,7 @@ export function learnerLeadDetails(profile) {
     industry: usableLeadText(
       readLeadField(profile, ['Industry/Field of Work', 'Industry_Field_of_Work', 'Industry'])
     ),
-    experience: experience ? `${experience.replace(/\s*years?$/i, '')} years` : '',
+    experience: experienceLabel,
   };
 }
 
@@ -663,11 +697,11 @@ function namedBatch(profile, pid, access) {
   // never fall back to a stale Firestore/CMS date range.
   const fromLead = zohoBatchRange(profile, pid);
   if (fromLead) return fromLead;
-  if (hasZohoLeadSnapshot(profile)) return null;
 
   const fromZohoCopy =
     cleanBatchLabel(access?.zohoRawBatch) || cleanBatchLabel(access?.zohoBatchKey);
   if (fromZohoCopy && isZohoBatchDateRange(fromZohoCopy)) return fromZohoCopy;
+  if (hasZohoLeadSnapshot(profile)) return null;
 
   const fromAccess = cleanBatchLabel(access?.batch);
   const id = cleanBatchId(access?.batchId);
@@ -742,4 +776,19 @@ export function needsLepBatchSelection(profile) {
   if (!profile || lepBatchIsAssigned(profile)) return false;
   const pay = programPaymentStatus(profile, 'lep');
   return pay === PAYMENT_STATUS.REGISTER || pay === PAYMENT_STATUS.PAID;
+}
+
+export function bmCohortIsAssigned(profile) {
+  const access = profile?.programAccess?.['100bm'] || {};
+  if (String(access.cohortConfirmedAt || '').trim()) return true;
+  if (String(access.startDate || '').trim() && String(access.endDate || '').trim()) return true;
+  if (cleanBatchLabel(access.zohoRawBatch) || cleanBatchLabel(access.zohoBatchKey)) return true;
+  if (learnerProgramDates(profile, '100bm').start) return true;
+  return false;
+}
+
+/** After 100BM balance payment — cohort start must be confirmed before Zoho blueprint fields. */
+export function needs100bmCohortConfirm(profile) {
+  if (!profile || bmCohortIsAssigned(profile)) return false;
+  return programPaymentStatus(profile, '100bm') === PAYMENT_STATUS.PAID;
 }

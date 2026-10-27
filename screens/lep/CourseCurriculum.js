@@ -13,6 +13,8 @@ import {
   isPhaseOpen,
 } from '../../constants/programCourseSlice';
 import { useCourseDemo } from '../../context/CourseDemoContext';
+import { usePrograms } from '../../context/ProgramsContext';
+import { makeTaskDoneChecker } from '../../utils/taskDone';
 import { ProgressDark, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { phaseLockLabel } from '../../utils/phaseUnlock';
@@ -54,6 +56,11 @@ export default function CourseCurriculum({
 }) {
   const nav = useLepNav();
   const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+  const taskIsDone = useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, demo.done, getTaskSubmission]
+  );
   const phases = coursePhases(programId);
   const phaseId = currentPhaseId(programId, enrolled, lepFlow);
   const currentIndex = Math.max(0, phases.findIndex((p) => p.id === phaseId));
@@ -68,8 +75,8 @@ export default function CourseCurriculum({
     phases.forEach((p) => {
       courseTasks(programId, p.id).forEach((t) => all.push(t));
     });
-    const done = all.filter((t) => demo.isDone(programId, t.id)).length;
-    const next = all.find((t) => !demo.isDone(programId, t.id));
+    const done = all.filter((t) => taskIsDone(programId, t.id)).length;
+    const next = all.find((t) => !taskIsDone(programId, t.id));
     const percent = all.length ? Math.round((done / all.length) * 100) : 0;
     return {
       percent,
@@ -80,7 +87,7 @@ export default function CourseCurriculum({
         ? `${percent}% complete · Next up: ${next.title}`
         : `${percent}% complete`,
     };
-  }, [phases, programId, demo, currentIndex]);
+  }, [phases, programId, taskIsDone, currentIndex]);
 
   return (
     <View>
@@ -118,8 +125,8 @@ export default function CourseCurriculum({
         const now = phase.id === phaseId;
         const expanded = phase.id === activeId;
         const tasks = courseTasks(programId, phase.id);
-        const doneCount = tasks.filter((t) => demo.isDone(programId, t.id)).length;
-        const nextTask = tasks.find((t) => !demo.isDone(programId, t.id));
+        const doneCount = tasks.filter((t) => taskIsDone(programId, t.id)).length;
+        const nextTask = tasks.find((t) => !taskIsDone(programId, t.id));
         const prevTitle = phases[i - 1]?.title;
 
         if (expanded) {
@@ -132,7 +139,7 @@ export default function CourseCurriculum({
               doneCount={doneCount}
               nextTaskId={nextTask?.id}
               programId={programId}
-              isDone={(pid, tid) => demo.isDone(pid, tid)}
+              isDone={taskIsDone}
               onTask={(taskId) => nav.goCourseTask(programId, taskId)}
               onCollapse={() => setExpandedId('__none__')}
               complete={done && doneCount >= tasks.length && tasks.length > 0}

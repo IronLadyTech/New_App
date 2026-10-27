@@ -69,12 +69,47 @@ export function welcomeSaveFeedback(result, error) {
 
 export function batchZohoFeedback(zohoResult, error) {
   if (error) {
-    return { message: BATCH_SAVED_APP, showAlert: true };
+    return { message: BATCH_SAVED_APP, showAlert: true, reasonCode: 'error' };
   }
   if (zohoResult?.zoho === true) {
-    return { message: '', showAlert: false };
+    return {
+      message: 'Your batch is saved and your registration record is updated.',
+      showAlert: true,
+      reasonCode: 'zoho_ok',
+    };
   }
-  return { message: BATCH_SAVED_APP, showAlert: true };
+  if (zohoResult?.reasonCode === 'lead_not_found') {
+    return {
+      message:
+        'Saved in the app, but we could not find your Zoho lead to update. Email support@ironlady.tech with your mobile number.',
+      showAlert: true,
+      reasonCode: 'lead_not_found',
+    };
+  }
+  if (zohoResult?.reasonCode === 'timeout') {
+    return {
+      message:
+        'Your batch is saved in the app. CRM can take up to a minute on slow networks — leave the app open briefly, then check your lead in Zoho. If dates are still blank, try Change batch once more.',
+      showAlert: true,
+      reasonCode: 'timeout',
+    };
+  }
+  if (zohoResult?.reasonCode === 'zoho_write_failed') {
+    return {
+      message:
+        'Saved in the app, but CRM did not accept the batch dates. Ask support to check LEP Start Date and LEP End Date on your lead.',
+      showAlert: true,
+      reasonCode: 'zoho_write_failed',
+    };
+  }
+  return { message: BATCH_SAVED_APP, showAlert: true, reasonCode: zohoResult?.reasonCode || 'zoho_pending' };
+}
+
+/** Staff / __DEV__: which leg failed after Change batch. */
+export function batchSyncStageLabel(zohoResult) {
+  if (!zohoResult) return 'no_response';
+  if (zohoResult.zoho === true) return 'app_and_zoho';
+  return `app_only:${zohoResult.reasonCode || 'unknown'}`;
 }
 
 export function refreshAccessFeedback(data) {

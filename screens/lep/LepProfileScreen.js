@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -46,7 +46,10 @@ import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
 import { updateUserProfile } from '../../services/firestore';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
+import { batchSyncStageLabel, batchZohoFeedback } from '../../utils/participantSyncMessage';
 import { resolveLepBatchDateLine } from '../../utils/lepDeskBatchDate';
+import { welcomeFieldsPayloadFromProfile } from '../../utils/pushWelcomeFieldsToZoho';
+import { BATCH_ZOHO_SAVE_TIMEOUT_MS, saveWelcomeProfileFields } from '../../services/functions';
 import {
   PaymentBillingCard,
   ProfileBhagCard,
@@ -144,7 +147,9 @@ export default function LepProfileScreen() {
   const hasUnread = useNotificationBellBadge();
   const { latest } = useMyReceipts();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const zohoWelcomeResyncRef = useRef(false);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [batchSaving, setBatchSaving] = useState(false);
   const [localFacts, setLocalFacts] = useState({});
   const source = {
     ...(profile || {}),
@@ -156,6 +161,21 @@ export default function LepProfileScreen() {
     programs: accountProfile?.programs?.length ? accountProfile.programs : profile?.programs,
     program: accountProfile?.program || profile?.program,
   };
+
+  useEffect(() => {
+    if (!user?.uid || user.uid === 'preview' || zohoWelcomeResyncRef.current) return;
+    const payload = welcomeFieldsPayloadFromProfile(source);
+    if (!payload.city && !payload.day1Date && !payload.lepBatch) return;
+    zohoWelcomeResyncRef.current = true;
+    saveWelcomeProfileFields(payload, {
+      timeoutMs: payload.day1Date ? BATCH_ZOHO_SAVE_TIMEOUT_MS : undefined,
+    })
+      .then((result) => {
+        if (result?.zohoLeadId) patchProfile({ zohoLeadId: result.zohoLeadId });
+      })
+      .catch(() => {});
+  }, [user?.uid, source?.city, source?.programAccess?.lep?.zohoBatchKey, patchProfile]);
+
   const programs = programsOnProfile(source);
   const anyEnrolled = programs.some((p) => programPaymentStatus(source, p.id) === PAYMENT_STATUS.PAID);
   const lead = learnerLeadDetails(source);
@@ -240,9 +260,24 @@ export default function LepProfileScreen() {
     return undefined;
   }, []);
 
-  const lockBatch = (picked) => {
-    setBatchOpen(false);
-    lockLepBatchChoice({ user, profile: source, patchProfile, picked }).catch(() => {});
+  const lockBatch = async (picked) => {
+    if (batchSaving) return;
+    setBatchSaving(true);
+    try {
+      const result = await lockLepBatchChoice({ user, profile: source, patchProfile, picked });
+      setBatchOpen(false);
+      const feedback = batchZohoFeedback(result?.zoho);
+      if (feedback.showAlert && feedback.message) {
+        Alert.alert('Batch saved', feedback.message);
+      }
+      if (__DEV__ && result?.zoho) {
+        console.warn('[batch change]', batchSyncStageLabel(result.zoho), result.zohoBatchKey);
+      }
+    } catch {
+      Alert.alert('Batch', 'Could not save that batch date. Check your connection and try again.');
+    } finally {
+      setBatchSaving(false);
+    }
   };
 
   return (
@@ -598,7 +633,8 @@ export default function LepProfileScreen() {
       >
         <ChooseBatchDateScreen
           allowChange
-          onBack={() => setBatchOpen(false)}
+          saving={batchSaving}
+          onBack={() => !batchSaving && setBatchOpen(false)}
           onLock={lockBatch}
         />
       </Modal>

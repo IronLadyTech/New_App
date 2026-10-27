@@ -15,6 +15,7 @@ import { GuestBackBar } from '../guest/GuestBits';
 import { Page, RedCta, WhiteCard } from '../lep/LepBits';
 import { COURSE_LABEL, courseTask, nextCourseTask } from '../../constants/programCourseSlice';
 import { PROGRAMS, TASK_TYPES } from '../../constants/programs';
+import { useAuth } from '../../context/AuthContext';
 import { useCourseDemo } from '../../context/CourseDemoContext';
 import { usePrograms } from '../../context/ProgramsContext';
 import { useLepNav } from '../lep/useLepNav';
@@ -37,6 +38,15 @@ import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { isProgramTaskDone } from '../../utils/taskDone';
+import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose } from '../../utils/lepTaskInsideCopy';
+import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipCard';
+import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
+import {
+  ALUMNI_PRACTICE_BANNER,
+  alumniFlipGainFallback,
+  alumniSubmitCta,
+  alumniTaskSubtitle,
+} from '../../utils/lepAlumniTaskCopy';
 
 /** Map journey UI state → LMS submitProgramTask fields. */
 function lmsFieldsForJourneyTask(task, { text, link, form, checked, picked }) {
@@ -200,15 +210,24 @@ export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
   const demo = useCourseDemo();
+  const { profile } = useAuth();
   const { getTaskSubmission, submitTask } = usePrograms();
   const programId = route.params?.programId || PROGRAMS.LEP;
   const taskId = route.params?.taskId;
   const { batch: cmsBatch } = useLearnerCmsBatch(programId === PROGRAMS.LEP ? 'lep' : 'lep');
   const cmsBatchId = cmsBatch?.id || null;
+  const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
+  const cohortAlumni =
+    programId === PROGRAMS.LEP && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
+  const alumniPractice = route.params?.alumniPractice === true || cohortAlumni;
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const task = courseTask(programId, taskId);
   const ritualsTaskLocked =
-    programId === PROGRAMS.LEP && taskId && isLepRitualsCourseTask(taskId) && !ritualsUnlocked;
+    programId === PROGRAMS.LEP &&
+    taskId &&
+    isLepRitualsCourseTask(taskId) &&
+    !ritualsUnlocked &&
+    !alumniPractice;
   const next = nextCourseTask(programId, taskId);
 
   const [text, setText] = useState('');
@@ -267,6 +286,14 @@ export default function CourseTaskScreen({ route, navigation }) {
 
   const isErrcTask = task?.templateId === TEMPLATE_IDS.ERRC;
   const videoPoster = getVideoPoster({ taskId, uri: videoUri });
+  const lepInside =
+    programId === PROGRAMS.LEP && task
+      ? {
+          category: lepTaskCategoryLabel(task),
+          steps: lepTaskInsideSteps(task),
+          purpose: lepTaskPurpose(taskId),
+        }
+      : null;
 
   useEffect(() => {
     let mounted = true;
@@ -380,7 +407,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                 : isGenericTemplateComplete(form)
               : !!picked || done;
 
-  const cta =
+  const baseCta =
     type === TASK_TYPES.WATCH_ONLY
       ? 'Mark watched'
       : type === TASK_TYPES.VIDEO_RECORD
@@ -398,15 +425,24 @@ export default function CourseTaskScreen({ route, navigation }) {
               : type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST
                 ? 'Submit link'
                 : 'Submit answer';
+  const cta = alumniPractice ? alumniSubmitCta(baseCta) : baseCta;
 
   const submittedLabel =
     submittedAt
-      ? `Submitted ${new Date(submittedAt).toLocaleDateString(undefined, {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        })}`
-      : 'Submitted';
+      ? alumniPractice
+        ? `Last refresh ${new Date(submittedAt).toLocaleDateString(undefined, {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}`
+        : `Submitted ${new Date(submittedAt).toLocaleDateString(undefined, {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}`
+      : alumniPractice
+        ? 'Practice saved'
+        : 'Submitted';
 
   const goNext = () => {
     if (next) nav.goCourseTask(programId, next.id);
@@ -419,7 +455,11 @@ export default function CourseTaskScreen({ route, navigation }) {
       <View style={{ paddingTop: Math.max(insets.top, 8) }}>
         <GuestBackBar
           title={task.title}
-          sub={`${COURSE_LABEL[programId]} · ${task.kind}${task.week ? ` · ${task.week}` : ''}`}
+          sub={
+            alumniPractice
+              ? alumniTaskSubtitle(task)
+              : `${COURSE_LABEL[programId]} · ${task.kind}${task.week ? ` · ${task.week}` : ''}`
+          }
           onBack={() => navigation.goBack()}
         />
       </View>
@@ -433,7 +473,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         }}
       >
         <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 8, fontSize: 10 }]}>
-          {task.kind}
+          {alumniPractice ? 'Alumni monthly practice' : task.kind}
         </ILText>
         <ILText
           role="display"
@@ -442,9 +482,66 @@ export default function CourseTaskScreen({ route, navigation }) {
         >
           {task.title}
         </ILText>
-        <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
-          {task.description}
-        </ILText>
+        {alumniPractice ? (
+          <WhiteCard style={{ marginTop: 12, borderRadius: 16, padding: 14, backgroundColor: G.pink }}>
+            <ILText role="bodySm" color={G.body} style={{ fontSize: 14, lineHeight: 20 }}>
+              {ALUMNI_PRACTICE_BANNER}
+            </ILText>
+          </WhiteCard>
+        ) : null}
+
+        {!(lepInside?.steps?.length) && task.description ? (
+          <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
+            {alumniPractice
+              ? 'Use the same steps you did in LEP — update your answers for where you are now.'
+              : task.description}
+          </ILText>
+        ) : null}
+
+        {lepInside?.steps?.length ? (
+          <LepTaskInsightFlipCard
+            backgroundColor={G.pink}
+            front={{
+              eyebrow: alumniPractice
+                ? "What you'll gain from this refresh"
+                : "What you'll have when you're done",
+              content: (
+                <>
+                  {lepInside.purpose?.why ? (
+                    <ILText role="bodySm" color={G.body} style={{ fontSize: 14, lineHeight: 20, marginBottom: 10 }}>
+                      {lepInside.purpose.why}
+                    </ILText>
+                  ) : null}
+                  <ILText role="body" color={G.ink} style={{ fontSize: 15, lineHeight: 22 }}>
+                    {lepInside.purpose?.gain ||
+                      (alumniPractice
+                        ? alumniFlipGainFallback()
+                        : 'Finish this task so you can keep moving through your LEP journey.')}
+                  </ILText>
+                </>
+              ),
+            }}
+            back={{
+              eyebrow: alumniPractice
+                ? `How to do this refresh · ${lepInside.category}`
+                : `How to complete it · ${lepInside.category}`,
+              content: (
+                <>
+                  {lepInside.steps.map((line, idx) => (
+                    <ILText
+                      key={idx}
+                      role="bodySm"
+                      color={G.ink}
+                      style={{ marginTop: idx === 0 ? 0 : 8, fontSize: 14, lineHeight: 20 }}
+                    >
+                      {idx + 1}. {line}
+                    </ILText>
+                  ))}
+                </>
+              ),
+            }}
+          />
+        ) : null}
 
         <TaskFiles task={taskForFiles} skipReadingDocument={isErrcTask} />
         {cmsHint && !cmsLinks.length ? (

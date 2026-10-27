@@ -73,10 +73,11 @@ const LEP_PHASE_ORDER = [
 ];
 
 /** openRegistered flags for registered (part-paid) learners — mirrors programCourseSlice. */
+/** Part-paid (registered): pre-work + orientation only — not Day 1+ until full enrollment (Hotstar/Coursera-style). */
 const LEP_OPEN_REGISTERED = {
   'pre-program': true,
   orientation: true,
-  'day-1': true,
+  'day-1': false,
   'day-2': false,
   'week-1': false,
   'week-2': false,

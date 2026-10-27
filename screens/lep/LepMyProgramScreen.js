@@ -16,6 +16,12 @@ import { splitCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { isLepEnrolled } from '../../utils/lepState';
+import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
+import {
+  LEP_ALUMNI_JOURNEY_BANNER,
+  LEP_ALUMNI_SESSIONS_BANNER,
+  lepAlumniBatchShort,
+} from '../../utils/lepAlumniUi';
 import {
   LepHeader,
   ProgramFilter,
@@ -37,6 +43,9 @@ import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import CourseCurriculum from './CourseCurriculum';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { useNavigation } from '@react-navigation/native';
+import { useCmsSessionRecordings } from '../../hooks/useCmsLearnerItems';
+import { openLink } from '../../utils/openLink';
 
 /** Registered learners: Orientation + Day 1 + Day 2 only (unlocked). */
 const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
@@ -50,6 +59,10 @@ export default function LepMyProgramScreen() {
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
+  const alumniGraduate =
+    enrolled && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
   const [tab, setTab] = useState('Journey');
 
   return (
@@ -87,11 +100,11 @@ export default function LepMyProgramScreen() {
           <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
         </View>
         {tab === 'Journey' ? (
-          <JourneyBody locked={!enrolled} />
+          <JourneyBody locked={!enrolled} alumniGraduate={alumniGraduate} />
         ) : tab === 'Sessions' ? (
-          <SessionsBody enrolled={enrolled} onEnroll={nav.goEnroll} />
+          <SessionsBody enrolled={enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
         ) : (
-          <CohortBody preview={!enrolled} onEnroll={nav.goEnroll} />
+          <CohortBody preview={!enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
         )}
       </ScrollView>
     </Page>
@@ -159,12 +172,19 @@ function UnlockRest({ onEnroll }) {
   );
 }
 
-function JourneyBody({ locked = false }) {
+function JourneyBody({ locked = false, alumniGraduate = false }) {
   const nav = useLepNav();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
   return (
     <View style={{ marginTop: 18 }}>
+      {alumniGraduate ? (
+        <WhiteCard style={{ marginBottom: 14, borderRadius: 16, padding: 14, backgroundColor: G.pink }}>
+          <ILText role="bodySm" color={G.body} style={{ fontSize: 14, lineHeight: 20 }}>
+            {LEP_ALUMNI_JOURNEY_BANNER}
+          </ILText>
+        </WhiteCard>
+      ) : null}
       <CourseCurriculum
         programId={PROGRAMS.LEP}
         enrolled={!locked}
@@ -184,11 +204,43 @@ function filterRegisteredSessions(list) {
   });
 }
 
-function SessionsBody({ enrolled = false, onEnroll }) {
+function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
   const nav = useLepNav();
   const { profile } = useAuth();
   const { events } = useCourses();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const navigation = useNavigation();
+  const recordings = useCmsSessionRecordings('lep', cmsBatch);
+  const ALUMNI_COMPLETE_GREEN = '#1F7A4D';
+
+  const sessionActionsRight = (s, { showComplete = false }) => {
+    const rec = s.code ? recordings[s.code] : null;
+    return (
+      <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+        {rec ? (
+          <Pressable
+            onPress={() => openLink(rec.url, { navigation, title: s.title })}
+            style={{ backgroundColor: G.ink, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
+          >
+            <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
+              Watch recording
+            </ILText>
+          </Pressable>
+        ) : null}
+        {showComplete ? (
+          <ILText
+            role="label"
+            color={ALUMNI_COMPLETE_GREEN}
+            style={{ marginTop: rec ? 6 : 0, fontSize: 11, fontWeight: '600' }}
+          >
+            Completed
+          </ILText>
+        ) : null}
+      </View>
+    );
+  };
+
+  const watchButton = (s) => sessionActionsRight(s, { showComplete: false });
   const batchId = learnerBatchId(profile, 'lep');
   const batchLabel = learnerBatchLabel(profile, 'lep');
   const lepAccess = profile?.programAccess?.lep || {};
@@ -225,6 +277,138 @@ function SessionsBody({ enrolled = false, onEnroll }) {
 
   const sessionBatchLabel = cmsBatch?.name || batchLabel;
   const hasBatch = Boolean(cmsBatch?.id || day1Iso || (batchId && batchId !== 'default') || batchLabel);
+  const archiveSessions = useMemo(() => {
+    if (!alumniGraduate) return [];
+    const seen = new Set();
+    const merged = [...done, ...upcoming].filter((s) => {
+      if (!s?.id || seen.has(s.id)) return false;
+      seen.add(s.id);
+      return true;
+    });
+    return merged.slice().reverse();
+  }, [alumniGraduate, done, upcoming]);
+
+  const renderSessionRow = (s, { compact = false, showJoin = true }) => {
+    const open = () => {
+      if (s.linkUrl) {
+        recordSessionJoin(s.code);
+        Linking.openURL(s.linkUrl).catch(() => {});
+      }
+    };
+    if (compact) {
+      return (
+        <View
+          key={s.id}
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <ILText role="label" color={G.ink}>{s.title}</ILText>
+            {(s.doneMeta || s.meta) ? (
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
+                {s.doneMeta || s.meta}
+              </ILText>
+            ) : null}
+          </View>
+          {sessionActionsRight(s, { showComplete: alumniGraduate })}
+        </View>
+      );
+    }
+    return (
+      <WhiteCard
+        key={s.id}
+        style={{
+          marginTop: 12,
+          borderRadius: 22,
+          padding: 16,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+      >
+        {s.mon && s.day ? (
+          <View
+            style={{
+              width: 52,
+              borderRadius: 14,
+              backgroundColor: G.cta,
+              alignItems: 'center',
+              paddingVertical: 8,
+            }}
+          >
+            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>{s.mon}</ILText>
+            <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}>
+              {s.day}
+            </ILText>
+          </View>
+        ) : null}
+        <View style={{ flex: 1, marginLeft: s.mon && s.day ? 12 : 0 }}>
+          <ILText role="label" color={G.ink}>{s.title}</ILText>
+          {s.meta ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
+              {s.meta}
+            </ILText>
+          ) : null}
+        </View>
+        {showJoin && s.linkUrl ? (
+          <Pressable
+            onPress={open}
+            style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
+          >
+            <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>Join</ILText>
+          </Pressable>
+        ) : null}
+        {watchButton(s)}
+      </WhiteCard>
+    );
+  };
+
+  if (alumniGraduate) {
+    return (
+      <>
+        <WhiteCard style={{ marginTop: 18, borderRadius: 16, padding: 14, backgroundColor: G.pink }}>
+          <ILText role="bodySm" color={G.body} style={{ fontSize: 14, lineHeight: 20 }}>
+            {LEP_ALUMNI_SESSIONS_BANNER}
+          </ILText>
+        </WhiteCard>
+        <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
+          <View style={{ flex: 1 }}>
+            <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
+              Your batch sessions
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
+              {sessionBatchLabel ? `${sessionBatchLabel} · graduated` : 'Graduated cohort · recordings'}
+            </ILText>
+          </View>
+          {hasBatch ? <LinkRow label="Batch calendar" onPress={nav.goSchedule} /> : null}
+        </View>
+        {archiveSessions.length === 0 ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 14, lineHeight: 20 }}>
+            {!hasBatch
+              ? 'Your batch sessions will show here once your batch date is set.'
+              : 'Session dates will appear here when your batch is linked in CMS.'}
+          </ILText>
+        ) : (
+          <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
+            {archiveSessions.map((s, i) => (
+              <View
+                key={s.id}
+                style={{
+                  borderTopWidth: i ? 1 : 0,
+                  borderTopColor: G.line,
+                }}
+              >
+                {renderSessionRow(s, { compact: true, showJoin: false })}
+              </View>
+            ))}
+          </WhiteCard>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -256,69 +440,7 @@ function SessionsBody({ enrolled = false, onEnroll }) {
               : 'No upcoming sessions on your batch yet.'}
         </ILText>
       ) : (
-        upcoming.map((s) => {
-          const open = () => {
-            if (s.linkUrl) {
-              recordSessionJoin(s.code);
-              Linking.openURL(s.linkUrl).catch(() => {});
-            }
-          };
-          return (
-            <WhiteCard
-              key={s.id}
-              style={{
-                marginTop: 12,
-                borderRadius: 22,
-                padding: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              {s.mon && s.day ? (
-                <View
-                  style={{
-                    width: 52,
-                    borderRadius: 14,
-                    backgroundColor: G.cta,
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                  }}
-                >
-                  <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
-                    {s.mon}
-                  </ILText>
-                  <ILText
-                    role="title"
-                    color="#FFFFFF"
-                    style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}
-                  >
-                    {s.day}
-                  </ILText>
-                </View>
-              ) : null}
-              <View style={{ flex: 1, marginLeft: s.mon && s.day ? 12 : 0 }}>
-                <ILText role="label" color={G.ink}>
-                  {s.title}
-                </ILText>
-                {s.meta ? (
-                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
-                    {s.meta}
-                  </ILText>
-                ) : null}
-              </View>
-              {s.linkUrl ? (
-                <Pressable
-                  onPress={open}
-                  style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 10 }}
-                >
-                  <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12 }]}>
-                    Join
-                  </ILText>
-                </Pressable>
-              ) : null}
-            </WhiteCard>
-          );
-        })
+        upcoming.map((s) => renderSessionRow(s, { showJoin: true }))
       )}
       {done.length ? (
         <>
@@ -339,15 +461,14 @@ function SessionsBody({ enrolled = false, onEnroll }) {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <ILText role="label" color={G.ink}>
-                    {s.title}
-                  </ILText>
+                  <ILText role="label" color={G.ink}>{s.title}</ILText>
                   {s.doneMeta ? (
                     <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }} numberOfLines={3}>
                       {s.doneMeta}
                     </ILText>
                   ) : null}
                 </View>
+                {sessionActionsRight(s, { showComplete: false })}
               </View>
             ))}
           </WhiteCard>
@@ -369,22 +490,27 @@ function SessionsBody({ enrolled = false, onEnroll }) {
   );
 }
 
-function CohortBody({ preview = false, onEnroll }) {
+function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
+  const { profile } = useAuth();
+  const nav = useLepNav();
+  const batchShort = lepAlumniBatchShort(profile);
   return (
     <>
       <View style={{ marginTop: 18, backgroundColor: G.dark, borderRadius: 28, padding: 20 }}>
         <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
-          Your cohort
+          {alumniGraduate ? 'LEP Graduate' : 'Your cohort'}
         </ILText>
         <ILText
           role="display"
           color="#FFFFFF"
           style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 28, lineHeight: 34 }}
         >
-          Batch 42 · Bengaluru
+          {batchShort}
         </ILText>
         <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
-          48 women · Day 1 on Sat 20 Sep · weekly sessions to mid-October
+          {alumniGraduate
+            ? 'Your live cohort has ended. Alumni events and community updates are on Engage and Home.'
+            : '48 women · Day 1 on Sat 20 Sep · weekly sessions to mid-October'}
         </ILText>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -462,22 +588,38 @@ function CohortBody({ preview = false, onEnroll }) {
             </View>
           ))}
         </View>
-        <View
-          style={{
-            marginTop: 8,
-            backgroundColor: G.dark,
-            borderRadius: 999,
-            paddingVertical: 14,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-          }}
-        >
-          <ILText role="label" color="#FFFFFF">
-            Add Thursday to calendar
-          </ILText>
-          <MaterialIcons name="event" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
-        </View>
+        {alumniGraduate ? (
+          <Pressable
+            onPress={nav.goEngage}
+            style={{
+              marginTop: 8,
+              backgroundColor: G.dark,
+              borderRadius: 999,
+              paddingVertical: 14,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+            }}
+          >
+            <ILText role="label" color="#FFFFFF">Alumni events on Engage</ILText>
+            <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </Pressable>
+        ) : (
+          <View
+            style={{
+              marginTop: 8,
+              backgroundColor: G.dark,
+              borderRadius: 999,
+              paddingVertical: 14,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+            }}
+          >
+            <ILText role="label" color="#FFFFFF">Add Thursday to calendar</ILText>
+            <MaterialIcons name="event" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </View>
+        )}
       </WhiteCard>
 
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end', opacity: preview ? 0.62 : 1 }}>

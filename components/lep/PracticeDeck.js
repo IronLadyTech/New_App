@@ -27,6 +27,7 @@ export default function PracticeDeck({
   items = [],
   streakLabel = '',
   onOpen,
+  onStreakPress,
   onItem,
   note = 'Aligned to your batch calendar',
 }) {
@@ -50,7 +51,17 @@ export default function PracticeDeck({
         {onOpen ? <LinkRow label="Open checklist" onPress={onOpen} /> : null}
       </View>
       <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        {streakLabel ? <SoftChip icon="local-fire-department">{streakLabel}</SoftChip> : <View />}
+        {streakLabel ? (
+          onStreakPress ? (
+            <Pressable onPress={onStreakPress} accessibilityRole="button" accessibilityLabel="Your progress">
+              <SoftChip icon="local-fire-department">{streakLabel}</SoftChip>
+            </Pressable>
+          ) : (
+            <SoftChip icon="local-fire-department">{streakLabel}</SoftChip>
+          )
+        ) : (
+          <View />
+        )}
         <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
           {note}
         </ILText>

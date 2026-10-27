@@ -3,12 +3,14 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { profilePatchAfterFullPayment } from '../../utils/paymentSuccessPatch';
@@ -27,7 +29,13 @@ import {
   openRazorpayInBrowser,
   verifyRazorpayPayment,
 } from '../../services/razorpay';
-import { buildPaymentEnrollmentView, razorpayOneRupeeOrder, registrationFeeOrder } from '../../utils/paymentEnrollment';
+import {
+  buildPaymentEnrollmentView,
+  programmeBalancePaid,
+  razorpayOneRupeeOrder,
+  registrationFeeOrder,
+} from '../../utils/paymentEnrollment';
+import { navigateInMemberStack } from '../../utils/watchNav';
 
 function PaymentRow({ label, detail, amount, status, statusTone }) {
   return (
@@ -71,6 +79,12 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
   const programId = route?.params?.programId;
   const [paying, setPaying] = useState(false);
   const [checkout, setCheckout] = useState(null);
+  const [enrolled, setEnrolled] = useState(null);
+
+  const goProgramHome = () => {
+    setEnrolled(null);
+    navigateInMemberStack(navigation, 'Home', 'LepHome');
+  };
 
   const vm = useMemo(
     () =>
@@ -126,20 +140,38 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
   const onPaymentSuccess = async ({ orderId, paymentId, signature }) => {
     setCheckout(null);
+    setPaying(true);
+
+    if (!orderId || !paymentId || !signature) {
+      setPaying(false);
+      Alert.alert(
+        'Payment incomplete',
+        'Razorpay did not return a confirmed payment. Failed or cancelled attempts are not charged.'
+      );
+      return;
+    }
+
+    try {
+      await verifyRazorpayPayment({
+        orderId,
+        paymentId,
+        signature,
+        programId: vm.programId,
+      });
+    } catch (err) {
+      setPaying(false);
+      Alert.alert(
+        'Payment not confirmed',
+        err.message || 'Razorpay could not verify this payment. If money was debited, contact support with your UPI reference.'
+      );
+      return;
+    }
+
     patchProfile(
       profilePatchAfterFullPayment(profile, vm.programId, { paymentId, orderId })
     );
-    setPaying(true);
 
-    const verifyTask =
-      orderId && signature
-        ? verifyRazorpayPayment({
-            orderId,
-            paymentId,
-            signature,
-            programId: vm.programId,
-          }).catch(() => null)
-        : Promise.resolve(null);
+    const verifyTask = refreshMyAccess().catch(() => {});
 
     let saved = null;
     try {
@@ -160,32 +192,21 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
       Alert.alert(
         'Payment received',
         `${paymentId || 'Paid'} — receipt could not be saved (${err.message}). Your enrolment is updating.`,
-        [{ text: 'Continue', onPress: () => navigation.getParent()?.navigate('Home') }]
+        [{ text: 'Continue', onPress: goProgramHome }]
       );
-      verifyTask.then(() => refreshMyAccess().catch(() => {}));
+      await verifyTask;
       return;
     }
 
-    verifyTask.then(() => refreshMyAccess().catch(() => {}));
+    await verifyTask;
     setPaying(false);
-    Alert.alert(
-      'You’re enrolled',
-      'Payment received. Your full programme access is unlocked.',
-      [
-        {
-          text: 'Continue to Home',
-          onPress: () => navigation.getParent()?.navigate('Home'),
-        },
-        {
-          text: 'View receipt',
-          onPress: () =>
-            navigation.replace('OrderReceipt', {
-              orderId: saved.id,
-              order: saved,
-            }),
-        },
-      ]
-    );
+
+    if (vm.programId === '100bm') {
+      navigation.replace('Confirm100bmCohort');
+      return;
+    }
+
+    setEnrolled({ title: vm.programTitle, order: saved });
   };
 
   const onTalkToTeam = () => {
@@ -207,7 +228,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
   const onContinue = () => {
     if (vm.payStatus === PAYMENT_STATUS.PAID) {
-      navigation.getParent()?.navigate('Home');
+      goProgramHome();
       return;
     }
     Alert.alert(
@@ -276,19 +297,25 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={() =>
+            disabled={!programmeBalancePaid(profile, vm.programId)}
+            onPress={() => {
+              if (!programmeBalancePaid(profile, vm.programId)) return;
               navigation.navigate('OrderReceipt', {
-                orderId: 'razorpay-1-rupee',
+                orderId: razorpayOneRupeeOrder(profile, user).id,
                 order: razorpayOneRupeeOrder(profile, user),
-              })
-            }
+              });
+            }}
           >
             <PaymentRow
               label="Programme balance"
-              detail="Razorpay · ₹1 paid · tap for receipt"
-              amount="₹ 1"
-              status="PAID"
-              statusTone="paid"
+              detail={
+                programmeBalancePaid(profile, vm.programId)
+                  ? 'Razorpay · captured · tap for receipt'
+                  : `Due by ${vm.balanceDueLabel} · pay via Razorpay`
+              }
+              amount={vm.programBalanceLabel}
+              status={programmeBalancePaid(profile, vm.programId) ? 'PAID' : 'DUE'}
+              statusTone={programmeBalancePaid(profile, vm.programId) ? 'paid' : 'due'}
             />
           </TouchableOpacity>
 
@@ -357,6 +384,43 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
           Alert.alert('Payment failed', err.message);
         }}
       />
+
+      <Modal visible={paying && !enrolled} transparent animationType="fade">
+        <View style={styles.busyOverlay}>
+          <ActivityIndicator size="large" color={IL_BRAND.white} />
+          <Text style={styles.busyText}>Confirming your payment…</Text>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(enrolled)} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.successSheet} edges={['top', 'bottom']}>
+          <View style={styles.successBody}>
+            <View style={styles.successIconWrap}>
+              <MaterialIcons name="check-circle" size={72} color="#1B7A4A" />
+            </View>
+            <Text style={styles.successTitle}>You’re enrolled</Text>
+            <Text style={styles.successSub}>
+              Payment received for {enrolled?.title || 'your programme'}. Your full access is unlocked.
+            </Text>
+            <TouchableOpacity style={styles.payButton} onPress={goProgramHome} activeOpacity={0.9}>
+              <Text style={styles.payButtonText}>Continue to Home</Text>
+            </TouchableOpacity>
+            {enrolled?.order ? (
+              <TouchableOpacity
+                style={styles.successSecondary}
+                onPress={() => {
+                  const order = enrolled.order;
+                  setEnrolled(null);
+                  navigation.replace('OrderReceipt', { orderId: order.id, order });
+                }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.successSecondaryText}>View receipt</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -593,5 +657,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: IL_BRAND.forest,
+  },
+  busyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 53, 53, 0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  busyText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
+    color: IL_BRAND.white,
+    textAlign: 'center',
+  },
+  successSheet: {
+    flex: 1,
+    backgroundColor: IL_BRAND.cream,
+  },
+  successBody: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 48,
+    alignItems: 'center',
+  },
+  successIconWrap: {
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 32,
+    fontWeight: '600',
+    color: IL_BRAND.forest,
+    textAlign: 'center',
+  },
+  successSub: {
+    marginTop: 12,
+    fontSize: 17,
+    lineHeight: 26,
+    color: IL_BRAND.forest,
+    textAlign: 'center',
+  },
+  successSecondary: {
+    marginTop: 14,
+    paddingVertical: 12,
+  },
+  successSecondaryText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: IL_BRAND.red,
   },
 });

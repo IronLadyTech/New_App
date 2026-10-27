@@ -799,7 +799,7 @@ function ArmyEventRows({ events, emptyLabel = 'Upcoming Army events load from th
 function EventsPane({ onEnroll, onTicket }) {
   const [city, setCity] = useState('All');
   const { upcoming } = useArmyEventCalendar();
-  const openEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 12), [upcoming, city]);
+  const openEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 20), [upcoming, city]);
 
   return (
     <>
@@ -1466,7 +1466,7 @@ function CasesEnrolled({ onMark }) {
 function EventsEnrolled({ onCal, onTriad, onTicket }) {
   const [city, setCity] = useState('All');
   const { upcoming, featured, highlights } = useArmyEventCalendar();
-  const armyEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 12), [upcoming, city]);
+  const armyEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 20), [upcoming, city]);
   const spotlight = highlights.slice(0, 2);
 
   return (

@@ -560,27 +560,29 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
       </View>
       <View style={{ marginTop: 14, flexDirection: 'row', gap: 10 }}>
         {!fullyPaid ? (
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: latest ? 1 : undefined, alignSelf: latest ? undefined : 'stretch', flexGrow: latest ? undefined : 1 }}>
             <RedCta label="Pay balance" onPress={onPay} />
           </View>
         ) : null}
-        <Pressable
-          onPress={() => (latest ? onReceipt(latest) : onPay())}
-          style={{
-            flex: 1,
-            minHeight: 48,
-            borderRadius: 999,
-            borderWidth: 1,
-            borderColor: G.dash,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: G.white,
-          }}
-        >
-          <ILText role="label" color={G.ink}>
-            View receipt
-          </ILText>
-        </Pressable>
+        {fullyPaid && latest ? (
+          <Pressable
+            onPress={() => onReceipt(latest)}
+            style={{
+              flex: 1,
+              minHeight: 48,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: G.dash,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: G.white,
+            }}
+          >
+            <ILText role="label" color={G.ink}>
+              View receipt
+            </ILText>
+          </Pressable>
+        ) : null}
       </View>
     </WhiteCard>
   );

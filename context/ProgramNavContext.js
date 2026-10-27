@@ -2,7 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from './AuthContext';
 import { PAYMENT_STATUS } from '../constants/programs';
-import { getEnrolledProgramIds, lockedProgramIds, programPaymentStatus } from '../utils/programAccess';
+import {
+  getEnrolledProgramIds,
+  lockedProgramIds,
+  programPaymentStatus,
+} from '../utils/programAccess';
+import { programIdNeedingBalancePayment } from '../utils/paymentEnrollment';
 
 const ProgramNavContext = createContext(null);
 
@@ -116,8 +121,15 @@ export function useProgramRoutes() {
   );
 
   const openPayment = useCallback(() => {
-    navigation.navigate('Profile', { screen: 'PaymentEnrollment' });
-  }, [navigation]);
+    const programId =
+      nav.program && nav.program !== 'all'
+        ? nav.program
+        : programIdNeedingBalancePayment(profile);
+    navigation.navigate('Profile', {
+      screen: 'PaymentEnrollment',
+      params: { programId },
+    });
+  }, [navigation, nav.program, profile]);
 
   const openCertificates = useCallback(() => {
     navigation.navigate('Profile', { screen: 'Certificates' });
@@ -127,6 +139,32 @@ export function useProgramRoutes() {
     navigation.navigate('Engage');
   }, [navigation]);
 
+  /** LEP alumni upsell: 100BM home if registered/enrolled, else in-app 100BM program detail (not guest mode). */
+  const openBm100HomeOrDetail = useCallback(() => {
+    const hasBm = getEnrolledProgramIds(profile).has('100bm');
+    const stackRoutes = navigation.getState?.()?.routeNames || [];
+    if (hasBm) {
+      nav.setProgram('100bm');
+      if (stackRoutes.includes('LepHome')) {
+        navigation.navigate('LepHome');
+      } else {
+        navigation.getParent()?.navigate('Home');
+      }
+      return;
+    }
+    const detailParams = { id: '100bm', member: true };
+    if (stackRoutes.includes('ProgramDetail')) {
+      navigation.navigate('ProgramDetail', detailParams);
+      return;
+    }
+    const tab = navigation.getParent?.();
+    if (tab) {
+      tab.navigate('Home', { screen: 'ProgramDetail', params: detailParams });
+    } else {
+      navigation.navigate('ProgramDetail', detailParams);
+    }
+  }, [nav, navigation, profile]);
+
   return {
     ...nav,
     openMyProgram,
@@ -134,5 +172,6 @@ export function useProgramRoutes() {
     openPayment,
     openCertificates,
     openEngage,
+    openBm100HomeOrDetail,
   };
 }

@@ -311,6 +311,7 @@ export default function ChooseBatchDateScreen({
   onSkip,
   /** Profile “Change batch” — keep open even when a batch is already assigned. */
   allowChange = false,
+  saving = false,
 }) {
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
@@ -363,6 +364,7 @@ export default function ChooseBatchDateScreen({
   };
 
   const lockSeat = () => {
+    if (saving) return;
     const batch = batches.find((b) => b.id === selected) || batches[0];
     if (typeof onLock === 'function') {
       onLock(batch);
@@ -530,6 +532,7 @@ export default function ChooseBatchDateScreen({
       >
         <Pressable
           onPress={lockSeat}
+          disabled={saving}
           accessibilityRole="button"
           accessibilityLabel="Lock my seat"
           style={({ pressed }) => ({
@@ -539,7 +542,7 @@ export default function ChooseBatchDateScreen({
             backgroundColor: CTA,
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: pressed ? 0.92 : 1,
+            opacity: saving ? 0.6 : pressed ? 0.92 : 1,
             shadowColor: CTA,
             shadowOffset: { width: 0, height: 8 },
             shadowOpacity: 0.28,
@@ -548,7 +551,7 @@ export default function ChooseBatchDateScreen({
           })}
         >
           <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 18 }}>
-            Lock my seat
+            {saving ? 'Saving…' : 'Lock my seat'}
           </ILText>
         </Pressable>
         {__DEV__ && typeof onSkip === 'function' ? (

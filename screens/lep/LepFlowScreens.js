@@ -8,17 +8,27 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { useNavigation } from '@react-navigation/native';
 import { GuestBackBar } from '../guest/GuestBits';
-import { Page, ProgressDark, RedCta, Seal, SoftChip, WhisperCard, WhiteCard } from './LepBits';
+import { LepHeader, Page, ProgressDark, RedCta, Seal, SoftChip, WhisperCard, WhiteCard } from './LepBits';
+import LepYourProgressContent from '../../components/lep/LepYourProgressContent';
 import { useLepNav } from './useLepNav';
 import { PROGRAMS } from '../../constants/programs';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
 import { useAuth } from '../../context/AuthContext';
+import { useProgramRoutes } from '../../context/ProgramNavContext';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
-import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { learnerBatchLabel, learnerProgramDates } from '../../utils/programAccess';
 import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
+import {
+  lepAlumniBatchShort,
+  lepTimeGreeting,
+  LEP_ALUMNI_SCHEDULE_SUB_SUFFIX,
+} from '../../utils/lepAlumniUi';
+import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
+import AlumniMonthlyChallengeCard from '../../components/lep/AlumniMonthlyChallengeCard';
+import { useCmsSessionRecordings } from '../../hooks/useCmsLearnerItems';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import CourseCurriculum from './CourseCurriculum';
 import {
   FACE,
@@ -37,8 +47,11 @@ import {
 import { resolveCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { openLink } from '../../utils/openLink';
 
-function Shell({ title, sub, right, children }) {
+const ALUMNI_COMPLETE_GREEN = '#1F7A4D';
+
+function Shell({ title, sub, right, children, scrollBottomExtra = 0 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   return (
@@ -51,7 +64,7 @@ function Shell({ title, sub, right, children }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8) + scrollBottomExtra,
         }}
       >
         {children}
@@ -67,7 +80,7 @@ function scheduleItemAllowed(item, enrolled, registeredCodes) {
   return /orientation|day\s*1|day\s*2/i.test(String(item.title || ''));
 }
 
-function ScheduleRow({ item, nav }) {
+function ScheduleRow({ item, nav, alumniArchive = false, recordings = {}, navigation }) {
   const openJoin = () => {
     if (item.joinLink) {
       recordSessionJoin(item.code);
@@ -92,7 +105,14 @@ function ScheduleRow({ item, nav }) {
   const isDeadline = item.tag === 'DEADLINE' || Boolean(item.taskId);
   // Red left rail only when live or starting soon (matches Schedule mockup).
   const isLive = Boolean(item.live) || /\bIN\s+\d/i.test(String(item.tag || ''));
-  const showActions = !isDeadline;
+  const showActions = !isDeadline && !alumniArchive;
+  const alumniSession = alumniArchive && !isDeadline;
+  const rec = alumniSession && item.code ? recordings[item.code] : null;
+
+  const openRecording = () => {
+    if (!rec?.url) return;
+    openLink(rec.url, { navigation, title: item.title || rec.title || 'Session recording' });
+  };
 
   return (
     <View style={{ flexDirection: 'row', marginTop: 12, alignItems: 'flex-start' }}>
@@ -109,25 +129,55 @@ function ScheduleRow({ item, nav }) {
           backgroundColor: G.white,
           borderRadius: 18,
           padding: 16,
-          borderLeftWidth: isLive ? 4 : 0,
+          borderLeftWidth: isLive && !alumniSession ? 4 : 0,
           borderLeftColor: G.cta,
           shadowColor: '#113744',
           shadowOpacity: 0.06,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: 4 },
           elevation: 2,
+          flexDirection: alumniSession ? 'row' : 'column',
+          alignItems: alumniSession ? 'center' : 'stretch',
         }}
       >
-        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, letterSpacing: 0.8 }]}>
-          {item.tag}
-        </ILText>
-        <ILText role="label" color={G.ink} style={{ marginTop: 8, fontSize: 16, fontWeight: '700' }}>
-          {item.title}
-        </ILText>
-        {item.meta ? (
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-            {item.meta}
+        <View style={{ flex: 1 }}>
+          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, letterSpacing: 0.8 }]}>
+            {alumniSession ? 'YOUR BATCH' : item.tag}
           </ILText>
+          <ILText role="label" color={G.ink} style={{ marginTop: 8, fontSize: 16, fontWeight: '700' }}>
+            {item.title}
+          </ILText>
+          {item.meta ? (
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              {item.meta}
+            </ILText>
+          ) : null}
+        </View>
+        {alumniSession ? (
+          <View style={{ alignItems: 'flex-end', marginLeft: 10, alignSelf: 'center' }}>
+            {rec ? (
+              <Pressable
+                onPress={openRecording}
+                style={{
+                  backgroundColor: G.ink,
+                  borderRadius: 999,
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                }}
+              >
+                <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 11 }]}>
+                  Watch recording
+                </ILText>
+              </Pressable>
+            ) : null}
+            <ILText
+              role="label"
+              color={ALUMNI_COMPLETE_GREEN}
+              style={{ marginTop: rec ? 6 : 0, fontSize: 11, fontWeight: '600' }}
+            >
+              Completed
+            </ILText>
+          </View>
         ) : null}
         {showActions ? (
           <View style={{ flexDirection: 'row', marginTop: 14, flexWrap: 'wrap' }}>
@@ -180,8 +230,10 @@ function ScheduleRow({ item, nav }) {
 
 export function LepScheduleScreen() {
   const nav = useLepNav();
+  const navigation = useNavigation();
   const { profile } = useAuth();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const recordings = useCmsSessionRecordings('lep', cmsBatch);
   const todayIso = scheduleTodayIso();
   const [selectedIso, setSelectedIso] = useState(todayIso);
   const [weekStartIso, setWeekStartIso] = useState(() => weekMondayIso(todayIso));
@@ -209,6 +261,8 @@ export function LepScheduleScreen() {
 
   const hasBatch = Boolean(batchAnchor?.day1Date || batchAnchor?.orientationDate);
   const enrolled = isLepEnrolled(profile);
+  const alumniArchive =
+    enrolled && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
   const registeredCodes = useMemo(() => new Set(['S0', 'S1', 'S2']), []);
 
   const weekDays = useMemo(() => {
@@ -245,14 +299,20 @@ export function LepScheduleScreen() {
     setSelectedIso(scheduleAddDaysIso(nextStart, idx < 0 ? 0 : idx));
   };
 
-  const sub = cmsBatch?.name
-    ? `${cmsBatch.name} · full schedule`
-    : batchLabel
-      ? `${batchLabel} · full schedule`
-      : 'All programs · full schedule';
+  const sub = alumniArchive
+    ? cmsBatch?.name
+      ? `${cmsBatch.name}${LEP_ALUMNI_SCHEDULE_SUB_SUFFIX}`
+      : batchLabel
+        ? `${batchLabel}${LEP_ALUMNI_SCHEDULE_SUB_SUFFIX}`
+        : `LEP batch${LEP_ALUMNI_SCHEDULE_SUB_SUFFIX}`
+    : cmsBatch?.name
+      ? `${cmsBatch.name} · full schedule`
+      : batchLabel
+        ? `${batchLabel} · full schedule`
+        : 'All programs · full schedule';
 
   return (
-    <Shell title="Schedule" sub={sub}>
+    <Shell title={alumniArchive ? 'Batch calendar' : 'Schedule'} sub={sub}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
         <Pressable
           onPress={() => shiftWeek(-1)}
@@ -313,7 +373,9 @@ export function LepScheduleScreen() {
       {visibleSections.length === 0 ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 22, fontSize: 14, lineHeight: 20 }}>
           {hasBatch
-            ? 'Nothing left on your batch calendar from this day. Use the arrows to jump weeks, or open My Program → Sessions.'
+            ? alumniArchive
+              ? 'Browse earlier weeks with the arrows to see when your cohort met. Session recordings are under My Program → Sessions.'
+              : 'Nothing left on your batch calendar from this day. Use the arrows to jump weeks, or open My Program → Sessions.'
             : 'Your batch calendar appears once Day 1 is set (CMS or Zoho).'}
         </ILText>
       ) : (
@@ -323,7 +385,14 @@ export function LepScheduleScreen() {
               {section.heading}
             </ILText>
             {section.items.map((item) => (
-              <ScheduleRow key={`${section.iso}-${item.id || item.title}`} item={item} nav={nav} />
+              <ScheduleRow
+                key={`${section.iso}-${item.id || item.title}`}
+                item={item}
+                nav={nav}
+                alumniArchive={alumniArchive}
+                recordings={recordings}
+                navigation={navigation}
+              />
             ))}
           </View>
         ))
@@ -747,13 +816,14 @@ export function LepEventTicketScreen() {
 }
 
 export function LepProgressScreen() {
+  const nav = useLepNav();
   return (
-    <Shell title="Your progress" sub="Weekly consistency, badges">
-      <ProgressDark kicker="This week" title="4 of 5 days" percent={80} foot="Never resets" />
-      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
-        <Row k="LEP" v="36%" />
-        <Row k="Phase badges" v="3 of 11" />
-      </WhiteCard>
+    <Shell title="Your progress" sub="Across all programs" scrollBottomExtra={24}>
+      <LepYourProgressContent
+        onOpenRitualsWeek={nav.goRitualsDashboard}
+        onOpenWeeklyBrief={nav.goWeeklyBrief}
+        onOpenPhase={(phaseId) => nav.goCoursePhase('lep', phaseId)}
+      />
     </Shell>
   );
 }
@@ -831,106 +901,299 @@ export function LepNudgeSettingsScreen() {
   );
 }
 
-export function LepGraduationScreen() {
+export function LepGraduationScreen({ onCelebrated }) {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
   const insets = useSafeAreaInsets();
+  const batchShort = lepAlumniBatchShort(profile);
+
+  const joinAlumni = () => {
+    if (typeof onCelebrated === 'function') onCelebrated();
+    else nav.goAlumni();
+  };
+
+  const viewCert = () => {
+    nav.goCourseTask(PROGRAMS.LEP, 'lep-certification');
+  };
+
+  const addLinkedIn = () => {
+    Linking.openURL('https://www.linkedin.com/').catch(() => {});
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: G.dark }}>
-      <StatusBar style="light" />
-      <View
-        style={{
-          flex: 1,
-          paddingTop: Math.max(insets.top, 24),
-          paddingHorizontal: 28,
-          paddingBottom: Math.max(insets.bottom, 20) + 16,
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <LepHeader
+        floating
+        scrim={false}
+        photoUrl={profile?.photoURL}
+        onNotifications={nav.goNotifications}
+        onProfile={nav.goProfile}
+      />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: Math.max(insets.top, 8) + 72,
+          paddingHorizontal: 24,
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 20),
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
         <SoftChip onDark>Leadership Essentials program</SoftChip>
-        <View style={{ marginTop: 20 }}>
+        <View style={{ marginTop: 24 }}>
           <Seal icon="school" />
         </View>
         <ILText
           role="display"
           color="#FFFFFF"
-          style={{ marginTop: 22, fontFamily: IL_FONTS.display, fontSize: 36, lineHeight: 42, textAlign: 'center' }}
+          style={{
+            marginTop: 22,
+            fontFamily: IL_FONTS.display,
+            fontSize: 34,
+            lineHeight: 40,
+            textAlign: 'center',
+          }}
         >
           You’ve graduated, {name}.
         </ILText>
-        <ILText role="body" color="rgba(248,214,212,0.88)" style={{ marginTop: 14, fontSize: 16, lineHeight: 24, textAlign: 'center' }}>
+        <ILText
+          role="body"
+          color="rgba(248,214,212,0.88)"
+          style={{ marginTop: 14, fontSize: 16, lineHeight: 24, textAlign: 'center' }}
+        >
           All 11 phases, 6 of 6 sessions, both quizzes. Your LEP Certification is ready.
         </ILText>
-        <View style={{ marginTop: 28, alignSelf: 'stretch' }}>
-          <RedCta label="Join the Iron Lady Alumni →" onPress={nav.goAlumni} />
+
+        <WhiteCard
+          style={{
+            marginTop: 28,
+            alignSelf: 'stretch',
+            borderRadius: 20,
+            padding: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            borderColor: 'rgba(255,255,255,0.12)',
+          }}
+        >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              backgroundColor: 'rgba(237,29,36,0.2)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name="emoji-events" size={24} color={G.pink} />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label" color="#FFFFFF">LEP Certification</ILText>
+            <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ marginTop: 2, fontSize: 13 }}>
+              {batchShort}
+            </ILText>
+          </View>
+          <Pressable onPress={viewCert} accessibilityRole="button">
+            <ILText role="label" color={G.pink}>View</ILText>
+          </Pressable>
+        </WhiteCard>
+
+        <View style={{ marginTop: 24, alignSelf: 'stretch' }}>
+          <RedCta label="Join the Iron Lady Alumni →" onPress={joinAlumni} />
         </View>
-      </View>
+        <Pressable
+          onPress={addLinkedIn}
+          style={{
+            marginTop: 12,
+            alignSelf: 'stretch',
+            borderRadius: 999,
+            paddingVertical: 14,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.35)',
+          }}
+        >
+          <ILText role="label" color="#FFFFFF">Add to LinkedIn +</ILText>
+        </Pressable>
+      </ScrollView>
     </View>
+  );
+}
+
+function AlumniMediaRow({ icon, title, sub, onPress }) {
+  return (
+    <WhiteCard
+      onPress={onPress}
+      style={{
+        marginTop: 10,
+        borderRadius: 18,
+        padding: 14,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}
+    >
+      <View
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          backgroundColor: G.pink,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialIcons name={icon} size={22} color={G.cta} />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <ILText role="label" color={G.ink}>{title}</ILText>
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>{sub}</ILText>
+      </View>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: G.cta,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialIcons name="play-arrow" size={22} color="#FFFFFF" />
+      </View>
+    </WhiteCard>
   );
 }
 
 export function LepAlumniHomeScreen() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
+  const nav = useLepNav();
+  const routes = useProgramRoutes();
   const insets = useSafeAreaInsets();
+  const batchShort = lepAlumniBatchShort(profile);
+  const greeting = lepTimeGreeting();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const recordings = useCmsSessionRecordings('lep', cmsBatch);
+  const gradRec = recordings.S8;
+  const gradSub = gradRec?.url ? 'Graduation day film · your batch' : 'Coming soon · we’ll notify you on Engage';
+
   return (
     <Page>
-      <StatusBar style="dark" />
-      <View style={{ paddingTop: Math.max(insets.top, 8) }} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <LepHeader
+        floating
+        scrim={false}
+        photoUrl={profile?.photoURL}
+        onNotifications={nav.goNotifications}
+        onProfile={nav.goProfile}
+      />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: Math.max(insets.top, 8) + 72,
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 16),
+        }}
+      >
         <View style={{ backgroundColor: G.dark, borderRadius: 28, padding: 20 }}>
-          <SoftChip onDark>LEP Graduate · Batch 42</SoftChip>
+          <SoftChip onDark>LEP Graduate · {batchShort}</SoftChip>
           <ILText
             role="display"
             color="#FFFFFF"
             style={{ marginTop: 16, fontFamily: IL_FONTS.display, fontSize: 32, lineHeight: 38 }}
           >
-            Good evening, {name}.
+            {greeting}, {name}.
           </ILText>
           <View style={{ marginTop: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 20, padding: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
-                October challenge · Alumni
-              </ILText>
-              <ILText role="bodySm" color="rgba(255,255,255,0.6)">
-                Day 3 of 7
-              </ILText>
-            </View>
-            <ILText role="title" color="#FFFFFF" style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20 }}>
-              Monthly alumni challenge
-            </ILText>
-            <View style={{ flexDirection: 'row', marginTop: 12 }}>
-              {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-                <View
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: 4,
-                    marginRight: 4,
-                    borderRadius: 2,
-                    backgroundColor: i <= 3 ? G.cta : 'rgba(255,255,255,0.16)',
-                  }}
-                />
-              ))}
-            </View>
-            <View style={{ marginTop: 16 }}>
-              <RedCta label="Continue today →" />
-            </View>
+            <AlumniMonthlyChallengeCard
+              onDark
+              onOpenTask={(taskId) => nav.goCourseTask('lep', taskId, { alumniPractice: true })}
+            />
           </View>
         </View>
-        <ILText role="title" color={G.ink} style={{ marginTop: 24, fontFamily: IL_FONTS.display, fontSize: 22 }}>
+
+        <ILText
+          role="title"
+          color={G.ink}
+          style={{ marginTop: 24, fontFamily: IL_FONTS.display, fontSize: 22 }}
+        >
           Celebrations
         </ILText>
-        <WhiteCard style={{ marginTop: 12, borderRadius: 18, padding: 16 }}>
-          <ILText role="label" color={G.ink}>
-            Batch 42 graduation film
+        <AlumniMediaRow
+          icon="movie"
+          title={`${batchShort} graduation film`}
+          sub={gradSub}
+          onPress={nav.goAlumniGraduationFilm}
+        />
+        <AlumniMediaRow
+          icon="mic"
+          title="Iron Lady Speaks"
+          sub="Podcast · on Engage"
+          onPress={nav.goEngage}
+        />
+
+        <Pressable onPress={nav.goAlumniCommunity}>
+          <WhiteCard style={{ marginTop: 10, borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+            <View
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                backgroundColor: G.pink,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialIcons name="groups" size={22} color={G.cta} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <ILText role="label" color={G.ink}>Alumni circle</ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                Community space · opening soon
+              </ILText>
+            </View>
+            <ILText role="label" color={G.cta}>Explore</ILText>
+          </WhiteCard>
+        </Pressable>
+
+        <View style={{ marginTop: 20, backgroundColor: G.dark, borderRadius: 22, padding: 18 }}>
+          <ILText role="eyebrow" color={G.pink} style={[af, { fontSize: 10 }]}>
+            Your next step
           </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-            Watch · share · keep
+          <ILText
+            role="title"
+            color="#FFFFFF"
+            style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+          >
+            100 Board Members
           </ILText>
-        </WhiteCard>
+          <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
+            Six months online, built on what you did in LEP.
+          </ILText>
+          <Pressable
+            onPress={routes.openBm100HomeOrDetail}
+            style={{
+              marginTop: 16,
+              borderRadius: 999,
+              paddingVertical: 14,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.35)',
+            }}
+          >
+            <ILText role="label" color="#FFFFFF">See the 100BM journey →</ILText>
+          </Pressable>
+        </View>
+
+        <Pressable onPress={nav.goGraduation} style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8 }}>
+          <ILText role="bodySm" color={G.meta} style={{ fontSize: 13 }}>
+            View graduation & certificate again
+          </ILText>
+        </Pressable>
       </ScrollView>
     </Page>
   );

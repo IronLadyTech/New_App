@@ -30,16 +30,27 @@ function payerContact(profile, user) {
   };
 }
 
+/** Programme that still owes the balance payment (LEP before 100BM in journey order). */
+export function programIdNeedingBalancePayment(profile) {
+  const enrolled = getEnrolledPrograms(profile);
+  const owing = enrolled.filter(
+    (p) => programPaymentStatus(profile, p.id) === PAYMENT_STATUS.REGISTER
+  );
+  if (owing.length) return owing[0].id;
+  const unpaid = enrolled.find(
+    (p) => programPaymentStatus(profile, p.id) !== PAYMENT_STATUS.PAID
+  );
+  return unpaid?.id || enrolled[0]?.id || 'lep';
+}
+
 function pickProgram(profile, programId) {
   const enrolled = getEnrolledPrograms(profile);
   if (programId) {
     const match = enrolled.find((p) => p.id === programId) || getProgramEntry(programId);
     if (match) return match;
   }
-  const registerProgram = enrolled.find(
-    (p) => programPaymentStatus(profile, p.id) === PAYMENT_STATUS.REGISTER
-  );
-  return registerProgram || enrolled[0] || getProgramEntry('lep');
+  const owingId = programIdNeedingBalancePayment(profile);
+  return enrolled.find((p) => p.id === owingId) || getProgramEntry(owingId) || getProgramEntry('lep');
 }
 
 function accessRow(profile, programId) {
@@ -141,6 +152,13 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
 }
 
 export { payerContact };
+
+/** Programme balance counted as paid only after Razorpay capture (payment id on profile). */
+export function programmeBalancePaid(profile, programId = 'lep') {
+  const access = accessRow(profile, programId);
+  const paymentId = access.razorpayPaymentId || profile?.razorpayPaymentId;
+  return programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID && !!paymentId;
+}
 
 /** Local registration-fee receipt so Profile / Orders can show it without a Firestore uid. */
 export function registrationFeeOrder(profile, user) {

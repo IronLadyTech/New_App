@@ -14,6 +14,11 @@ import {
   LepSessionCheckinScreen,
   LepTodayChecklistScreen,
 } from '../screens/lep/LepFlowScreens';
+import {
+  LepAlumniCommunityScreen,
+  LepAlumniGraduationFilmScreen,
+} from '../screens/lep/LepAlumniExtraScreens';
+import GuestProgramDetailScreen from '../screens/guest/GuestProgramDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,11 +48,18 @@ export default function HomeStack() {
         options={{ presentation: 'transparentModal', animation: 'fade' }}
       />
       <Stack.Screen name="TodayChecklist" component={LepTodayChecklistScreen} />
+      <Stack.Screen
+        name="RitualsDashboard"
+        getComponent={() => require('../screens/lep/LepRitualsDashboardScreen').default}
+      />
       <Stack.Screen name="SessionCheckin" component={LepSessionCheckinScreen} />
       <Stack.Screen name="Milestone" component={LepMilestoneScreen} />
       <Stack.Screen name="FirstMonth" component={LepFirstMonthScreen} />
       <Stack.Screen name="Graduation" component={LepGraduationScreen} />
       <Stack.Screen name="Alumni" component={LepAlumniHomeScreen} />
+      <Stack.Screen name="AlumniGraduationFilm" component={LepAlumniGraduationFilmScreen} />
+      <Stack.Screen name="AlumniCommunity" component={LepAlumniCommunityScreen} />
+      <Stack.Screen name="ProgramDetail" component={GuestProgramDetailScreen} />
       <Stack.Screen
         name="Practice"
         getComponent={() => require('../screens/program/PracticeScreen').default}

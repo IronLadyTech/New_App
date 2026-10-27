@@ -9,7 +9,10 @@ function call(name, data = {}) {
   return httpsCallable(functions, name)(data);
 }
 
-const WELCOME_SAVE_TIMEOUT_MS = 10_000;
+/** Default client wait; server updateMyWelcomeProfile allows up to 120s (cold start + Zoho). */
+const WELCOME_SAVE_TIMEOUT_MS = 38_000;
+/** Batch / cohort date writes — extra Zoho lead lookups on slow networks. */
+export const BATCH_ZOHO_SAVE_TIMEOUT_MS = 68_000;
 
 export function isCallableTimeout(err) {
   const code = String(err?.code || '');
@@ -87,12 +90,29 @@ export async function updateMyWelcomeProfile(fields) {
   return data;
 }
 
-/**
- * Save welcome fields (waits up to ~10s). Server writes Firestore before Zoho.
- */
-export async function saveWelcomeProfileFields(fields) {
+/** 100BM cohort + Zoho payment fields after Razorpay verify. */
+export async function confirm100bmCohort(fields, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? BATCH_ZOHO_SAVE_TIMEOUT_MS;
   try {
-    return await withTimeout(updateMyWelcomeProfile(fields), WELCOME_SAVE_TIMEOUT_MS);
+    const { data } = await withTimeout(call('confirm100bmCohort', fields), timeoutMs);
+    return data;
+  } catch (err) {
+    if (isCallableTimeout(err)) {
+      return { ok: true, zoho: false, reasonCode: 'timeout' };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Save welcome fields. Server writes Firestore before Zoho.
+ * @param {object} fields
+ * @param {{ timeoutMs?: number }} [opts]
+ */
+export async function saveWelcomeProfileFields(fields, opts = {}) {
+  const timeoutMs = opts.timeoutMs ?? WELCOME_SAVE_TIMEOUT_MS;
+  try {
+    return await withTimeout(updateMyWelcomeProfile(fields), timeoutMs);
   } catch (err) {
     if (__DEV__) console.warn('[saveWelcomeProfileFields]', err?.code || err?.message || err);
     if (isCallableTimeout(err)) {

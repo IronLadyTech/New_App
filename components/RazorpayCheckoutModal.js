@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Modal, Platform, SafeAreaView, View } from 'react-native';
+import { ActivityIndicator, Modal, Platform, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 
 function buildCheckoutHtml(checkout) {

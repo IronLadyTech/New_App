@@ -1,4 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PAYMENT_STATUS, getProgramEntry } from '../constants/programs';
+import { programPaymentStatus } from '../utils/programAccess';
+
+function programTitleForId(programId, fallback = '') {
+  const entry = getProgramEntry(programId);
+  return fallback || entry?.title || entry?.shortLabel || programId || '';
+}
 
 const KEY = 'il_payment_receipts';
 
@@ -14,8 +21,12 @@ function toMs(value) {
 export function serializeReceipt(row) {
   if (!row) return null;
   const paidAtMs = toMs(row.paidAtMs || row.paidAt || row.createdAt);
+  const programId = row.programId || 'lep';
+  const programTitle = programTitleForId(programId, row.programTitle);
   return {
     ...row,
+    programId,
+    programTitle,
     id: row.id || row.transactionId,
     paidAt: row.paidAt?.toDate?.()?.toISOString?.() || row.paidAt || (paidAtMs ? new Date(paidAtMs).toISOString() : null),
     createdAt: row.createdAt?.toDate?.()?.toISOString?.() || row.createdAt || (paidAtMs ? new Date(paidAtMs).toISOString() : null),
@@ -36,13 +47,17 @@ export async function loadCachedReceipts() {
 export function receiptsFromAccount(profile) {
   const access = profile?.programAccess || {};
   return Object.entries(access)
-    .filter(([, row]) => row?.razorpayPaymentId || row?.razorpayOrderId)
+    .filter(([programId, row]) => {
+      if (!row?.razorpayPaymentId) return false;
+      return programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID;
+    })
     .map(([programId, row]) =>
       serializeReceipt({
-        id: row.razorpayPaymentId || row.razorpayOrderId,
-        transactionId: row.razorpayPaymentId || row.razorpayOrderId,
+        id: row.razorpayPaymentId,
+        transactionId: row.razorpayPaymentId,
+        razorpayPaymentId: row.razorpayPaymentId,
         razorpayOrderId: row.razorpayOrderId || null,
-        receiptNumber: row.razorpayPaymentId || row.razorpayOrderId,
+        receiptNumber: row.razorpayPaymentId,
         status: 'paid',
         gateway: 'razorpay',
         currency: 'INR',
@@ -51,7 +66,7 @@ export function receiptsFromAccount(profile) {
           row.amountRupees ??
           (row.amountPaise != null ? row.amountPaise / 100 : 1),
         programId,
-        programTitle: row.programTitle || 'Leadership Essentials Program',
+        programTitle: programTitleForId(programId, row.programTitle),
         description: 'Programme balance',
         payerName: profile?.displayName || '',
         payerPhone: profile?.phoneNumber || profile?.phone || '',

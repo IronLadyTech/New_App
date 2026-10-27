@@ -22,6 +22,7 @@ import {
   fillAbs,
 } from './GuestBits';
 import { useGuestActions } from './useGuestActions';
+import { useLepNav } from '../lep/useLepNav';
 import { FACE } from './guestData';
 import { COVER } from '../lep/lepData';
 
@@ -34,7 +35,10 @@ const META = {
 
 export default function GuestProgramDetailScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
+  const member = route?.params?.member === true;
   const { findRegistration } = useGuestActions();
+  const lepNav = useLepNav();
+  const onFind = member ? () => lepNav.goEnroll() : findRegistration;
   const id = route?.params?.id || 'mc';
   const meta = META[id] || META.mc;
 
@@ -49,13 +53,13 @@ export default function GuestProgramDetailScreen({ navigation, route }) {
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 16) + 24 }}
       >
         {id === 'lep' ? (
-          <LepBody onFind={findRegistration} />
+          <LepBody onFind={onFind} />
         ) : id === '100bm' ? (
-          <BmBody onFind={findRegistration} />
+          <BmBody onFind={onFind} member={member} />
         ) : id === 'mbw' ? (
-          <MbwBody onFind={findRegistration} />
+          <MbwBody onFind={onFind} />
         ) : (
-          <McBody onFind={findRegistration} />
+          <McBody onFind={onFind} />
         )}
       </ScrollView>
     </Page>
@@ -480,7 +484,7 @@ function LepBody({ onFind }) {
   );
 }
 
-function BmBody({ onFind }) {
+function BmBody({ onFind, member }) {
   const arc = [
     ['S', 'Onboarding', true],
     ['1', 'Foundation', false],
@@ -707,14 +711,18 @@ function BmBody({ onFind }) {
         />
 
         <FindCta
-          kicker="Ready to start?"
-          title="Onboarding opens as soon as you register"
-          body="Find your registration, or pick a batch date if you haven’t signed up yet."
+          kicker={member ? 'Your next program' : 'Ready to start?'}
+          title={member ? 'Register for 100 Board Members' : 'Onboarding opens as soon as you register'}
+          body={
+            member
+              ? 'You finished LEP — 100BM is the six-month board journey. Open enrollment to register or complete payment.'
+              : 'Find your registration, or pick a batch date if you haven’t signed up yet.'
+          }
           onPress={onFind}
         />
-        <DarkCta label="Check my eligibility" onPress={onFind} />
-        <GhostCta label="Talk to an advisor" />
-        <AdvisorNote />
+        <DarkCta label={member ? 'Enrollment & payment →' : 'Check my eligibility'} onPress={onFind} />
+        {!member ? <GhostCta label="Talk to an advisor" /> : null}
+        {!member ? <AdvisorNote /> : null}
       </Pad>
     </View>
   );

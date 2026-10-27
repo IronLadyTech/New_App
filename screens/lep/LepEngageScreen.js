@@ -126,9 +126,7 @@ export default function LepEngageScreen() {
   const insets = useSafeAreaInsets();
   const headerPad = useGlassHeaderPad();
   const nav = useLepNav();
-  const enrolledLatch = useRef(isLepEnrolled(profile));
-  if (isLepEnrolled(profile)) enrolledLatch.current = true;
-  const enrolled = enrolledLatch.current;
+  const enrolled = isLepEnrolled(profile);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;

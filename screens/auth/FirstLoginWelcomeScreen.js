@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   AppState,
   Image,
+  KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -326,6 +328,7 @@ export default function FirstLoginWelcomeScreen({
       <StatusBar style="light" />
       <ScrollView
         style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 28,
@@ -562,80 +565,6 @@ export default function FirstLoginWelcomeScreen({
                 />
               ))}
             </View>
-            {editing ? (
-              <View
-                style={{
-                  alignSelf: 'stretch',
-                  marginTop: 8,
-                  backgroundColor: CARD_FILL,
-                  borderRadius: 18,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(16, 44, 50, 0.08)',
-                }}
-              >
-                <ILText role="label" color={IL_BRAND.ink} style={{ fontSize: 13, marginBottom: 8 }}>
-                  {FIELD_META[editing].title}
-                </ILText>
-                {editing === 'city' ? (
-                  <CityPicker value={fields.city} onPick={saveEdit} />
-                ) : editing === 'domain' ? (
-                  <FieldOfWorkPicker value={fields.domain} onPick={saveEdit} />
-                ) : (
-                  <BhagComposer value={draft} onChange={setDraft} field={fields.domain} />
-                )}
-                <View style={{ flexDirection: 'row', marginTop: 10, gap: 10 }}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setEditing(null);
-                      setDraft('');
-                      setSaveNotice('');
-                      setSaveNoticeError(false);
-                    }}
-                    style={{
-                      flex: 1,
-                      borderRadius: 12,
-                      paddingVertical: 12,
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      borderColor: 'rgba(16,44,50,0.15)',
-                    }}
-                  >
-                    <ILText role="label" color={IL_BRAND.ink}>Cancel</ILText>
-                  </Pressable>
-                  {editing === 'bhag' ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => saveEdit()}
-                    disabled={saving || !draft.trim()}
-                    style={{
-                      flex: 1,
-                      backgroundColor: CTA,
-                      borderRadius: 12,
-                      paddingVertical: 12,
-                      alignItems: 'center',
-                      opacity: saving || !draft.trim() ? 0.5 : 1,
-                    }}
-                  >
-                    <ILText role="label" color={IL_BRAND.white}>
-                      {saving ? 'Saving…' : 'Save my goal'}
-                    </ILText>
-                  </Pressable>
-                  ) : null}
-                </View>
-                {saveNotice ? (
-                  <ILText
-                    role="bodySm"
-                    color={saveNoticeError ? CTA : '#1B7A4A'}
-                    align="center"
-                    style={{ marginTop: 8, fontSize: 12, lineHeight: 18 }}
-                  >
-                    {saveNotice}
-                  </ILText>
-                ) : null}
-              </View>
-            ) : null}
             <View
               style={{
                 height: 36,
@@ -743,6 +672,100 @@ export default function FirstLoginWelcomeScreen({
             </ILText>
           </View>
         </ScrollView>
+
+      <Modal
+        visible={Boolean(editing)}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          setEditing(null);
+          setDraft('');
+          setSaveNotice('');
+          setSaveNoticeError(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: IL_BRAND.white }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        >
+          <View
+            style={{
+              paddingTop: Math.max(insets.top, 12) + 8,
+              paddingHorizontal: 20,
+              paddingBottom: 12,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottomWidth: 1,
+              borderBottomColor: 'rgba(16,44,50,0.08)',
+            }}
+          >
+            <ILText role="title" color={IL_BRAND.ink} style={{ fontSize: 18 }}>
+              {editing ? FIELD_META[editing].title : ''}
+            </ILText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              onPress={() => {
+                setEditing(null);
+                setDraft('');
+                setSaveNotice('');
+                setSaveNoticeError(false);
+              }}
+              hitSlop={10}
+            >
+              <MaterialIcons name="close" size={24} color={IL_BRAND.ink} />
+            </Pressable>
+          </View>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{
+              padding: 20,
+              paddingBottom: Math.max(insets.bottom, 20) + 24,
+            }}
+          >
+            {editing === 'city' ? (
+              <CityPicker value={fields.city} onPick={saveEdit} autoFocus />
+            ) : editing === 'domain' ? (
+              <FieldOfWorkPicker value={fields.domain} onPick={saveEdit} />
+            ) : editing === 'bhag' ? (
+              <BhagComposer value={draft} onChange={setDraft} field={fields.domain} />
+            ) : null}
+            {editing === 'bhag' ? (
+              <View style={{ flexDirection: 'row', marginTop: 16, gap: 10 }}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => saveEdit()}
+                  disabled={saving || !draft.trim()}
+                  style={{
+                    flex: 1,
+                    backgroundColor: CTA,
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    opacity: saving || !draft.trim() ? 0.5 : 1,
+                  }}
+                >
+                  <ILText role="label" color={IL_BRAND.white}>
+                    {saving ? 'Saving…' : 'Save my goal'}
+                  </ILText>
+                </Pressable>
+              </View>
+            ) : null}
+            {saveNotice ? (
+              <ILText
+                role="bodySm"
+                color={saveNoticeError ? CTA : '#1B7A4A'}
+                align="center"
+                style={{ marginTop: 12, fontSize: 13, lineHeight: 18 }}
+              >
+                {saveNotice}
+              </ILText>
+            ) : null}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }

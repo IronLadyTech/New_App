@@ -405,9 +405,32 @@ export function mergeArmyEventLists(lists) {
   return [...byKey.values()].sort((a, b) => String(a.dateIso).localeCompare(String(b.dateIso)));
 }
 
-export function upcomingArmyEvents(events, { fromIso, limit = 12 } = {}) {
+function futureArmyEventsSorted(events, fromIso) {
   const start = fromIso || istTodayIso();
-  return (events || []).filter((ev) => ev.dateIso >= start).slice(0, limit);
+  return (events || [])
+    .filter((ev) => ev.dateIso >= start)
+    .sort((a, b) => String(a.dateIso).localeCompare(String(b.dateIso)));
+}
+
+export function upcomingArmyEvents(events, { fromIso, limit = 12 } = {}) {
+  return futureArmyEventsSorted(events, fromIso).slice(0, limit);
+}
+
+/** Learn tab: never drop spotlight rows when the plain date cap would skip them. */
+export function upcomingArmyEventsForLearn(events, { fromIso, limit = 28 } = {}) {
+  const future = futureArmyEventsSorted(events, fromIso);
+  const highlights = future.filter((ev) => ev.highlight);
+  const rest = future.filter((ev) => !ev.highlight);
+  const seen = new Set();
+  const out = [];
+  for (const ev of [...highlights, ...rest]) {
+    const key = ev.id || `${ev.dateIso}|${ev.title}|${ev.mode}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(ev);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 export function nextArmyEvent(events, { mode, fromIso, highlightOnly = false } = {}) {

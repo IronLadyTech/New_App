@@ -54,7 +54,7 @@ function norm(s) {
 }
 
 /** Search box + popular chips + matching cities. Any typed city can be used too. */
-export function CityPicker({ value, onPick }) {
+export function CityPicker({ value, onPick, autoFocus = true }) {
   const [q, setQ] = useState('');
   const matches = useMemo(() => {
     const n = norm(q);
@@ -84,7 +84,7 @@ export function CityPicker({ value, onPick }) {
           onChangeText={setQ}
           placeholder="Search your city"
           placeholderTextColor="rgba(16,44,50,0.45)"
-          autoFocus
+          autoFocus={autoFocus}
           autoCorrect={false}
           style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 8, fontSize: 16, color: IL_BRAND.ink }}
         />

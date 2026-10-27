@@ -15,6 +15,9 @@ import { LEP_PHASE_DAY_OFFSET } from './lepFlowGates';
 import { resolveLepDay1Iso } from './lepRitualsUnlock';
 import { inferProgramStartFromZohoRaw } from './programStartDate';
 
+/** LEP part-paid learners: same as lepFlowGates — no intensive / week tasks until full fee. */
+const LEP_REGISTER_ONLY_PHASES = new Set(['pre-program', 'orientation']);
+
 /** First week (1-based) of each 100BM / MBW phase, from the phase labels (Wk1–Wk8 …). */
 export const PROGRAM_PHASE_START_WEEK = {
   '100bm': {
@@ -88,6 +91,9 @@ export function phaseGate(phase, { enrolled, flow }) {
   }
 
   if (flow?.programId === 'lep') {
+    if (!enrolled && !LEP_REGISTER_ONLY_PHASES.has(phase.id)) {
+      return { open: false, reason: 'payment', opensOn };
+    }
     // LEP without a Day 1 date: only the pre-work phases.
     if (!flow.day1Iso) return { open: ['pre-program', 'orientation'].includes(phase.id), reason: 'no-dates', opensOn };
     return opensOn && parseISODate(flow.todayIso) >= parseISODate(opensOn)

@@ -1,9 +1,11 @@
 import { Alert } from 'react-native';
 import { updateUserProfile } from '../services/firestore';
-import { updateMyWelcomeProfile } from '../services/functions';
+import { BATCH_ZOHO_SAVE_TIMEOUT_MS, saveWelcomeProfileFields } from '../services/functions';
 import { batchZohoFeedback } from './participantSyncMessage';
 import {
   formatZohoLepBatchLabel,
+  lepZohoCohortEndFromDay1,
+  lepZohoCohortStartFromDay1,
   zohoLepBatchKeyFromDay1,
 } from './lepDeskBatchDate';
 import { orientationFromDay1Saturday } from './lepBatchSchedule';
@@ -28,6 +30,8 @@ export async function lockLepBatchChoice({ user, profile, patchProfile, picked, 
     zohoBatchKey;
   const orientationDate =
     String(picked?.orientationDate || '').slice(0, 10) || orientationFromDay1Saturday(day1Date);
+  const zohoCohortStart = lepZohoCohortStartFromDay1(day1Date);
+  const zohoCohortEnd = lepZohoCohortEndFromDay1(day1Date);
 
   const lep = profile?.programAccess?.lep || {};
   const next = {
@@ -42,7 +46,16 @@ export async function lockLepBatchChoice({ user, profile, patchProfile, picked, 
         batchName,
         day1Date,
         orientationDate,
+        ...(zohoCohortStart ? { zohoCohortStart } : {}),
+        ...(zohoCohortEnd ? { endDate: zohoCohortEnd } : {}),
       },
+    },
+    zohoLead: {
+      ...(profile?.zohoLead || {}),
+      ...(zohoBatchKey ? { LEP_Batch: zohoBatchKey } : {}),
+      ...(zohoCohortStart ? { LEP_Reg_Date: zohoCohortStart } : {}),
+      ...(zohoCohortEnd ? { LEP_End_Date: zohoCohortEnd } : {}),
+      id: profile?.zohoLeadId || profile?.leadId || profile?.zohoLead?.id || null,
     },
   };
 
@@ -50,17 +63,29 @@ export async function lockLepBatchChoice({ user, profile, patchProfile, picked, 
 
   let zoho = null;
   if (user?.uid && user.uid !== 'preview') {
-    await updateUserProfile(user.uid, next).catch(() => {});
     try {
-      // Server matches Lead by email, phone, or zohoLeadId — lepBatch → Zoho LEP_Batch.
-      zoho = await updateMyWelcomeProfile({
-        lepBatch: zohoBatchKey,
-        day1Date,
-        ...(cmsBatchId ? { cmsBatchId } : {}),
-      });
+      await updateUserProfile(user.uid, next);
+    } catch (err) {
+      if (__DEV__) console.warn('[lockLepBatch] Firestore', err?.message || err);
+    }
+    try {
+      zoho = await saveWelcomeProfileFields(
+        {
+          day1Date,
+          ...(cmsBatchId ? { cmsBatchId } : {}),
+        },
+        { timeoutMs: BATCH_ZOHO_SAVE_TIMEOUT_MS }
+      );
+      if (__DEV__) {
+        console.warn('[lockLepBatch] Zoho', zoho?.zoho ? 'ok' : zoho?.reasonCode || 'pending', zohoBatchKey);
+      }
       if (zoho?.zohoLeadId) {
-        patchProfile?.({ zohoLeadId: zoho.zohoLeadId });
-        await updateUserProfile(user.uid, { zohoLeadId: zoho.zohoLeadId }).catch(() => {});
+        const leadPatch = {
+          zohoLeadId: zoho.zohoLeadId,
+          zohoLead: { ...(next.zohoLead || {}), id: zoho.zohoLeadId },
+        };
+        patchProfile?.(leadPatch);
+        await updateUserProfile(user.uid, leadPatch).catch(() => {});
       }
       if (!silent) {
         const { message, showAlert } = batchZohoFeedback(zoho);

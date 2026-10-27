@@ -16,6 +16,7 @@ import {
 import { pickAndSaveProfilePhoto } from '../../services/profilePhoto';
 import { buildProgramBatchCard, sortProgramsByCurrentBatch } from '../../utils/lepBatchHero';
 import { refreshMyAccess } from '../../services/functions';
+import { programIdNeedingBalancePayment } from '../../utils/paymentEnrollment';
 import { fetchUserProfile } from '../../services/auth';
 import ILHeader from '../../components/il/ILHeader';
 
@@ -242,7 +243,11 @@ export default function ProfileScreen({ navigation }) {
           <Row
             icon="card-outline"
             label="Complete enrolment · pay balance"
-            onPress={() => navigation.navigate('PaymentEnrollment')}
+            onPress={() =>
+              navigation.navigate('PaymentEnrollment', {
+                programId: programIdNeedingBalancePayment(profile),
+              })
+            }
           />
         ) : null}
         <Row

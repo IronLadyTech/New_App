@@ -9,7 +9,7 @@ export const COURSE_PHASES = {
   [PROGRAMS.LEP]: [
     { id: 'pre-program', title: 'Pre-Program Preparation', sub: 'VIA Survey · 3 photographs · CoDeSeF · NSDC', openRegistered: true },
     { id: 'orientation', title: 'Program Orientation', sub: 'Framework · Access Essentials · Schedule', openRegistered: true },
-    { id: 'day-1', title: 'Day 1 – Personal Transformation', sub: '6 tasks · Day 1 Assignment', openRegistered: true },
+    { id: 'day-1', title: 'Day 1 – Personal Transformation', sub: '6 tasks · Day 1 Assignment', openRegistered: false },
     { id: 'day-2', title: 'Day 2 – Strategies and Tactics', sub: '5 tasks · Day 2 Assignment', openRegistered: false },
     { id: 'week-1', title: 'Week 1', sub: 'Consolidation and Closure', openRegistered: false },
     { id: 'week-2', title: 'Week 2', sub: 'Profile / Resume · Elevator Pitch · LinkedIn', openRegistered: false },

@@ -5,13 +5,14 @@ import {
   nextArmyEvent,
   parseArmyEventsCsv,
   upcomingArmyEvents,
+  upcomingArmyEventsForLearn,
   upcomingHighlightEvents,
 } from '../utils/armyEventCalendar';
 
 let cache = { at: 0, events: null, error: null, version: 0 };
 const TTL_MS = 15 * 60 * 1000;
 /** Bump when sheet sources / parse rules change so stale cache is dropped. */
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 async function loadSheetEvents() {
   const now = Date.now();
@@ -62,7 +63,7 @@ export function useArmyEventCalendar() {
     };
   }, []);
 
-  const upcoming = useMemo(() => upcomingArmyEvents(events, { limit: 16 }), [events]);
+  const upcoming = useMemo(() => upcomingArmyEventsForLearn(events, { limit: 28 }), [events]);
   const highlights = useMemo(() => upcomingHighlightEvents(events, { limit: 4 }), [events]);
   const nextHighlight = useMemo(
     () => nextArmyEvent(events, { highlightOnly: true }),

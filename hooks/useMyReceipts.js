@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToMyOrders, subscribeToMyRazorpayPayments } from '../services/firestore';
+import { PAYMENT_STATUS } from '../constants/programs';
+import { programPaymentStatus } from '../utils/programAccess';
 import { razorpayOneRupeeOrder } from '../utils/paymentEnrollment';
 import {
   cacheReceipts,
@@ -32,10 +34,13 @@ export function useMyReceipts() {
   const [loading, setLoading] = useState(true);
   const liveProfile = accountProfile || profile;
   const fromProfile = useMemo(() => receiptsFromAccount(liveProfile), [liveProfile]);
-  const oneRupee = useMemo(
-    () => serializeReceipt(razorpayOneRupeeOrder(liveProfile, user)),
-    [liveProfile, user]
-  );
+  const oneRupee = useMemo(() => {
+    const access = liveProfile?.programAccess?.lep || {};
+    const paymentId = access.razorpayPaymentId || liveProfile?.razorpayPaymentId;
+    if (!paymentId) return null;
+    if (programPaymentStatus(liveProfile, 'lep') !== PAYMENT_STATUS.PAID) return null;
+    return serializeReceipt(razorpayOneRupeeOrder(liveProfile, user));
+  }, [liveProfile, user]);
 
   useEffect(() => {
     let active = true;
@@ -77,11 +82,28 @@ export function useMyReceipts() {
   }, [user?.uid]);
 
   const orders = mergeRows(oneRupee ? [oneRupee] : [], cached, remote, fromProfile);
-  const razorpay = orders.find((row) => Number(row.amountRupees) === 1) || oneRupee || orders[0] || null;
+  const latest =
+    orders.find((row) => {
+      const programId = row.programId || 'lep';
+      if (programPaymentStatus(liveProfile, programId) !== PAYMENT_STATUS.PAID) return false;
+      const payId =
+        row.razorpayPaymentId ||
+        (row.transactionId && !String(row.transactionId).startsWith('order_')
+          ? row.transactionId
+          : null);
+      if (!payId || payId === 'registration-fee') return false;
+      const synthetic =
+        Number(row.amountRupees) === 1 &&
+        !payId &&
+        String(row.id || '').includes('razorpay-1-rupee');
+      if (synthetic) return false;
+      if (row.status === 'failed' || row.status === 'refunded') return false;
+      return true;
+    }) || null;
 
   return {
     orders,
-    latest: razorpay,
+    latest,
     error,
     loading,
     signedIn: !!user?.uid,

@@ -37,6 +37,44 @@ function useCmsList(collectionName, programId, cmsBatch) {
   return forLearner(rows, { profile, batch: cmsBatch, programId });
 }
 
+/**
+ * Session recordings CX added for this batch (CMS → Sessions & recordings), as
+ * { [sessionCode]: { url, title } } — the newest one wins when a link was replaced.
+ */
+export function useCmsSessionRecordings(programId, cmsBatch) {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    let alive = true;
+    if (!cmsBatch?.id) {
+      setRows([]);
+      return undefined;
+    }
+    // The CMS saves recordings under 'LEP' / '100BM' / 'MBW'.
+    const program = { lep: 'LEP', '100bm': '100BM', mbw: 'MBW' }[programId] || programId;
+    fetchPublishedCmsList(CMS.CONTENT, program)
+      .then((list) => alive && setRows(list))
+      .catch(() => alive && setRows([]));
+    return () => {
+      alive = false;
+    };
+  }, [programId, cmsBatch?.id]);
+  const out = {};
+  rows
+    .filter((r) => r.library === 'session' && r.sessionCode && r.url && r.batchId === cmsBatch?.id)
+    .sort((a, b) => stampMs(a.createdAt) - stampMs(b.createdAt))
+    .forEach((r) => {
+      out[r.sessionCode] = { url: r.url, title: r.title || 'Session recording' };
+    });
+  return out;
+}
+
+function stampMs(v) {
+  if (!v) return 0;
+  if (typeof v.toMillis === 'function') return v.toMillis();
+  if (typeof v.seconds === 'number') return v.seconds * 1000;
+  return Date.parse(v) || 0;
+}
+
 /** Engage posts (events, announcements, videos, highlights) for the signed-in learner. */
 export function useCmsEngagePosts(programId, cmsBatch) {
   return useCmsList(CMS.ENGAGE, programId, cmsBatch);

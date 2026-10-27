@@ -5,6 +5,8 @@ import Pressable from '../../components/il/Press';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
+import { PAYMENT_STATUS } from '../../constants/programs';
+import { programPaymentStatus } from '../../utils/programAccess';
 import { useProgramRoutes } from '../../context/ProgramNavContext';
 import { PROGRAMS } from '../../constants/programs';
 import { useLepNav } from '../lep/useLepNav';
@@ -744,6 +746,10 @@ function ComboHome() {
   const routes = useProgramRoutes();
   const nav = useLepNav();
   const name = firstName(profile);
+  const lepTier = programPaymentStatus(profile, 'lep');
+  const bmTier = programPaymentStatus(profile, '100bm');
+  const lepChip = lepTier === PAYMENT_STATUS.PAID ? 'Enrolled' : 'Registered';
+  const bmChip = bmTier === PAYMENT_STATUS.PAID ? 'Enrolled' : 'Registered';
   return (
     <ProgramPage>
       <DarkPanel>
@@ -764,7 +770,7 @@ function ComboHome() {
             }}
           >
             <ILText role="eyebrow" color={IL_BRAND.redSoft} style={{ fontSize: 10 }}>
-              Enrolled
+              {lepChip}
             </ILText>
             <ILText role="label" color="#FFFFFF" style={{ marginTop: 6 }}>
               LEP
@@ -779,7 +785,7 @@ function ComboHome() {
             style={{ flex: 1, borderRadius: 16, padding: 12, backgroundColor: 'rgba(255,255,255,0.08)' }}
           >
             <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 10 }}>
-              Registered
+              {bmChip}
             </ILText>
             <ILText role="label" color="#FFFFFF" style={{ marginTop: 6 }}>
               100BM

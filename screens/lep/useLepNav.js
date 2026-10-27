@@ -13,20 +13,23 @@ export function useLepNav() {
   const goIn = (stack, screen, params) => navigateInMemberStack(navigation, stack, screen, params);
   const openUrl = (url) => Linking.openURL(url).catch(() => {});
   return {
-    goProfile: () => navigation.navigate('Profile'),
-    goNotifications: () => navigation.navigate('Home', { screen: 'Notifications' }),
-    goSchedule: () => navigation.navigate('Home', { screen: 'Schedule' }),
-    goToday: () => navigation.navigate('Home', { screen: 'TodayChecklist' }),
-    goGuide: () => navigation.navigate('Home', { screen: 'GuideChat' }),
-    goCheckin: () => navigation.navigate('Home', { screen: 'SessionCheckin' }),
-    goRoad: () => navigation.navigate('Home', { screen: 'FirstMonth' }),
-    goMilestone: () => navigation.navigate('Home', { screen: 'Milestone' }),
-    goGraduation: () => navigation.navigate('Home', { screen: 'Graduation' }),
-    goAlumni: () => navigation.navigate('Home', { screen: 'Alumni' }),
-    goEnroll: () => goProfileScreen('PaymentEnrollment'),
+    goProfile: () => navigation.navigate('Profile', { screen: 'ProfileHome' }),
+    goNotifications: () => goIn('Home', 'Notifications'),
+    goSchedule: () => goIn('Home', 'Schedule'),
+    goToday: () => goIn('Home', 'TodayChecklist'),
+    goRitualsDashboard: () => goIn('Home', 'RitualsDashboard'),
+    goGuide: () => goIn('Home', 'GuideChat'),
+    goCheckin: () => goIn('Home', 'SessionCheckin'),
+    goRoad: () => goIn('Home', 'FirstMonth'),
+    goMilestone: () => goIn('Home', 'Milestone'),
+    goGraduation: () => goIn('Home', 'Graduation'),
+    goAlumni: () => goIn('Home', 'Alumni'),
+    goAlumniGraduationFilm: () => goIn('Home', 'AlumniGraduationFilm'),
+    goAlumniCommunity: () => goIn('Home', 'AlumniCommunity'),
+    goEnroll: () => goProfileScreen('PaymentEnrollment', { programId: 'lep' }),
     goOrders: () => goProfileScreen('Orders'),
     goReceipt: (order) => goProfileScreen('OrderReceipt', { orderId: order?.id, order }),
-    goMyProgram: () => navigation.navigate('MyProgram'),
+    goMyProgram: () => navigation.navigate('MyProgram', { screen: 'LepProgram' }),
     goLearn: () => navigation.navigate('Learn'),
     goEngage: () => navigation.navigate('Engage'),
     goPhase: (programId, phaseId) => {
@@ -41,8 +44,8 @@ export function useLepNav() {
       if (names.includes('CoursePhase')) navigation.navigate('CoursePhase', params);
       else navigation.navigate('MyProgram', { screen: 'CoursePhase', params });
     },
-    goCourseTask: (programId, taskId) => {
-      const params = { programId, taskId };
+    goCourseTask: (programId, taskId, extraParams) => {
+      const params = { programId, taskId, ...(extraParams || {}) };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('CourseTask')) navigation.navigate('CourseTask', params);
       else navigation.navigate('MyProgram', { screen: 'CourseTask', params });
@@ -66,6 +69,7 @@ export function useLepNav() {
     goQuiz: () => navigation.navigate('MyProgram', { screen: 'Quiz' }),
     goTicket: () => navigation.navigate('Engage', { screen: 'EventTicket' }),
     goProgress: () => navigation.navigate('Profile', { screen: 'LepProgress' }),
+    goWeeklyBrief: () => navigation.navigate('Profile', { screen: 'WeeklyBrief' }),
     goCertificate: () => navigation.navigate('Profile', { screen: 'LepCertificate' }),
     goCertificates: () => goProfileScreen('Certificates'),
     goNudges: () => navigation.navigate('Profile', { screen: 'NudgeSettings' }),

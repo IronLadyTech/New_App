@@ -31,6 +31,11 @@ export function learnerPayment(profile, programId = 'lep') {
   return 'unknown';
 }
 
+/** Part-paid / seat-held learners (registration or EMI tranche 1 — balance still due). */
+export function isPartPaidParticipant(profile, programId = 'lep') {
+  return learnerPayment(profile, programId) === 'register';
+}
+
 /** First payment after the batch's Orientation started. The CMS preview sets joinedLate directly. */
 export function isLateJoiner(profile, batch, programId = 'lep') {
   const access = profile?.programAccess?.[programId] || {};
