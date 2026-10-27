@@ -1,7 +1,32 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { saveFcmToken } from './firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { removePushDevice, saveFcmToken, savePushDevice } from './firestore';
+
+const INSTALL_ID_KEY = 'il.push.installId';
+const NATIVE_TOKEN_KEY = 'il.push.nativeToken';
+
+/** Stable id for this install — one devices/{installId} row per phone. */
+async function getInstallId() {
+  let id = await AsyncStorage.getItem(INSTALL_ID_KEY).catch(() => null);
+  if (!id) {
+    id = `${Platform.OS}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    await AsyncStorage.setItem(INSTALL_ID_KEY, id).catch(() => {});
+  }
+  return id;
+}
+
+/** Expo push token (iPhone pushes go through Expo → APNs). null when unavailable. */
+async function getExpoToken() {
+  try {
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || Constants.easConfig?.projectId;
+    const res = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    return res?.data || null;
+  } catch {
+    return null;
+  }
+}
 
 /** Expo Go (Android SDK 53+) throws if remote push APIs are used. */
 export function isExpoGo() {
@@ -73,12 +98,37 @@ export async function getNativePushToken() {
   }
 }
 
+/**
+ * Save this phone for push: its devices/{installId} row (native + Expo token), and on
+ * Android also users.fcmToken, which the web LMS senders still read. The server skips
+ * users.fcmToken when a device row carries the same token, so nothing arrives twice.
+ */
 export async function registerPushTokenForUser(uid) {
   if (!uid) return { ok: false, reason: 'no_user' };
   const { token, reason } = await getNativePushToken();
   if (!token) return { ok: false, reason };
-  await saveFcmToken(uid, token);
-  return { ok: true, token };
+  const [installId, expoToken] = await Promise.all([getInstallId(), getExpoToken()]);
+  await savePushDevice(uid, installId, {
+    platform: Platform.OS,
+    nativeToken: token,
+    expoToken,
+    appVersion: Constants.expoConfig?.version || '',
+  });
+  // An iPhone's native token is an APNs token, which FCM cannot use — Android only.
+  if (Platform.OS === 'android') await saveFcmToken(uid, token);
+  await AsyncStorage.setItem(NATIVE_TOKEN_KEY, token).catch(() => {});
+  return { ok: true, token, expoToken };
+}
+
+/** Signing out: this phone stops getting her pushes; her other phones keep theirs. */
+export async function unregisterPushForUser(uid) {
+  if (!uid || Platform.OS === 'web') return;
+  const [installId, nativeToken] = await Promise.all([
+    AsyncStorage.getItem(INSTALL_ID_KEY).catch(() => null),
+    AsyncStorage.getItem(NATIVE_TOKEN_KEY).catch(() => null),
+  ]);
+  await removePushDevice(uid, installId, nativeToken);
+  await AsyncStorage.removeItem(NATIVE_TOKEN_KEY).catch(() => {});
 }
 
 export function addPushTokenListener(callback) {

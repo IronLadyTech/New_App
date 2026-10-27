@@ -109,6 +109,18 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Phones she is signed in on, for push (app services/pushNotifications.js). Each learner
+    // manages only her own; the scheduler reads them with the Admin SDK.
+    match /users/{userId}/devices/{deviceId} {
+      allow read, delete: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['platform', 'nativeToken', 'expoToken', 'appVersion', 'updatedAt'])
+        && request.resource.data.platform in ['android', 'ios']
+        && (request.resource.data.nativeToken == null || request.resource.data.nativeToken is string)
+        && (request.resource.data.expoToken == null || request.resource.data.expoToken is string);
+    }
+
     match /courses/{courseId} {
       allow read: if canUseApp();
       allow write: if hasAdminAccess();

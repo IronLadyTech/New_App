@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
-import { clearFcmToken } from './firestore';
+import { unregisterPushForUser } from './pushNotifications';
 import {
   ensureZohoUserOnLogin,
   refreshMyAccess,
@@ -158,7 +158,7 @@ export async function logOut() {
   const uid = auth.currentUser?.uid;
   if (uid) {
     try {
-      await clearFcmToken(uid);
+      await unregisterPushForUser(uid);
     } catch {
       // Best-effort — still sign out locally
     }

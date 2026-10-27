@@ -294,6 +294,30 @@ export async function clearFcmToken(uid) {
   });
 }
 
+/**
+ * One row per phone she is signed in on: users/{uid}/devices/{installId}. The scheduler
+ * (LMS functions/pushDelivery.js) pushes to every row — Android by nativeToken, iPhone by expoToken.
+ */
+export async function savePushDevice(uid, installId, device) {
+  if (!uid || !installId) return;
+  await setDoc(
+    doc(db, 'users', uid, 'devices', installId),
+    { ...device, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+/** Signing out of this phone: stop its pushes, and clear users.fcmToken only if it was this phone's. */
+export async function removePushDevice(uid, installId, nativeToken) {
+  if (!uid) return;
+  if (installId) await deleteDoc(doc(db, 'users', uid, 'devices', installId)).catch(() => {});
+  if (!nativeToken) return;
+  const snap = await getDoc(doc(db, 'users', uid));
+  if (snap.exists() && snap.data().fcmToken === nativeToken) {
+    await updateDoc(doc(db, 'users', uid), { fcmToken: null, updatedAt: serverTimestamp() });
+  }
+}
+
 // ─── Engagement / Posts ─────────────────────────────────────────────────────
 
 export function subscribeToPosts(onData, onError) {
