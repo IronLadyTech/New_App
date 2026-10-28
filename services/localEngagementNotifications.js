@@ -100,26 +100,6 @@ function buildStreakTrigger(Notifications) {
   };
 }
 
-async function streakIsScheduled(Notifications) {
-  try {
-    const pending = await Notifications.getAllScheduledNotificationsAsync();
-    return (pending || []).some((req) => req?.identifier === STREAK_ID);
-  } catch {
-    return false;
-  }
-}
-
-function firstName(profile) {
-  const raw =
-    profile?.displayName ||
-    profile?.firstName ||
-    profile?.name ||
-    profile?.welcomeFirstName ||
-    '';
-  const part = String(raw).trim().split(/\s+/)[0];
-  return part || 'Iron Lady';
-}
-
 /**
  * One-time welcome after install / first open.
  * Full-color Iron Lady logo in the notification header/shade: app.json expo-notifications largeIcon → notification_large_icon.
@@ -159,39 +139,59 @@ export async function scheduleWelcomeNotification() {
   }
 }
 
+const STREAK_PREFIX = 'il-streak-';
+const STREAK_CATEGORY = 'streak'; // category ids may not contain "-" or ":"
+
+/** Every streak reminder this phone has scheduled (and the old single repeating one). */
+async function cancelStreakReminders(Notifications) {
+  await Notifications.cancelScheduledNotificationAsync(STREAK_ID).catch(() => {});
+  try {
+    const pending = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      (pending || [])
+        .filter((req) => String(req?.identifier || '').startsWith(STREAK_PREFIX))
+        .map((req) => Notifications.cancelScheduledNotificationAsync(req.identifier).catch(() => {}))
+    );
+  } catch {
+    // nothing scheduled
+  }
+}
+
 /**
- * Duolingo-style daily streak nudge (local, repeating).
- * Android shows the Iron Lady logo as the large icon on the right.
+ * The week of streak reminders from utils/streakReminderPlan.js — one per evening, each with its
+ * own words, rebuilt whenever the streak changes. `reminders` empty / null: cancel them all
+ * (not an LEP learner, or signed out).
  */
-export async function scheduleDailyStreakNotification(profile) {
+export async function syncStreakReminders(reminders) {
   const Notifications = notifications();
   if (!Notifications) return { ok: false, reason: 'unavailable' };
-
   try {
+    await cancelStreakReminders(Notifications);
+    if (!reminders?.length) return { ok: true, cancelled: true };
     const allowed = await ensurePermission(Notifications);
     if (!allowed) return { ok: false, reason: 'denied' };
     await ensureChannels(Notifications);
-
-    const name = firstName(profile);
-    await Notifications.cancelScheduledNotificationAsync(STREAK_ID).catch(() => {});
-
-    await Notifications.scheduleNotificationAsync({
-      identifier: STREAK_ID,
-      content: {
-        title: `${name}, keep your streak!`,
-        body: "Do today's practice in Iron Lady — don't let the streak break.",
-        color: '#ED1D24',
-        sound: true,
-        data: { go: { to: 'myProgram' }, kind: 'streak' },
-      },
-      trigger: buildStreakTrigger(Notifications),
-    });
-
-    const scheduled = await streakIsScheduled(Notifications);
-    if (!scheduled) {
-      return { ok: false, reason: 'not_scheduled' };
+    await Notifications.setNotificationCategoryAsync(STREAK_CATEGORY, [
+      { identifier: 'practise', buttonTitle: 'Practise now', options: { opensAppToForeground: true } },
+    ]).catch(() => {});
+    const Types = triggerTypes(Notifications);
+    for (const r of reminders) {
+      await Notifications.scheduleNotificationAsync({
+        identifier: `${STREAK_PREFIX}${r.key}`,
+        content: {
+          title: r.title,
+          body: r.body,
+          subtitle: 'Daily practice',
+          color: '#ED1D24',
+          sound: true,
+          categoryIdentifier: STREAK_CATEGORY,
+          // Tap → Home. "Practise now" → straight into her first unfinished practice.
+          data: { go: { to: 'home' }, actions: { practise: { to: 'practice' } }, kind: 'streak' },
+        },
+        trigger: { type: Types.DATE || 'date', date: r.at, channelId: STREAK_CHANNEL },
+      });
     }
-    return { ok: true };
+    return { ok: true, scheduled: reminders.length };
   } catch (e) {
     return { ok: false, reason: e?.message || 'streak_failed' };
   }
@@ -203,7 +203,11 @@ export async function setupLocalEngagementNotifications(profile) {
     return { welcome: { ok: false, reason: 'expo-go' }, streak: { ok: false, reason: 'expo-go' } };
   }
   const welcome = await scheduleWelcomeNotification();
-  const streak = await scheduleDailyStreakNotification(profile);
+  // Streak reminders are planned from the learner's real streak by StreakReminderSync (inside
+  // the app's providers). Here: retire the old single repeating "keep your streak" reminder.
+  const Notifications = notifications();
+  if (Notifications) await Notifications.cancelScheduledNotificationAsync(STREAK_ID).catch(() => {});
+  const streak = { ok: true, movedToSync: true };
   if (!welcome.ok && welcome.reason) {
     console.warn('[local-notif] welcome:', welcome.reason);
   }

@@ -106,7 +106,6 @@ export default function ProfileScreen({ navigation }) {
         photoUrl={profile?.photoURL}
         insetTop={false}
         onProfile={() => {}}
-        onSearch={() => navigation.getParent()?.navigate('Learn')}
       />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <Text className="text-2xl font-bold text-ink-950">Profile</Text>

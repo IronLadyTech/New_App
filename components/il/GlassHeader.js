@@ -40,6 +40,23 @@ function openNotifications(navigation) {
   }
 }
 
+/** Batch calendar — Home tab Schedule (sessions + due items by day). */
+export function openMemberSchedule(navigation) {
+  let nav = navigation;
+  while (nav) {
+    const names = nav.getState?.()?.routeNames || [];
+    if (names.includes('Schedule')) {
+      nav.navigate('Schedule');
+      return;
+    }
+    if (names.includes('Home')) {
+      nav.navigate('Home', { screen: 'Schedule' });
+      return;
+    }
+    nav = nav.getParent?.();
+  }
+}
+
 /** Space a floating header covers, so scroll content can start below it. */
 export function useGlassHeaderPad() {
   const insets = useSafeAreaInsets();
@@ -172,10 +189,21 @@ function BrandMark() {
   );
 }
 
-function HeaderActions({ onSearch, onNotifications, onProfile, photo, initial, showSearch, showProfile, showBadge }) {
+function HeaderActions({
+  onCalendar,
+  onNotifications,
+  onProfile,
+  photo,
+  initial,
+  showCalendar,
+  showProfile,
+  showBadge,
+}) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
+      {showCalendar ? (
+        <GhostIcon name="calendar-today" onPress={onCalendar} label="Batch calendar" />
+      ) : null}
       <GhostIcon name="notifications-none" onPress={onNotifications} label="Notifications" badge={showBadge} />
       {showProfile ? (
         <View style={{ marginLeft: 6 }}>
@@ -187,19 +215,21 @@ function HeaderActions({ onSearch, onNotifications, onProfile, photo, initial, s
 }
 
 /**
- * Top header as a floating glass pill: logo + wordmark, search, bell, profile.
+ * Top header as a floating glass pill: logo + wordmark, calendar, bell, profile.
  * `floating` lays it over the page so content scrolls underneath it; pair it with
  * `useGlassHeaderPad()` as the scroll content's top padding.
  * Pass `scrollY` to melt: full pill → face chip → gone. Used only where the
  * caller opts in (LEP registered home).
  */
 export default function GlassHeader({
+  onCalendar,
   onSearch,
   onNotifications,
   onProfile,
   photo,
   initial,
-  showSearch = true,
+  showCalendar = true,
+  showSearch,
   showProfile = true,
   floating = false,
   insetTop = true,
@@ -210,6 +240,9 @@ export default function GlassHeader({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const bell = onNotifications || (() => openNotifications(navigation));
+  const calendar =
+    onCalendar || onSearch || (() => openMemberSchedule(navigation));
+  const showCal = showSearch !== undefined ? showSearch : showCalendar;
   const showBadge = useNotificationBellBadge();
   const top = insetTop ? Math.max(insets.top, 8) : 8;
   const melting = !!scrollY;
@@ -316,7 +349,9 @@ export default function GlassHeader({
               >
                 <BrandMark />
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {showSearch ? <GhostIcon name="search" onPress={onSearch} label="Search" /> : null}
+                  {showCal ? (
+                    <GhostIcon name="calendar-today" onPress={calendar} label="Batch calendar" />
+                  ) : null}
                   <GhostIcon name="notifications-none" onPress={bell} label="Notifications" badge={showBadge} />
                 </View>
               </Animated.View>
@@ -330,12 +365,12 @@ export default function GlassHeader({
             <>
               <BrandMark />
               <HeaderActions
-                onSearch={onSearch}
+                onCalendar={calendar}
                 onNotifications={bell}
                 onProfile={onProfile}
                 photo={photo}
                 initial={initial}
-                showSearch={showSearch}
+                showCalendar={showCal}
                 showProfile={showProfile}
                 showBadge={showBadge}
               />

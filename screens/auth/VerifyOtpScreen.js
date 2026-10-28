@@ -16,6 +16,7 @@ import {
   signInWithOtpToken,
   verifyWhatsAppOtp,
 } from '../../services/whatsappOtp';
+import { confirmFirebasePhoneOtp } from '../../services/firebasePhoneOtp';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
@@ -64,7 +65,9 @@ function InfoRow({ icon, title, body }) {
 export default function VerifyOtpScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const { confirmation, phone } = peekPhoneAuth();
-  const live = !!confirmation?.whatsapp;
+  const liveWhatsApp = !!confirmation?.whatsapp;
+  const liveFirebase = !!confirmation?.firebase;
+  const live = liveWhatsApp || liveFirebase;
   const routePhone = route?.params?.phone;
   const masked = useMemo(() => maskPhone(routePhone || phone), [routePhone, phone]);
   const [expected, setExpected] = useState(randomCode);
@@ -77,14 +80,21 @@ export default function VerifyOtpScreen({ navigation, route }) {
       if (!live) return code === expected;
       setMessage('');
       try {
-        tokenRef.current = await verifyWhatsAppOtp(phone, code);
-        return true;
+        if (liveWhatsApp) {
+          tokenRef.current = await verifyWhatsAppOtp(phone, code);
+          return true;
+        }
+        if (liveFirebase) {
+          await confirmFirebasePhoneOtp(confirmation.confirmation, code);
+          return true;
+        }
+        return false;
       } catch (e) {
         setMessage(e.message);
         return false;
       }
     },
-    [live, expected, phone]
+    [live, liveWhatsApp, liveFirebase, expected, phone, confirmation]
   );
 
   const onContinue = useCallback(async () => {
@@ -100,7 +110,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
       return;
     }
 
-    if (live) {
+    if (liveWhatsApp) {
       try {
         await signInWithOtpToken(tokenRef.current);
       } catch (e) {
@@ -109,16 +119,20 @@ export default function VerifyOtpScreen({ navigation, route }) {
       return;
     }
 
+    if (liveFirebase) {
+      return;
+    }
+
     try {
       await signInWithAccessToken(access.token);
     } catch (err) {
       setContinueError(err?.message || 'Could not open your program.');
     }
-  }, [live, navigation]);
+  }, [liveWhatsApp, liveFirebase, navigation]);
 
   const onResend = useCallback(async () => {
-    if (!live) {
-      setExpected(randomCode());
+    if (!liveWhatsApp) {
+      if (!live) setExpected(randomCode());
       return;
     }
     setMessage('');
@@ -128,7 +142,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
     } catch (e) {
       setMessage(e.message);
     }
-  }, [live, phone]);
+  }, [liveWhatsApp, live, phone]);
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>
@@ -202,9 +216,13 @@ export default function VerifyOtpScreen({ navigation, route }) {
               </ILText>
             </Pressable>
           </View>
-          {live ? (
+          {liveWhatsApp ? (
             <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 10 }}>
               Check WhatsApp for your 6-digit code.
+            </ILText>
+          ) : liveFirebase ? (
+            <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 10 }}>
+              Check SMS for your 6-digit code.
             </ILText>
           ) : (
             <ILText role="label" color={IL_BRAND.ink} style={{ marginTop: 10, letterSpacing: 0.4 }}>

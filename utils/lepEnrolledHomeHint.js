@@ -146,9 +146,37 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
   };
 }
 
+function isDailyPrinciplePractice(item) {
+  if (!item || item.done) return false;
+  if (item.practiceId === 'lep-principle') return true;
+  return /^Revise Principle \d+/i.test(String(item.title || ''));
+}
+
+function weekFocusPracticeItem(practice) {
+  return (practice || []).find(
+    (p) =>
+      !p.done &&
+      (String(p.id || '').startsWith('week-') ||
+        /next for this week/i.test(String(p.meta || '')))
+  );
+}
+
+function practiceWhisperLine(item) {
+  if (!item?.title) return '';
+  const t = String(item.title);
+  if (/^Revise Principle/i.test(t)) return `${t} — say it out loud once today.`;
+  if (/27 Principles/i.test(t) && !/^Watch/i.test(t)) {
+    return `Watch the 27 Principles session — then note one you will use this week.`;
+  }
+  if (/Shameless|Differentiated Brand|brand roadmap/i.test(t)) {
+    return `${t} — watch or prep before your live session.`;
+  }
+  return `${t} — that keeps your streak honest.`;
+}
+
 /**
  * Live whisper for this learner — never nudges a completed due/task.
- * Priority: open practice → open dues → next journey task → session → streak/motivation.
+ * Priority: urgent dues → this week’s journey task → other dues → daily principle → session → streak.
  */
 export function enrolledWhisperFallback({
   name = '',
@@ -165,17 +193,17 @@ export function enrolledWhisperFallback({
   const first = String(name || '').trim().split(/\s+/)[0] || '';
   const hi = first ? `${first}, ` : '';
 
-  const openPractice = (practice || []).find((p) => !p.done);
-  if (openPractice?.title) {
-    // Titles already start with a verb ("Complete your VIA Survey"), so don't prefix "finish".
-    return `${hi}today's next step: ${openPractice.title} — that keeps your streak honest.`;
-  }
-
   const openDues = (dueItems || []).filter((d) => !d.done);
-  const urgent = openDues.find((d) => d.urgent || /overdue|today|tomorrow/i.test(String(d.due || '')));
+  const urgent = openDues.find((d) => d.urgent || /overdue|today|tomorrow|live today/i.test(String(d.due || '')));
   if (urgent?.title) {
     return `${hi}${urgent.title} is ${String(urgent.due || 'due soon').toLowerCase()}. Finish it before the live room.`;
   }
+
+  const weekItem = weekFocusPracticeItem(practice);
+  if (weekItem?.title) {
+    return `${hi}today's next step: ${practiceWhisperLine(weekItem)}`;
+  }
+
   if (openDues[0]?.title) {
     return `${hi}${openDues[0].title} is still open this week. Clear it while you have momentum.`;
   }
@@ -188,6 +216,16 @@ export function enrolledWhisperFallback({
     (!nextTaskId || !dueDoneIds.has(nextTaskId));
   if (nextStillOpen) {
     return `${hi}pick up ${nextTaskTitle} next — it keeps you current with your cohort.`;
+  }
+
+  const dailyPrinciple = (practice || []).find((p) => isDailyPrinciplePractice(p));
+  if (dailyPrinciple?.title) {
+    return `${hi}today's next step: ${practiceWhisperLine(dailyPrinciple)}`;
+  }
+
+  const openPractice = (practice || []).find((p) => !p.done);
+  if (openPractice?.title) {
+    return `${hi}today's next step: ${practiceWhisperLine(openPractice)}`;
   }
 
   if (nextSession?.title) {

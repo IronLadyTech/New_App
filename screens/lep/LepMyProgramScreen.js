@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -15,12 +15,15 @@ import { splitBatchSessions } from '../../utils/eventVisibility';
 import { splitCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
+import { useCmsEngagePosts } from '../../hooks/useCmsLearnerItems';
+import { buildLepCohortView, nextCommunityCircleIso } from '../../utils/lepCohortView';
+import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 import { isLepEnrolled } from '../../utils/lepState';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
 import {
   LEP_ALUMNI_JOURNEY_BANNER,
   LEP_ALUMNI_SESSIONS_BANNER,
-  lepAlumniBatchShort,
 } from '../../utils/lepAlumniUi';
 import {
   LepHeader,
@@ -34,8 +37,6 @@ import {
 import { useLepNav } from './useLepNav';
 import {
   CIRCLE,
-  COHORT_WEEK,
-  FACE,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
@@ -60,9 +61,15 @@ export default function LepMyProgramScreen({ route }) {
   const nav = useLepNav();
   const enrolled = isLepEnrolled(profile);
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const group = useLepBatchGroup(profile, 'lep');
+  const engagePosts = useCmsEngagePosts('lep', cmsBatch);
   const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
   const alumniGraduate =
     enrolled && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
+  const cohortView = useMemo(
+    () => buildLepCohortView({ profile, cmsBatch, group, engagePosts }),
+    [profile, cmsBatch, group, engagePosts]
+  );
   const [tab, setTab] = useState(route?.params?.tab || 'Journey');
   // Links (CMS preview, notifications) can ask for a tab, e.g. { tab: 'Sessions' }.
   useEffect(() => {
@@ -77,6 +84,7 @@ export default function LepMyProgramScreen({ route }) {
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
+        onCalendar={nav.goSchedule}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -108,7 +116,12 @@ export default function LepMyProgramScreen({ route }) {
         ) : tab === 'Sessions' ? (
           <SessionsBody enrolled={enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
         ) : (
-          <CohortBody preview={!enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
+          <CohortBody
+            preview={!enrolled}
+            alumniGraduate={alumniGraduate}
+            cohort={cohortView}
+            onEnroll={nav.goEnroll}
+          />
         )}
       </ScrollView>
     </Page>
@@ -494,10 +507,36 @@ function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
   );
 }
 
-function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
-  const { profile } = useAuth();
+function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll }) {
   const nav = useLepNav();
-  const batchShort = lepAlumniBatchShort(profile);
+  const batchShort = cohort?.batchTitle || 'Your cohort';
+  const subline = cohort?.subline || 'Batch dates appear when your cohort is linked.';
+  const circles = cohort?.communityCircles?.length ? cohort.communityCircles : CIRCLE;
+  const weekRows = cohort?.weekRows || [];
+  const extraLabel = cohort?.extraMemberLabel;
+  const waUrl = cohort?.whatsappUrl;
+
+  const openWa = () => {
+    if (preview) return;
+    if (waUrl) {
+      openLink(waUrl).catch(() => {});
+      return;
+    }
+    Linking.openURL('mailto:support@ironlady.tech?subject=LEP%20batch%20WhatsApp%20group').catch(() => {});
+  };
+
+  const addThursdayCal = () => {
+    if (preview) return;
+    const iso = nextCommunityCircleIso();
+    const url = lepSessionCalendarUrl({
+      iso,
+      clockLabelText: '8:00 PM',
+      title: 'LEP · Community Circle',
+      durationHours: 1,
+    });
+    if (url) Linking.openURL(url).catch(() => {});
+  };
+
   return (
     <>
       <View style={{ marginTop: 18, backgroundColor: G.dark, borderRadius: 28, padding: 20 }}>
@@ -514,29 +553,22 @@ function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
         <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
           {alumniGraduate
             ? 'Your live cohort has ended. Alumni events and community updates are on Engage and Home.'
-            : '48 women · Day 1 on Sat 20 Sep · weekly sessions to mid-October'}
+            : subline}
         </ILText>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {[0, 1, 2, 3].map((i) => (
-              <Image
-                key={i}
-                source={FACE}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  marginLeft: i ? -8 : 0,
-                  borderWidth: 2,
-                  borderColor: G.dark,
-                }}
-              />
-            ))}
-            <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 8, fontSize: 12 }]}>
-              +44
-            </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+            <MaterialIcons name="groups" size={28} color="rgba(255,255,255,0.85)" />
+            {extraLabel ? (
+              <ILText role="label" color="#FFFFFF" style={[af, { marginLeft: 10, fontSize: 12, flex: 1 }]}>
+                {extraLabel}
+              </ILText>
+            ) : null}
           </View>
-          <View
+          <Pressable
+            onPress={openWa}
+            disabled={preview}
+            accessibilityRole="button"
+            accessibilityLabel="Open batch WhatsApp group"
             style={{
               backgroundColor: 'rgba(255,255,255,0.12)',
               borderRadius: 999,
@@ -544,13 +576,14 @@ function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
               paddingVertical: 10,
               flexDirection: 'row',
               alignItems: 'center',
+              opacity: preview ? 0.55 : 1,
             }}
           >
             <ILText role="label" color="#FFFFFF" style={[af, { fontSize: 12, marginRight: 6 }]}>
               WA group
             </ILText>
             <MaterialIcons name={preview ? 'lock-outline' : 'open-in-new'} size={14} color="#FFFFFF" />
-          </View>
+          </Pressable>
         </View>
       </View>
 
@@ -574,7 +607,7 @@ function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
           Small-group sessions with women working through the same problems.
         </ILText>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
-          {CIRCLE.map((c) => (
+          {circles.map((c) => (
             <View
               key={c}
               style={{
@@ -609,7 +642,9 @@ function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
             <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </Pressable>
         ) : (
-          <View
+          <Pressable
+            onPress={addThursdayCal}
+            disabled={preview}
             style={{
               marginTop: 8,
               backgroundColor: G.dark,
@@ -618,29 +653,36 @@ function CohortBody({ preview = false, alumniGraduate = false, onEnroll }) {
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
+              opacity: preview ? 0.55 : 1,
             }}
           >
             <ILText role="label" color="#FFFFFF">Add Thursday to calendar</ILText>
             <MaterialIcons name="event" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </View>
+          </Pressable>
         )}
       </WhiteCard>
 
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end', opacity: preview ? 0.62 : 1 }}>
         <View style={{ flex: 1 }}>
           <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
-            This week in Batch 42
+            {cohort?.weekSectionTitle || 'This week in your cohort'}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-            From your WA group
+            From your batch calendar and Engage
           </ILText>
         </View>
-        {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : <LinkRow label="Open group" />}
+        {preview ? (
+          <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+        ) : waUrl ? (
+          <LinkRow label="Open group" onPress={openWa} />
+        ) : (
+          <LinkRow label="Engage" onPress={nav.goEngage} />
+        )}
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
-        {COHORT_WEEK.map((row, i) => (
+        {weekRows.map((row, i) => (
           <View
-            key={row.title}
+            key={row.id || row.title}
             style={{
               paddingHorizontal: 16,
               paddingVertical: 14,

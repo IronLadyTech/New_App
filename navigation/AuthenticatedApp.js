@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import TabNavigator from './TabNavigator';
 import LandingGate from '../components/il/LandingGate';
+import StreakReminderSync from '../components/StreakReminderSync';
 import LoadingState from '../components/LoadingState';
 import { CoursesProvider } from '../context/CoursesContext';
 import { EngagementProvider } from '../context/EngagementContext';
@@ -40,6 +41,7 @@ export default function AuthenticatedApp() {
             <View style={{ flex: 1 }}>
               <TabNavigator />
               <LandingGate profile={profile} />
+              <StreakReminderSync />
             </View>
           </ProgramNavProvider>
         </EngagementProvider>

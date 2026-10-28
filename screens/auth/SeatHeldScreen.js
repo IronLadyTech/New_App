@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Alert, Platform, ScrollView, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -8,6 +8,8 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
+import { buildPaymentEnrollmentView } from '../../utils/paymentEnrollment';
+import { day1CalendarUrl } from '../../utils/registeredHomeData';
 import { BATCHES } from './ChooseBatchDateScreen';
 
 const PAGE = '#F7F6E4';
@@ -139,6 +141,15 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     BATCHES.find((b) => b.id === route?.params?.batchId) ||
     BATCHES[0];
 
+  const vm = useMemo(
+    () =>
+      buildPaymentEnrollmentView(profile, user, {
+        programId: 'lep',
+        pickedBatch: batch,
+      }),
+    [profile, user, batch]
+  );
+
   useEffect(() => {
     if (!batch?.day1Date && !batch?.cmsBatchId && !batch?.id) return;
     lockLepBatchChoice({ user, profile, patchProfile, picked: batch }).catch(() => {});
@@ -177,22 +188,21 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, marginBottom: 4 },
             ]}
           >
-            Registered · part payment received
+            {vm.statusLine}
           </ILText>
           <ILText
             role="display"
             color={INK}
             style={{ fontSize: 27, lineHeight: 32, letterSpacing: -0.4 }}
           >
-            {`Your seat is held, ${name}.`}
+            {vm.headline}
           </ILText>
           <ILText
             role="bodySm"
             color={BODY}
             style={{ marginTop: 6, fontSize: 13, lineHeight: 20 }}
           >
-            It becomes confirmed once the balance is paid. Until then it can be released to someone
-            on the waitlist.
+            {vm.subline}
           </ILText>
         </View>
 
@@ -224,7 +234,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               color={META}
               style={[androidFix, { fontSize: 10, lineHeight: 13, letterSpacing: 1.6, flex: 1 }]}
             >
-              Leadership Essentials Program
+              {vm.programLabel}
             </ILText>
             <View
               style={{
@@ -248,17 +258,17 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           <View style={{ borderTopWidth: 1, borderTopColor: LINE, marginTop: 8 }}>
             <MoneyRow
               label="Registration fee"
-              detail="Received · txn ending 4471"
-              amount="₹2,999"
-              status="Paid 12 Sep"
+              detail={`Received · txn ending ${vm.txnLast4}`}
+              amount={vm.registrationFeeLabel}
+              status={`Paid ${vm.registrationPaidLabel}`}
               paid
             />
             <View style={{ height: 1, backgroundColor: LINE }} />
             <MoneyRow
               label="Programme balance"
-              detail="7 days from registration"
-              amount="₹ XX,XXX"
-              status="Due 19 Sep"
+              detail={vm.balanceNote}
+              amount={vm.programBalanceLabel}
+              status={vm.balanceDueLabel !== '—' ? `Due ${vm.balanceDueLabel}` : 'Due'}
             />
           </View>
 
@@ -273,7 +283,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           >
             <View
               style={{
-                width: '22%',
+                width: `${vm.progressPercent}%`,
                 height: '100%',
                 borderRadius: 999,
                 backgroundColor: PAID,
@@ -307,7 +317,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             })}
           >
             <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 18 }}>
-              Pay balance
+              Pay {vm.programBalanceLabel}
             </ILText>
           </Pressable>
 
@@ -364,30 +374,33 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             color={CTA}
             style={[androidFix, { fontSize: 10, lineHeight: 13, letterSpacing: 1.6 }]}
           >
-            {batch?.name ? `Your batch · ${batch.name}` : 'Your batch'}
+            {vm.batchHeading}
           </ILText>
           <View style={{ marginTop: 10, gap: 10 }}>
-            <BatchLine
-              tag="Day 1"
-              title={batch.day1}
-              note="Full day, live on Zoom"
-            />
-            <BatchLine
-              tag="Day 2"
-              title={batch.day2}
-              note="Full day, live on Zoom"
-            />
-            <BatchLine
-              tag="Then"
-              title="Weekly sessions for four weeks"
-              note="Ending with certification"
-              last
-            />
+            {vm.batchSessions.map((session, index) => (
+              <BatchLine
+                key={`${session.dayLabel}-${index}`}
+                tag={session.dayLabel.replace('DAY ', 'Day ')}
+                title={session.title}
+                note={session.subtitle}
+                last={index === vm.batchSessions.length - 1 && vm.batchSessions.length > 2}
+              />
+            ))}
           </View>
           <Pressable
-            onPress={() =>
-              Alert.alert('Calendar', 'Dates will add to your calendar on the store build.')
-            }
+            onPress={() => {
+              const day1 = vm.batchSessions?.[0];
+              if (day1?.placeholder || !day1?.dateIso) {
+                Alert.alert('Calendar', 'Choose your batch date first to add sessions to your calendar.');
+                return;
+              }
+              const clock = day1.title?.includes('·')
+                ? day1.title.split('·').slice(1).join('·').trim()
+                : '9:00 AM';
+              Linking.openURL(day1CalendarUrl(day1.dateIso, clock)).catch(() => {
+                Alert.alert('Calendar', 'Could not open your calendar app.');
+              });
+            }}
             style={({ pressed }) => ({
               marginTop: 12,
               width: '100%',

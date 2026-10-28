@@ -15,7 +15,18 @@ import { lockedProgramIds } from '../../utils/programAccess';
 export { Page, WhiteCard, SectionHead, StatNum, SerifTitle, PillRow } from '../guest/GuestBits';
 export { GuestBackBar } from '../guest/GuestBits';
 
-export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floating = false, scrollY, inert, scrim = true }) {
+export function LepHeader({
+  photoUrl,
+  onCalendar,
+  onSearch,
+  onNotifications,
+  onProfile,
+  floating = false,
+  scrollY,
+  inert,
+  scrim = true,
+  showCalendar,
+}) {
   const { profile } = useAuth();
   const url = photoUrl || profile?.photoURL || '';
   const initial = String(profile?.displayName || profile?.email || '?')
@@ -24,6 +35,7 @@ export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floa
     .toUpperCase();
   return (
     <GlassHeader
+      onCalendar={onCalendar}
       onSearch={onSearch}
       onNotifications={onNotifications}
       onProfile={onProfile}
@@ -33,6 +45,7 @@ export function LepHeader({ photoUrl, onSearch, onNotifications, onProfile, floa
       scrollY={scrollY}
       inert={inert}
       scrim={scrim}
+      showCalendar={showCalendar}
     />
   );
 }

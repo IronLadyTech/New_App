@@ -79,7 +79,6 @@ function LegacyHome({ navigation }) {
       <ILHeader
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile', { screen: 'ProfileHome' })}
-        onSearch={() => {}}
       />
       <ScrollView
         className="flex-1"

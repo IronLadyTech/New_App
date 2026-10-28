@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Image, InteractionManager, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,13 +7,31 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
 import { formatCallableError, resolvePhoneAccess } from '../../services/functions';
-import { WHATSAPP_OTP_ENABLED, sendWhatsAppOtp } from '../../services/whatsappOtp';
+import {
+  USE_FIREBASE_PHONE_OTP,
+  USE_WHATSAPP_OTP,
+} from '../../constants/phoneOtp';
+import { sendWhatsAppOtp } from '../../services/whatsappOtp';
+import { sendFirebasePhoneOtp } from '../../services/firebasePhoneOtp';
+import { firebaseConfig } from '../../services/firebase';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 import { IL_BRAND, IL_FONTS, IL_SPACE } from '../../constants/ironLadyBrand';
 import { ilShadow } from '../../components/il/ilShadow';
 import ILText from '../../components/il/ILText';
 import ILButton from '../../components/il/ILButton';
 import ILLogoMark from '../../components/il/ILLogoMark';
 import { useKeyboardRoom } from '../../hooks/useKeyboardRoom';
+import { useDevLaunchSplashPreview } from '../../context/DevLaunchSplashPreviewContext';
+import { devToolsEnabled } from '../../utils/devToolsEnabled';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
+import { isLaunchRevealPending, onLaunchReveal } from '../../utils/launchReveal';
 
 const HERO = require('../../assets/il/suvarna-hero.jpg');
 const TEAL = '#112B32';
@@ -27,11 +45,55 @@ function digitsOnly(value) {
 export default function PhoneLoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+
+  // First screen after the launch splash: as the splash flies through the logo, the photo
+  // settles and the header, headline and card rise in — one continuous shot. Coming back
+  // to this screen later shows it at rest.
+  const reducedMotion = useReducedMotion();
+  const fromLaunch = useRef(isLaunchRevealPending() && !reducedMotion).current;
+  const heroScale = useSharedValue(fromLaunch ? 1.12 : 1);
+  const headerIn = useSharedValue(fromLaunch ? 0 : 1);
+  const headIn = useSharedValue(fromLaunch ? 0 : 1);
+  const cardIn = useSharedValue(fromLaunch ? 0 : 1);
+  useEffect(() => {
+    if (!fromLaunch) return undefined;
+    return onLaunchReveal(() => {
+      const ease = Easing.out(Easing.cubic);
+      heroScale.value = withTiming(1, { duration: 1400, easing: ease });
+      headerIn.value = withDelay(250, withTiming(1, { duration: 500, easing: ease }));
+      headIn.value = withDelay(350, withTiming(1, { duration: 550, easing: ease }));
+      cardIn.value = withDelay(500, withTiming(1, { duration: 600, easing: ease }));
+    });
+  }, []);
+  const heroStyle = useAnimatedStyle(() => ({ transform: [{ scale: heroScale.value }] }));
+  const headerStyle = useAnimatedStyle(() => ({
+    opacity: headerIn.value,
+    transform: [{ translateY: (1 - headerIn.value) * -10 }],
+  }));
+  const headStyle = useAnimatedStyle(() => ({
+    opacity: headIn.value,
+    transform: [{ translateY: (1 - headIn.value) * 24 }],
+  }));
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: cardIn.value,
+    transform: [{ translateY: (1 - cardIn.value) * 36 }],
+  }));
   const [local, setLocal] = useState('');
   const [checking, setChecking] = useState(false);
   const { extra: keyboardRoom, scrollProps } = useKeyboardRoom();
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const recaptchaVerifier = useRef(null);
+  const { showLaunchSplash } = useDevLaunchSplashPreview();
+  const [mountRecaptcha, setMountRecaptcha] = useState(false);
+
+  useEffect(() => {
+    if (!USE_FIREBASE_PHONE_OTP || Platform.OS === 'web') return undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
+      setMountRecaptcha(true);
+    });
+    return () => task.cancel();
+  }, []);
 
   const busy = checking || sending;
 
@@ -53,10 +115,10 @@ export default function PhoneLoginScreen({ navigation }) {
       if (__DEV__ && access.cmsBatchId) {
         console.log('[login] CMS batch pinned:', access.cmsBatchId);
       }
-      // Guests skip WhatsApp OTP — Zoho already decided they have no program seat.
-      if (access.guest || !WHATSAPP_OTP_ENABLED) {
+      // Guests: no SMS — explore / MC tier only.
+      if (access.guest) {
         stashPhoneAuth({ demo: true, access }, phone);
-      } else {
+      } else if (USE_WHATSAPP_OTP) {
         setSending(true);
         try {
           await sendWhatsAppOtp(phone);
@@ -67,6 +129,24 @@ export default function PhoneLoginScreen({ navigation }) {
           setSending(false);
         }
         stashPhoneAuth({ whatsapp: true, access }, phone);
+      } else if (USE_FIREBASE_PHONE_OTP) {
+        if (!recaptchaVerifier.current) {
+          setMountRecaptcha(true);
+          setError('Preparing security check… wait a moment, then tap Continue again.');
+          return;
+        }
+        setSending(true);
+        try {
+          const confirmation = await sendFirebasePhoneOtp(phone, recaptchaVerifier.current);
+          stashPhoneAuth({ firebase: true, confirmation, access }, phone);
+        } catch (e) {
+          setError(e?.message || 'Could not send SMS. Try again.');
+          return;
+        } finally {
+          setSending(false);
+        }
+      } else {
+        stashPhoneAuth({ demo: true, access }, phone);
       }
       navigation.navigate('VerifyOtp');
     } catch (err) {
@@ -80,18 +160,12 @@ export default function PhoneLoginScreen({ navigation }) {
     <View style={{ flex: 1, backgroundColor: TEAL }}>
       <StatusBar style="light" />
 
-      <Image
-        source={HERO}
-        resizeMode="cover"
+      <Animated.View
         pointerEvents="none"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width,
-          height,
-        }}
-      />
+        style={[{ position: 'absolute', top: 0, left: 0, width, height }, heroStyle]}
+      >
+        <Image source={HERO} resizeMode="cover" style={{ width, height }} />
+      </Animated.View>
       <View
         pointerEvents="none"
         style={{
@@ -154,22 +228,25 @@ export default function PhoneLoginScreen({ navigation }) {
         }}
       />
 
-      <View
-        style={{
-          paddingTop: insets.top + 10,
-          paddingBottom: 8,
-          paddingHorizontal: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 2,
-        }}
+      <Animated.View
+        style={[
+          {
+            paddingTop: insets.top + 10,
+            paddingBottom: 8,
+            paddingHorizontal: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2,
+          },
+          headerStyle,
+        ]}
       >
         <ILLogoMark size={28} />
         <ILText role="wordmark" color="#FFFFFF" style={{ marginLeft: 10, flexShrink: 0 }}>
           Iron Lady
         </ILText>
-      </View>
+      </Animated.View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -187,6 +264,7 @@ export default function PhoneLoginScreen({ navigation }) {
             justifyContent: 'flex-end',
           }}
         >
+          <Animated.View style={headStyle}>
           <ILText
             role="display"
             color={IL_BRAND.white}
@@ -197,6 +275,9 @@ export default function PhoneLoginScreen({ navigation }) {
           <ILText role="body" color={IL_BRAND.coral} style={{ marginBottom: 22 }}>
             Million Women at the TOP
           </ILText>
+          </Animated.View>
+
+          <Animated.View style={cardStyle}>
 
           <View
             style={[
@@ -324,15 +405,25 @@ export default function PhoneLoginScreen({ navigation }) {
               {' & '}
               <Text style={{ textDecorationLine: 'underline' }}>Privacy Policy</Text>
             </Text>
-            {__DEV__ ? (
-              <Pressable
-                onPress={() => navigation.navigate('ScreenLab')}
-                style={{ marginTop: 18, alignItems: 'center', paddingVertical: 8 }}
-              >
-                <ILText role="bodySm" color={TEAL} style={{ textDecorationLine: 'underline' }}>
-                  Screen lab · skip login
-                </ILText>
-              </Pressable>
+            {devToolsEnabled() ? (
+              <>
+                <Pressable
+                  onPress={showLaunchSplash}
+                  style={{ marginTop: 18, alignItems: 'center', paddingVertical: 8 }}
+                >
+                  <ILText role="bodySm" color={TEAL} style={{ textDecorationLine: 'underline' }}>
+                    Preview launch splash
+                  </ILText>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate('ScreenLab')}
+                  style={{ marginTop: 4, alignItems: 'center', paddingVertical: 8 }}
+                >
+                  <ILText role="bodySm" color={TEAL} style={{ textDecorationLine: 'underline' }}>
+                    Screen lab · skip login
+                  </ILText>
+                </Pressable>
+              </>
             ) : null}
           </View>
 
@@ -343,8 +434,16 @@ export default function PhoneLoginScreen({ navigation }) {
             loading={false}
             style={{ marginTop: 16, opacity: busy ? 0.7 : 1 }}
           />
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+      {mountRecaptcha && USE_FIREBASE_PHONE_OTP && Platform.OS !== 'web' ? (
+        <FirebaseRecaptchaVerifierModal
+          ref={recaptchaVerifier}
+          firebaseConfig={firebaseConfig}
+          attemptInvisibleVerification
+        />
+      ) : null}
     </View>
   );
 }

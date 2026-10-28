@@ -1,5 +1,8 @@
 import { registerRootComponent } from 'expo';
 
+// Initialize Firebase before any screen (splash → login) so Auth / reCAPTCHA never run against a missing app.
+import './services/firebase';
+
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

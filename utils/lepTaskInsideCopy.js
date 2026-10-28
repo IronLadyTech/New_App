@@ -3,6 +3,16 @@ import { lepTaskPurpose } from '../constants/lepTaskPurpose';
 
 export { lepTaskPurpose };
 
+/** Heading above embedded task video (checklist / read-watch tasks). */
+export function lepTaskWatchLabel(taskId) {
+  const id = String(taskId || '');
+  if (id === 'lep-day3-brand-roadmap') return 'Watch · Differentiated Brand & 0.5% League Roadmap';
+  if (id === 'lep-day3-27-principles') return 'Watch · 27 Principles session';
+  if (id === 'lep-day3-5-rituals') return 'Watch · 5 Daily Rituals';
+  if (id === 'lep-day3-mentors') return 'Watch · Finding mentors';
+  return 'Watch first';
+}
+
 /** Plain-language label for participants (Excel / task guide categories). */
 export function lepTaskCategoryLabel(task) {
   const id = task?.id || '';

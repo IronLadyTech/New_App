@@ -34,7 +34,6 @@ export function ProgramPage({ children }) {
         floating
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile', { screen: 'ProfileHome' })}
-        onSearch={() => navigation.navigate('Learn')}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}

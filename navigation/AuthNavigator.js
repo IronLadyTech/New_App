@@ -6,6 +6,7 @@ import FirstLoginWelcomeScreen from '../screens/auth/FirstLoginWelcomeScreen';
 import ChooseBatchDateScreen from '../screens/auth/ChooseBatchDateScreen';
 import SeatHeldScreen from '../screens/auth/SeatHeldScreen';
 import { useAuth } from '../context/AuthContext';
+import { devToolsEnabled } from '../utils/devToolsEnabled';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,7 +49,7 @@ export default function AuthNavigator() {
         options={{ gestureEnabled: true }}
         getComponent={() => require('../screens/notifications/NotificationsScreen').default}
       />
-      {__DEV__ ? (
+      {devToolsEnabled() ? (
         <Stack.Screen
           name="ScreenLab"
           getComponent={() => require('../screens/dev/ScreenLab').default}

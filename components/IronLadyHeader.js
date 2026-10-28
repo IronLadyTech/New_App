@@ -1,18 +1,24 @@
 import React from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import ILLogoMark from './il/ILLogoMark';
 import { IL_BRAND } from '../constants/ironLadyBrand';
+import { openMemberSchedule } from './il/GlassHeader';
 
 /**
- * Top bar — Iron Lady logo + search, notifications, profile (payment mockup).
+ * Top bar — Iron Lady logo + batch calendar, notifications, profile.
  */
 export default function IronLadyHeader({
+  onCalendar,
   onSearch,
   onNotifications,
   onProfile,
   photoUrl,
 }) {
+  const navigation = useNavigation();
+  const openCalendar = onCalendar || onSearch || (() => openMemberSchedule(navigation));
+
   return (
     <View className="flex-row items-center justify-between px-4 pb-2 pt-1">
       <View className="flex-row items-center">
@@ -29,12 +35,12 @@ export default function IronLadyHeader({
 
       <View className="flex-row items-center gap-2">
         <TouchableOpacity
-          onPress={onSearch}
+          onPress={openCalendar}
           style={{ borderColor: IL_BRAND.divider }}
           className="h-10 w-10 items-center justify-center rounded-full border bg-white"
-          accessibilityLabel="Search"
+          accessibilityLabel="Batch calendar"
         >
-          <Ionicons name="search-outline" size={20} color={IL_BRAND.forest} />
+          <Ionicons name="calendar-outline" size={20} color={IL_BRAND.forest} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNotifications}

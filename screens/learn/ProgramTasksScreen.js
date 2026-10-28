@@ -33,7 +33,6 @@ export default function ProgramTasksScreen({ route, navigation }) {
         photoUrl={profile?.photoURL}
         insetTop={false}
         onProfile={() => navigation.getParent()?.navigate('Profile', { screen: 'ProfileHome' })}
-        onSearch={() => {}}
       />
       <View className="px-4 pb-2 pt-2">
         <TouchableOpacity

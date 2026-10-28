@@ -7,6 +7,7 @@ import AuthNavigator from './AuthNavigator';
 import DemoFlowBar from '../components/il/DemoFlowBar';
 import { bindRootNavigation, navigateFromGo } from '../utils/navigationFromGo';
 import { GUEST_PREVIEW } from '../utils/guestPreview';
+import { devToolsEnabled } from '../utils/devToolsEnabled';
 
 function AuthenticatedBranch() {
   const AuthenticatedApp = require('./AuthenticatedApp').default;
@@ -48,7 +49,11 @@ export default function AppNavigator() {
   );
 
   // Demo: the flow bar sits on sign-in screens, every journey and the guest app.
-  const showBar = !cmsPreview && !GUEST_PREVIEW && (!!journey || (demo && (isGuest || !isAuthenticated)));
+  const showBar =
+    devToolsEnabled() &&
+    !cmsPreview &&
+    !GUEST_PREVIEW &&
+    (!!journey || (demo && (isGuest || !isAuthenticated)));
 
   return (
     <NavigationContainer ref={navRef} onReady={onReady} onStateChange={track}>

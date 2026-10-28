@@ -1,22 +1,35 @@
 import './global.css';
 import 'react-native-gesture-handler';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './context/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import { useILFonts } from './hooks/useILFonts';
 import ErrorBoundary from './components/ErrorBoundary';
+import IronLadyAnimatedSplash from './components/il/IronLadyAnimatedSplash';
+import { DevLaunchSplashPreviewProvider } from './context/DevLaunchSplashPreviewContext';
 import { isAdminPath } from './utils/adminRoute';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function Root() {
   // Must be evaluated in the browser on /admin — not at bundle load in Node during export.
   const [admin] = useState(() => typeof window !== 'undefined' && isAdminPath());
   const { fontsReady } = useILFonts();
   const [gaveUp, setGaveUp] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+  const onSplashFinish = useCallback(() => setSplashDone(true), []);
+
+  // Safety net: the launch splash can never hold the app for more than 6s.
+  useEffect(() => {
+    const t = setTimeout(() => setSplashDone(true), 6000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Android measures text once; drawing before the fonts load clips words ("Iron", "Continu").
   // Fonts are bundled, so this is a split second. Never hold the app longer than 2.5s.
@@ -26,17 +39,22 @@ function Root() {
   }, []);
 
   useEffect(() => {
+    if (admin) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [admin]);
+
+  useLayoutEffect(() => {
+    if (admin || splashDone) return;
+    SplashScreen.hideAsync().catch(() => {});
+  }, [admin, splashDone]);
+
+  useEffect(() => {
     if (admin) return;
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
   }, [admin]);
 
-  if (!fontsReady && !gaveUp) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F7F6E4' }}>
-        <ActivityIndicator size="large" color="#ED1D24" />
-      </View>
-    );
-  }
+  const appReady = fontsReady || gaveUp;
 
   if (admin) {
     const AdminApp = require('./screens/admin/AdminApp').default;
@@ -47,12 +65,26 @@ function Root() {
     );
   }
 
+  // The app is drawn underneath the launch splash from the start, so the splash's
+  // fly-through reveals the real first screen — one continuous shot, no cut or spinner.
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <StatusBar style="dark" translucent backgroundColor="transparent" />
-        <AppNavigator />
-      </AuthProvider>
+      {appReady ? (
+        <DevLaunchSplashPreviewProvider>
+          <AuthProvider>
+            <StatusBar style="dark" translucent backgroundColor="transparent" />
+            <AppNavigator />
+          </AuthProvider>
+        </DevLaunchSplashPreviewProvider>
+      ) : (
+        <View style={{ flex: 1, backgroundColor: '#112B32' }} />
+      )}
+      {!splashDone ? (
+        <>
+          <StatusBar style="light" translucent backgroundColor="transparent" />
+          <IronLadyAnimatedSplash ready={appReady} onFinish={onSplashFinish} />
+        </>
+      ) : null}
     </SafeAreaProvider>
   );
 }

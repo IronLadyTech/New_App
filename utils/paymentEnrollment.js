@@ -1,6 +1,104 @@
 import { PAYMENT_STATUS, getProgramEntry, REGISTRATION_FEE } from '../constants/programs';
+import { resolveCmsBatchSessions } from './cmsBatchSessions';
 import { lepFirstName, lepFullName } from './lepState';
-import { getEnrolledPrograms, programPaymentStatus } from './programAccess';
+import { buildLepBatchSessions } from './lepBatchSchedule';
+import { formatLepDay } from './registeredHomeData';
+import { getEnrolledPrograms, learnerProgramDates, programPaymentStatus } from './programAccess';
+
+function formatTimeRangeIst(startTime, endTime) {
+  const fmt = (hhmm) => {
+    const [h, m] = String(hhmm || '0:0').split(':').map((x) => parseInt(x, 10) || 0);
+    const am = h < 12;
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, '0')} ${am ? 'AM' : 'PM'}`;
+  };
+  return `${fmt(startTime)} – ${fmt(endTime)} IST`;
+}
+
+function resolveDay1Iso(profile, cmsBatch, pickedBatch) {
+  const access = profile?.programAccess?.lep || {};
+  const zoho = learnerProgramDates(profile, 'lep');
+  return (
+    cmsBatch?.day1Date ||
+    access.day1Date ||
+    pickedBatch?.day1Date ||
+    zoho.start ||
+    ''
+  )
+    .toString()
+    .slice(0, 10);
+}
+
+function sessionToEnrollmentRow(session, dayLabel) {
+  const day = formatLepDay(session.date);
+  const time = formatTimeRangeIst(session.startTime, session.endTime);
+  return {
+    dayLabel,
+    title: day ? `${day} · ${time}` : time,
+    subtitle: 'Full day, live on Zoom',
+    dateIso: session.date,
+    startTime: session.startTime,
+    endTime: session.endTime,
+  };
+}
+
+/** Day 1 / Day 2 lines for seat-held + payment screens (CMS → profile → picked batch). */
+export function buildEnrollmentBatchSessions(profile, { cmsBatch, pickedBatch, events = [] } = {}) {
+  const day1Iso = resolveDay1Iso(profile, cmsBatch, pickedBatch);
+
+  if (cmsBatch && (cmsBatch.day1Date || cmsBatch.orientationDate || day1Iso)) {
+    const resolved = resolveCmsBatchSessions(cmsBatch, { day1Iso });
+    const s1 = resolved.find((s) => s.code === 'S1');
+    const s2 = resolved.find((s) => s.code === 'S2');
+    if (s1 && s2) {
+      return [sessionToEnrollmentRow(s1, 'DAY 1'), sessionToEnrollmentRow(s2, 'DAY 2')];
+    }
+  }
+
+  if (day1Iso) {
+    const built = buildLepBatchSessions({ anchor: 'day1', date: day1Iso });
+    const s1 = built.find((s) => s.code === 'S1');
+    const s2 = built.find((s) => s.code === 'S2');
+    if (s1 && s2) {
+      return [sessionToEnrollmentRow(s1, 'DAY 1'), sessionToEnrollmentRow(s2, 'DAY 2')];
+    }
+  }
+
+  if (pickedBatch?.day1 && pickedBatch?.day2) {
+    return [
+      { dayLabel: 'DAY 1', title: pickedBatch.day1, subtitle: 'Full day, live on Zoom' },
+      { dayLabel: 'DAY 2', title: pickedBatch.day2, subtitle: 'Full day, live on Zoom' },
+    ];
+  }
+
+  const fromEvents = buildBatchSessionsFromEvents(events);
+  if (fromEvents?.length) return fromEvents;
+
+  return [
+    {
+      dayLabel: 'DAY 1',
+      title: 'Batch dates appear after you choose Day 1',
+      subtitle: 'Full day, live on Zoom',
+      placeholder: true,
+    },
+    {
+      dayLabel: 'DAY 2',
+      title: 'Day 2 follows your Saturday batch',
+      subtitle: 'Full day, live on Zoom',
+      placeholder: true,
+    },
+  ];
+}
+
+function batchHeadingLabel(profile, cmsBatch, pickedBatch) {
+  const name =
+    cmsBatch?.name ||
+    pickedBatch?.name ||
+    pickedBatch?.title ||
+    profile?.programAccess?.lep?.batchName ||
+    '';
+  return name ? `Your batch · ${name}` : 'Your batch';
+}
 
 function formatInr(amount) {
   if (amount == null || Number.isNaN(Number(amount))) return null;
@@ -61,7 +159,11 @@ function accessRow(profile, programId) {
  * View model for the payment enrollment screen (matches CX mockup).
  * Amounts/dates come from profile.programAccess when Zoho sync writes them.
  */
-export function buildPaymentEnrollmentView(profile, user, { programId, events = [] } = {}) {
+export function buildPaymentEnrollmentView(
+  profile,
+  user,
+  { programId, events = [], cmsBatch, pickedBatch } = {}
+) {
   const program = pickProgram(profile, programId);
   const pid = program?.id || 'lep';
   const access = accessRow(profile, pid);
@@ -86,11 +188,10 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
   const txnLast4 =
     access.txnLast4 ?? access.transactionLast4 ?? profile?.paymentTxnLast4 ?? '4471';
 
-  const regPaidLabel = formatShortDate(registrationPaidAt) || '12 SEP';
+  const regPaidLabel = formatShortDate(registrationPaidAt);
   const dueLabel =
     formatShortDate(balanceDueDate) ||
-    formatShortDate(addDays(registrationPaidAt || new Date(), 7)) ||
-    '19 SEP';
+    (registrationPaidAt ? formatShortDate(addDays(registrationPaidAt, 7)) : null);
 
   const paidPortion = registrationFee || 0;
   const totalKnown =
@@ -114,16 +215,18 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
   const subline =
     payStatus === PAYMENT_STATUS.PAID
       ? 'Your enrolment is confirmed. Continue to your program journey.'
-      : `One step left: complete your enrolment by ${dueLabel} to confirm your place in the batch.`;
+      : dueLabel
+        ? `One step left: complete your enrolment by ${dueLabel} to confirm your place in the batch.`
+        : 'One step left: complete your enrolment to confirm your place in the batch.';
 
-  const batchSessions =
-    access.batchSessions ||
-    profile?.batchSessions ||
-    buildBatchSessionsFromEvents(events) ||
-    defaultBatchSessions();
+  const batchSessions = buildEnrollmentBatchSessions(profile, { cmsBatch, pickedBatch, events });
 
   const paymentUrl =
     access.paymentUrl ?? profile?.paymentUrl ?? profile?.paymentLink ?? null;
+
+  const balanceDetailNote = dueLabel
+    ? `Due by ${dueLabel} · pay via Razorpay`
+    : 'Pay via Razorpay';
 
   return {
     programId: pid,
@@ -137,14 +240,15 @@ export function buildPaymentEnrollmentView(profile, user, { programId, events = 
     registrationFeeLabel: formatInr(registrationFee) || formatInr(REGISTRATION_FEE.lep),
     programBalance,
     programBalanceLabel: formatInr(programBalance) || '₹ 1',
-    registrationPaidLabel: regPaidLabel,
-    balanceDueLabel: dueLabel,
+    registrationPaidLabel: regPaidLabel || '—',
+    balanceDueLabel: dueLabel || '—',
     txnLast4: String(txnLast4).slice(-4),
-    balanceNote: access.balanceNote || '7 days from registration',
+    balanceNote: access.balanceNote || balanceDetailNote,
     progressPercent,
     showPayButton: payStatus !== PAYMENT_STATUS.PAID,
     balanceDue: payStatus === PAYMENT_STATUS.REGISTER,
     batchSessions,
+    batchHeading: batchHeadingLabel(profile, cmsBatch, pickedBatch),
     paymentUrl,
     supportPhone: profile?.supportPhone || access.supportPhone || null,
     payer: payerContact(profile, user),
@@ -207,21 +311,6 @@ export function razorpayOneRupeeOrder(profile, user) {
     payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
     uid: user?.uid || 'preview',
   };
-}
-
-function defaultBatchSessions() {
-  return [
-    {
-      dayLabel: 'DAY 1',
-      title: 'Sat 20 Sep · 9:00 AM – 7:00 PM IST',
-      subtitle: 'Full day, live on Zoom',
-    },
-    {
-      dayLabel: 'DAY 2',
-      title: 'Sun 21 Sep · 9:00 AM – 7:00 PM IST',
-      subtitle: 'Full day, live on Zoom',
-    },
-  ];
 }
 
 function buildBatchSessionsFromEvents(events) {

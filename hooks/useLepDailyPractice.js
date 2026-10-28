@@ -12,6 +12,7 @@ import {
 } from '../utils/lepDailyPractice';
 import { useCmsPracticeRows } from './useCmsLearnerItems';
 import { resolveWeekFocus } from '../utils/lepWeekFocus';
+import { dedupeLepHomePractice } from '../utils/lepHomePracticeDedupe';
 
 function usePracticeDoneChecker() {
   const demo = useCourseDemo();
@@ -52,10 +53,12 @@ export function useEnrolledDailyPractice(group, cmsBatch) {
 
   return useMemo(
     () =>
-      resolveWeekFocus(items, { lmsDone, today, day1Iso }).map((item) => ({
-        ...item,
-        done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
-      })),
+      dedupeLepHomePractice(
+        resolveWeekFocus(items, { lmsDone, today, day1Iso }).map((item) => ({
+          ...item,
+          done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
+        }))
+      ),
     [items, today, day1Iso, isDone, isDoneOnDay, lmsDone, doneToken]
   );
 }

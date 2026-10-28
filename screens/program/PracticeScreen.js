@@ -27,6 +27,7 @@ import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { isLepEnrolled } from '../../utils/lepState';
 import { isLepRitualsPracticeId } from '../../utils/lepRitualsUnlock';
 import { getPracticeVideoUrl } from '../../utils/resolveVideoUrl';
+import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
 import { cmsPracticeItem } from '../../hooks/useCmsLearnerItems';
 
 /** A practice item CX added in the CMS, in the shape of the built-in PRACTICE entries. */
@@ -58,7 +59,19 @@ export default function PracticeScreen() {
   const programId = p?.programId || params.programId;
   const practiceId = params.practiceId;
   const lepEnrolled = programId === 'lep' ? isLepEnrolled(profile) : true;
-  const videoUri = p?.videoUrl ? getPracticeVideoUrl(practiceId, lepEnrolled) || p.videoUrl : null;
+  const principleN = params.principleN;
+  const principleWatch =
+    practiceId === 'lep-principle' && principleN ? lepPrincipleWatch(principleN) : null;
+  const videoUri = principleWatch?.uri
+    ? principleWatch.uri
+    : p?.videoUrl
+      ? getPracticeVideoUrl(practiceId, lepEnrolled) || p.videoUrl
+      : null;
+  const videoPoster = principleWatch?.thumb || p?.thumb;
+  const videoLabel =
+    principleWatch && practiceId === 'lep-principle'
+      ? `Watch · ${principleWatch.title}`
+      : p?.videoLabel || 'Watch first';
   const pKey = practiceId ? practiceKey(practiceId) : '';
   const today = todayIsoIST();
   const dailyKey = practiceId && (DAILY_RESET_PRACTICE_IDS.has(practiceId) || fromCmsItem)
@@ -93,18 +106,23 @@ export default function PracticeScreen() {
     );
   }
 
-  const principleN = params.principleN;
   const displayTitle =
     practiceId === 'lep-principle' && principleN
       ? `Revise Principle ${principleN} from the 27 Principles`
       : p.title;
   const displaySteps =
     practiceId === 'lep-principle' && principleN
-      ? [
-          `Open the 27 Principles in Learn and find Principle ${principleN}.`,
-          'Read it once, then say it in your own words.',
-          'Name one place you will use it today.',
-        ]
+      ? principleWatch
+        ? [
+            `Watch the Principle ${principleN} segment above (or scrub to it in the full recording).`,
+            'Say the principle in your own words.',
+            'Name one place you will use it today.',
+          ]
+        : [
+            `Open the 27 Principles in Learn and find Principle ${principleN}.`,
+            'Read it once, then say it in your own words.',
+            'Name one place you will use it today.',
+          ]
       : p.steps;
 
   const stepsDone = displaySteps.filter((_, i) => ticks[i] || done).length;
@@ -182,9 +200,14 @@ export default function PracticeScreen() {
           {videoUri ? (
             <View style={{ marginTop: 20 }}>
               <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
-                {p.videoLabel || 'Watch first'}
+                {videoLabel}
               </ILText>
-              <PracticeVideo uri={videoUri} poster={p.thumb} height={210} trackKey={`${programId}:${practiceId}`} />
+              <PracticeVideo
+                uri={videoUri}
+                poster={videoPoster}
+                height={210}
+                trackKey={`${programId}:${practiceId}:${principleN || ''}`}
+              />
             </View>
           ) : null}
 

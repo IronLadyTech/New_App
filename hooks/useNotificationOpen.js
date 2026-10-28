@@ -22,7 +22,9 @@ export function useNotificationOpen() {
 
     const handle = (response) => {
       const data = response?.notification?.request?.content?.data || {};
-      const go = normalizeGo(data.go);
+      // A tapped action button (e.g. "Practise now") can carry its own destination.
+      const action = response?.actionIdentifier;
+      const go = normalizeGo((action && data.actions?.[action]) || data.go);
       if (go) navigateFromGo(go);
     };
 

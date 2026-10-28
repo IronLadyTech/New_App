@@ -29,7 +29,11 @@ export function useLepNav() {
     goEnroll: () => goProfileScreen('PaymentEnrollment', { programId: 'lep' }),
     goOrders: () => goProfileScreen('Orders'),
     goReceipt: (order) => goProfileScreen('OrderReceipt', { orderId: order?.id, order }),
-    goMyProgram: () => navigation.navigate('MyProgram', { screen: 'LepProgram' }),
+    goMyProgram: (tab) =>
+      navigation.navigate('MyProgram', {
+        screen: 'LepProgram',
+        ...(tab ? { params: { tab } } : {}),
+      }),
     goLearn: () => navigation.navigate('Learn'),
     goEngage: () => navigation.navigate('Engage'),
     goPhase: (programId, phaseId) => {
@@ -50,7 +54,8 @@ export function useLepNav() {
       if (names.includes('CourseTask')) navigation.navigate('CourseTask', params);
       else navigation.navigate('MyProgram', { screen: 'CourseTask', params });
     },
-    goPractice: (programId, practiceId) => goIn('Home', 'Practice', { programId, practiceId }),
+    goPractice: (programId, practiceId, extra = {}) =>
+      goIn('Home', 'Practice', { programId, practiceId, ...extra }),
     goWatch: (params) => navigateWatch(navigation, params),
     /** Today's practice row → its course task, or the Practice page when it isn't one. */
     goPracticeItem: (item) => {

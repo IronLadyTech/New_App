@@ -27,7 +27,8 @@ service cloud.firestore {
     function isBlockedUser() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.blocked == true;
+        // A user record without `blocked` is not blocked (a missing field must not lock her out).
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('blocked', false) == true;
     }
 
     function isSuperAdmin() {
@@ -555,7 +556,8 @@ service cloud.firestore {
 
     // CX (CEM) runs batches: dates, Zoom links, recordings, task files. Not templates or config.
     function cmsBatchEditor() {
-      return cmsEditor() || userRole() == 'cem';
+      // CX: 'moderator' (the web LMS's CX role, which also reviews submissions) or the older 'cem'.
+      return cmsEditor() || userRole() in ['cem', 'moderator'];
     }
 
     function cmsViewer() {

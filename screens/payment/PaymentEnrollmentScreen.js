@@ -13,11 +13,11 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { profilePatchAfterFullPayment } from '../../utils/paymentSuccessPatch';
 import { useCourses } from '../../context/CoursesContext';
+import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import IronLadyHeader from '../../components/IronLadyHeader';
 import RazorpayCheckoutModal from '../../components/RazorpayCheckoutModal';
-import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { IL_BRAND, IL_FONTS } from '../../constants/ironLadyBrand';
 import { PAYMENT_STATUS } from '../../constants/programs';
 import { savePaymentOrder } from '../../services/firestore';
 import { refreshMyAccess } from '../../services/functions';
@@ -36,6 +36,8 @@ import {
   registrationFeeOrder,
 } from '../../utils/paymentEnrollment';
 import { navigateInMemberStack } from '../../utils/watchNav';
+import { profilePatchAfterFullPayment } from '../../utils/paymentSuccessPatch';
+import { day1CalendarUrl } from '../../utils/registeredHomeData';
 
 function PaymentRow({ label, detail, amount, status, statusTone }) {
   return (
@@ -76,6 +78,7 @@ function BatchDayRow({ dayLabel, title, subtitle }) {
 export default function PaymentEnrollmentScreen({ navigation, route }) {
   const { profile, user, patchProfile } = useAuth();
   const { visibleEvents } = useCourses();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const programId = route?.params?.programId;
   const [paying, setPaying] = useState(false);
   const [checkout, setCheckout] = useState(null);
@@ -91,8 +94,9 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
       buildPaymentEnrollmentView(profile, user, {
         programId,
         events: visibleEvents,
+        cmsBatch,
       }),
-    [profile, user, programId, visibleEvents]
+    [profile, user, programId, visibleEvents, cmsBatch]
   );
 
   const buildCheckout = () => {
@@ -219,11 +223,20 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
   };
 
   const onAddToCalendar = () => {
-    Alert.alert(
-      'Add to calendar',
-      'Batch dates will sync from your cohort schedule soon. For now, use the dates shown above in your calendar app.',
-      [{ text: 'OK' }]
-    );
+    const day1 = vm.batchSessions?.[0];
+    if (day1?.placeholder || !day1?.dateIso) {
+      Alert.alert(
+        'Add to calendar',
+        'Choose your batch date first — then Day 1 and Day 2 will appear here with calendar links.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    const clock = day1.title?.includes('·') ? day1.title.split('·').slice(1).join('·').trim() : '9:00 AM';
+    const url = day1CalendarUrl(day1.dateIso, clock);
+    Linking.openURL(url).catch(() => {
+      Alert.alert('Calendar', 'Could not open your calendar app. Copy the dates from the batch card above.');
+    });
   };
 
   const onContinue = () => {
@@ -244,7 +257,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <IronLadyHeader
-        onSearch={() => navigation.navigate('ProfileHome')}
+        onCalendar={() => navigateInMemberStack(navigation, 'Home', 'Schedule')}
         onNotifications={() => navigation.navigate('Home', { screen: 'Notifications' })}
         onProfile={() => navigation.navigate('ProfileHome')}
         photoUrl={profile?.photoURL}
@@ -311,7 +324,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
               detail={
                 programmeBalancePaid(profile, vm.programId)
                   ? 'Razorpay · captured · tap for receipt'
-                  : `Due by ${vm.balanceDueLabel} · pay via Razorpay`
+                  : vm.balanceNote
               }
               amount={vm.programBalanceLabel}
               status={programmeBalancePaid(profile, vm.programId) ? 'PAID' : 'DUE'}
@@ -356,7 +369,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
         {/* Batch card */}
         <View style={styles.batchCard}>
-          <Text style={styles.batchHeading}>YOUR BATCH</Text>
+          <Text style={styles.batchHeading}>{vm.batchHeading?.toUpperCase() || 'YOUR BATCH'}</Text>
           {vm.batchSessions.map((session, index) => (
             <BatchDayRow key={`${session.dayLabel}-${index}`} {...session} />
           ))}
@@ -437,7 +450,7 @@ const styles = StyleSheet.create({
   statusLine: {
     marginTop: 8,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 1.2,
     color: IL_BRAND.red,
     textTransform: 'uppercase',
@@ -446,13 +459,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 34,
     lineHeight: 40,
-    fontWeight: '600',
+    fontFamily: IL_FONTS.display,
     color: IL_BRAND.forest,
   },
   subline: {
     marginTop: 12,
     fontSize: 17,
     lineHeight: 26,
+    fontFamily: IL_FONTS.regular,
     color: IL_BRAND.forest,
   },
   paymentCard: {
@@ -477,7 +491,7 @@ const styles = StyleSheet.create({
   programCaps: {
     flex: 1,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 0.8,
     color: IL_BRAND.forestMuted,
   },
@@ -492,7 +506,7 @@ const styles = StyleSheet.create({
   },
   balanceBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 0.6,
     color: IL_BRAND.red,
   },
@@ -514,23 +528,24 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 20,
-    fontWeight: '600',
+    fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
   },
   rowDetail: {
     marginTop: 4,
     fontSize: 13,
+    fontFamily: IL_FONTS.regular,
     color: IL_BRAND.forestMuted,
   },
   rowAmount: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.bold,
     color: IL_BRAND.forest,
   },
   rowStatus: {
     marginTop: 4,
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 0.5,
   },
   statusPaid: {
@@ -578,7 +593,7 @@ const styles = StyleSheet.create({
   payButtonText: {
     color: IL_BRAND.white,
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.semibold,
   },
   supportLink: {
     marginTop: 16,
@@ -586,11 +601,12 @@ const styles = StyleSheet.create({
   },
   supportText: {
     fontSize: 13,
+    fontFamily: IL_FONTS.regular,
     color: IL_BRAND.forestMuted,
     textAlign: 'center',
   },
   supportBold: {
-    fontWeight: '700',
+    fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
   },
   batchCard: {
@@ -603,7 +619,7 @@ const styles = StyleSheet.create({
   },
   batchHeading: {
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 1.2,
     color: IL_BRAND.red,
     marginBottom: 16,
@@ -615,7 +631,7 @@ const styles = StyleSheet.create({
   batchDay: {
     width: 52,
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.bold,
     letterSpacing: 0.5,
     color: IL_BRAND.mutedOnDark,
     paddingTop: 2,
@@ -625,13 +641,14 @@ const styles = StyleSheet.create({
   },
   batchTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.white,
     lineHeight: 22,
   },
   batchSubtitle: {
     marginTop: 4,
     fontSize: 13,
+    fontFamily: IL_FONTS.regular,
     color: IL_BRAND.mutedOnDark,
   },
   calendarButton: {
@@ -646,7 +663,7 @@ const styles = StyleSheet.create({
   calendarButtonText: {
     color: IL_BRAND.white,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: IL_FONTS.semibold,
   },
   continueLink: {
     marginTop: 28,
@@ -655,7 +672,7 @@ const styles = StyleSheet.create({
   },
   continueText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
   },
   busyOverlay: {

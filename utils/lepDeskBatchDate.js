@@ -108,7 +108,21 @@ export function inferLepDay1FromGroup(group) {
   if (fromZoho) return fromZoho;
   const label = String(group?.name || '').replace(/^LEP\s*·\s*/i, '').trim();
   const y = yearFromGroup(group);
-  return day1FromDeskName(label, y) || day1FromDeskName(label, y - 1) || day1FromDeskName(label, y + 1);
+  return (
+    day1FromDeskName(label, y) ||
+    day1FromDeskName(label, y - 1) ||
+    day1FromDeskName(label, y + 1) ||
+    day1FromDatedName(label)
+  );
+}
+
+/** "17 Oct 2026 – 17 Nov 2026" (the LMS group name without a Zoho code): its first date. */
+function day1FromDatedName(label) {
+  const m = /^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/.exec(String(label || ''));
+  const mon = m && MONTHS[String(m[2]).toLowerCase()];
+  if (!mon) return null;
+  const iso = toIso(Number(m[3]), mon, Number(m[1]));
+  return parseISODate(iso).getUTCDay() === 6 ? iso : saturdayOnOrAfter(iso);
 }
 
 export function cmsBatchNameFromGroup(group) {

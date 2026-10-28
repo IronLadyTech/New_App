@@ -103,7 +103,40 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
       next && !dues.some((d) => d?.taskId === next.id && d.done) ? next : null;
 
     if (lp && (prog?.id === 'lep' || progName?.includes('LEP'))) {
-      if (lp.practiceDoneToday < lp.practiceTotalToday) {
+      const urgentDue = dues.find(
+        (d) => d && !d.done && (d.urgent || /overdue|today|tomorrow|live today/i.test(String(d.due || '')))
+      );
+      if (urgentDue?.title) {
+        candidates.unshift({
+          id: `home-lep-due-urgent-${urgentDue.taskId || urgentDue.title}`,
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, ${urgentDue.title} is ${String(urgentDue.due || 'due soon').toLowerCase()}. Finish it before the live room.`
+            : `${urgentDue.title} is ${String(urgentDue.due || 'due soon').toLowerCase()}. Finish it before the live room.`,
+        });
+      } else if (openDue?.title) {
+        candidates.unshift({
+          id: `home-lep-due-${openDue.taskId || openDue.title}`,
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, ${openDue.title} is still open this week. Clear it while you have momentum.`
+            : `${openDue.title} is still open this week. Clear it while you have momentum.`,
+        });
+      }
+
+      const openPr = context.openPractice;
+      const isPrinciple =
+        openPr?.practiceId === 'lep-principle' ||
+        /^Revise Principle/i.test(String(openPr?.title || ''));
+      if (lp.practiceDoneToday < lp.practiceTotalToday && openPr?.title && !isPrinciple) {
+        candidates.unshift({
+          id: 'home-lep-practice-open',
+          job: IL_GUIDE_JOBS.NUDGE,
+          message: name
+            ? `${name}, today's next step: ${openPr.title}.`
+            : `Today's next step: ${openPr.title}.`,
+        });
+      } else if (lp.practiceDoneToday < lp.practiceTotalToday) {
         candidates.unshift({
           id: 'home-lep-practice-open',
           job: IL_GUIDE_JOBS.NUDGE,
@@ -118,16 +151,6 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
           message: name
             ? `${name}, start with the 5 Daily Rituals — two minutes now keeps your streak alive.`
             : 'Start with the 5 Daily Rituals today. That is what counts for your streak.',
-        });
-      }
-
-      if (openDue?.title) {
-        candidates.unshift({
-          id: `home-lep-due-${openDue.taskId || openDue.title}`,
-          job: IL_GUIDE_JOBS.NUDGE,
-          message: name
-            ? `${name}, ${openDue.title} is still open this week. Clear it while you have momentum.`
-            : `${openDue.title} is still open this week. Clear it while you have momentum.`,
         });
       }
 

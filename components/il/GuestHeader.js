@@ -4,7 +4,7 @@ import GlassHeader from './GlassHeader';
 export default function GuestHeader({ floating = false }) {
   return (
     <GlassHeader
-      onSearch={() => {}}
+      showCalendar={false}
       showProfile={false}
       floating={floating}
     />

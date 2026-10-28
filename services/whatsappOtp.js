@@ -7,10 +7,10 @@ import { auth } from './firebase';
 import { ensureUserProfile } from './auth';
 import { refreshMyAccess } from './functions';
 import { IL_GUIDE_API_KEY, IL_GUIDE_API_URL } from '../constants/ilGuide';
+import { USE_WHATSAPP_OTP } from '../constants/phoneOtp';
 
-/** Off unless EXPO_PUBLIC_WHATSAPP_OTP=true and the API URL is set — demo codes otherwise. */
-export const WHATSAPP_OTP_ENABLED =
-  process.env.EXPO_PUBLIC_WHATSAPP_OTP === 'true' && !!IL_GUIDE_API_URL;
+/** WhatsApp OTP when EXPO_PUBLIC_PHONE_OTP=whatsapp and API URL is set. */
+export const WHATSAPP_OTP_ENABLED = USE_WHATSAPP_OTP && !!IL_GUIDE_API_URL;
 
 async function post(path, body) {
   const headers = { 'Content-Type': 'application/json' };

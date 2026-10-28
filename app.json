@@ -37,7 +37,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "output": "single"
+      "output": "single",
+      "config": {
+        "firebase": {
+          "apiKey": "AIzaSyAdrvMFjHpbgQ937cM4MhMsdpCDFf25kpc",
+          "authDomain": "lmsironlady.firebaseapp.com",
+          "projectId": "lmsironlady",
+          "storageBucket": "lmsironlady.firebasestorage.app",
+          "messagingSenderId": "829229653695",
+          "appId": "1:829229653695:web:a144087bd1003910eff00a"
+        }
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -51,8 +61,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/android-icon-foreground.png",
-          "largeIcon": "./assets/icon.png",
+          "icon": "./assets/notification-icon.png",
+          "largeIcon": "./assets/notification-large-icon.png",
           "color": "#ED1D24",
           "defaultChannel": "default"
         }
@@ -70,7 +80,7 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#ED1D24",
-          "image": "./assets/splash-icon.png",
+          "image": "./assets/splash-blank.png",
           "imageWidth": 200
         }
       ],

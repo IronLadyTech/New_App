@@ -25,8 +25,10 @@ import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, FACE, PODCASTS, PREWORK } from '.
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
-import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
+import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
+import { useCmsEngagePosts } from '../../hooks/useCmsLearnerItems';
+import { buildLepCohortView } from '../../utils/lepCohortView';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { filterLepPrework } from '../../utils/lepRitualsUnlock';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
@@ -145,6 +147,7 @@ export default function LepEngageScreen() {
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
+        onCalendar={nav.goSchedule}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -171,7 +174,14 @@ function openArmyCalendar(event) {
 
 function EnrolledEngage({ nav, topPad }) {
   const navigation = useNavigation();
+  const { profile } = useAuth();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const group = useLepBatchGroup(profile, 'lep');
+  const engagePosts = useCmsEngagePosts('lep', cmsBatch);
+  const cohort = useMemo(
+    () => buildLepCohortView({ profile, cmsBatch, group, engagePosts }),
+    [profile, cmsBatch, group, engagePosts]
+  );
   const { featured, nextOffline, highlights, loading: calendarLoading } = useArmyEventCalendar();
   const chapter = nextOffline;
   const spotlight = highlights.slice(0, 2);
@@ -304,59 +314,31 @@ function EnrolledEngage({ nav, topPad }) {
         </WhiteCard>
       ))}
 
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16 }} onPress={nav.goMyProgram}>
+      <WhiteCard
+        style={{ marginTop: 12, borderRadius: 22, padding: 16 }}
+        onPress={() => nav.goMyProgram('Cohort')}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flex: 1 }}>
             <ILText role="label" color={G.ink}>
-              {LEP_COHORT_SOCIAL.title}
+              {cohort.batchTitle}
             </ILText>
             <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {LEP_COHORT_SOCIAL.sub}
+              {cohort.subline}
             </ILText>
           </View>
           <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
             See batchmates ›
           </ILText>
         </View>
-        <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {[0, 1, 2, 3].map((i) => (
-              <Image
-                key={i}
-                source={FACE}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 14,
-                  marginLeft: i ? -8 : 0,
-                  borderWidth: 2,
-                  borderColor: G.white,
-                }}
-              />
-            ))}
-            <View
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                marginLeft: -8,
-                backgroundColor: G.dark,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 8 }]}>
-                +37
-              </ILText>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#1B7A4A', marginRight: 6 }} />
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              8 active now
+        {cohort.memberCount != null && cohort.memberCount > 0 ? (
+          <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="groups" size={22} color={G.cta} />
+            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 12 }}>
+              {cohort.memberCount} {cohort.memberCount === 1 ? 'batchmate' : 'batchmates'} on the app
             </ILText>
           </View>
-        </View>
+        ) : null}
       </WhiteCard>
 
       {chapter ? (

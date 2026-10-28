@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -7,6 +7,7 @@ import { stashPhoneAuth } from '../../services/phoneAuthSession';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { useAuth } from '../../context/AuthContext';
+import { devToolsEnabled } from '../../utils/devToolsEnabled';
 
 const PAGE = '#F7F6E4';
 const INK = '#113744';
@@ -39,6 +40,12 @@ const JUMPS = [
 export default function ScreenLab({ navigation }) {
   const insets = useSafeAreaInsets();
   const { enterGuest, enterJourneyPreview, enterPreview } = useAuth();
+
+  useEffect(() => {
+    if (!devToolsEnabled()) navigation.replace('PhoneLogin');
+  }, [navigation]);
+
+  if (!devToolsEnabled()) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: PAGE }}>

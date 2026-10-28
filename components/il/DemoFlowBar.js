@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import JourneyPickerScreen, { JOURNEY_FLOWS } from '../../screens/auth/JourneyPickerScreen';
 import ILText from './ILText';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
+import { devToolsEnabled } from '../../utils/devToolsEnabled';
 
 const NAVY = '#113744';
 const CREAM = '#F5F2E8';
@@ -66,7 +67,7 @@ export default function DemoFlowBar({ route, navRef }) {
     useAuth();
   const [pickerOpen, setPickerOpen] = useState(false);
   // Never show over a real Firebase account — demo strip is picker-only.
-  if (!demo || (user?.uid && user.uid !== 'preview')) return null;
+  if (!devToolsEnabled() || !demo || (user?.uid && user.uid !== 'preview')) return null;
 
   const inSignIn = !journey && !isGuest;
 

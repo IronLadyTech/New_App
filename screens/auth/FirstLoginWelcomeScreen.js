@@ -34,6 +34,7 @@ import {
   syncWelcomeProfileInBackground,
 } from '../../services/functions';
 import { welcomeSaveFeedback } from '../../utils/participantSyncMessage';
+import { devToolsEnabled } from '../../utils/devToolsEnabled';
 import { BhagComposer, CityPicker, FieldOfWorkPicker } from '../../components/profile/ProfilePickers';
 
 const GUIDE = require('../../assets/il/il-guide-face.jpg');
@@ -143,7 +144,7 @@ export default function FirstLoginWelcomeScreen({
   onDone: onDoneProp,
 }) {
   const insets = useSafeAreaInsets();
-  const { profile, user, isPreview, patchProfile, logout } = useAuth();
+  const { profile, user, isPreview, demo, patchProfile, logout } = useAuth();
   const name =
     route?.params?.name ||
     String(profile?.displayName || profile?.firstName || '')
@@ -159,6 +160,7 @@ export default function FirstLoginWelcomeScreen({
   const hasDomain = Boolean(String(fields.domain || '').trim());
   const hasBhag = Boolean(String(fields.bhag || '').trim());
   const previewFlow = !user?.uid || user.uid === 'preview' || isPreview;
+  const showWelcomeBack = devToolsEnabled() && (demo || previewFlow);
   const canContinue = previewFlow || (hasCity && hasDomain);
   const pickBatch = needsLepBatchSelection(profile);
   const batchLabel = learnerBatchLabel(profile, 'lep');
@@ -338,24 +340,26 @@ export default function FirstLoginWelcomeScreen({
         }}
         showsVerticalScrollIndicator={false}
       >
-          <View style={{ alignSelf: 'stretch', marginBottom: 14 }}>
-            <Pressable
-              onPress={goBack}
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              hitSlop={10}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: IL_BRAND.white,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <MaterialIcons name="chevron-left" size={22} color={IL_BRAND.ink} />
-            </Pressable>
-          </View>
+          {showWelcomeBack ? (
+            <View style={{ alignSelf: 'stretch', marginBottom: 14 }}>
+              <Pressable
+                onPress={goBack}
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                hitSlop={10}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: IL_BRAND.white,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialIcons name="chevron-left" size={22} color={IL_BRAND.ink} />
+              </Pressable>
+            </View>
+          ) : null}
           {badges.length ? (
             <View
               style={{

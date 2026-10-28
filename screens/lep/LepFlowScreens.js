@@ -930,6 +930,7 @@ export function LepGraduationScreen({ onCelebrated }) {
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
+        onCalendar={nav.goSchedule}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1090,6 +1091,7 @@ export function LepAlumniHomeScreen() {
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
+        onCalendar={nav.goSchedule}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}

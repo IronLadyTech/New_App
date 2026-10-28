@@ -29,6 +29,7 @@ import BatchHubContentTab from './batchHub/BatchHubContentTab';
 import BatchHubPracticeTab from './batchHub/BatchHubPracticeTab';
 import BatchHubEngageTab from './batchHub/BatchHubEngageTab';
 import AppPreview from './AppPreview';
+import ReminderChecklist, { reminderState } from './batchHub/ReminderChecklist';
 import BatchSetupWizard from './batchHub/BatchSetupWizard';
 import ZohoSyncBar from './batchHub/ZohoSyncBar';
 import BatchHubUnlockTab from './batchHub/BatchHubUnlockTab';
@@ -50,7 +51,7 @@ const TABS = [
 
 /** Who CX is looking at. Counts come from the batch's real learners. */
 const WHO = [
-  { value: 'all', label: 'All learners', sub: 'in this batch' },
+  { value: 'all', label: 'All learners', sub: 'with the app, in this batch' },
   { value: 'register', label: 'Part paid', sub: 'registration paid' },
   { value: 'paid', label: 'Full paid', sub: 'fully enrolled' },
   { value: 'late', label: 'Late joiners', sub: 'joined after Orientation' },
@@ -135,7 +136,8 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     const mine = batches.filter((b) => String(b.program || 'LEP').toLowerCase() === programId);
     const taken = new Set(mine.map((b) => String(b.lmsGroupId || '')).filter(Boolean));
     mine
-      .filter((b) => !b.lmsGroupId && !autoLinked.current.has(b.id))
+      // The CMS QA test batch shares a real Day 1 (17 Oct) — it must never take a real group.
+      .filter((b) => !b.lmsGroupId && b.id !== CMS_QA_BATCH_ID && !autoLinked.current.has(b.id))
       .forEach((b) => {
         autoLinked.current.add(b.id);
         const match = matchLmsGroup(b, lmsBatches, taken);
@@ -145,10 +147,10 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
       });
   }, [lmsBatches, batches, programId, canEdit]);
 
-  const linkManually = async () => {
-    if (!batch?.id || !linkChoice) return;
+  const linkManually = async (groupId) => {
+    if (!batch?.id || !groupId) return;
     try {
-      await linkBatchToLmsGroup(batch.id, linkChoice);
+      await linkBatchToLmsGroup(batch.id, groupId);
       setLinkChoice('');
       setMsg({ tone: 'ok', text: 'Linked. Its learners, counts and reminders now follow this batch.' });
     } catch (e) {
@@ -268,15 +270,9 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     }
   };
 
+  // Confirmed in ReminderChecklist, which also checks the batch is ready.
   const goLive = async () => {
     if (!batch?.id || !canEdit) return;
-    const ok =
-      typeof window !== 'undefined'
-        ? window.confirm(
-            `Start automatic reminders for "${batch.name}"?\n\n• Learners get session reminders at the times on the Messages tab\n• New learners can pick this batch when they sign up\n\nCheck the dates and Zoom links first.`
-          )
-        : true;
-    if (!ok) return;
     setBusy(true);
     try {
       await saveBatch({
@@ -285,6 +281,20 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
         automationEnabled: true,
       });
       setMsg({ tone: 'ok', text: 'Automatic reminders are on for this batch.' });
+    } catch (e) {
+      setMsg({ tone: 'error', text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Stays live (learners still see and pick it); the scheduler skips it until started again.
+  const pauseReminders = async () => {
+    if (!batch?.id || !canEdit) return;
+    setBusy(true);
+    try {
+      await saveBatch({ ...batch, automationEnabled: false });
+      setMsg({ tone: 'ok', text: 'Automatic reminders are paused for this batch.' });
     } catch (e) {
       setMsg({ tone: 'error', text: e.message });
     } finally {
@@ -304,7 +314,12 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     if (!batch || batch.lmsGroupId || !batch.day1Date) return null;
     const group = (lmsBatches || []).find((g) => linkedGroups.has(g.id) && inferLepDay1FromGroup(g) === batch.day1Date);
     const owner = group && programBatches.find((b) => b.id !== batch.id && b.lmsGroupId === group.id);
-    return owner ? { group, owner } : null;
+    if (!owner || owner.id === CMS_QA_BATCH_ID) return null;
+    // A larger, still-unlinked group of the same Day 1 is this batch's own — not a duplicate.
+    const waiting = (lmsBatches || []).some(
+      (g) => !linkedGroups.has(g.id) && inferLepDay1FromGroup(g) === batch.day1Date && (g.memberCount || 0) > (group.memberCount || 0)
+    );
+    return waiting ? null : { group, owner };
   })();
   // Another LEP batch with the same Day 1: ask the app's own matching which one a
   // learner of these dates (Zoho LEP Batch for this Day 1) actually sees.
@@ -319,6 +334,10 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     });
     return seen && seen.id !== batch.id ? seen : null;
   })();
+  // Exactly one unlinked group with this batch's Day 1: pre-select it, so CX only press Link.
+  const sameDay1 = batch?.day1Date ? notSetUp.filter((g) => inferLepDay1FromGroup(g) === batch.day1Date) : [];
+  const suggestedGroupId = sameDay1.length === 1 ? sameDay1[0].id : '';
+  const linkValue = linkChoice || suggestedGroupId;
   const isLep = programId === PROGRAMS.LEP;
   const tabs = TABS.filter((t) => (isLep || !t.lepOnly) && (canManage || !t.leadOnly));
   const label = (text) => (
@@ -369,11 +388,11 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
                 },
                 ...programBatches.map((b) => {
                   const n = sizeOf(b);
-                  return { value: b.id, label: `${formatBatchPickerLabel(b)}${n != null ? ` · ${n} learners` : ''}` };
+                  return { value: b.id, label: `${formatBatchPickerLabel(b)}${n != null ? ` · ${n} with the app` : ''}` };
                 }),
                 ...notSetUp.map((g) => ({
                   value: `lms:${g.id}`,
-                  label: `${g.name} · ${g.memberCount} learners · not set up yet`,
+                  label: `${g.name} · ${g.memberCount} with the app · not set up yet`,
                 })),
               ]}
             />
@@ -381,10 +400,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
           </View>
           {batch ? (
             <View>
-              <StatusBadge on={batch.status === 'live' && batch.automationEnabled === true} />
-              {canEdit && (batch.status !== 'live' || batch.automationEnabled !== true) ? (
-                <Btn label="Start automatic reminders" onPress={goLive} loading={busy} small style={{ marginTop: 8 }} />
-              ) : null}
+              <StatusBadge state={reminderState(batch)} />
             </View>
           ) : null}
         </Row>
@@ -393,10 +409,26 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
             {describeBatchAnchor(batch)}
           </T>
         ) : null}
+        {batch ? (
+          <ReminderChecklist
+            // A fresh checklist per batch: a half-done "Start?" must not follow CX to another batch.
+            key={batch.id}
+            batch={batch}
+            events={events}
+            isLep={programId === PROGRAMS.LEP}
+            learnerCount={sizeOf(batch)}
+            canEdit={canEdit}
+            busy={busy}
+            onStart={goLive}
+            onPause={pauseReminders}
+            onOpenTab={setTab}
+          />
+        ) : null}
         <Row gap={8} style={{ flexWrap: 'wrap', marginTop: 12 }}>
           {WHO.map((w) => {
             const on = learner === w.value;
-            const n = counts?.counts ? counts.counts[w.value] : null;
+            // Unlinked: there is nothing to count yet — "—", never a misleading 0.
+            const n = batch?.lmsGroupId && counts?.counts ? counts.counts[w.value] : null;
             return (
               <Pressable key={w.value} onPress={() => setLearner(w.value)}>
                 <View
@@ -418,8 +450,14 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
             );
           })}
         </Row>
-        {counts?.error ? (
-          <T size={11} color={A.muted} style={{ marginTop: 6 }}>Counts appear once the learner-count service is switched on.</T>
+        {batch ? (
+          <T size={11} color={A.muted} style={{ marginTop: 6, maxWidth: 760, lineHeight: 16 }}>
+            {!batch.lmsGroupId
+              ? 'Link this batch to its learners (below) to count them.'
+              : counts?.error
+                ? 'Learner counts are not available right now.'
+                : 'These are learners with the app. Zoho can show a few more: a lead who has not signed in to the app yet does not get app reminders.'}
+          </T>
         ) : null}
         {seenInstead ? (
           <View style={{ marginTop: 10, backgroundColor: '#FFF4D6', borderRadius: 10, padding: 12 }}>
@@ -443,7 +481,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
             {twin ? (
               <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <T size={12} color={A.ink} style={{ flex: 1, minWidth: 260 }}>
-                  The learners of these dates ({twin.group.name} · {twin.group.memberCount} learners) are on another batch, “
+                  The learners of these dates ({twin.group.name} · {twin.group.memberCount} with the app) are on another batch, “
                   {twin.owner.name}”. Make your changes there — this one is a duplicate.
                 </T>
                 <Btn label="Open that batch" small onPress={() => setBatchId(twin.owner.id)} />
@@ -451,18 +489,18 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
             ) : null}
             {canEdit && notSetUp.length ? (
               <Row gap={8} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <T size={12} color={A.ink}>This is the LMS batch:</T>
+                <T size={12} color={A.ink}>Its learners are in:</T>
                 <View style={{ minWidth: 260, flex: 1 }}>
                   <Select
-                    value={linkChoice}
+                    value={linkValue}
                     onChange={setLinkChoice}
                     options={[
                       { value: '', label: 'Choose the matching batch…' },
-                      ...notSetUp.map((g) => ({ value: g.id, label: `${g.name} · ${g.memberCount} learners` })),
+                      ...notSetUp.map((g) => ({ value: g.id, label: `${g.name} · ${g.memberCount} with the app` })),
                     ]}
                   />
                 </View>
-                <Btn label="Link" small onPress={linkManually} disabled={!linkChoice} />
+                <Btn label="Link" small onPress={() => linkManually(linkValue)} disabled={!linkValue} />
               </Row>
             ) : null}
           </View>
@@ -591,8 +629,8 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
   );
 }
 
-function StatusBadge({ on }) {
-  const live = on;
+function StatusBadge({ state }) {
+  const live = state === 'on';
   return (
     <View
       style={{
@@ -602,7 +640,7 @@ function StatusBadge({ on }) {
         backgroundColor: live ? '#E3F1EA' : '#F5F0E6',
       }}
     >
-      <T size={11} weight="bold" color={live ? A.ok : A.muted}>{live ? 'Reminders on' : 'Reminders off'}</T>
+      <T size={11} weight="bold" color={live ? A.ok : A.muted}>{live ? 'Reminders on' : state === 'paused' ? 'Reminders paused' : 'Reminders off'}</T>
     </View>
   );
 }

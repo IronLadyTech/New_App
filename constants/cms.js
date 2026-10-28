@@ -40,10 +40,10 @@ export const CMS_CONFIG_DOCS = {
 };
 
 /** Roles that can open /admin. Only CMS_EDIT_ROLES can change anything. */
-export const CMS_VIEW_ROLES = ['admin', 'superadmin', 'pl', 'cem'];
+export const CMS_VIEW_ROLES = ['admin', 'superadmin', 'pl', 'cem', 'moderator'];
 export const CMS_EDIT_ROLES = ['admin', 'superadmin', 'pl'];
-/** CX (CEM) can run batches — dates, Zoom links, recordings, files — but not templates or IL Guide. */
-export const CMS_BATCH_EDIT_ROLES = [...CMS_EDIT_ROLES, 'cem'];
+/** CX ('moderator' — the web LMS CX role — or the older 'cem') run batches: dates, Zoom, recordings, files. Not templates or IL Guide. */
+export const CMS_BATCH_EDIT_ROLES = [...CMS_EDIT_ROLES, 'cem', 'moderator'];
 
 export const ANCHORS = [
   { value: 'sessionStart', label: 'Session start', needsRef: 'session', usesOffset: true },

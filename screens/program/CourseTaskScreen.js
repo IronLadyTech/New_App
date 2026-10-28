@@ -42,8 +42,8 @@ import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
 /** The sheet's "After" line for an LEP task (LEP-Messages-Complete-v6 → Task notifications). */
 const LEP_AFTER_COPY = Object.fromEntries(LEP_TASK_SCHEDULE.tasks.map((t) => [t.id, t.after]));
 import { todayIsoIST } from '../../utils/lepDailyPractice';
-import { isProgramTaskDone } from '../../utils/taskDone';
-import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose } from '../../utils/lepTaskInsideCopy';
+import { isProgramTaskDone, isSentBack } from '../../utils/taskDone';
+import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose, lepTaskWatchLabel } from '../../utils/lepTaskInsideCopy';
 import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipCard';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
 import {
@@ -227,6 +227,58 @@ function SubmittedFileChip({ submission }) {
   );
 }
 
+/** Where CX's review stands: 'approved' | 'reviewing' | 'sentBack' | 'submitted' | null. */
+function reviewStateOf(sub) {
+  const s = sub?.status;
+  if (s === 'completed') return 'approved';
+  if (s === 'under_review') return 'reviewing';
+  if (isSentBack(s)) return 'sentBack';
+  if (s === 'submitted') return 'submitted';
+  return null;
+}
+
+function reviewDate(sub) {
+  const t = sub?.reviewedAt;
+  const ms = t?.toMillis ? t.toMillis() : t?.seconds ? t.seconds * 1000 : Date.parse(t || '');
+  return Number.isFinite(ms) ? new Date(ms).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+}
+
+/** CX's feedback on her work, in the app — the same words she would read in the LMS. */
+function ReviewCard({ state, sub }) {
+  const feedback = String(sub?.feedback || '').trim();
+  if (state !== 'sentBack' && !(state === 'approved' && feedback)) return null;
+  const sentBack = state === 'sentBack';
+  const when = reviewDate(sub);
+  return (
+    <View
+      style={{
+        borderRadius: 18,
+        padding: 16,
+        marginBottom: 12,
+        backgroundColor: sentBack ? '#FFF4D6' : '#E3F1EA',
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <MaterialIcons name={sentBack ? 'rate-review' : 'verified'} size={20} color={sentBack ? '#9A5B00' : '#1F7A4D'} />
+        <ILText role="label" color={G.ink} style={{ marginLeft: 8, flex: 1 }}>
+          {sentBack ? 'Your CX asked for a few changes' : 'Feedback from your CX'}
+          {when ? ` · ${when}` : ''}
+        </ILText>
+      </View>
+      {feedback ? (
+        <ILText role="body" color={G.ink} style={{ marginTop: 8, fontSize: 14, lineHeight: 21 }}>
+          “{feedback}”
+        </ILText>
+      ) : null}
+      {sentBack ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 12 }}>
+          Your last answer is below — change what is needed and resubmit.
+        </ILText>
+      ) : null}
+    </View>
+  );
+}
+
 export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
@@ -264,6 +316,10 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [watchUntracked, setWatchUntracked] = useState(false);
   const [videoUri, setVideoUri] = useState(null);
   const [done, setDone] = useState(false);
+  // "Edit and resubmit" on work not yet reviewed reopens the form.
+  const [editing, setEditing] = useState(false);
+  const submission = getTaskSubmission(programId, taskId);
+  const review = reviewStateOf(submission);
   const [submittedAt, setSubmittedAt] = useState(null);
   const [cmsLinks, setCmsLinks] = useState([]);
   const [cmsHint, setCmsHint] = useState(null);
@@ -367,7 +423,19 @@ export default function CourseTaskScreen({ route, navigation }) {
         getTaskSubmission,
       })
     );
+    setEditing(false);
   }, [programId, taskId, task?.templateId, demo.isDone, demo.done, getTaskSubmission]);
+
+  // Sent back, or editing before review: start from what she handed in, not a blank form.
+  const prefillKey = `${taskId}|${review}|${editing}`;
+  useEffect(() => {
+    if (!submission || (review !== 'sentBack' && !editing)) return;
+    if (submission.textValue) setText(submission.textValue);
+    if (submission.linkValue) setLink(submission.linkValue);
+    if (Array.isArray(submission.checkedItems)) setChecked(submission.checkedItems);
+    const savedForm = submission.form || submission.templateData;
+    if (savedForm && typeof savedForm === 'object') setForm(savedForm);
+  }, [prefillKey]);
 
   // Some players (an old YouTube embed) report no progress — never leave the learner stuck.
   useEffect(() => {
@@ -417,6 +485,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         demo.recordLepActiveDay?.(todayIsoIST());
       }
       setDone(true);
+      setEditing(false);
     } catch (e) {
       Alert.alert(
         'Not saved yet',
@@ -487,7 +556,8 @@ export default function CourseTaskScreen({ route, navigation }) {
               : type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST
                 ? 'Submit link'
                 : 'Submit answer';
-  const cta = alumniPractice ? alumniSubmitCta(baseCta) : baseCta;
+  const cta =
+    review === 'sentBack' || editing ? 'Resubmit' : alumniPractice ? alumniSubmitCta(baseCta) : baseCta;
 
   const submittedLabel =
     submittedAt
@@ -615,7 +685,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         {videoUri && type !== TASK_TYPES.WATCH_ONLY ? (
           <View style={{ marginTop: 18 }}>
             <ILText role="label" color={G.ink} style={{ marginBottom: 8 }}>
-              Watch first
+              {lepTaskWatchLabel(taskId)}
             </ILText>
             <PracticeVideo uri={videoUri} poster={videoPoster} height={200} trackKey={`${programId}:${taskId}`} />
           </View>
@@ -767,8 +837,9 @@ export default function CourseTaskScreen({ route, navigation }) {
             </View>
           ) : null}
 
-          {done && !isErrcTask ? (
+          {done && !editing && !isErrcTask ? (
             <>
+              <ReviewCard state={review} sub={submission} />
               <View
                 style={{
                   borderRadius: 18,
@@ -782,7 +853,13 @@ export default function CourseTaskScreen({ route, navigation }) {
                 <MaterialIcons name="check-circle" size={20} color={G.cta} />
                 <View style={{ marginLeft: 8, flex: 1 }}>
                   <ILText role="label" color={G.ink}>
-                    Submitted
+                    {review === 'approved'
+                      ? 'Approved by your CX'
+                      : review === 'reviewing'
+                        ? 'Your CX is reviewing this — it can’t be changed now'
+                        : review === 'submitted'
+                          ? 'Submitted — waiting for your CX to review'
+                          : 'Submitted'}
                   </ILText>
                   {programId === PROGRAMS.LEP && LEP_AFTER_COPY[taskId] ? (
                     <ILText role="bodySm" color={G.ink} style={{ marginTop: 2, fontSize: 13, lineHeight: 18 }}>
@@ -795,9 +872,30 @@ export default function CourseTaskScreen({ route, navigation }) {
                 label={next ? `Next task · ${next.title}` : 'Back to this phase'}
                 onPress={goNext}
               />
+              {/* Not reviewed yet: she may still change it (the database freezes it once review starts). */}
+              {review === 'submitted' && type !== TASK_TYPES.WATCH_ONLY ? (
+                <Pressable
+                  onPress={() => setEditing(true)}
+                  accessibilityRole="button"
+                  style={{
+                    marginTop: 12,
+                    borderRadius: 999,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: G.line,
+                    backgroundColor: G.white,
+                  }}
+                >
+                  <ILText role="label" color={G.ink}>
+                    Edit and resubmit
+                  </ILText>
+                </Pressable>
+              ) : null}
             </>
           ) : (
             <>
+              <ReviewCard state={review} sub={submission} />
               <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
                 <RedCta
                   label={syncing ? (uploadPct !== null ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}

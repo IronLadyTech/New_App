@@ -55,6 +55,16 @@ export function navigateFromGo(go) {
     rootRef.navigate('Home', { screen: go.screen });
     return true;
   }
+  // Her first unfinished practice of today (streak reminder → "Practise now"); Home opens it.
+  if (go.to === 'practice') {
+    rootRef.navigate('Home', { screen: 'LepHome', params: { openPractice: Date.now() } });
+    return true;
+  }
+  // Plain "home" (streak and guest reminders): today's practice lives on Home.
+  if (go.to === 'home') {
+    rootRef.navigate('Home');
+    return true;
+  }
   if (go.to === 'profile' && go.screen) {
     rootRef.navigate('Profile', { screen: go.screen });
     return true;

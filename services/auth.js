@@ -10,6 +10,7 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { unregisterPushForUser } from './pushNotifications';
+import { syncStreakReminders } from './localEngagementNotifications';
 import {
   ensureZohoUserOnLogin,
   refreshMyAccess,
@@ -159,6 +160,8 @@ export async function logOut() {
   if (uid) {
     try {
       await unregisterPushForUser(uid);
+      // This phone stops her streak reminders too.
+      await syncStreakReminders(null);
     } catch {
       // Best-effort — still sign out locally
     }

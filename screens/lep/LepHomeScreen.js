@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import {
   Animated,
   Image,
@@ -9,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import Pressable from '../../components/il/Press';
-import { doc, getDoc } from 'firebase/firestore';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +50,7 @@ import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
 import { buildLepDueWeek } from '../../utils/lepBatchDueWeek';
 import { nextCmsBatchSession } from '../../utils/cmsBatchSessions';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
-import { db } from '../../services/firebase';
+import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
 import {
   CheckRow,
   LepHeader,
@@ -126,6 +126,7 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
         photoUrl={profile?.photoURL}
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
+        onCalendar={nav.goSchedule}
         scrollY={scrollY}
         inert={headerGone}
       />
@@ -349,32 +350,6 @@ function RegisteredHome({ cmsBatch, preview }) {
   );
 }
 
-function useLepBatchGroup(profile) {
-  const batchId = learnerBatchId(profile, 'lep');
-  const id = batchId && batchId !== 'default' && /^[A-Za-z0-9_-]+$/.test(batchId) ? batchId : null;
-  const [group, setGroup] = useState(null);
-
-  useEffect(() => {
-    if (!id) {
-      setGroup(null);
-      return undefined;
-    }
-    let cancelled = false;
-    getDoc(doc(db, 'groups', id))
-      .then((snap) => {
-        if (!cancelled) setGroup(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      })
-      .catch(() => {
-        if (!cancelled) setGroup(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  return group;
-}
-
 function EnrolledHome() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
@@ -410,6 +385,17 @@ function EnrolledHome() {
     () => filterLepPracticeItems(practiceRaw, ritualsUnlocked),
     [practiceRaw, ritualsUnlocked]
   );
+  // "Practise now" on a streak reminder: open her first unfinished practice once the list is in.
+  // All done → she stays on Home, with today's practice in view.
+  const route = useRoute();
+  const navigation = useNavigation();
+  const openPractice = route.params?.openPractice;
+  useEffect(() => {
+    if (!openPractice || !practice?.length) return;
+    navigation.setParams({ openPractice: undefined });
+    const next = practice.find((p) => !p.done);
+    if (next) nav.goPracticeItem(next);
+  }, [openPractice, practice]);
   // Template = day/time; CMS/Zoho = which Day 1 + Zoom when ops set a link.
   const day1Iso =
     (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
@@ -467,7 +453,6 @@ function EnrolledHome() {
   );
   const guideContext = useMemo(() => {
     const practiceDoneToday = practice.filter((p) => p.done).length;
-    const nextOpenPractice = practice.find((p) => !p.done) || null;
     return {
       lepPractice: {
         currentStreak: streak.currentStreak,
@@ -503,15 +488,24 @@ function EnrolledHome() {
           done,
         };
       }),
-      openPractice: nextOpenPractice
-        ? {
-            title: nextOpenPractice.title,
-            taskId: nextOpenPractice.taskId || null,
-            practiceId: nextOpenPractice.practiceId || null,
-            programId: PROGRAMS.LEP,
-            done: false,
-          }
-        : null,
+      openPractice: (() => {
+        const weekItem = practice.find(
+          (p) =>
+            !p.done &&
+            (String(p.id || '').startsWith('week-') ||
+              /next for this week|Video · Week/i.test(String(p.meta || '')))
+        );
+        const nextOpen = weekItem || practice.find((p) => !p.done) || null;
+        return nextOpen
+          ? {
+              title: nextOpen.title,
+              taskId: nextOpen.taskId || null,
+              practiceId: nextOpen.practiceId || null,
+              programId: PROGRAMS.LEP,
+              done: false,
+            }
+          : null;
+      })(),
       journeyNextTask: journeyNext
         ? { id: journeyNext.id, title: journeyNext.title, type: journeyNext.type }
         : null,

@@ -45,3 +45,6 @@ android/build/
 android/.gradle/
 android/app/build/
 android/.cxx/
+
+# Personal data from scripts/find-test-accounts.js — never commit
+scripts/test-accounts-report.csv

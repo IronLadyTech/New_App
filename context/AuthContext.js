@@ -16,6 +16,7 @@ import {
   mergeWelcomeProfilePreserving,
 } from '../utils/programAccess';
 import { PAYMENT_STATUS } from '../constants/programs';
+import { devToolsEnabled } from '../utils/devToolsEnabled';
 
 const GUEST_KEY = 'il_guest_mode';
 const LAB_LEP_KEY = 'il_lab_lep';
@@ -150,6 +151,12 @@ export function AuthProvider({ children }) {
     ])
       .then(([guest, journey, legacyLep, demoFlag]) => {
         if (cancelled || CMS_PREVIEW) return;
+        if (!devToolsEnabled()) {
+          AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(
+            () => {}
+          );
+          return;
+        }
         const lab = parseLabJourney(journey, legacyLep);
         setLabJourney(lab);
         setGuestMode(guest === '1' && !lab);

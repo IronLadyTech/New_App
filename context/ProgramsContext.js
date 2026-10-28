@@ -86,7 +86,8 @@ export function ProgramsProvider({ children }) {
         userId: user.uid,
         task,
         fields,
-        batchId: learnerBatchId(profile),
+        // This program's batch — a learner in two programs must not tag LEP work with her 100BM batch.
+        batchId: learnerBatchId(profile, programId),
         previousSubmission: prevMap[task.id] || null,
       });
     },

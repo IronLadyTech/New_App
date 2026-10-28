@@ -28,6 +28,8 @@ export const PREWORK_THUMBS = {
   'lep-principles-video-preview': require('../assets/il/prework/thumb-27-principles.jpg'),
   'prework-02': require('../assets/il/prework/thumb-5-rituals.jpg'),
   'prework-03': require('../assets/il/prework/thumb-shameless-speech.jpg'),
+  /** Differentiated Brand session — not the 27 Principles pre-work art. */
+  'lep-brand-roadmap': require('../assets/il/suvarna-hero.jpg'),
 };
 
 /** Posters for all wired lesson videos (pre-work, podcasts, C-suite, army, MBW). */
@@ -57,7 +59,7 @@ export const VIDEO_POSTERS = {
   'community:iron-ladies': require('../assets/il/suvarna-hero.jpg'),
   'community:indra-nooyi': require('../assets/il/suvarna-hero.jpg'),
   'lep:mentors': P.smriti,
-  'lep:brand-roadmap': PREWORK_THUMBS['lep-principles-video'],
+  'lep:brand-roadmap': PREWORK_THUMBS['lep-brand-roadmap'],
 };
 
 const BY_TASK = {
@@ -67,7 +69,7 @@ const BY_TASK = {
   'mbw-lep': PREWORK_THUMBS['lep-rituals'],
   'lep-shameless': PREWORK_THUMBS['lep-shameless'],
   'lep-day1-errc': PREWORK_THUMBS['lep-principles-video'],
-  'lep-day3-brand-roadmap': PREWORK_THUMBS['lep-principles-video'],
+  'lep-day3-brand-roadmap': PREWORK_THUMBS['lep-brand-roadmap'],
   'lep-day3-mentors': P.smriti,
   'mbw-errc': PREWORK_THUMBS['lep-principles-video'],
   'mbw-csuite': P.priyanka,

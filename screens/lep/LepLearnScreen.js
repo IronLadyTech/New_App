@@ -44,6 +44,7 @@ import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
 import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
 
 export default function LepLearnScreen() {
   const { profile } = useAuth();
@@ -57,7 +58,7 @@ export default function LepLearnScreen() {
   return (
     <Page>
       <StatusBar style="dark" />
-      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} />
+      <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} onCalendar={nav.goSchedule} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -73,7 +74,17 @@ export default function LepLearnScreen() {
               <PillRow items={chips} value={chip} onChange={setChip} />
             </ScrollView>
             {chip === 'Principles' ? (
-              <PrinciplesEnrolled onResume={() => nav.goCoursePhase('lep', 'day-1')} />
+              <PrinciplesEnrolled
+                onPrinciple={(n) => {
+                  const w = lepPrincipleWatch(n);
+                  if (!w) return;
+                  if (w.practiceId === 'lep-shameless') {
+                    nav.goPractice('lep', 'lep-shameless');
+                    return;
+                  }
+                  nav.goPractice('lep', 'lep-principle', { principleN: n });
+                }}
+              />
             ) : chip === 'Case studies' ? (
               <CasesEnrolled onMark={nav.goMyProgram} />
             ) : chip === 'Events' ? (
@@ -1210,7 +1221,11 @@ function NextCard({ kicker, title, body, cta, onPress }) {
   );
 }
 
-function PrinciplesEnrolled({ onResume }) {
+function PrinciplesEnrolled({ onPrinciple }) {
+  const openPrinciple = (n) => {
+    if (typeof onPrinciple === 'function') onPrinciple(Number(n));
+  };
+
   return (
     <>
       <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 16 }}>
@@ -1237,7 +1252,11 @@ function PrinciplesEnrolled({ onResume }) {
         FOUNDATION · 01–09
       </ILText>
       {PRINCIPLES_FOUND_ENR.map((p) => (
-        <WhiteCard key={p.n} style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+        <WhiteCard
+          key={p.n}
+          onPress={() => openPrinciple(p.n)}
+          style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
+        >
           <View
             style={{
               width: 36,
@@ -1286,7 +1305,11 @@ function PrinciplesEnrolled({ onResume }) {
         INFLUENCE · 10–18
       </ILText>
       {PRINCIPLES_INFLUENCE_ENR.map((p) => (
-        <WhiteCard key={p.n} style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+        <WhiteCard
+          key={p.n}
+          onPress={() => openPrinciple(p.n)}
+          style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
+        >
           <View
             style={{
               width: 36,
@@ -1359,9 +1382,9 @@ function PrinciplesEnrolled({ onResume }) {
       <NextCard
         kicker="NEXT FOR YOU"
         title="Principle 10 · Negotiate from the seat you want"
-        body="18 minutes. Finish before Saturday and you walk into Day 1 current."
+        body="Watch the segment, then revise it out loud — same flow as Today’s practice on Home."
         cta="Resume principle 10 →"
-        onPress={onResume}
+        onPress={() => openPrinciple(10)}
       />
     </>
   );
