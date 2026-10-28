@@ -13,6 +13,7 @@ import { programPaymentStatus } from '../../utils/programAccess';
 import ILGuideWhisper from '../../components/ILGuideWhisper';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { LEARN_PROGRAMS_EMPTY, LEARN_PROGRAMS_SUBTITLE } from '../../utils/learnerBatchDisplay';
 
 export default function ProgramsScreen({ navigation }) {
   const { profile } = useAuth();
@@ -41,9 +42,7 @@ export default function ProgramsScreen({ navigation }) {
     <SafeAreaView className="flex-1 bg-ink-50" edges={['top']}>
       <View className="px-4 pb-2 pt-2">
         <Text className="text-2xl font-bold text-ink-950">Learn</Text>
-        <Text className="mt-1 text-sm text-ink-500">
-          Your Iron Lady programs — progress syncs with the web LMS
-        </Text>
+        <Text className="mt-1 text-sm text-ink-500">{LEARN_PROGRAMS_SUBTITLE}</Text>
         <ILGuideWhisper
           message={ilWhisper?.message}
           loading={ilLoading}
@@ -60,7 +59,7 @@ export default function ProgramsScreen({ navigation }) {
           <EmptyState
             icon="school-outline"
             title="No programs yet"
-            message="Enrollment comes from Zoho. Pull to refresh after payment, or use Profile → Refresh access."
+            message={LEARN_PROGRAMS_EMPTY}
           />
         }
         renderItem={({ item }) => {

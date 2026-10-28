@@ -1,6 +1,7 @@
 import { getProgramEntry } from '../constants/programs';
 import { learnerBatchLabel, learnerEnrollmentLabel, normalizeProgramId } from './programAccess';
 import { inferLepDay1FromZohoRaw } from './lepDeskBatchDate';
+import { formatLearnerFacingBatchTitle } from './learnerBatchDisplay';
 import { toISTIso } from './lepBatchSchedule';
 
 const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -179,7 +180,8 @@ export function buildProgramBatchCard(profile, programId, group) {
   const pid = normalizeProgramId(programId) || 'lep';
   const access = profile?.programAccess?.[pid] || {};
   const raw = batchRawForProgram(profile, pid);
-  const label = raw ? String(raw).trim() : null;
+  const trimmed = raw ? String(raw).trim() : '';
+  const label = trimmed ? formatLearnerFacingBatchTitle(trimmed) || trimmed : null;
   const named = label && !parseBatchStart(label) ? label : null;
   const time = formatClock(
     firstFilled(
@@ -241,8 +243,8 @@ export function buildLepRegisteredHero(profile, group, cmsBatch, now = new Date(
   }
 
   const batchLabel =
-    cmsBatch?.name?.trim() ||
-    batchRawForProgram(profile, 'lep') ||
+    formatLearnerFacingBatchTitle(cmsBatch?.name?.trim()) ||
+    formatLearnerFacingBatchTitle(batchRawForProgram(profile, 'lep')) ||
     (start ? formatWhen(start) : null) ||
     'your batch';
 

@@ -10,6 +10,7 @@ import { cms100bmBatchToCard } from '../../utils/cms100bmBatchDisplay';
 import { formatDateIST } from '../../utils/lepBatchSchedule';
 import { lock100bmBatchChoice } from '../../utils/lock100bmBatch';
 import { needs100bmCohortConfirm } from '../../utils/programAccess';
+import { CONFIRM_100BM_COHORT_INTRO } from '../../utils/learnerBatchDisplay';
 
 const PAGE = '#F7F6E4';
 const INK = '#113744';
@@ -83,8 +84,7 @@ export default function Confirm100bmCohortScreen({ navigation }) {
           Confirm your 100BM cohort
         </ILText>
         <ILText role="body" color={BODY} style={{ marginBottom: 20, lineHeight: 22 }}>
-          Payment is complete. Pick your programme start date — we will register you for six months
-          on Zoho and unlock your journey.
+          {CONFIRM_100BM_COHORT_INTRO}
         </ILText>
 
         {batches.length === 0 ? (

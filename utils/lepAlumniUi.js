@@ -1,13 +1,15 @@
 import { PROGRAMS } from '../constants/programs';
 import { learnerBatchLabel } from './programAccess';
 import { formatZohoLepBatchLabel } from './lepDeskBatchDate';
+import { formatLearnerFacingBatchTitle } from './learnerBatchDisplay';
 
 /** Display label for alumni chip, e.g. "24 Oct batch" or raw Zoho range. */
 export function lepAlumniBatchShort(profile) {
   const raw = learnerBatchLabel(profile, PROGRAMS.LEP);
   if (!raw) return 'Your cohort';
   const friendly = formatZohoLepBatchLabel(raw);
-  return friendly || String(raw).trim();
+  const titled = formatLearnerFacingBatchTitle(friendly || raw);
+  return titled || friendly || String(raw).trim();
 }
 
 export const LEP_ALUMNI_SESSIONS_BANNER =

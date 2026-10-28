@@ -21,20 +21,23 @@ import { isLepEnrolled } from '../../utils/lepState';
 import { CoverThumb, LepHeader, LinkRow, Page, RedCta, SoftChip, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { CSUITE_HOME } from '../guest/guestData';
-import { ARMY_STORIES, CIRCLE, CIRCLES_LOCKED, FACE, PODCASTS, PREWORK } from './lepData';
+import { ENGAGE_VIDEO_SECTION, engageVideoShelfLabel } from '../../utils/learnMediaShelves';
+import { CIRCLE, CIRCLES_LOCKED, FACE, PODCASTS, PREWORK } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import ILGuideWhisperExtras from '../../components/il/ILGuideWhisperExtras';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
-import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
-import { useCmsEngagePosts } from '../../hooks/useCmsLearnerItems';
-import { buildLepCohortView } from '../../utils/lepCohortView';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { filterLepPrework } from '../../utils/lepRitualsUnlock';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
 import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
 import CmsEngageFeed from '../../components/lep/CmsEngageFeed';
 import { useNavigation } from '@react-navigation/native';
+import {
+  engageIndustryOptions,
+  resolveEngageWhisper,
+} from '../../utils/ilGuideProfilePrompts';
 
 const STORY_CARD_W = 220;
 const STORY_THUMB_H = 124;
@@ -85,20 +88,46 @@ function StoryVideoCard({ img, title, meta, time, onPress }) {
   );
 }
 
-function CsuiteVideos({ nav }) {
+function EngageSectionHeader({ title, sub, countLabel, onViewAll }) {
   return (
     <>
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          C-suite conversations
+          {title}
         </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          {CSUITE_HOME.length} videos
-        </ILText>
+        <Pressable onPress={onViewAll} accessibilityRole="button" accessibilityLabel="View all">
+          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+            View all
+          </ILText>
+        </Pressable>
       </View>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-        Learn from women at the top table
-      </ILText>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 4, gap: 12 }}>
+        {sub ? (
+          <ILText role="bodySm" color={G.meta} style={{ flex: 1, fontSize: 12 }}>
+            {sub}
+          </ILText>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        {countLabel ? (
+          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+            {countLabel}
+          </ILText>
+        ) : null}
+      </View>
+    </>
+  );
+}
+
+function CsuiteVideos({ nav }) {
+  return (
+    <>
+      <EngageSectionHeader
+        title={ENGAGE_VIDEO_SECTION.title}
+        sub={ENGAGE_VIDEO_SECTION.sub}
+        countLabel={`${CSUITE_HOME.length} videos`}
+        onViewAll={() => nav.goEngageMediaList('csuite')}
+      />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -109,13 +138,71 @@ function CsuiteVideos({ nav }) {
         <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
           {CSUITE_HOME.map((c) => (
             <StoryVideoCard
-              key={c.title}
+              key={c.assetKey}
               img={c.img}
               title={c.title}
               meta={c.who}
-              time={c.tag}
+              time={engageVideoShelfLabel(c)}
               onPress={() => nav.goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
             />
+          ))}
+        </View>
+      </ScrollView>
+    </>
+  );
+}
+
+function PodcastLibrary({ nav }) {
+  return (
+    <>
+      <EngageSectionHeader
+        title="Iron Lady Speaks"
+        sub="Conversations with women who made the leap"
+        countLabel={`${PODCASTS.length} episodes · free`}
+        onViewAll={() => nav.goEngageMediaList('podcast')}
+      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled
+        keyboardShouldPersistTaps="handled"
+        style={{ marginTop: 12, marginHorizontal: -20 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
+          {PODCASTS.map((ep) => (
+            <Pressable
+              key={ep.assetKey}
+              onPress={() => nav.goWatch({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
+              style={{ width: STORY_CARD_W, marginRight: 12 }}
+            >
+              <WhiteCard
+                style={{
+                  borderRadius: 18,
+                  overflow: 'hidden',
+                  height: STORY_THUMB_H + 12 + 14 + 6 + STORY_TITLE_H + 4 + 16 + 12,
+                }}
+              >
+                <View style={{ height: STORY_THUMB_H, width: '100%', backgroundColor: G.dark }}>
+                  <CoverThumb source={ep.img} height={STORY_THUMB_H} play time={ep.meta} />
+                </View>
+                <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12 }}>
+                  <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9, height: 14 }]} numberOfLines={1}>
+                    {ep.meta}
+                  </ILText>
+                  <ILText
+                    role="label"
+                    color={G.ink}
+                    style={{ marginTop: 6, fontSize: 13, lineHeight: 18, height: STORY_TITLE_H }}
+                    numberOfLines={2}
+                  >
+                    {ep.title}
+                  </ILText>
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11, height: 16 }} numberOfLines={1}>
+                    {ep.who}
+                  </ILText>
+                </View>
+              </WhiteCard>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
@@ -174,13 +261,11 @@ function openArmyCalendar(event) {
 
 function EnrolledEngage({ nav, topPad }) {
   const navigation = useNavigation();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
-  const group = useLepBatchGroup(profile, 'lep');
-  const engagePosts = useCmsEngagePosts('lep', cmsBatch);
-  const cohort = useMemo(
-    () => buildLepCohortView({ profile, cmsBatch, group, engagePosts }),
-    [profile, cmsBatch, group, engagePosts]
+  const engageWhisper = useMemo(
+    () => resolveEngageWhisper(profile, user?.uid),
+    [profile, user?.uid]
   );
   const { featured, nextOffline, highlights, loading: calendarLoading } = useArmyEventCalendar();
   const chapter = nextOffline;
@@ -314,37 +399,10 @@ function EnrolledEngage({ nav, topPad }) {
         </WhiteCard>
       ))}
 
-      <WhiteCard
-        style={{ marginTop: 12, borderRadius: 22, padding: 16 }}
-        onPress={() => nav.goMyProgram('Cohort')}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flex: 1 }}>
-            <ILText role="label" color={G.ink}>
-              {cohort.batchTitle}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-              {cohort.subline}
-            </ILText>
-          </View>
-          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-            See batchmates ›
-          </ILText>
-        </View>
-        {cohort.memberCount != null && cohort.memberCount > 0 ? (
-          <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center' }}>
-            <MaterialIcons name="groups" size={22} color={G.cta} />
-            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 12 }}>
-              {cohort.memberCount} {cohort.memberCount === 1 ? 'batchmate' : 'batchmates'} on the app
-            </ILText>
-          </View>
-        ) : null}
-      </WhiteCard>
-
       {chapter ? (
         <WhiteCard
           style={{ marginTop: 12, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
-          onPress={() => openArmyCalendar(chapter)}
+          onPress={() => nav.goEventDetail(chapter)}
         >
           <MaterialIcons name="place" size={18} color={G.ink} />
           <View style={{ flex: 1, marginLeft: 10 }}>
@@ -373,61 +431,18 @@ function EnrolledEngage({ nav, topPad }) {
 
       <CsuiteVideos nav={nav} />
 
-      <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
-        <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          Stories from the Army
-        </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          {ARMY_STORIES.length} stories
-        </ILText>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        style={{ marginTop: 12, marginHorizontal: -20 }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
-          {ARMY_STORIES.map((story) => (
-            <StoryVideoCard
-              key={story.title}
-              img={story.img}
-              title={story.title}
-              meta={story.meta}
-              time={story.time}
-              onPress={() => nav.goWatch({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
-            />
-          ))}
-        </View>
-      </ScrollView>
+      <PodcastLibrary nav={nav} />
 
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.COMMUNITY}
-        fallbackQuote="Want to meet women from your industry?"
+        fallbackQuote={engageWhisper.quote}
         subtitle="Executive Mentor"
       >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
-          {['Technology', 'Finance', 'Marketing', 'Not now'].map((item, i) => (
-            <View
-              key={item}
-              style={{
-                marginRight: 8,
-                marginTop: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: G.line,
-                backgroundColor: i === 3 ? 'transparent' : G.white,
-              }}
-            >
-              <ILText role="label" color={G.ink} style={{ fontSize: 12 }}>
-                {item}
-              </ILText>
-            </View>
-          ))}
-        </View>
+        <ILGuideWhisperExtras
+          interactive={engageWhisper.interactive}
+          mcq={engageWhisper.mcq}
+          industryOptions={engageWhisper.interactive === 'industry' ? engageIndustryOptions() : []}
+        />
       </ILGuideWhisperLep>
       </View>
     </>
@@ -447,9 +462,6 @@ function RegisteredEngage({ nav, topPad }) {
   );
   const { upcoming, loading: calendarLoading } = useArmyEventCalendar();
   const eventRows = useMemo(() => upcoming.slice(0, 6), [upcoming]);
-  const eventsLatch = useRef(eventRows);
-  if (eventRows.length) eventsLatch.current = eventRows;
-  const stableEventRows = eventRows.length ? eventRows : eventsLatch.current;
 
   return (
     <>
@@ -475,82 +487,21 @@ function RegisteredEngage({ nav, topPad }) {
 
       <View style={{ paddingHorizontal: 20 }}>
       <CmsEngageFeed programId="lep" cmsBatch={cmsBatch} navigation={navigation} />
-      <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'flex-end' }}>
-        <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          Iron Lady Speaks
-        </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-          {PODCASTS.length} episodes · free
-        </ILText>
-      </View>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-        Conversations with women who made the leap
-      </ILText>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        style={{ marginTop: 12, marginHorizontal: -20 }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
-          {PODCASTS.map((ep) => (
-            <Pressable
-              key={ep.assetKey}
-              onPress={() => nav.goWatch({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
-              style={{ width: STORY_CARD_W, marginRight: 12 }}
-            >
-              <WhiteCard
-                style={{
-                  borderRadius: 18,
-                  overflow: 'hidden',
-                  height: STORY_THUMB_H + 12 + 14 + 6 + STORY_TITLE_H + 4 + 16 + 12,
-                }}
-              >
-                <View style={{ height: STORY_THUMB_H, width: '100%', backgroundColor: G.dark }}>
-                  <CoverThumb source={ep.img} height={STORY_THUMB_H} play time={ep.meta} />
-                </View>
-                <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12 }}>
-                  <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9, height: 14 }]} numberOfLines={1}>
-                    {ep.meta}
-                  </ILText>
-                  <ILText
-                    role="label"
-                    color={G.ink}
-                    style={{ marginTop: 6, fontSize: 13, lineHeight: 18, height: STORY_TITLE_H }}
-                    numberOfLines={2}
-                  >
-                    {ep.title}
-                  </ILText>
-                  <ILText
-                    role="bodySm"
-                    color={G.meta}
-                    style={{ marginTop: 4, fontSize: 11, height: 16 }}
-                    numberOfLines={1}
-                  >
-                    {ep.who}
-                  </ILText>
-                </View>
-              </WhiteCard>
-            </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+      <PodcastLibrary nav={nav} />
 
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           Events
         </ILText>
       </View>
-      {calendarLoading && stableEventRows.length === 0 ? (
+      {calendarLoading && eventRows.length === 0 ? (
         <View style={{ marginTop: 12, minHeight: 72 }} />
-      ) : stableEventRows.length === 0 ? (
+      ) : eventRows.length === 0 ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13 }}>
           Upcoming Army events load from the Iron Lady calendar.
         </ILText>
       ) : (
-        stableEventRows.map((ev) => {
+        eventRows.map((ev) => {
           const day = String(Number(ev.dateIso.slice(8, 10)));
           const mon = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'][
             Number(ev.dateIso.slice(5, 7)) - 1
@@ -559,7 +510,7 @@ function RegisteredEngage({ nav, topPad }) {
             <WhiteCard
               key={ev.id}
               style={{ marginTop: 12, borderRadius: 22, padding: 14, flexDirection: 'row', alignItems: 'center' }}
-              onPress={() => openArmyCalendar(ev)}
+              onPress={() => (ev.mode === 'offline' ? nav.goEventDetail(ev) : openArmyCalendar(ev))}
             >
               <View
                 style={{

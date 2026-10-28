@@ -121,7 +121,7 @@ const LIBRARIES = {
     featuredKicker: 'Featured masterclass',
     featuredMeta: '28 mins · Live Case',
     featuredEyebrow: 'Continue LEP',
-    featuredTitle: 'The Shameless Speech',
+    featuredTitle: 'The Shameless Pitch',
     featuredBody: 'Pre-program video. Finish it before Day 1.',
     continueCount: '1 in progress',
     continue: [

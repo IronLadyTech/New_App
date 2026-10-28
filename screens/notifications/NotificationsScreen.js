@@ -16,6 +16,7 @@ import { useLepNav } from '../lep/useLepNav';
 import { isLepEnrolled } from '../../utils/lepState';
 import { noticesFor } from '../../constants/notices';
 import { useParticipantNotifications } from '../../hooks/useParticipantNotifications';
+import { NOTIFICATIONS_INBOX_EMPTY } from '../../utils/learnerBatchDisplay';
 import { navigateFromGo } from '../../utils/navigationFromGo';
 
 // Survives leaving and reopening the screen within a session.
@@ -138,7 +139,7 @@ export default function NotificationsScreen() {
         {useLiveInbox && !live.loading && items.length === 0 ? (
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 18 }}>
             <ILText role="body" color={G.meta} style={{ fontSize: 14, lineHeight: 20 }}>
-              No notifications yet. When CMS events are sent, they appear here and as phone push (if enabled).
+              {NOTIFICATIONS_INBOX_EMPTY}
             </ILText>
           </WhiteCard>
         ) : null}

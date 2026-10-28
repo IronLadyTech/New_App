@@ -1,44 +1,87 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToBatches } from '../services/cms';
 import { resolveLearnerCmsBatch } from '../utils/resolveLearnerCmsBatch';
+
+/** One Firestore listener for all mounted screens — avoids duplicate subs + re-render storms. */
+let sharedBatches = [];
+let sharedError = false;
+let sharedVersion = 0;
+let sharedUnsub = null;
+const sharedListeners = new Set();
+
+function emitShared() {
+  sharedVersion += 1;
+  sharedListeners.forEach((fn) => fn());
+}
+
+function startSharedSubscription() {
+  if (sharedUnsub) return;
+  sharedUnsub = subscribeToBatches(
+    (rows) => {
+      sharedBatches = rows;
+      sharedError = false;
+      emitShared();
+    },
+    (err) => {
+      sharedBatches = [];
+      sharedError = err?.code || true;
+      emitShared();
+    }
+  );
+}
+
+function stopSharedSubscriptionIfIdle() {
+  if (sharedListeners.size > 0 || !sharedUnsub) return;
+  sharedUnsub();
+  sharedUnsub = null;
+}
+
+function subscribeShared(onStoreChange) {
+  sharedListeners.add(onStoreChange);
+  startSharedSubscription();
+  return () => {
+    sharedListeners.delete(onStoreChange);
+    stopSharedSubscriptionIfIdle();
+  };
+}
+
+function getSharedSnapshot() {
+  return sharedVersion;
+}
+
+function useSharedBatchRows(active) {
+  useSyncExternalStore(subscribeShared, getSharedSnapshot, () => 0);
+  if (!active) {
+    return { batches: [], error: false, loading: false };
+  }
+  return {
+    batches: sharedBatches,
+    error: sharedError,
+    loading: sharedVersion === 0 && !sharedError,
+  };
+}
 
 /**
  * Live `cms_batches` doc for the signed-in learner’s LEP cohort (if resolvable).
  */
 export function useLearnerCmsBatch(programId = 'lep') {
   const { user, profile } = useAuth();
-  // Real profiles are `{ id, ...userDoc }` and often carry no `uid` field — use the
-  // signed-in account, so the batch (and CX's calendar changes) always loads.
   const uid = user?.uid || profile?.uid || profile?.id || null;
-  const [batches, setBatches] = useState([]);
-  const [error, setError] = useState(false);
+  const active = Boolean(uid && profile);
 
-  useEffect(() => {
-    if (!uid || !profile) {
-      setBatches([]);
-      setError(false);
-      return undefined;
-    }
-    return subscribeToBatches(
-      (rows) => {
-        setBatches(rows);
-        setError(false);
-      },
-      (err) => {
-        setBatches([]);
-        setError(err?.code || true);
-      }
-    );
-  }, [uid, Boolean(profile)]);
+  const { batches, error, loading } = useSharedBatchRows(active);
 
   const batch = useMemo(
-    () => resolveLearnerCmsBatch(batches, { profile, programId }),
-    [batches, profile, programId]
+    () => (active ? resolveLearnerCmsBatch(batches, { profile, programId }) : null),
+    [active, batches, profile, programId]
   );
 
+  const batchKey = batch?.id || '';
+  const profileKey = profile?.id || profile?.uid || uid || '';
+
   useEffect(() => {
-    if (!__DEV__ || !uid) return;
+    if (!__DEV__ || !active) return;
     const lep = profile?.programAccess?.[programId] || {};
     const s0 = (batch?.sessions || []).find((s) => s.code === 'S0');
     console.log('[cmsBatch]', JSON.stringify({
@@ -54,7 +97,7 @@ export function useLearnerCmsBatch(programId = 'lep') {
         leadStart: profile?.LEP_Reg_Date || null,
       },
     }));
-  }, [uid, error, batches.length, batch, profile, programId]);
+  }, [active, error, batches.length, batchKey, profileKey, programId]);
 
-  return { batch, batches, loading: Boolean(uid) && !batches.length && !error, error };
+  return { batch, batches, loading: active && loading, error };
 }

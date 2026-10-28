@@ -19,6 +19,13 @@ import { refreshMyAccess } from '../../services/functions';
 import { programIdNeedingBalancePayment } from '../../utils/paymentEnrollment';
 import { fetchUserProfile } from '../../services/auth';
 import ILHeader from '../../components/il/ILHeader';
+import {
+  PROFILE_NO_PROGRAM_HINT,
+  PROFILE_REFRESH_ACCESS_LABEL,
+  PROFILE_REFRESH_ACCESS_MENU,
+  PROFILE_TASK_PROGRESS_LABEL,
+} from '../../utils/learnerBatchDisplay';
+import { refreshAccessFeedback } from '../../utils/participantSyncMessage';
 
 function Row({ icon, label, onPress, danger }) {
   return (
@@ -171,10 +178,7 @@ export default function ProfileScreen({ navigation }) {
         </Text>
         <View className="mb-3 rounded-2xl border border-ink-100 bg-white p-4">
           {programs.length === 0 ? (
-            <Text className="text-sm text-ink-500">
-              No program linked yet. Tap “Refresh access” below after Zoho has your LEP seat, or sign in with the
-              mobile number on your registration.
-            </Text>
+            <Text className="text-sm text-ink-500">{PROFILE_NO_PROGRAM_HINT}</Text>
           ) : (
             sortProgramsByCurrentBatch(source, programs).map((p, i) => {
               const batch = buildProgramBatchCard(source, p.id).heading || learnerBatchLabel(source, p.id);
@@ -198,7 +202,7 @@ export default function ProfileScreen({ navigation }) {
                   </Text>
                   <View className="mt-2">
                     <View className="mb-1 flex-row justify-between">
-                      <Text className="text-xs text-ink-500">LMS task progress</Text>
+                      <Text className="text-xs text-ink-500">{PROFILE_TASK_PROGRESS_LABEL}</Text>
                       <Text className="text-xs text-brand-700">
                         {progressByProgram[p.id]?.percent ?? 0}%
                       </Text>
@@ -256,19 +260,20 @@ export default function ProfileScreen({ navigation }) {
         />
         <Row
           icon="refresh-outline"
-          label="Just paid? Refresh access"
+          label={PROFILE_REFRESH_ACCESS_MENU}
           onPress={async () => {
             const data = await refreshMyAccess();
             const freshProfile = user?.uid ? await fetchUserProfile(user.uid).catch(() => null) : null;
             if (freshProfile) patchProfile(freshProfile);
             const batch = learnerBatchLabel(freshProfile || profile, 'lep');
+            const base = refreshAccessFeedback(data);
             const hint =
-              data?.ok === false
-                ? 'We could not refresh right now. Try again in a minute.'
+              batch && data?.ok !== false
+                ? `${base} Your batch: ${batch}.`
                 : batch
                   ? `Your batch: ${batch}.`
-                  : 'You are up to date. If your batch is missing, contact support@ironlady.tech.';
-            Alert.alert('Access refreshed', hint);
+                  : base;
+            Alert.alert(PROFILE_REFRESH_ACCESS_LABEL, hint);
           }}
         />
         <Row

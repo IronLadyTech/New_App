@@ -35,7 +35,7 @@ export const REG_PRACTICE = [
 
 export const ENR_PRACTICE = [
   { id: 'e1', title: 'Revise Principle 3 from the 27 Principles', meta: 'Daily revision · 2 min', done: true, programId: 'lep', practiceId: 'lep-principle' },
-  { id: 'e2', title: 'Watch The Shameless Speech', meta: 'Pre-work · 22 min', done: false, programId: 'lep', practiceId: 'lep-shameless' },
+  { id: 'e2', title: 'Watch The Shameless Pitch', meta: 'Pre-work · 22 min', done: false, programId: 'lep', practiceId: 'lep-shameless' },
   { id: 'e3', title: 'Tick one item on your Get ready checklist', meta: 'Checklist · 1 min', done: false, programId: 'lep', practiceId: 'lep-get-ready' },
   { id: 'e4', title: 'Fill the ERRC Table', meta: 'Day 1 framework · 10 min', done: false, programId: 'lep', taskId: 'lep-day1-errc' },
 ];
@@ -76,7 +76,7 @@ export const PREWORK = [
   },
   {
     n: '02',
-    title: 'The Shameless Speech',
+    title: 'The Shameless Pitch',
     sub: 'Unlearning boardroom modesty and anchoring in unapologetic authority.',
     min: '22 mins',
     done: false,
@@ -85,12 +85,23 @@ export const PREWORK = [
   },
 ];
 
+/** After Day 1 + Day 2 — same Home “watch” card pattern as PREWORK (LEP_Flow). */
+export const RITUALS_WATCH = {
+  n: '01',
+  title: '5 Daily Rituals',
+  sub: 'Mirror work, A-Game, request, gratitude, and B-HAG — every morning',
+  min: '18m',
+  done: false,
+  practiceId: 'lep-rituals',
+  thumb: PREWORK_THUMBS['lep-rituals'],
+};
+
 export const GET_READY = [
-  { title: 'Login to your program', done: true },
-  { title: 'Test your webcam', done: true },
-  { title: 'Check stable internet', done: true },
-  { title: 'Keep an executive notebook ready', done: false },
-  { title: 'Block calendar for both days', done: false },
+  { id: 'laptop', title: 'Log in on your laptop', done: false },
+  { id: 'webcam', title: 'Test your webcam', done: false },
+  { id: 'internet', title: 'Check stable internet (25+ Mbps)', done: false },
+  { id: 'notebook', title: 'Keep an executive notebook ready', done: false },
+  { id: 'calendar', title: 'Block calendar for both days', done: false },
 ];
 
 export const PHASES = [
@@ -177,7 +188,7 @@ export const LEARN_CHIPS_ENR = ['For you', 'Principles', 'Case studies', 'Events
 export const PRINCIPLES_OPEN = [
   { n: '01', title: 'Ask for what you want', min: '12 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
   { n: '02', title: 'Own the room before you speak', min: '14 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
-  { n: '03', title: 'The shameless speech', min: '22 min', track: 'Foundation', state: 'Resume', practiceId: 'lep-shameless' },
+  { n: '03', title: 'The shameless pitch', min: '22 min', track: 'Foundation', state: 'Resume', practiceId: 'lep-shameless' },
   { n: '04', title: 'Build your board of advocates', min: '16 min', track: 'Foundation', state: 'Start', practiceId: 'lep-principles-video' },
 ];
 
@@ -190,7 +201,7 @@ export const PRINCIPLES_LOCKED = [
 
 export const LEARN_CONTINUE = [
   {
-    tag: 'C-SUITE · TECHNOLOGY',
+    tag: 'CASE STUDY · CYBER',
     title: "Technology isn’t a cost. It’s a growth multiplier.",
     left: '',
     pct: 0,
@@ -201,7 +212,7 @@ export const LEARN_CONTINUE = [
     who: 'Radhika Sharma',
   },
   {
-    tag: 'C-SUITE · AI',
+    tag: 'INNOVATION · AI',
     title: 'AI accelerates innovation. Governance protects everything.',
     left: '',
     pct: 0,
@@ -256,7 +267,7 @@ export const LEARN_CITIES_ENR = ['Bengaluru', 'Pune', 'Mumbai', 'Delhi NCR', 'Hy
 
 export const LEARN_CONTINUE_ENR = [
   {
-    tag: 'C-SUITE · TECHNOLOGY',
+    tag: 'CASE STUDY · CYBER',
     title: 'From chaos to cyber resilience',
     who: 'Priyanka Sunder',
     left: '8m left',
@@ -265,7 +276,7 @@ export const LEARN_CONTINUE_ENR = [
     img: COVER.priyanka,
   },
   {
-    tag: 'C-SUITE · LEADERSHIP',
+    tag: 'LEADERSHIP · MANAGEMENT',
     title: 'Pygmalion Effect in Management',
     who: 'Kamini Chawla',
     left: '',
@@ -296,7 +307,7 @@ export const LEARN_WHISPER_ENR = 'Tell me your city and I’ll show you events n
 export const PRINCIPLES_FOUND_ENR = [
   { n: '01', title: 'Ask for what you want', min: '12 min', state: 'DONE' },
   { n: '02', title: 'Own the room before you speak', min: '14 min', state: 'DONE' },
-  { n: '03', title: 'The shameless speech', min: '22 min', state: 'DONE' },
+  { n: '03', title: 'The shameless pitch', min: '22 min', state: 'DONE' },
   { n: '04', title: 'Build your board of advocates', min: '16 min', state: 'DONE' },
 ];
 

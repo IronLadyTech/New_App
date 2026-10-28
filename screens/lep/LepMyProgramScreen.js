@@ -18,6 +18,11 @@ import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
 import { useCmsEngagePosts } from '../../hooks/useCmsLearnerItems';
 import { buildLepCohortView, nextCommunityCircleIso } from '../../utils/lepCohortView';
+import {
+  BATCH_SESSIONS_PENDING,
+  COHORT_SUBLINE_FALLBACK,
+  formatLearnerFacingBatchTitle,
+} from '../../utils/learnerBatchDisplay';
 import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 import { isLepEnrolled } from '../../utils/lepState';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
@@ -112,9 +117,9 @@ export default function LepMyProgramScreen({ route }) {
           <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
         </View>
         {tab === 'Journey' ? (
-          <JourneyBody locked={!enrolled} alumniGraduate={alumniGraduate} />
+          <JourneyBody cmsBatch={cmsBatch} locked={!enrolled} alumniGraduate={alumniGraduate} />
         ) : tab === 'Sessions' ? (
-          <SessionsBody enrolled={enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
+          <SessionsBody cmsBatch={cmsBatch} enrolled={enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
         ) : (
           <CohortBody
             preview={!enrolled}
@@ -189,9 +194,8 @@ function UnlockRest({ onEnroll }) {
   );
 }
 
-function JourneyBody({ locked = false, alumniGraduate = false }) {
+function JourneyBody({ cmsBatch, locked = false, alumniGraduate = false }) {
   const nav = useLepNav();
-  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
   return (
     <View style={{ marginTop: 18 }}>
@@ -221,11 +225,10 @@ function filterRegisteredSessions(list) {
   });
 }
 
-function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
+function SessionsBody({ cmsBatch, enrolled = false, alumniGraduate = false, onEnroll }) {
   const nav = useLepNav();
   const { profile } = useAuth();
   const { events } = useCourses();
-  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const navigation = useNavigation();
   const recordings = useCmsSessionRecordings('lep', cmsBatch);
   const ALUMNI_COMPLETE_GREEN = '#1F7A4D';
@@ -292,7 +295,7 @@ function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
     return split;
   }, [cmsBatch, day1Iso, events, batchId, batchLabel, enrolled]);
 
-  const sessionBatchLabel = cmsBatch?.name || batchLabel;
+  const sessionBatchLabel = formatLearnerFacingBatchTitle(cmsBatch?.name || batchLabel) || batchLabel;
   const hasBatch = Boolean(cmsBatch?.id || day1Iso || (batchId && batchId !== 'default') || batchLabel);
   const archiveSessions = useMemo(() => {
     if (!alumniGraduate) return [];
@@ -406,7 +409,7 @@ function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 14, lineHeight: 20 }}>
             {!hasBatch
               ? 'Your batch sessions will show here once your batch date is set.'
-              : 'Session dates will appear here when your batch is linked in CMS.'}
+              : BATCH_SESSIONS_PENDING}
           </ILText>
         ) : (
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
@@ -510,7 +513,7 @@ function SessionsBody({ enrolled = false, alumniGraduate = false, onEnroll }) {
 function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll }) {
   const nav = useLepNav();
   const batchShort = cohort?.batchTitle || 'Your cohort';
-  const subline = cohort?.subline || 'Batch dates appear when your cohort is linked.';
+  const subline = cohort?.subline || COHORT_SUBLINE_FALLBACK;
   const circles = cohort?.communityCircles?.length ? cohort.communityCircles : CIRCLE;
   const weekRows = cohort?.weekRows || [];
   const extraLabel = cohort?.extraMemberLabel;

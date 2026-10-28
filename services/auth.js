@@ -17,6 +17,7 @@ import {
   syncPasswordResetToZoho,
   syncCredentialBeforeReset,
 } from './functions';
+import { sanitizeParticipantDetail } from '../utils/participantSyncMessage';
 
 /**
  * Create account + Firestore users/{uid} profile.
@@ -110,10 +111,13 @@ function zohoLoginHint(zohoProvision) {
     return 'No registration account found for this email yet. Complete Pre-IL registration payment first, or contact support.';
   }
   if (zohoProvision?.alreadyExists) {
-    return 'An LMS account already exists for this email with a different password. Use Forgot password.';
+    return 'An account already exists for this email with a different password. Use Forgot password.';
   }
   if (zohoProvision?.ok === false && zohoReason) {
-    return `Sign-in failed: ${zohoReason}`;
+    const detail = sanitizeParticipantDetail(zohoReason);
+    return detail
+      ? `Sign-in failed: ${detail}`
+      : 'Invalid email or password. Use your registration email and the password from your Iron Lady welcome email.';
   }
   return 'Invalid email or password. Use your registration email and the password from your Iron Lady welcome email.';
 }

@@ -3,7 +3,7 @@ import 'react-native-gesture-handler';
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import { lockPortrait } from './hooks/useVideoOrientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -51,7 +51,7 @@ function Root() {
 
   useEffect(() => {
     if (admin) return;
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    lockPortrait();
   }, [admin]);
 
   const appReady = fontsReady || gaveUp;

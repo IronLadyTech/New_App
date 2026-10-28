@@ -464,3 +464,94 @@ export function armyEventCalendarUrl(event) {
   const details = encodeURIComponent(event.sourceText || event.meta || 'Iron Lady Army');
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&ctz=Asia%2FKolkata`;
 }
+
+/** Match learner city chip to event city (Bengaluru / Delhi NCR, etc.). */
+export function armyEventCityMatches(eventCity, filterCity) {
+  const a = String(eventCity || '').toLowerCase();
+  const b = String(filterCity || '')
+    .toLowerCase()
+    .replace(/\s+ncr$/, '');
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes('delhi') && b.includes('delhi')) return true;
+  if ((a.includes('bengaluru') || a.includes('bangalore')) && b.includes('bengaluru')) return true;
+  if (a.includes('mumbai') && b.includes('mumbai')) return true;
+  if (a.includes('pune') && b.includes('pune')) return true;
+  if (a.includes('hyderabad') && b.includes('hyderabad')) return true;
+  return false;
+}
+
+/** Next in-person chapter meetup — prefer the learner’s city, always the nearest future date. */
+export function nextRegionalChapterEvent(events, { city } = {}) {
+  const offline = futureArmyEventsSorted(events).filter((ev) => ev.mode === 'offline');
+  if (!offline.length) return null;
+  if (city) {
+    const local = offline.find((ev) => armyEventCityMatches(ev.city, city));
+    if (local) return local;
+  }
+  return offline[0];
+}
+
+const DOW_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export function armyEventDateBadge(event) {
+  if (!event?.dateIso) return { mon: '', day: '', dow: '' };
+  const y = Number(event.dateIso.slice(0, 4));
+  const m = Number(event.dateIso.slice(5, 7)) - 1;
+  const d = Number(event.dateIso.slice(8, 10));
+  const date = new Date(y, m, d);
+  return {
+    mon: MON[m]?.toUpperCase() || '',
+    day: String(d),
+    dow: DOW[date.getDay()]?.slice(0, 3).toUpperCase() || '',
+  };
+}
+
+export function armyEventLongDateLine(event) {
+  if (!event?.dateIso) return { weekdayDate: '', timeRange: '' };
+  const y = Number(event.dateIso.slice(0, 4));
+  const m = Number(event.dateIso.slice(5, 7)) - 1;
+  const d = Number(event.dateIso.slice(8, 10));
+  const date = new Date(y, m, d);
+  const monthName = new Intl.DateTimeFormat('en-IN', { month: 'long', timeZone: 'UTC' }).format(
+    new Date(Date.UTC(y, m, d))
+  );
+  const weekdayDate = `${DOW_LONG[date.getDay()]}, ${d} ${monthName}`;
+  const time = event.timeLabel || '10:00 AM';
+  return { weekdayDate, timeRange: `${time} – ${endTimeLabel(event)}` };
+}
+
+function endTimeLabel(event) {
+  const start = event.startHour24 ?? 10;
+  const end = Math.min(start + 3, 23);
+  const h = end % 12 || 12;
+  const ap = end >= 12 ? 'PM' : 'AM';
+  return `${h}:00 ${ap}`;
+}
+
+export function chapterMeetupHeadline(event) {
+  if (!event) return 'Chapter meetup';
+  if (event.city) return `${event.city} chapter meetup`;
+  if (/chapter/i.test(event.seriesTitle || '')) return event.seriesTitle;
+  return event.title || 'Chapter meetup';
+}
+
+export function armyEventTicketWhen(event) {
+  if (!event) return '';
+  const badge = armyEventDateBadge(event);
+  const city = event.city || 'In person';
+  return `${badge.dow ? `${badge.dow} ${badge.day} ${badge.mon}` : event.whenLabel} · ${event.timeLabel || ''} · ${city}`.replace(
+    /\s·\s·/g,
+    ' · '
+  );
+}
+
+export function armyEventRouteParams(event) {
+  if (!event?.id) return undefined;
+  return { eventId: event.id };
+}
+
+export function resolveArmyEventById(events, eventId) {
+  if (!eventId || !events?.length) return null;
+  return events.find((ev) => ev.id === eventId) || null;
+}

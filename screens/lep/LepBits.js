@@ -68,7 +68,7 @@ export function DarkHero({ children, style }) {
   );
 }
 
-export function CoverThumb({ source, height, play, time, radius = 0 }) {
+export function CoverThumb({ source, height, play, time, timeAlign = 'left', radius = 0 }) {
   return (
     <View
       style={{
@@ -102,11 +102,12 @@ export function CoverThumb({ source, height, play, time, radius = 0 }) {
         <View
           style={{
             position: 'absolute',
-            left: 10,
+            left: timeAlign === 'left' ? 10 : undefined,
+            right: timeAlign === 'right' ? 10 : undefined,
             bottom: 10,
-            backgroundColor: 'rgba(17,55,68,0.88)',
-            borderRadius: 6,
-            paddingHorizontal: 7,
+            backgroundColor: 'rgba(0,0,0,0.78)',
+            borderRadius: 4,
+            paddingHorizontal: 6,
             paddingVertical: 3,
           }}
         >

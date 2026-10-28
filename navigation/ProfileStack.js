@@ -1,6 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LepProfileScreen from '../screens/lep/LepProfileScreen';
+import NotificationsScreen from '../screens/notifications/NotificationsScreen';
+import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
+import LegalWebScreen from '../screens/profile/LegalWebScreen';
+import PrivacyCenterScreen from '../screens/profile/PrivacyCenterScreen';
 import {
   LepCertificateScreen,
   LepNudgeSettingsScreen,
@@ -13,6 +17,10 @@ export default function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileHome" component={LepProfileScreen} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} />
+      <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen name="LegalWeb" component={LegalWebScreen} />
+      <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />
       <Stack.Screen name="LepProgress" component={LepProgressScreen} />
       <Stack.Screen
         name="WeeklyBrief"

@@ -501,7 +501,7 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
           </ILText>
         </View>
         <ILText role="bodySm" color={G.meta} style={{ fontSize: 11 }}>
-          Synced from Zoho
+          On your account
         </ILText>
       </View>
       <View style={{ marginTop: 14, backgroundColor: FILL, borderRadius: 14, padding: 14 }}>

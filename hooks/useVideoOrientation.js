@@ -20,7 +20,7 @@ export async function lockLandscape() {
   }
 }
 
-/** Lock landscape while a video is fullscreen; restore portrait when it closes. */
+/** Lock landscape only while in-app fullscreen video; restore portrait when it closes. */
 export function useVideoLandscape(active) {
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -28,11 +28,17 @@ export function useVideoLandscape(active) {
       if (!orientation) return undefined;
       if (active) orientation.lock?.('landscape').catch(() => {});
       else orientation.unlock?.();
-      return () => orientation.unlock?.();
+      return () => {
+        orientation.unlock?.();
+      };
     }
 
-    if (active) lockLandscape();
-    else lockPortrait();
+    if (!active) {
+      lockPortrait();
+      return undefined;
+    }
+
+    lockLandscape();
 
     return () => {
       lockPortrait();

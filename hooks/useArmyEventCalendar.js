@@ -12,7 +12,7 @@ import {
 let cache = { at: 0, events: null, error: null, version: 0 };
 const TTL_MS = 15 * 60 * 1000;
 /** Bump when sheet sources / parse rules change so stale cache is dropped. */
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 async function loadSheetEvents() {
   const now = Date.now();

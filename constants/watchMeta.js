@@ -217,15 +217,15 @@ const PRACTICE_META = {
   },
   'lep-shameless': {
     tag: 'LEP pre-work',
-    series: 'Shameless Speech',
+    series: 'Shameless Pitch',
     takeaways: [
       'Modesty is often trained; authority can be relearned.',
-      'The shameless speech names who you are without apology.',
+      'The shameless pitch names who you are without apology.',
       'Boardrooms reward clarity of identity, not humility theatre.',
     ],
     prompt: 'Finish this sentence: “I am the woman who…”',
     practiceId: 'lep-shameless',
-    practiceLabel: 'Practice shameless speech',
+    practiceLabel: 'Practice shameless pitch',
   },
 };
 

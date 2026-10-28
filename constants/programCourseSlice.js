@@ -269,10 +269,13 @@ export const COURSE_TASKS = {
       phase: "week-1",
       order: 480,
       title: "Week 1 Engagement Form",
-      type: TASK_TYPES.LINK,
-      kind: "Link",
-      description: "Complete the week 1 engagement form.",
+      type: TASK_TYPES.TEXT,
+      kind: "Write",
+      description:
+        "A short check-in for your cohort team: what breakthrough you are working toward, what inspires you right now (a case study, a moment, or a goal), and how you are engaging with the program this week.",
       week: "Week 1",
+      placeholder:
+        "Breakthrough I am working toward:\n\nWhat inspires me right now:\n\nHow I am engaging this week:",
     },
     {
       id: "lep-challenge-1",

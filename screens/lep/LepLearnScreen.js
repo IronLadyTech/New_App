@@ -9,6 +9,8 @@ import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
+import { usePrograms } from '../../context/ProgramsContext';
+import { PROGRAMS } from '../../constants/programs';
 import { isLepEnrolled } from '../../utils/lepState';
 import { CoverThumb, GuideFace, LepHeader, Page, PillRow, SectionHead, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
@@ -24,8 +26,6 @@ import {
   LEARN_CITIES_ENR,
   LEARN_CONTINUE,
   LEARN_CONTINUE_ENR,
-  LEARN_EVENT_ENR,
-  LEARN_EVENT_REG,
   LEARN_EVENTS_LOCKED,
   LEARN_FRESH,
   LEARN_FRESH_ENR,
@@ -41,9 +41,26 @@ import {
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
+import ILGuideWhisperExtras from '../../components/il/ILGuideWhisperExtras';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
-import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
+import {
+  armyEventCalendarUrl,
+  armyEventModeLabel,
+  nextRegionalChapterEvent,
+} from '../../utils/armyEventCalendar';
+import ArmyRegionalEventCard from '../../components/lep/ArmyRegionalEventCard';
+import { learnerCityText } from '../../utils/programAccess';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
+import { resolveLearnWhisper } from '../../utils/ilGuideProfilePrompts';
+import {
+  learnFeaturedHeadline,
+  learnPickContinueRows,
+  learnPickFeaturedCase,
+  learnShelfForCase,
+  LEARN_FRESH_SHELF,
+  LEARN_CASE_INSPIRATION_CARD,
+  LEARN_CASE_INSPIRATION_TASK_ID,
+} from '../../utils/learnMediaShelves';
 import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
 
 export default function LepLearnScreen() {
@@ -86,13 +103,15 @@ export default function LepLearnScreen() {
                 }}
               />
             ) : chip === 'Case studies' ? (
-              <CasesEnrolled onMark={nav.goMyProgram} />
+              <CasesEnrolled
+                onShareReflection={() => nav.goCourseTask('lep', LEARN_CASE_INSPIRATION_TASK_ID)}
+              />
             ) : chip === 'Events' ? (
-              <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goTicket} />
+              <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goEventDetail} />
             ) : chip === 'Community stories' ? (
               <StoriesEnrolled onHow={nav.goEngage} />
             ) : (
-              <EnrolledForYou onTicket={nav.goTicket} />
+              <EnrolledForYou onTicket={nav.goEventDetail} onWatch={nav.goWatch} />
             )}
           </>
         ) : (
@@ -106,12 +125,12 @@ export default function LepLearnScreen() {
             ) : chip === 'Case studies' ? (
               <CasesPane onEnroll={nav.goEnroll} onWatch={nav.goWatch} />
             ) : chip === 'Events' ? (
-              <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
+              <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goEventDetail} />
             ) : (
               <ForYouPane
                 enrolled={false}
                 onEnroll={nav.goEnroll}
-                onTicket={nav.goTicket}
+                onTicket={nav.goEventDetail}
                 onPractice={nav.goPractice}
                 onWatch={nav.goWatch}
               />
@@ -180,6 +199,18 @@ function RegisteredHead({ chip }) {
 }
 
 function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
+  const { profile, user } = useAuth();
+  const { upcoming, loading: calLoading } = useArmyEventCalendar();
+  const regional = useMemo(
+    () => nextRegionalChapterEvent(upcoming, { city: learnerCityText(profile) }),
+    [upcoming, profile]
+  );
+  const learnWhisper = useMemo(
+    () => resolveLearnWhisper(profile, user?.uid, LEARN_WHISPER),
+    [profile, user?.uid]
+  );
+  const featured = useMemo(() => learnPickFeaturedCase(profile, CASES_ENR), [profile]);
+  const headline = useMemo(() => learnFeaturedHeadline(profile), [profile]);
   const openWatch = (item) => {
     if (item.practiceId) onPractice?.('lep', item.practiceId);
     else if (item.assetKey) onWatch?.({ assetKey: item.assetKey, title: item.title, sub: item.who || item.meta });
@@ -189,28 +220,37 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
     <>
       <Pressable
         onPress={() =>
-          onWatch?.({
-            assetKey: 'csuite:radhika',
-            title: "Technology isn't a cost. It's a growth multiplier.",
-            sub: 'Radhika Sharma · Technology',
-          })
+          featured
+            ? onWatch?.({
+                assetKey: featured.assetKey,
+                title: featured.title,
+                sub: featured.who,
+              })
+            : onEnroll?.()
         }
         style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}
       >
         <View style={{ aspectRatio: 16 / 9 }}>
-          <CoverThumb source={COVER.radhika} height="100%" play />
+          <CoverThumb source={featured?.img || COVER.radhika} height="100%" play />
         </View>
       </Pressable>
       <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
-        PICKED FOR WOMEN IN TECHNOLOGY IN BENGALURU
+        {headline.toUpperCase()}
       </ILText>
+      {featured ? (
+        <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 6, fontSize: 9 }]}>
+          {learnShelfForCase(featured)}
+        </ILText>
+      ) : null}
       <Pressable
         onPress={() =>
-          onWatch?.({
-            assetKey: 'csuite:radhika',
-            title: "Technology isn’t a cost. It’s a growth multiplier.",
-            sub: 'Radhika Sharma · Technology',
-          })
+          featured
+            ? onWatch?.({
+                assetKey: featured.assetKey,
+                title: featured.title,
+                sub: featured.who,
+              })
+            : onEnroll?.()
         }
       >
         <ILText role="label" color={G.cta} style={{ marginTop: 6, fontSize: 13 }}>
@@ -284,82 +324,24 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Upcoming events near you" />
       </View>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16 }} onPress={onTicket}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            {LEARN_EVENT_REG.kicker}
-          </ILText>
-          <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-            {LEARN_EVENT_REG.when}
-          </ILText>
-        </View>
-        <ILText
-          role="title"
-          color={G.ink}
-          style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
-        >
-          {LEARN_EVENT_REG.title}
+      {regional ? (
+        <ArmyRegionalEventCard event={regional} onPress={() => onTicket?.(regional)} />
+      ) : calLoading ? null : (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13 }}>
+          No chapter meetups scheduled near you yet — the Iron Lady calendar updates weekly.
         </ILText>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-          <MaterialIcons name="place" size={14} color={G.meta} />
-          <ILText role="bodySm" color={G.meta} style={{ marginLeft: 4, fontSize: 13 }}>
-            {LEARN_EVENT_REG.place}
-          </ILText>
-        </View>
-        <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {[0, 1].map((i) => (
-              <Image
-                key={i}
-                source={FACE}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  marginLeft: i ? -8 : 0,
-                  borderWidth: 2,
-                  borderColor: G.white,
-                }}
-              />
-            ))}
-            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 12 }}>
-              {LEARN_EVENT_REG.who}
-            </ILText>
-          </View>
-          <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }}>
-            <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-              RSVP
-            </ILText>
-          </View>
-        </View>
-      </WhiteCard>
+      )}
 
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.LEARN}
-        fallbackQuote={LEARN_WHISPER}
+        fallbackQuote={learnWhisper.quote}
         subtitle="This week"
       >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
-          {LEARN_CITIES.map((city, i) => (
-            <View
-              key={city}
-              style={{
-                marginRight: 8,
-                marginTop: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: i === 0 ? G.mutedFill : G.white,
-                borderWidth: 1,
-                borderColor: G.line,
-              }}
-            >
-              <ILText role="label" color={G.ink} style={{ fontSize: 12 }}>
-                {city}
-              </ILText>
-            </View>
-          ))}
-        </View>
+        <ILGuideWhisperExtras
+          interactive={learnWhisper.interactive}
+          mcq={learnWhisper.mcq}
+          cityOptions={learnWhisper.interactive === 'city' ? LEARN_CITIES : []}
+        />
       </ILGuideWhisperLep>
 
       {!enrolled ? <UnlockCard onEnroll={onEnroll} /> : null}
@@ -728,7 +710,7 @@ function openArmyEventCal(event) {
   if (url) Linking.openURL(url).catch(() => {});
 }
 
-function ArmyEventRows({ events, emptyLabel = 'Upcoming Army events load from the Iron Lady calendar.' }) {
+function ArmyEventRows({ events, onOpenEvent, emptyLabel = 'Upcoming Army events load from the Iron Lady calendar.' }) {
   if (!events.length) {
     return (
       <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13, lineHeight: 18 }}>
@@ -743,7 +725,10 @@ function ArmyEventRows({ events, emptyLabel = 'Upcoming Army events load from th
     return (
       <WhiteCard
         key={e.id}
-        onPress={() => openArmyEventCal(e)}
+        onPress={() => {
+          if (onOpenEvent && e.mode === 'offline') onOpenEvent(e);
+          else openArmyEventCal(e);
+        }}
         style={{
           marginTop: 10,
           borderRadius: 18,
@@ -841,7 +826,7 @@ function EventsPane({ onEnroll, onTicket }) {
       <View style={{ marginTop: 22 }}>
         <SectionHead title="Open to every member" accent={`${openEvents.length} upcoming`} />
       </View>
-      <ArmyEventRows events={openEvents} />
+      <ArmyEventRows events={openEvents} onOpenEvent={onTicket} />
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Cohort rooms" accent="After enrollment" />
@@ -923,15 +908,38 @@ function UnlockCard({ onEnroll }) {
   );
 }
 
-function EnrolledForYou({ onTicket }) {
-  const [city, setCity] = useState('Pune');
+function EnrolledForYou({ onTicket, onWatch }) {
+  const { profile, user } = useAuth();
+  const { upcoming, loading: calLoading } = useArmyEventCalendar();
+  const regional = useMemo(
+    () => nextRegionalChapterEvent(upcoming, { city: learnerCityText(profile) }),
+    [upcoming, profile]
+  );
+  const learnWhisper = useMemo(
+    () => resolveLearnWhisper(profile, user?.uid, LEARN_WHISPER_ENR),
+    [profile, user?.uid]
+  );
+  const featured = useMemo(() => learnPickFeaturedCase(profile, CASES_ENR), [profile]);
+  const continueRows = useMemo(
+    () => learnPickContinueRows(profile, CASES_ENR, LEARN_CONTINUE_ENR),
+    [profile]
+  );
+  const headline = useMemo(() => learnFeaturedHeadline(profile), [profile]);
+  const openWatch = (item) => {
+    if (!item?.assetKey) return;
+    onWatch?.({ assetKey: item.assetKey, title: item.title, sub: item.who || item.meta });
+  };
+
   return (
     <>
-      <View style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+      <Pressable
+        onPress={() => featured && openWatch(featured)}
+        style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}
+      >
         <View style={{ aspectRatio: 16 / 9 }}>
-          <CoverThumb source={COVER.priyanka} play />
+          <CoverThumb source={featured?.img || COVER.priyanka} height="100%" play />
         </View>
-      </View>
+      </Pressable>
       <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
         TARGETED RECOMMENDATION
       </ILText>
@@ -940,46 +948,53 @@ function EnrolledForYou({ onTicket }) {
         color={G.ink}
         style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
       >
-        Picked for women in Technology in Bengaluru
+        {headline}
       </ILText>
       <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-        Priyanka Sunder · Cybersecurity & Information Security
+        {featured?.who || 'Priyanka Sunder · Cybersecurity & Information Security'}
       </ILText>
+      {featured ? (
+        <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 8, fontSize: 9 }]}>
+          {learnShelfForCase(featured)}
+        </ILText>
+      ) : null}
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Continue watching" accent="2 in progress" />
+        <SectionHead title="Continue watching" accent={`${continueRows.length} in progress`} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {LEARN_CONTINUE_ENR.map((item) => (
-            <WhiteCard key={item.title} style={{ width: 248, marginRight: 12, borderRadius: 22, overflow: 'hidden' }}>
-              <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-                <CoverThumb source={item.img} play time={item.left} />
-                <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: G.mutedFill }}>
-                  <View style={{ width: `${item.pct}%`, height: 3, backgroundColor: G.cta }} />
+          {continueRows.map((item) => (
+            <Pressable key={item.title} onPress={() => openWatch(item)} style={{ marginRight: 12 }}>
+              <WhiteCard style={{ width: 248, borderRadius: 22, overflow: 'hidden' }}>
+                <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                  <CoverThumb source={item.img} play time={item.left} />
+                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: G.mutedFill }}>
+                    <View style={{ width: `${item.pct}%`, height: 3, backgroundColor: G.cta }} />
+                  </View>
                 </View>
-              </View>
-              <View style={{ padding: 14 }}>
-                <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-                  {item.tag}
-                </ILText>
-                <ILText
-                  role="title"
-                  color={G.ink}
-                  style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 22 }}
-                >
-                  {item.title}
-                </ILText>
-                <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                    {item.pct}% completed
+                <View style={{ padding: 14 }}>
+                  <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+                    {item.tag}
                   </ILText>
-                  <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                    {item.cta}
+                  <ILText
+                    role="title"
+                    color={G.ink}
+                    style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 22 }}
+                  >
+                    {item.title}
                   </ILText>
+                  <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
+                      {item.pct}% completed
+                    </ILText>
+                    <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+                      {item.cta}
+                    </ILText>
+                  </View>
                 </View>
-              </View>
-            </WhiteCard>
+              </WhiteCard>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
@@ -1022,6 +1037,11 @@ function EnrolledForYou({ onTicket }) {
               <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }} numberOfLines={1}>
                 {item.meta}
               </ILText>
+              {i === 0 ? (
+                <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 4, fontSize: 8 }]}>
+                  {LEARN_FRESH_SHELF}
+                </ILText>
+              ) : null}
             </View>
             <MaterialIcons name="bookmark-border" size={16} color={G.meta} />
           </View>
@@ -1041,101 +1061,24 @@ function EnrolledForYou({ onTicket }) {
           Chapter Hub
         </ILText>
       </View>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16 }} onPress={onTicket}>
-        <View style={{ flexDirection: 'row' }}>
-          <View
-            style={{
-              width: 56,
-              borderRadius: 16,
-              backgroundColor: G.dark,
-              alignItems: 'center',
-              paddingVertical: 8,
-            }}
-          >
-            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
-              {LEARN_EVENT_ENR.mon}
-            </ILText>
-            <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 24 }}>
-              {LEARN_EVENT_ENR.day}
-            </ILText>
-            <ILText role="eyebrow" color="rgba(255,255,255,0.6)" style={[af, { fontSize: 8 }]}>
-              {LEARN_EVENT_ENR.dow}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <MaterialIcons name="place" size={12} color={G.meta} />
-              <ILText role="bodySm" color={G.meta} style={{ marginLeft: 4, fontSize: 12 }}>
-                {LEARN_EVENT_ENR.place}
-              </ILText>
-            </View>
-            <ILText
-              role="title"
-              color={G.ink}
-              style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
-            >
-              {LEARN_EVENT_ENR.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-              {LEARN_EVENT_ENR.sub}
-            </ILText>
-          </View>
-        </View>
-        <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {[0, 1, 2].map((i) => (
-              <Image
-                key={i}
-                source={FACE}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  marginLeft: i ? -8 : 0,
-                  borderWidth: 2,
-                  borderColor: G.white,
-                }}
-              />
-            ))}
-            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 12 }}>
-              {LEARN_EVENT_ENR.who}
-            </ILText>
-          </View>
-          <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }}>
-            <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-              RSVP
-            </ILText>
-          </View>
-        </View>
-      </WhiteCard>
+      {regional ? (
+        <ArmyRegionalEventCard event={regional} onPress={() => onTicket?.(regional)} />
+      ) : calLoading ? null : (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 13 }}>
+          No chapter meetups scheduled near you yet.
+        </ILText>
+      )}
 
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.LEARN}
-        fallbackQuote={LEARN_WHISPER_ENR}
+        fallbackQuote={learnWhisper.quote}
         subtitle="Executive Mentor"
       >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
-          {LEARN_CITIES_ENR.map((c) => (
-            <Pressable
-              key={c}
-              onPress={() => setCity(c)}
-              style={{
-                marginRight: 8,
-                marginTop: 6,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: city === c ? G.dark : G.white,
-                borderWidth: 1,
-                borderColor: city === c ? G.dark : G.line,
-              }}
-            >
-              <ILText role="label" color={city === c ? '#FFFFFF' : G.ink} style={{ fontSize: 12 }}>
-                {c}
-              </ILText>
-            </Pressable>
-          ))}
-        </View>
+        <ILGuideWhisperExtras
+          interactive={learnWhisper.interactive}
+          mcq={learnWhisper.mcq}
+          cityOptions={learnWhisper.interactive === 'city' ? LEARN_CITIES_ENR : []}
+        />
       </ILGuideWhisperLep>
       <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', marginTop: 18, fontSize: 12 }}>
         Curated for Iron Lady Cohorts · 100% confidential leadership tracks
@@ -1390,8 +1333,10 @@ function PrinciplesEnrolled({ onPrinciple }) {
   );
 }
 
-function CasesEnrolled({ onMark }) {
+function CasesEnrolled({ onShareReflection }) {
   const [fn, setFn] = useState('Technology');
+  const { getTaskSubmission } = usePrograms();
+  const inspirationSaved = getTaskSubmission(PROGRAMS.LEP, LEARN_CASE_INSPIRATION_TASK_ID);
   const list = CASES_ENR.filter((c) => c.fn === fn);
   const feat = list.find((c) => c.featured) || list[0];
   const more = list.filter((c) => c !== feat);
@@ -1437,7 +1382,7 @@ function CasesEnrolled({ onMark }) {
       ) : null}
       {feat ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
-          {feat.who} · {feat.tag}
+          {feat.who} · {learnShelfForCase(feat)}
         </ILText>
       ) : null}
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
@@ -1457,7 +1402,7 @@ function CasesEnrolled({ onMark }) {
               </View>
               <View style={{ padding: 12 }}>
                 <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-                  {item.tag}
+                  {learnShelfForCase(item)}
                 </ILText>
                 <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={2}>
                   {item.who}
@@ -1476,11 +1421,11 @@ function CasesEnrolled({ onMark }) {
         </ILText>
       </WhiteCard>
       <NextCard
-        kicker="BRING ONE TO DAY 2"
-        title="Pick the case closest to your own ceiling"
-        body="You’ll work it in your triad on Sunday. Choose before Saturday."
-        cta="Mark a case for my triad →"
-        onPress={onMark}
+        kicker={LEARN_CASE_INSPIRATION_CARD.kicker}
+        title={LEARN_CASE_INSPIRATION_CARD.title}
+        body={LEARN_CASE_INSPIRATION_CARD.body}
+        cta={inspirationSaved?.textValue ? 'Update my check-in →' : LEARN_CASE_INSPIRATION_CARD.cta}
+        onPress={onShareReflection}
       />
     </>
   );
@@ -1665,7 +1610,7 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
           ))}
         </View>
       </ScrollView>
-      <ArmyEventRows events={armyEvents} />
+      <ArmyEventRows events={armyEvents} onOpenEvent={onTicket} />
 
       <NextCard
         kicker="AFTER DAY 2"

@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, TextInput, View } from 'react-native';
-import * as Linking from 'expo-linking';
+import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
@@ -38,11 +37,18 @@ import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
 import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
-
-/** The sheet's "After" line for an LEP task (LEP-Messages-Complete-v6 → Task notifications). */
-const LEP_AFTER_COPY = Object.fromEntries(LEP_TASK_SCHEDULE.tasks.map((t) => [t.id, t.after]));
+import {
+  TASK_MATERIALS_LOAD_FAILED,
+  TASK_MATERIALS_PENDING,
+  TASK_SAVE_FAILED,
+} from '../../utils/learnerBatchDisplay';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { isProgramTaskDone, isSentBack } from '../../utils/taskDone';
+import {
+  isImageSubmissionFile,
+  normalizeSubmissionFiles,
+  submissionFileLabel,
+} from '../../utils/taskSubmissionFiles';
 import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose, lepTaskWatchLabel } from '../../utils/lepTaskInsideCopy';
 import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipCard';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
@@ -52,6 +58,9 @@ import {
   alumniSubmitCta,
   alumniTaskSubtitle,
 } from '../../utils/lepAlumniTaskCopy';
+
+/** The sheet's "After" line for an LEP task (LEP-Messages-Complete-v6 → Task notifications). */
+const LEP_AFTER_COPY = Object.fromEntries(LEP_TASK_SCHEDULE.tasks.map((t) => [t.id, t.after]));
 
 /** Map journey UI state → LMS submitProgramTask fields. */
 function lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded }) {
@@ -75,6 +84,11 @@ function lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded }) 
     return uploaded || { note: 'Completed in app' };
   }
   return { note: 'Completed in app' };
+}
+
+/** VIA report + photos — each upload is saved on the same task (not a replace). */
+function isMultiFileUploadTask(task) {
+  return task?.type === TASK_TYPES.FILE_UPLOAD && task?.id === 'lep-via-survey';
 }
 
 function PickCard({ icon, title, sub, onPress }) {
@@ -216,24 +230,69 @@ function chosenLabel(picked) {
   return `${picked?.name || 'Chosen file'}${size}`;
 }
 
-/** What she already handed in, so a resubmit is a choice, not a guess. */
-function SubmittedFileChip({ submission }) {
-  const url = submission?.videoUrl || submission?.fileUrl;
-  if (!url) return null;
+function hasSubmissionContent(sub) {
+  if (!sub) return false;
+  if (normalizeSubmissionFiles(sub).length > 0) return true;
+  if (String(sub.textValue || '').trim()) return true;
+  if (String(sub.linkValue || '').trim()) return true;
+  if (sub.form && typeof sub.form === 'object' && Object.keys(sub.form).length > 0) return true;
+  if (Array.isArray(sub.checkedItems) && sub.checkedItems.length > 0) return true;
+  if (sub.watchCompleted) return true;
+  return false;
+}
+
+/** What she already handed in — each file on its own row; photos show a thumbnail. */
+function SubmittedFilesList({ submission, navigation, title }) {
+  const files = normalizeSubmissionFiles(submission);
+  if (!files.length) return null;
   return (
-    <Pressable onPress={() => Linking.openURL(url).catch(() => {})} accessibilityRole="link">
-      <ChosenChip label={`Submitted: ${submission.fileName || 'your file'} · tap to open`} />
-    </Pressable>
+    <View style={{ marginTop: 10, gap: 8 }}>
+      {files.map((file) => {
+        const label = submissionFileLabel(file);
+        const image = isImageSubmissionFile(file);
+        return (
+          <Pressable
+            key={file.url}
+            onPress={() => openTaskFile(file.url, navigation, title || label)}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${label}`}
+            style={{
+              borderRadius: 14,
+              padding: image ? 10 : 12,
+              backgroundColor: G.pink,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            {image ? (
+              <Image
+                source={{ uri: file.url }}
+                style={{ width: 52, height: 52, borderRadius: 10, backgroundColor: G.line }}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="insert-drive-file" size={22} color={G.cta} />
+            )}
+            <ILText role="label" color={G.ink} style={{ marginLeft: image ? 12 : 8, flex: 1, fontSize: 13 }}>
+              {label}
+            </ILText>
+            <MaterialIcons name="chevron-right" size={18} color={G.meta} />
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
 /** Where CX's review stands: 'approved' | 'reviewing' | 'sentBack' | 'submitted' | null. */
 function reviewStateOf(sub) {
+  if (!sub) return null;
   const s = sub?.status;
   if (s === 'completed') return 'approved';
   if (s === 'under_review') return 'reviewing';
   if (isSentBack(s)) return 'sentBack';
   if (s === 'submitted') return 'submitted';
+  if (hasSubmissionContent(sub) && sub.submittedAt) return 'submitted';
   return null;
 }
 
@@ -279,6 +338,42 @@ function ReviewCard({ state, sub }) {
   );
 }
 
+function reviewHeadline(review) {
+  if (review === 'approved') return 'Approved by your CX';
+  if (review === 'reviewing') return 'Your CX is reviewing this — it can’t be changed now';
+  if (review === 'sentBack') return 'Your CX asked for changes — resubmit when ready';
+  return 'Submitted — waiting for your CX to review';
+}
+
+/** Pink status row after submit — same on every task type. */
+function TaskReviewStatusBanner({ review, programId, taskId }) {
+  const headline = reviewHeadline(review);
+  return (
+    <View
+      style={{
+        borderRadius: 18,
+        padding: 16,
+        backgroundColor: G.pink,
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+      }}
+    >
+      <MaterialIcons name="check-circle" size={20} color={G.cta} />
+      <View style={{ marginLeft: 8, flex: 1 }}>
+        <ILText role="label" color={G.ink}>
+          {headline}
+        </ILText>
+        {programId === PROGRAMS.LEP && LEP_AFTER_COPY[taskId] ? (
+          <ILText role="bodySm" color={G.ink} style={{ marginTop: 2, fontSize: 13, lineHeight: 18 }}>
+            {LEP_AFTER_COPY[taskId]}
+          </ILText>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
@@ -320,6 +415,9 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [editing, setEditing] = useState(false);
   const submission = getTaskSubmission(programId, taskId);
   const review = reviewStateOf(submission);
+  const displayReview =
+    review ||
+    (hasSubmissionContent(submission) && (submission?.submittedAt || done) ? 'submitted' : null);
   const [submittedAt, setSubmittedAt] = useState(null);
   const [cmsLinks, setCmsLinks] = useState([]);
   const [cmsHint, setCmsHint] = useState(null);
@@ -341,9 +439,7 @@ export default function CourseTaskScreen({ route, navigation }) {
           }));
         setCmsLinks(links);
         if (!links.length && taskId === 'lep-orientation-schedule') {
-          setCmsHint(
-            'No schedule file yet. In CMS → Content library, set Task IDs to lep-orientation-schedule or T12 and turn Live on.'
-          );
+          setCmsHint(TASK_MATERIALS_PENDING);
         }
       })
       .catch((e) => {
@@ -351,7 +447,7 @@ export default function CourseTaskScreen({ route, navigation }) {
           setCmsLinks([]);
           const code = e?.code || '';
           if (code === 'permission-denied') {
-            setCmsHint('Could not load materials (permissions). Deploy latest Firestore rules, then reload.');
+            setCmsHint(TASK_MATERIALS_LOAD_FAILED);
           }
         }
       });
@@ -486,12 +582,13 @@ export default function CourseTaskScreen({ route, navigation }) {
       }
       setDone(true);
       setEditing(false);
+      setPicked(null);
     } catch (e) {
       Alert.alert(
         'Not saved yet',
-        e?.message
-          ? `LMS sync failed: ${e.message}\n\nYour answers are still here — tap Submit again when you're back online.`
-          : "LMS sync failed. Tap Submit again when you're back online."
+        e?.message && !String(e.message).toLowerCase().includes('zoho')
+          ? `${TASK_SAVE_FAILED}\n\n(${e.message})`
+          : TASK_SAVE_FAILED
       );
     } finally {
       setSyncing(false);
@@ -520,6 +617,10 @@ export default function CourseTaskScreen({ route, navigation }) {
   }
 
   const type = task.type;
+  const multiFileUpload = isMultiFileUploadTask(task);
+  const canAddAnotherFile =
+    multiFileUpload && done && !editing && displayReview === 'submitted';
+  const showReviewBanner = Boolean(displayReview && hasSubmissionContent(submission));
   const items = task.checklistItems || [];
   // Watched 90%, or the player cannot report progress (never strand her).
   const canMarkWatched = !!videoUri && ((watchMax || 0) >= 0.9 || watchUntracked);
@@ -798,7 +899,12 @@ export default function CourseTaskScreen({ route, navigation }) {
               sub="Pick a video already on this phone · up to 200 MB"
               onPress={() => pickFile('library')}
             />
-            {picked ? <ChosenChip label={chosenLabel(picked)} /> : <SubmittedFileChip submission={getTaskSubmission(programId, taskId)} />}
+            {picked ? <ChosenChip label={chosenLabel(picked)} /> : null}
+            <SubmittedFilesList
+              submission={getTaskSubmission(programId, taskId)}
+              navigation={navigation}
+              title={task.title}
+            />
           </View>
         ) : null}
 
@@ -807,10 +913,24 @@ export default function CourseTaskScreen({ route, navigation }) {
             <PickCard
               icon="attach-file"
               title="Choose file"
-              sub="PDF, Word or photo · up to 15 MB"
+              sub={
+                taskId === 'lep-via-survey'
+                  ? 'Add your VIA report and each photo · up to 15 MB each'
+                  : 'PDF, Word or photo · up to 15 MB'
+              }
               onPress={() => pickFile('file')}
             />
-            {picked ? <ChosenChip label={chosenLabel(picked)} /> : <SubmittedFileChip submission={getTaskSubmission(programId, taskId)} />}
+            {taskId === 'lep-via-survey' ? (
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 12, lineHeight: 17 }}>
+                Submit each file once — your report and all three photos stay on this task.
+              </ILText>
+            ) : null}
+            {picked ? <ChosenChip label={chosenLabel(picked)} /> : null}
+            <SubmittedFilesList
+              submission={getTaskSubmission(programId, taskId)}
+              navigation={navigation}
+              title={task.title}
+            />
           </View>
         ) : null}
 
@@ -819,61 +939,36 @@ export default function CourseTaskScreen({ route, navigation }) {
         ) : null}
 
         <View style={{ marginTop: 22 }}>
-          {done && isErrcTask ? (
-            <View
-              style={{
-                borderRadius: 18,
-                padding: 16,
-                backgroundColor: G.pink,
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <MaterialIcons name="check-circle" size={20} color={G.cta} />
-              <ILText role="label" color={G.ink} style={{ marginLeft: 8, flex: 1 }}>
-                {submittedLabel}
-              </ILText>
-            </View>
+          {showReviewBanner ? (
+            <TaskReviewStatusBanner
+              review={displayReview || 'submitted'}
+              programId={programId}
+              taskId={taskId}
+            />
           ) : null}
+          <ReviewCard state={displayReview} sub={submission} />
 
-          {done && !editing && !isErrcTask ? (
+          {canAddAnotherFile ? (
             <>
-              <ReviewCard state={review} sub={submission} />
-              <View
-                style={{
-                  borderRadius: 18,
-                  padding: 16,
-                  backgroundColor: G.pink,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <MaterialIcons name="check-circle" size={20} color={G.cta} />
-                <View style={{ marginLeft: 8, flex: 1 }}>
-                  <ILText role="label" color={G.ink}>
-                    {review === 'approved'
-                      ? 'Approved by your CX'
-                      : review === 'reviewing'
-                        ? 'Your CX is reviewing this — it can’t be changed now'
-                        : review === 'submitted'
-                          ? 'Submitted — waiting for your CX to review'
-                          : 'Submitted'}
-                  </ILText>
-                  {programId === PROGRAMS.LEP && LEP_AFTER_COPY[taskId] ? (
-                    <ILText role="bodySm" color={G.ink} style={{ marginTop: 2, fontSize: 13, lineHeight: 18 }}>
-                      {LEP_AFTER_COPY[taskId]}
-                    </ILText>
-                  ) : null}
+              {picked ? (
+                <View style={{ opacity: !syncing ? 1 : 0.45, marginBottom: 12 }}>
+                  <RedCta
+                    label={
+                      syncing
+                        ? uploadPct !== null
+                          ? `Uploading ${uploadPct}%…`
+                          : 'Saving…'
+                        : 'Submit this file'
+                    }
+                    onPress={!syncing ? submit : () => {}}
+                  />
                 </View>
-              </View>
+              ) : null}
               <RedCta
                 label={next ? `Next task · ${next.title}` : 'Back to this phase'}
                 onPress={goNext}
               />
-              {/* Not reviewed yet: she may still change it (the database freezes it once review starts). */}
-              {review === 'submitted' && type !== TASK_TYPES.WATCH_ONLY ? (
+              {displayReview === 'submitted' ? (
                 <Pressable
                   onPress={() => setEditing(true)}
                   accessibilityRole="button"
@@ -893,15 +988,74 @@ export default function CourseTaskScreen({ route, navigation }) {
                 </Pressable>
               ) : null}
             </>
-          ) : (
+          ) : null}
+
+          {done && !editing && !canAddAnotherFile && isErrcTask ? (
             <>
-              <ReviewCard state={review} sub={submission} />
-              <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
-                <RedCta
-                  label={syncing ? (uploadPct !== null ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
-                  onPress={ready && !syncing ? submit : () => {}}
-                />
-              </View>
+              <RedCta
+                label={next ? `Next task · ${next.title}` : 'Back to this phase'}
+                onPress={goNext}
+              />
+              {displayReview === 'submitted' ? (
+                <Pressable
+                  onPress={() => setEditing(true)}
+                  accessibilityRole="button"
+                  style={{
+                    marginTop: 12,
+                    borderRadius: 999,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: G.line,
+                    backgroundColor: G.white,
+                  }}
+                >
+                  <ILText role="label" color={G.ink}>
+                    Edit and resubmit
+                  </ILText>
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
+
+          {done && !editing && !canAddAnotherFile && !isErrcTask ? (
+            <>
+              <RedCta
+                label={next ? `Next task · ${next.title}` : 'Back to this phase'}
+                onPress={goNext}
+              />
+              {displayReview === 'submitted' && type !== TASK_TYPES.WATCH_ONLY ? (
+                <Pressable
+                  onPress={() => setEditing(true)}
+                  accessibilityRole="button"
+                  style={{
+                    marginTop: 12,
+                    borderRadius: 999,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: G.line,
+                    backgroundColor: G.white,
+                  }}
+                >
+                  <ILText role="label" color={G.ink}>
+                    Edit and resubmit
+                  </ILText>
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
+
+          {!done || editing ? (
+            <>
+              {!canAddAnotherFile ? (
+                <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
+                  <RedCta
+                    label={syncing ? (uploadPct !== null ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
+                    onPress={ready && !syncing ? submit : () => {}}
+                  />
+                </View>
+              ) : null}
               {done && isErrcTask ? (
                 <Pressable
                   onPress={goNext}
@@ -921,7 +1075,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                 </Pressable>
               ) : null}
             </>
-          )}
+          ) : null}
         </View>
       </ScrollView>
     </Page>

@@ -17,6 +17,12 @@ import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import { useProgramNav } from '../../context/ProgramNavContext';
 import ProgramHomes from './ProgramHomes';
+import {
+  HOME_ANNOUNCEMENTS_EMPTY,
+  HOME_EVENTS_EMPTY,
+  HOME_PROGRAMS_EMPTY,
+  HOME_PROGRESS_FOOTNOTE,
+} from '../../utils/learnerBatchDisplay';
 
 export default function HomeScreen(props) {
   const { program, stage } = useProgramNav();
@@ -121,8 +127,7 @@ function LegacyHome({ navigation }) {
             <ProgressBar percent={overallProgress} height={10} />
           </View>
           <Text className="mt-2 text-xs text-ink-400">
-            {enrolledPrograms.length} program
-            {enrolledPrograms.length === 1 ? '' : 's'} · synced with web LMS
+            {HOME_PROGRESS_FOOTNOTE(enrolledPrograms.length)}
           </Text>
         </View>
 
@@ -137,7 +142,7 @@ function LegacyHome({ navigation }) {
           <EmptyState
             icon="school-outline"
             title="No program enrollment yet"
-            message="After Zoho enrollment/payment, use Profile → Refresh access. Tasks will appear here and on Learn."
+            message={HOME_PROGRAMS_EMPTY}
           />
         ) : (
           enrolledPrograms.map((program) => {
@@ -187,10 +192,7 @@ function LegacyHome({ navigation }) {
         </Text>
         {upcomingEventList.length === 0 ? (
           <View className="mb-4 rounded-2xl border border-dashed border-ink-200 bg-white p-4">
-            <Text className="text-sm text-ink-500">
-              No upcoming events. CX publishes sessions to the events
-              collection on the web LMS.
-            </Text>
+            <Text className="text-sm text-ink-500">{HOME_EVENTS_EMPTY}</Text>
           </View>
         ) : (
           upcomingEventList.map((event) => (
@@ -203,9 +205,7 @@ function LegacyHome({ navigation }) {
         </Text>
         {visibleAnnouncements.length === 0 ? (
           <View className="rounded-2xl border border-dashed border-ink-200 bg-white p-4">
-            <Text className="text-sm text-ink-500">
-              No announcements yet. CX publishes to the announcements collection.
-            </Text>
+            <Text className="text-sm text-ink-500">{HOME_ANNOUNCEMENTS_EMPTY}</Text>
           </View>
         ) : (
           visibleAnnouncements.map((a) => (

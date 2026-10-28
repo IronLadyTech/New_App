@@ -38,6 +38,13 @@ export function lepTaskInsideSteps(task) {
   const id = task?.id || '';
   const type = task?.type;
 
+  if (id === 'lep-weekly-1') {
+    return [
+      'After case studies or community stories, note what resonates — breakthrough and inspiration.',
+      'Type your answer in the box (a few lines is enough).',
+      'Tap Submit answer — it saves to your Week 1 engagement check-in.',
+    ];
+  }
   if (id === 'lep-prep-nsdc') {
     return [
       'Register on the NSDC portal (government site) using the link in Batch materials if provided.',

@@ -99,7 +99,7 @@ export function CourseDemoProvider({ children }) {
     [submissions]
   );
 
-  const saveSubmission = useCallback((programId, taskId, data) => {
+  const saveSubmission = useCallback((programId, taskId, data, opts) => {
     const key = taskKey(programId, taskId);
     setSubmissions((prev) => {
       const next = {
@@ -109,7 +109,7 @@ export function CourseDemoProvider({ children }) {
       AsyncStorage.setItem(subKey, JSON.stringify(next)).catch(() => {});
       return next;
     });
-    markDone(programId, taskId);
+    if (!opts?.skipMarkDone) markDone(programId, taskId);
   }, [markDone, subKey]);
 
   const value = useMemo(

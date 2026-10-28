@@ -23,11 +23,11 @@ const P = {
 export const PREWORK_THUMBS = {
   'lep-principles-video': require('../assets/il/prework/thumb-27-principles.jpg'),
   'lep-rituals': require('../assets/il/prework/thumb-5-rituals.jpg'),
-  'lep-shameless': require('../assets/il/prework/thumb-shameless-speech.jpg'),
+  'lep-shameless': require('../assets/il/prework/thumb-shameless-pitch.jpg'),
   'prework-01': require('../assets/il/prework/thumb-27-principles.jpg'),
   'lep-principles-video-preview': require('../assets/il/prework/thumb-27-principles.jpg'),
   'prework-02': require('../assets/il/prework/thumb-5-rituals.jpg'),
-  'prework-03': require('../assets/il/prework/thumb-shameless-speech.jpg'),
+  'prework-03': require('../assets/il/prework/thumb-shameless-pitch.jpg'),
   /** Differentiated Brand session — not the 27 Principles pre-work art. */
   'lep-brand-roadmap': require('../assets/il/suvarna-hero.jpg'),
 };

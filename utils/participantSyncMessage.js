@@ -81,7 +81,7 @@ export function batchZohoFeedback(zohoResult, error) {
   if (zohoResult?.reasonCode === 'lead_not_found') {
     return {
       message:
-        'Saved in the app, but we could not find your Zoho lead to update. Email support@ironlady.tech with your mobile number.',
+        'Your batch is saved in the app. If your dashboard looks wrong, email support@ironlady.tech with your mobile number.',
       showAlert: true,
       reasonCode: 'lead_not_found',
     };
@@ -89,7 +89,7 @@ export function batchZohoFeedback(zohoResult, error) {
   if (zohoResult?.reasonCode === 'timeout') {
     return {
       message:
-        'Your batch is saved in the app. CRM can take up to a minute on slow networks — leave the app open briefly, then check your lead in Zoho. If dates are still blank, try Change batch once more.',
+        'Your batch is saved. Your dashboard may take a minute to update — open Home again or pull to refresh.',
       showAlert: true,
       reasonCode: 'timeout',
     };
@@ -97,7 +97,7 @@ export function batchZohoFeedback(zohoResult, error) {
   if (zohoResult?.reasonCode === 'zoho_write_failed') {
     return {
       message:
-        'Saved in the app, but CRM did not accept the batch dates. Ask support to check LEP Start Date and LEP End Date on your lead.',
+        'Your batch is saved in the app. If dates still look wrong, try Change batch date once or email support@ironlady.tech.',
       showAlert: true,
       reasonCode: 'zoho_write_failed',
     };

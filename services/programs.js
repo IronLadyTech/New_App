@@ -21,6 +21,7 @@ import {
   getProgramEntry,
   isTaskDoneStatus,
 } from '../constants/programs';
+import { appendUploadFields } from '../utils/taskSubmissionFiles';
 
 function clearReviewFieldsForResubmit(prev) {
   if (
@@ -160,6 +161,11 @@ export async function submitProgramTask({
     submittedAt: new Date().toISOString(),
     ...fields,
   };
+
+  if (type === 'file_upload' || type === 'video_record') {
+    const merged = appendUploadFields(previousSubmission, fields);
+    Object.assign(payload, merged);
+  }
 
   if (type === 'watch_only') {
     payload.watchCompleted = true;

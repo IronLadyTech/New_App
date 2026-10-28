@@ -22,6 +22,11 @@ import {
   statusLabel,
   isTaskDoneStatus,
 } from '../../constants/programs';
+import {
+  TASK_SUBMIT_SUCCESS,
+  TASK_SUBMIT_VISIBLE_STATUS,
+} from '../../utils/learnerBatchDisplay';
+import { sanitizeParticipantDetail } from '../../utils/participantSyncMessage';
 
 function LessonVideo({ uri, trackKey = uri }) {
   const player = useVideoPlayer(uri, (p) => {
@@ -102,12 +107,10 @@ export default function TaskSubmitScreen({ route, navigation }) {
     setSaving(true);
     try {
       await submitTask(programId, task, fields);
-      Alert.alert(
-        'Submitted',
-        'Saved to Firestore — this will show as submitted/completed on the web LMS too.'
-      );
+      Alert.alert('Submitted', TASK_SUBMIT_SUCCESS);
     } catch (e) {
-      Alert.alert('Could not submit', e.message);
+      const detail = sanitizeParticipantDetail(e?.message);
+      Alert.alert('Could not submit', detail || 'We could not submit that right now. Try again.');
     } finally {
       setSaving(false);
     }
@@ -242,11 +245,7 @@ export default function TaskSubmitScreen({ route, navigation }) {
 
         {done && (
           <Text className="mt-4 text-center text-sm text-green-700">
-            Status: {statusLabel(submission?.status)} — visible on web LMS
-            {submission?.status === SUBMISSION_STATUS.COMPLETED
-              ? ' as completed'
-              : ' as submitted'}
-            .
+            {TASK_SUBMIT_VISIBLE_STATUS(statusLabel(submission?.status))}
           </Text>
         )}
       </ScrollView>

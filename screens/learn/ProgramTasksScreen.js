@@ -14,6 +14,7 @@ import {
 import { submissionsByTaskId } from '../../services/programs';
 import { useAuth } from '../../context/AuthContext';
 import ILHeader from '../../components/il/ILHeader';
+import { PROGRAM_TASKS_EMPTY, PROGRAM_TASKS_PROGRESS_SUBTITLE } from '../../utils/learnerBatchDisplay';
 
 export default function ProgramTasksScreen({ route, navigation }) {
   const { programId, title } = route.params;
@@ -44,7 +45,7 @@ export default function ProgramTasksScreen({ route, navigation }) {
         </TouchableOpacity>
         <Text className="text-xl font-bold text-ink-950">{title}</Text>
         <Text className="mt-1 text-sm text-ink-500">
-          {progress.done} of {progress.total} completed · live sync with LMS
+          {PROGRAM_TASKS_PROGRESS_SUBTITLE(progress.done, progress.total)}
         </Text>
         <View className="mt-3">
           <ProgressBar percent={progress.percent} height={10} />
@@ -58,8 +59,8 @@ export default function ProgramTasksScreen({ route, navigation }) {
         ListEmptyComponent={
           <EmptyState
             icon="list-outline"
-            title="No tasks in Firestore yet"
-            message={`Add documents to ${programId === 'mbw' ? 'mbw_tasks' : programId === 'lep' ? 'lep_tasks' : 'bm100_tasks'} or publish via CMS.`}
+            title="No tasks yet"
+            message={PROGRAM_TASKS_EMPTY}
           />
         }
         renderItem={({ item, index }) => {

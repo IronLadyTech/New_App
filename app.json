@@ -3,7 +3,7 @@
     "name": "Iron Lady",
     "slug": "lms-app",
     "version": "1.0.0",
-    "orientation": "default",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "lmsapp",
@@ -27,7 +27,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.ironlady.app",
-      "versionCode": 6,
+      "versionCode": 7,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -85,7 +85,13 @@
         }
       ],
       "expo-asset",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "PORTRAIT_UP"
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -7,6 +7,11 @@ import {
   resolveLepBatchDateLine,
 } from './lepDeskBatchDate';
 import { lepAlumniBatchShort } from './lepAlumniUi';
+import {
+  COHORT_SUBLINE_FALLBACK,
+  COHORT_WEEK_EMPTY_META,
+  formatLearnerFacingBatchTitle,
+} from './learnerBatchDisplay';
 import { learnerProgramDates } from './programAccess';
 import { formatLepDay } from './registeredHomeData';
 
@@ -37,7 +42,7 @@ function resolveWhatsappUrl({ group, cmsBatch, profile }) {
 /** Hero card + week list for My Program → Cohort. */
 export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] }) {
   const batchTitle =
-    String(cmsBatch?.name || '').trim() ||
+    formatLearnerFacingBatchTitle(cmsBatch?.name) ||
     lepAlumniBatchShort(profile) ||
     'Your cohort';
 
@@ -105,7 +110,7 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
       id: 'placeholder',
       icon: 'forum',
       title: 'Batch updates',
-      meta: 'Live session reminders and team posts show here when your batch is linked.',
+      meta: COHORT_WEEK_EMPTY_META,
     });
   }
 
@@ -114,7 +119,7 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
 
   return {
     batchTitle,
-    subline: subParts.join(' · ') || 'Batch dates appear when your cohort is linked in CMS or Zoho.',
+    subline: subParts.join(' · ') || COHORT_SUBLINE_FALLBACK,
     memberCount: members,
     extraMemberLabel:
       extraMembers != null && extraMembers > 0

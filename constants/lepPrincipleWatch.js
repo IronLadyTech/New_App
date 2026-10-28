@@ -9,7 +9,7 @@ import { PREWORK_THUMBS } from './preworkThumbs';
 export const LEP_PRINCIPLE_TITLES = {
   1: 'Ask for what you want',
   2: 'Own the room before you speak',
-  3: 'The shameless speech',
+  3: 'The Shameless Pitch',
   4: 'Build your board of advocates',
   10: 'Negotiate from the seat you want',
   11: 'Turn visibility into sponsorship',

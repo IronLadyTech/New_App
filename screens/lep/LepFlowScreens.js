@@ -25,6 +25,7 @@ import {
   lepTimeGreeting,
   LEP_ALUMNI_SCHEDULE_SUB_SUFFIX,
 } from '../../utils/lepAlumniUi';
+import { BATCH_CALENDAR_PENDING } from '../../utils/learnerBatchDisplay';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
 import AlumniMonthlyChallengeCard from '../../components/lep/AlumniMonthlyChallengeCard';
 import { useCmsSessionRecordings } from '../../hooks/useCmsLearnerItems';
@@ -48,6 +49,14 @@ import { resolveCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 import { recordSessionJoin } from '../../services/activityTracking';
 import { openLink } from '../../utils/openLink';
+import { useArmyEventSelection } from '../../hooks/useArmyEventSelection';
+import {
+  armyEventCalendarUrl,
+  armyEventLongDateLine,
+  armyEventTicketWhen,
+  chapterMeetupHeadline,
+} from '../../utils/armyEventCalendar';
+import { HERO } from './lepData';
 
 const ALUMNI_COMPLETE_GREEN = '#1F7A4D';
 
@@ -376,7 +385,7 @@ export function LepScheduleScreen() {
             ? alumniArchive
               ? 'Browse earlier weeks with the arrows to see when your cohort met. Session recordings are under My Program → Sessions.'
               : 'Nothing left on your batch calendar from this day. Use the arrows to jump weeks, or open My Program → Sessions.'
-            : 'Your batch calendar appears once Day 1 is set (CMS or Zoho).'}
+            : BATCH_CALENDAR_PENDING}
         </ILText>
       ) : (
         visibleSections.map((section) => (
@@ -783,9 +792,176 @@ export function LepFirstMonthScreen() {
   );
 }
 
-export function LepEventTicketScreen() {
+export function LepEventDetailScreen() {
+  const nav = useLepNav();
+  const { profile } = useAuth();
+  const { event, loading } = useArmyEventSelection();
+  const name = profile?.displayName || lepFirstName(profile) || 'Guest';
+  const batch = lepAlumniBatchShort(profile);
+  const headline = chapterMeetupHeadline(event);
+  const { weekdayDate, timeRange } = armyEventLongDateLine(event || {});
+  const cityLine = event?.city ? `${event.city} · Indiranagar` : 'In person';
+
+  if (!event && loading) {
+    return (
+      <Shell title="Event" sub="Community">
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12 }}>
+          Loading the latest meetup…
+        </ILText>
+      </Shell>
+    );
+  }
+
+  if (!event) {
+    return (
+      <Shell title="Event" sub="Community">
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12 }}>
+          No upcoming chapter meetups on the calendar yet. Check again soon.
+        </ILText>
+      </Shell>
+    );
+  }
+
   return (
-    <Shell title="Event ticket" sub="Bengaluru chapter meetup">
+    <Shell title="Event" sub="Community" scrollBottomExtra={24}>
+      <WhiteCard style={{ borderRadius: 24, overflow: 'hidden', padding: 0 }}>
+        <View style={{ height: 200, backgroundColor: G.dark }}>
+          <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          <View
+            style={{
+              position: 'absolute',
+              left: 14,
+              top: 14,
+              backgroundColor: G.cta,
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 5,
+            }}
+          >
+            <ILText role="eyebrow" color="#FFFFFF" style={[af, { fontSize: 9 }]}>
+              CHAPTER MEETUP · IN PERSON
+            </ILText>
+          </View>
+          <View style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}>
+            <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 26, lineHeight: 32 }}>
+              {headline}
+            </ILText>
+          </View>
+        </View>
+      </WhiteCard>
+
+      <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+          <MaterialIcons name="event" size={20} color={G.ink} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label" color={G.ink}>
+              {weekdayDate}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              {timeRange}
+            </ILText>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16 }}>
+          <MaterialIcons name="place" size={20} color={G.ink} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label" color={G.ink}>
+              Venue shared after RSVP
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              {cityLine}
+            </ILText>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16 }}>
+          <MaterialIcons name="groups" size={20} color={G.ink} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <ILText role="label" color={G.ink}>
+              42 going
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              3 from your circle
+            </ILText>
+          </View>
+        </View>
+      </WhiteCard>
+
+      <Pressable onPress={() => nav.goTicket(event)}>
+        <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialIcons name="check-circle" size={18} color={ALUMNI_COMPLETE_GREEN} />
+              <ILText role="label" color={G.cta} style={{ marginLeft: 6, fontSize: 13 }}>
+                YOU&apos;RE GOING
+              </ILText>
+            </View>
+            <ILText role="title" color={G.ink} style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22 }}>
+              {name}
+            </ILText>
+            <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
+              LEP · {batch}
+            </ILText>
+          </View>
+          <View
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: 12,
+              backgroundColor: G.mutedFill,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <MaterialIcons name="qr-code-2" size={72} color={G.ink} />
+          </View>
+        </WhiteCard>
+      </Pressable>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, textAlign: 'center', fontSize: 12 }}>
+        Show at the door · works offline
+      </ILText>
+      <View style={{ marginTop: 18 }}>
+        <RedCta
+          label="Add to calendar"
+          icon="event"
+          onPress={() => {
+            const url = armyEventCalendarUrl(event);
+            if (url) Linking.openURL(url).catch(() => {});
+          }}
+        />
+      </View>
+    </Shell>
+  );
+}
+
+export function LepEventTicketScreen() {
+  const { profile } = useAuth();
+  const { event, loading } = useArmyEventSelection();
+  const name = profile?.displayName || lepFirstName(profile) || 'Guest';
+  const headline = chapterMeetupHeadline(event);
+  const when = armyEventTicketWhen(event);
+
+  if (!event && loading) {
+    return (
+      <Shell title="Event ticket" sub="Loading…">
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12 }}>
+          Loading your ticket…
+        </ILText>
+      </Shell>
+    );
+  }
+
+  if (!event) {
+    return (
+      <Shell title="Event ticket" sub="No upcoming meetup">
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 12 }}>
+          No chapter meetup is scheduled yet.
+        </ILText>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell title="Event ticket" sub={headline}>
       <WhiteCard style={{ borderRadius: 24, padding: 20, alignItems: 'center' }}>
         <SoftChip>QR ticket · works offline</SoftChip>
         <View
@@ -802,14 +978,21 @@ export function LepEventTicketScreen() {
           <MaterialIcons name="qr-code-2" size={120} color={G.ink} />
         </View>
         <ILText role="title" color={G.ink} style={{ marginTop: 18, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          Ananya Rao
+          {name}
         </ILText>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 6 }}>
-          Sat 27 Sep · 10:00 AM · Bengaluru
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, textAlign: 'center' }}>
+          {when || event.whenLabel}
         </ILText>
       </WhiteCard>
       <View style={{ marginTop: 18 }}>
-        <RedCta label="Add to calendar" icon="event" />
+        <RedCta
+          label="Add to calendar"
+          icon="event"
+          onPress={() => {
+            const url = armyEventCalendarUrl(event);
+            if (url) Linking.openURL(url).catch(() => {});
+          }}
+        />
       </View>
     </Shell>
   );

@@ -88,8 +88,8 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Your input on the Differentiated Brand session.',
   },
   'lep-weekly-1': {
-    why: 'Weekly pulse helps your CEM support you in time.',
-    gain: 'Engagement tracked so support matches where you are.',
+    why: 'Your breakthrough and what inspires you help us tailor cases, nudges, and cohort support.',
+    gain: 'Engagement saved for your CEM — same Week 1 check-in as My Program.',
   },
   'lep-challenge-1': {
     why: 'The Game of Excellence turns concepts into behaviour.',

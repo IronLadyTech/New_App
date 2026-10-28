@@ -26,7 +26,7 @@ function fit16x9(maxW, maxH) {
   return { width: maxW, height: maxW * (9 / 16) };
 }
 
-function NativeVideo({ source, width, height, trackKey, onStart, onProgress }) {
+function NativeVideo({ source, width, height, trackKey, onStart, onProgress, allowsFullscreen = false }) {
   const player = useVideoPlayer(source, (p) => {
     p.loop = false;
   });
@@ -45,14 +45,14 @@ function NativeVideo({ source, width, height, trackKey, onStart, onProgress }) {
     <VideoView
       style={{ width, height, backgroundColor: '#000' }}
       player={player}
-      allowsFullscreen
+      allowsFullscreen={allowsFullscreen}
       contentFit="contain"
       nativeControls
     />
   );
 }
 
-function YoutubeEmbed({ uri, width, height, onProgress }) {
+function YoutubeEmbed({ uri, width, height, onProgress, allowsFullscreenVideo = false }) {
   const id = youtubeIdFromUri(uri);
   const html = useMemo(
     () => (id && width > 0 && height > 0 ? youtubeEmbedHtml(id, { width, height }) : null),
@@ -65,7 +65,7 @@ function YoutubeEmbed({ uri, width, height, onProgress }) {
       key={`${width}x${height}`}
       source={{ html, baseUrl: YOUTUBE_EMBED_ORIGIN }}
       style={{ width, height, backgroundColor: '#000' }}
-      allowsFullscreenVideo
+      allowsFullscreenVideo={allowsFullscreenVideo}
       allowsInlineMediaPlayback
       mediaPlaybackRequiresUserAction={false}
       javaScriptEnabled
@@ -127,7 +127,18 @@ function PlayOverlay({ onPress }) {
   );
 }
 
-function VideoFrame({ uri, fill, poster, started, onStart, trackKey, onPlaybackStart, onProgress }) {
+function VideoFrame({
+  uri,
+  fill,
+  poster,
+  started,
+  onStart,
+  trackKey,
+  onPlaybackStart,
+  onProgress,
+  allowsNativeFullscreen = false,
+  allowsYoutubeFullscreen = false,
+}) {
   const youtubeId = youtubeIdFromUri(uri);
   const showPoster = !!poster;
   const showYoutubeGate = youtubeId && !started;
@@ -161,7 +172,13 @@ function VideoFrame({ uri, fill, poster, started, onStart, trackKey, onPlaybackS
       {showYoutubeGate ? <PlayOverlay onPress={onStart} /> : null}
       {!showYoutubeGate && box.width > 0 && box.height > 0 ? (
         youtubeId ? (
-          <YoutubeEmbed uri={uri} width={box.width} height={box.height} onProgress={onProgress} />
+          <YoutubeEmbed
+            uri={uri}
+            width={box.width}
+            height={box.height}
+            onProgress={onProgress}
+            allowsFullscreenVideo={allowsYoutubeFullscreen}
+          />
         ) : (
           <NativeVideo
             source={toPlayerSource(uri)}
@@ -170,6 +187,7 @@ function VideoFrame({ uri, fill, poster, started, onStart, trackKey, onPlaybackS
             trackKey={trackKey}
             onStart={onPlaybackStart}
             onProgress={onProgress}
+            allowsFullscreen={allowsNativeFullscreen}
           />
         )
       ) : null}
@@ -177,12 +195,12 @@ function VideoFrame({ uri, fill, poster, started, onStart, trackKey, onPlaybackS
   );
 }
 
-function RotateButton({ onPress, style }) {
+function FullscreenButton({ onPress, style }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Rotate to landscape"
+      accessibilityLabel="Full screen video"
       hitSlop={10}
       style={[
         {
@@ -196,7 +214,7 @@ function RotateButton({ onPress, style }) {
         style,
       ]}
     >
-      <MaterialIcons name="screen-rotation" size={20} color="#FFFFFF" />
+      <MaterialIcons name="fullscreen" size={20} color="#FFFFFF" />
     </Pressable>
   );
 }
@@ -241,7 +259,7 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
             onPlaybackStart={onStart}
             onProgress={onProgress}
           />
-          <RotateButton
+          <FullscreenButton
             onPress={() => {
               beginPlayback();
               setLandscape(true);
@@ -254,7 +272,7 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
       <Modal
         visible={landscape}
         animationType="fade"
-        supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+        supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
         onRequestClose={closeLandscape}
       >
         <View style={{ flex: 1, backgroundColor: '#000' }}>
@@ -286,6 +304,8 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
                   trackKey={trackKey}
                   onPlaybackStart={onStart}
                   onProgress={onProgress}
+                  allowsNativeFullscreen
+                  allowsYoutubeFullscreen
                 />
               </View>
             ) : null}
@@ -293,7 +313,7 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
           <Pressable
             onPress={closeLandscape}
             accessibilityRole="button"
-            accessibilityLabel="Exit landscape"
+            accessibilityLabel="Exit full screen"
             hitSlop={10}
             style={{
               position: 'absolute',

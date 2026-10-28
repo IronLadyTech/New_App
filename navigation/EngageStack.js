@@ -3,7 +3,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
 import EngageHome from '../screens/engage/EngageHome';
 import LepEngageScreen from '../screens/lep/LepEngageScreen';
-import { LepEventTicketScreen } from '../screens/lep/LepFlowScreens';
+import { LepEventDetailScreen, LepEventTicketScreen } from '../screens/lep/LepFlowScreens';
+import LepEngageMediaListScreen from '../screens/lep/LepEngageMediaListScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,7 +17,9 @@ export default function EngageStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="LepEngage" component={EngageRoot} />
+      <Stack.Screen name="EventDetail" component={LepEventDetailScreen} />
       <Stack.Screen name="EventTicket" component={LepEventTicketScreen} />
+      <Stack.Screen name="EngageMediaList" component={LepEngageMediaListScreen} />
       <Stack.Screen
         name="Feed"
         getComponent={() => require('../screens/engage/EngageHome').default}

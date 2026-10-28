@@ -798,7 +798,7 @@ function ComboHome() {
       </DarkPanel>
 
       <Whisper
-        body={`Four days to Day 1, ${name}. LEP comes first this week — finish the Shameless Speech tonight. Your 100BM pre-work can wait for the weekend.`}
+        body={`Four days to Day 1, ${name}. LEP comes first this week — finish the Shameless Pitch tonight. Your 100BM pre-work can wait for the weekend.`}
         action="Watch now →"
         onAction={() => routes.openLearn('lep')}
       />
@@ -815,7 +815,7 @@ function ComboHome() {
         items={[
           { title: '5 Daily Rituals — morning check', detail: 'LEP ritual · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-rituals' },
           { title: 'Revise Principle 3 from the 27 Principles', detail: 'Daily revision · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-principle' },
-          { title: 'Watch The Shameless Speech', detail: 'Pre-work · 22 min', done: false, tag: 'LEP', programId: 'lep', practiceId: 'lep-shameless' },
+          { title: 'Watch The Shameless Pitch', detail: 'Pre-work · 22 min', done: false, tag: 'LEP', programId: 'lep', practiceId: 'lep-shameless' },
           {
             title: 'Draft two milestones for your Milestone Table',
             detail: 'Pre-program · 10 min',

@@ -5,11 +5,11 @@ import {
   Linking,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StatusBar as RNStatusBar,
   View,
 } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { doc, getDoc } from 'firebase/firestore';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
@@ -65,10 +65,16 @@ function hasMasterclassOnProfile(source) {
   return programs.some((p) => /master\s*class|^mc$/i.test(String(p)));
 }
 
-/** Last menu box — Masterclass row only when the learner actually has MC. */
-function profileMenuRows(hasMasterclass) {
+/** Profile menu — learner support & legal (no duplicate of Learn library). */
+function profileMenuRows({ anyEnrolled, hasMasterclass }) {
   const rows = [];
-  if (hasMasterclass) {
+  if (anyEnrolled) {
+    rows.push({
+      icon: 'workspace-premium',
+      label: hasMasterclass ? 'Certificates & record' : 'Certificates & program record',
+      go: 'goCertificates',
+    });
+  } else if (hasMasterclass) {
     rows.push({
       icon: 'workspace-premium',
       label: 'Masterclass Certificate',
@@ -78,20 +84,15 @@ function profileMenuRows(hasMasterclass) {
   }
   rows.push(
     {
-      icon: 'inventory-2',
-      label: 'Foundation Guides',
-      sub: 'Open after you start principles',
-      go: 'goFoundationGuides',
-    },
-    {
       icon: 'notifications-none',
       label: 'Notifications',
+      sub: 'Task due dates, live sessions, program updates',
       go: 'goNotifications',
       notify: true,
     },
     { icon: 'help-outline', label: 'Help & Support', go: 'goHelp' },
-    { icon: 'shield', label: 'Privacy', go: 'goPrivacy' },
-    { icon: 'description', label: 'Terms', go: 'goTerms' }
+    { icon: 'shield', label: 'Privacy & data', go: 'goPrivacyCenter' },
+    { icon: 'star-outline', label: 'Rate Iron Lady', go: 'goRateApp' }
   );
   return rows;
 }
@@ -191,7 +192,7 @@ export default function LepProfileScreen() {
   const bhag = learnerBhagText(source) || practiceBhag || localFacts.bhag || '';
   const lepProgram = programs.find((p) => p.id === PROGRAMS.LEP) || programs[0] || { id: 'lep', title: 'Leadership Essentials' };
   const hasMasterclass = hasMasterclassOnProfile(source);
-  const menuRows = profileMenuRows(hasMasterclass);
+  const menuRows = profileMenuRows({ anyEnrolled, hasMasterclass });
   const lepBatchLine = resolveLepBatchDateLine({
     profile: source,
     cmsBatch,
@@ -278,6 +279,15 @@ export default function LepProfileScreen() {
     } finally {
       setBatchSaving(false);
     }
+  };
+
+  const onMenuPress = (row) => {
+    const action = row.go && nav[row.go];
+    if (typeof action === 'function') {
+      action();
+      return;
+    }
+    Alert.alert(row.label, 'This option is not available right now.');
   };
 
   return (
@@ -498,11 +508,7 @@ export default function LepProfileScreen() {
                     color={dateLine ? G.ink : G.meta}
                     style={{ marginTop: 6, fontSize: 15, lineHeight: 22 }}
                   >
-                    {dateLine
-                      ? awaitingZoho
-                        ? `${dateLine} · syncing to Zoho`
-                        : dateLine
-                      : 'You haven’t selected a batch yet'}
+                    {dateLine || 'You haven’t selected a batch yet'}
                   </ILText>
                   {dateLine && batchCard.body ? (
                     <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
@@ -544,7 +550,7 @@ export default function LepProfileScreen() {
               key={row.label}
               accessibilityRole="button"
               accessibilityLabel={row.label}
-              onPress={() => row.go && nav[row.go]?.()}
+              onPress={() => onMenuPress(row)}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

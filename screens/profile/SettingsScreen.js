@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { updateUserProfile } from '../../services/firestore';
 import { COLORS } from '../../constants';
+import { SETTINGS_PROFILE_SAVED } from '../../utils/learnerBatchDisplay';
 
 export default function SettingsScreen({ navigation }) {
   const { user, profile } = useAuth();
@@ -23,7 +24,7 @@ export default function SettingsScreen({ navigation }) {
     setSaving(true);
     try {
       await updateUserProfile(user.uid, { displayName: displayName.trim() });
-      Alert.alert('Saved', 'Profile updated — changes sync live.');
+      Alert.alert('Saved', SETTINGS_PROFILE_SAVED);
       navigation.goBack();
     } catch (e) {
       Alert.alert('Error', e.message);
@@ -58,7 +59,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         <Text className="mt-6 text-xs leading-5 text-ink-400">
-          Role and sensitive fields are controlled by Firestore security rules.
+          Role and other account details are managed by your program team.
           This client never bypasses server-side permissions.
         </Text>
 

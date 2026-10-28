@@ -1,7 +1,7 @@
 /** Alumni monthly practice — classic LEP artefacts (not journey phase chips). */
 const ALUMNI_MONTHLY_ROTATION = [
   {
-    title: 'Shameless speech',
+    title: 'Shameless pitch',
     blurb: 'Record or refresh your shameless pitch — one ask, no apology.',
     taskId: 'lep-day5-pitch',
   },
