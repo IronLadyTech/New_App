@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, InteractionManager, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -89,10 +89,11 @@ export default function PhoneLoginScreen({ navigation }) {
 
   useEffect(() => {
     if (!USE_FIREBASE_PHONE_OTP || Platform.OS === 'web') return undefined;
-    const task = InteractionManager.runAfterInteractions(() => {
+    // RN 0.88+ removed InteractionManager; defer reCAPTCHA until after first paint.
+    const id = requestAnimationFrame(() => {
       setMountRecaptcha(true);
     });
-    return () => task.cancel();
+    return () => cancelAnimationFrame(id);
   }, []);
 
   const busy = checking || sending;
