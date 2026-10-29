@@ -183,6 +183,19 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
       }
     }
 
+    // Too early: everything open is done and the next tasks are still locked. Say when they
+    // open, and give her something worth doing meanwhile instead of "you're caught up".
+    const nextUnlock = (context.upcomingUnlocks || []).find((u) => u?.opensLabel);
+    if (!openDue && !nextOpen && nextUnlock) {
+      candidates.unshift({
+        id: `home-early-${nextUnlock.opensOn}`,
+        job: IL_GUIDE_JOBS.RECOMMEND,
+        message: name
+          ? `${name}, you're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles or an Iron Lady Army story.`
+          : `You're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles or an Iron Lady Army story.`,
+      });
+    }
+
     if (nextOpen && pct < 100) {
       candidates.push({
         id: `home-progress-${nextOpen.id}`,
@@ -191,7 +204,7 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
           ? `${name}, you're at ${pct}% in ${progName}. Next up: ${nextOpen.title}.`
           : `You're at ${pct}% in ${progName}. Next up: ${nextOpen.title}.`,
       });
-    } else if (pct >= 100 || (!nextOpen && !openDue)) {
+    } else if (!nextUnlock && (pct >= 100 || (!nextOpen && !openDue))) {
       candidates.push({
         id: 'home-done',
         job: IL_GUIDE_JOBS.NUDGE,

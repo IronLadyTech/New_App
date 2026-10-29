@@ -38,6 +38,7 @@ import {
   PRINCIPLES_LOCKED,
   PRINCIPLES_OPEN,
   STORIES_FUNC_ENR,
+  PODCASTS,
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import ILGuideWhisperLep from '../../components/il/ILGuideWhisperLep';
@@ -109,7 +110,11 @@ export default function LepLearnScreen() {
             ) : chip === 'Events' ? (
               <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goEventDetail} />
             ) : chip === 'Community stories' ? (
-              <StoriesEnrolled onHow={nav.goEngage} />
+              <StoriesEnrolled
+                onHow={nav.goEngage}
+                onSeeAll={() => nav.goEngageMediaList('podcast')}
+                onWatch={nav.goWatch}
+              />
             ) : (
               <EnrolledForYou onTicket={nav.goEventDetail} onWatch={nav.goWatch} />
             )}
@@ -1623,7 +1628,18 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
   );
 }
 
-function StoriesEnrolled({ onHow }) {
+/** The episode behind a story card — the same entry the Engage podcast list plays. */
+function podcastWatch(story) {
+  const ep = PODCASTS.find((p) => p.title === story.title);
+  return ep ? { assetKey: ep.assetKey, title: ep.title, sub: ep.who } : null;
+}
+
+function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
+  const play = (story) => {
+    const watch = podcastWatch(story);
+    if (watch) onWatch?.(watch);
+    else onSeeAll?.();
+  };
   return (
     <>
       <View style={{ marginTop: 20, flexDirection: 'row', alignItems: 'flex-end' }}>
@@ -1634,6 +1650,11 @@ function StoriesEnrolled({ onHow }) {
           New
         </ILText>
       </View>
+      <Pressable
+        onPress={() => play(STORY_FEATURED_ENR)}
+        accessibilityRole="button"
+        accessibilityLabel={`Play ${STORY_FEATURED_ENR.title}`}
+      >
       <WhiteCard style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden' }}>
         <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
           <CoverThumb source={STORY_FEATURED_ENR.img} play time={STORY_FEATURED_ENR.time} />
@@ -1662,19 +1683,28 @@ function StoriesEnrolled({ onHow }) {
           </ILText>
         </View>
       </WhiteCard>
+      </Pressable>
 
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           From women in Technology
         </ILText>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          See all
-        </ILText>
+        <Pressable onPress={onSeeAll} accessibilityRole="button" accessibilityLabel="See all podcasts" hitSlop={10}>
+          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+            See all
+          </ILText>
+        </Pressable>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
         <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
           {STORIES_FUNC_ENR.map((item) => (
-            <WhiteCard key={item.title} style={{ width: 200, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
+            <Pressable
+              key={item.title}
+              onPress={() => play(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Play ${item.title}`}
+            >
+            <WhiteCard style={{ width: 200, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
               <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                 <CoverThumb source={item.img} play time={item.time} />
               </View>
@@ -1687,6 +1717,7 @@ function StoriesEnrolled({ onHow }) {
                 </ILText>
               </View>
             </WhiteCard>
+            </Pressable>
           ))}
         </View>
       </ScrollView>

@@ -5,6 +5,9 @@
   "build": {
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_PHONE_OTP": "firebase"
+      },
       "android": {
         "buildType": "apk"
       },

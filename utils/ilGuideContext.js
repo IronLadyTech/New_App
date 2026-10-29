@@ -30,6 +30,7 @@ export function buildILGuideContext({
   lepPractice = null,
   lepBatch = null,
   lepDues = null,
+  upcomingUnlocks = null,
 }) {
   const name =
     profile?.displayName ||
@@ -133,6 +134,8 @@ export function buildILGuideContext({
     lepPractice,
     lepBatch,
     lepDues,
+    // Phases still closed: when each opens (or why it can't yet). Empty list = nothing waiting.
+    upcomingUnlocks: Array.isArray(upcomingUnlocks) && upcomingUnlocks.length ? upcomingUnlocks : null,
   };
 
   // Strip null/empty optional fields

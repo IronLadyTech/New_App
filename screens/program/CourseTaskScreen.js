@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
+import { Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
@@ -36,6 +36,7 @@ import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
+import { showAlert } from '../../utils/showAlert';
 import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
 import {
   TASK_MATERIALS_LOAD_FAILED,
@@ -545,7 +546,7 @@ export default function CourseTaskScreen({ route, navigation }) {
       const chosen = source === 'file' ? await pickTaskDocument() : await pickTaskVideo(source);
       if (chosen) setPicked(chosen);
     } catch (e) {
-      Alert.alert(e?.code === 'permission' ? 'Permission needed' : 'Could not use that file', e?.message || 'Try again.');
+      showAlert(e?.code === 'permission' ? 'Permission needed' : 'Could not use that file', e?.message || 'Try again.');
     }
   };
 
@@ -584,7 +585,7 @@ export default function CourseTaskScreen({ route, navigation }) {
       setEditing(false);
       setPicked(null);
     } catch (e) {
-      Alert.alert(
+      showAlert(
         'Not saved yet',
         e?.message && !String(e.message).toLowerCase().includes('zoho')
           ? `${TASK_SAVE_FAILED}\n\n(${e.message})`

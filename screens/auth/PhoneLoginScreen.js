@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
+import { friendlyAuthError } from '../../utils/authErrors';
 import { formatCallableError, resolvePhoneAccess } from '../../services/functions';
 import {
   USE_FIREBASE_PHONE_OTP,
@@ -87,14 +88,15 @@ export default function PhoneLoginScreen({ navigation }) {
   const { showLaunchSplash } = useDevLaunchSplashPreview();
   const [mountRecaptcha, setMountRecaptcha] = useState(false);
 
+  const useWebRecaptcha = USE_FIREBASE_PHONE_OTP && Platform.OS === 'web';
+
   useEffect(() => {
-    if (!USE_FIREBASE_PHONE_OTP || Platform.OS === 'web') return undefined;
-    // RN 0.88+ removed InteractionManager; defer reCAPTCHA until after first paint.
+    if (!useWebRecaptcha) return undefined;
     const id = requestAnimationFrame(() => {
       setMountRecaptcha(true);
     });
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [useWebRecaptcha]);
 
   const busy = checking || sending;
 
@@ -131,17 +133,19 @@ export default function PhoneLoginScreen({ navigation }) {
         }
         stashPhoneAuth({ whatsapp: true, access }, phone);
       } else if (USE_FIREBASE_PHONE_OTP) {
-        if (!recaptchaVerifier.current) {
+        if (useWebRecaptcha && !recaptchaVerifier.current) {
           setMountRecaptcha(true);
           setError('Preparing security check… wait a moment, then tap Continue again.');
           return;
         }
         setSending(true);
         try {
-          const confirmation = await sendFirebasePhoneOtp(phone, recaptchaVerifier.current);
+          const confirmation = useWebRecaptcha
+            ? await sendFirebasePhoneOtp(phone, recaptchaVerifier.current)
+            : await sendFirebasePhoneOtp(phone);
           stashPhoneAuth({ firebase: true, confirmation, access }, phone);
         } catch (e) {
-          setError(e?.message || 'Could not send SMS. Try again.');
+          setError(friendlyAuthError(e));
           return;
         } finally {
           setSending(false);
@@ -438,7 +442,7 @@ export default function PhoneLoginScreen({ navigation }) {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-      {mountRecaptcha && USE_FIREBASE_PHONE_OTP && Platform.OS !== 'web' ? (
+      {mountRecaptcha && useWebRecaptcha ? (
         <FirebaseRecaptchaVerifierModal
           ref={recaptchaVerifier}
           firebaseConfig={firebaseConfig}

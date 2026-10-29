@@ -109,6 +109,19 @@ function resolveWhisperOpenTarget(guideContext, { message = '', apiTaskId = null
     if (!done) return { kind: 'task', id: apiTaskId, label: 'Open next task →' };
   }
 
+  // "You're ahead … watch the 27 Principles": the button opens that video, not a task.
+  if (/27 principles/i.test(msg)) {
+    return {
+      kind: 'watch',
+      watch: {
+        assetKey: 'lep-principles-video',
+        title: '27 Principles',
+        sub: 'Mental models for unflinching leadership',
+      },
+      label: 'Watch 27 Principles →',
+    };
+  }
+
   const practice = guideContext?.openPractice;
   if (practice?.taskId || practice?.practiceId) {
     return { kind: 'practice', item: practice, label: 'Start practice →' };
@@ -133,6 +146,10 @@ function openWhisperTarget(nav, target) {
   }
   if (target.kind === 'practice' && target.item) {
     nav.goPracticeItem?.(target.item);
+    return;
+  }
+  if (target.kind === 'watch' && target.watch) {
+    nav.goWatch?.(target.watch);
   }
 }
 

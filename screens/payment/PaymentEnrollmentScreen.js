@@ -1,34 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useCourses } from '../../context/CoursesContext';
 import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
-import IronLadyHeader from '../../components/IronLadyHeader';
-import RazorpayCheckoutModal from '../../components/RazorpayCheckoutModal';
+import { GlassBackBar } from '../../components/il/GlassHeader';
 import { IL_BRAND, IL_FONTS } from '../../constants/ironLadyBrand';
 import { PAYMENT_STATUS } from '../../constants/programs';
-import { savePaymentOrder } from '../../services/firestore';
-import { refreshMyAccess } from '../../services/functions';
-import { RAZORPAY_TEST_AMOUNT_PAISE } from '../../constants/razorpay';
-import {
-  buildLocalCheckout,
-  createRazorpayOrder,
-  isWebCheckout,
-  openRazorpayInBrowser,
-  verifyRazorpayPayment,
-} from '../../services/razorpay';
 import {
   buildPaymentEnrollmentView,
   programmeBalancePaid,
@@ -36,8 +23,9 @@ import {
   registrationFeeOrder,
 } from '../../utils/paymentEnrollment';
 import { navigateInMemberStack } from '../../utils/watchNav';
-import { profilePatchAfterFullPayment } from '../../utils/paymentSuccessPatch';
-import { day1CalendarUrl } from '../../utils/registeredHomeData';
+import { useProgramNavMaybe } from '../../context/ProgramNavContext';
+import { useBalancePayment } from '../../hooks/useBalancePayment';
+
 
 function PaymentRow({ label, detail, amount, status, statusTone }) {
   return (
@@ -63,32 +51,11 @@ function PaymentRow({ label, detail, amount, status, statusTone }) {
   );
 }
 
-function BatchDayRow({ dayLabel, title, subtitle }) {
-  return (
-    <View style={styles.batchRow}>
-      <Text style={styles.batchDay}>{dayLabel}</Text>
-      <View style={styles.batchContent}>
-        <Text style={styles.batchTitle}>{title}</Text>
-        <Text style={styles.batchSubtitle}>{subtitle}</Text>
-      </View>
-    </View>
-  );
-}
-
 export default function PaymentEnrollmentScreen({ navigation, route }) {
-  const { profile, user, patchProfile } = useAuth();
+  const { profile, user } = useAuth();
   const { visibleEvents } = useCourses();
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const programId = route?.params?.programId;
-  const [paying, setPaying] = useState(false);
-  const [checkout, setCheckout] = useState(null);
-  const [enrolled, setEnrolled] = useState(null);
-
-  const goProgramHome = () => {
-    setEnrolled(null);
-    navigateInMemberStack(navigation, 'Home', 'LepHome');
-  };
-
   const vm = useMemo(
     () =>
       buildPaymentEnrollmentView(profile, user, {
@@ -99,119 +66,22 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
     [profile, user, programId, visibleEvents, cmsBatch]
   );
 
-  const buildCheckout = () => {
-    const payer = vm.payer || {};
-    return buildLocalCheckout({
-      programId: vm.programId,
-      name: payer.name,
-      email: payer.email,
-      contact: payer.phone,
-      description: `${vm.programTitle} — programme balance`,
-    });
-  };
+  const programNav = useProgramNavMaybe();
 
-  const mergeCheckoutSession = (cloudOrder) => {
-    const local = buildCheckout();
-    if (!cloudOrder) return local;
-    return {
-      ...local,
-      ...cloudOrder,
-      prefill: { ...local.prefill, ...(cloudOrder.prefill || {}) },
-    };
-  };
-
-  const onPayBalance = async () => {
-    setPaying(true);
-    try {
-      const cloudOrder = await createRazorpayOrder(vm.programId);
-      const session = mergeCheckoutSession(cloudOrder);
-
-      if (isWebCheckout) {
-        const result = await openRazorpayInBrowser(session);
-        await onPaymentSuccess(result);
-        return;
-      }
-
-      setCheckout(session);
-    } catch (e) {
-      if (e.message !== 'Payment cancelled') {
-        Alert.alert('Payment unavailable', e.message);
-      }
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const onPaymentSuccess = async ({ orderId, paymentId, signature }) => {
-    setCheckout(null);
-    setPaying(true);
-
-    if (!orderId || !paymentId || !signature) {
-      setPaying(false);
-      Alert.alert(
-        'Payment incomplete',
-        'Razorpay did not return a confirmed payment. Failed or cancelled attempts are not charged.'
-      );
-      return;
-    }
-
-    try {
-      await verifyRazorpayPayment({
-        orderId,
-        paymentId,
-        signature,
-        programId: vm.programId,
-      });
-    } catch (err) {
-      setPaying(false);
-      Alert.alert(
-        'Payment not confirmed',
-        err.message || 'Razorpay could not verify this payment. If money was debited, contact support with your UPI reference.'
-      );
-      return;
-    }
-
-    patchProfile(
-      profilePatchAfterFullPayment(profile, vm.programId, { paymentId, orderId })
-    );
-
-    const verifyTask = refreshMyAccess().catch(() => {});
-
-    let saved = null;
-    try {
-      saved = await savePaymentOrder({
-        uid: user?.uid,
-        transactionId: paymentId,
-        razorpayOrderId: orderId || null,
-        amountPaise: RAZORPAY_TEST_AMOUNT_PAISE,
-        programId: vm.programId,
-        programTitle: vm.programTitle,
-        description: `${vm.programTitle} — programme balance`,
-        payerName: vm.payer?.name || '',
-        payerEmail: vm.payer?.email || '',
-        payerPhone: vm.payer?.phone || '',
-      });
-    } catch (err) {
-      setPaying(false);
-      Alert.alert(
-        'Payment received',
-        `${paymentId || 'Paid'} — receipt could not be saved (${err.message}). Your enrolment is updating.`,
-        [{ text: 'Continue', onPress: goProgramHome }]
-      );
-      await verifyTask;
-      return;
-    }
-
-    await verifyTask;
-    setPaying(false);
-
-    if (vm.programId === '100bm') {
+  // Home shows whichever programme is selected — select the one she just paid for.
+  const goProgramHome = (paidProgramId) => {
+    if (paidProgramId === '100bm') {
       navigation.replace('Confirm100bmCohort');
       return;
     }
-
-    setEnrolled({ title: vm.programTitle, order: saved });
+    if (paidProgramId) programNav?.setProgram?.(paidProgramId);
+    navigateInMemberStack(navigation, 'Home', 'LepHome');
   };
+
+  const { startPayment: onPayBalance, paying, overlays } = useBalancePayment(vm, {
+    onDone: goProgramHome,
+    onReceipt: (order) => navigation.replace('OrderReceipt', { orderId: order.id, order }),
+  });
 
   const onTalkToTeam = () => {
     const url = vm.supportPhone
@@ -219,23 +89,6 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
       : 'mailto:support@ironlady.tech';
     Linking.openURL(url).catch(() => {
       Alert.alert('Contact Iron Lady', 'Email support@ironlady.tech for payment help.');
-    });
-  };
-
-  const onAddToCalendar = () => {
-    const day1 = vm.batchSessions?.[0];
-    if (day1?.placeholder || !day1?.dateIso) {
-      Alert.alert(
-        'Add to calendar',
-        'Choose your batch date first — then Day 1 and Day 2 will appear here with calendar links.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-    const clock = day1.title?.includes('·') ? day1.title.split('·').slice(1).join('·').trim() : '9:00 AM';
-    const url = day1CalendarUrl(day1.dateIso, clock);
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Calendar', 'Could not open your calendar app. Copy the dates from the batch card above.');
     });
   };
 
@@ -256,12 +109,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      <IronLadyHeader
-        onCalendar={() => navigateInMemberStack(navigation, 'Home', 'Schedule')}
-        onNotifications={() => navigation.navigate('Home', { screen: 'Notifications' })}
-        onProfile={() => navigation.navigate('ProfileHome')}
-        photoUrl={profile?.photoURL}
-      />
+      <GlassBackBar title="Payment & enrolment" sub={vm.programTitle} onBack={() => navigation.goBack()} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -299,9 +147,13 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
           >
             <PaymentRow
               label="Registration fee"
-              detail={`Received · txn ending ${vm.txnLast4} · tap for receipt`}
+              detail={
+                vm.txnLast4
+                  ? `Received · txn ending ${vm.txnLast4} · tap for receipt`
+                  : 'Received · tap for receipt'
+              }
               amount={vm.registrationFeeLabel}
-              status={`PAID ${vm.registrationPaidLabel}`}
+              status={vm.registrationPaidLabel !== '—' ? `PAID ${vm.registrationPaidLabel}` : 'PAID'}
               statusTone="paid"
             />
           </TouchableOpacity>
@@ -367,73 +219,12 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
-        {/* Batch card */}
-        <View style={styles.batchCard}>
-          <Text style={styles.batchHeading}>{vm.batchHeading?.toUpperCase() || 'YOUR BATCH'}</Text>
-          {vm.batchSessions.map((session, index) => (
-            <BatchDayRow key={`${session.dayLabel}-${index}`} {...session} />
-          ))}
-          <TouchableOpacity
-            style={styles.calendarButton}
-            onPress={onAddToCalendar}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.calendarButtonText}>Add all dates to calendar</Text>
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity onPress={onContinue} style={styles.continueLink}>
           <Text style={styles.continueText}>Continue to my journey →</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <RazorpayCheckoutModal
-        visible={Boolean(checkout)}
-        checkout={checkout}
-        onSuccess={onPaymentSuccess}
-        onDismiss={() => setCheckout(null)}
-        onError={(err) => {
-          setCheckout(null);
-          Alert.alert('Payment failed', err.message);
-        }}
-      />
-
-      <Modal visible={paying && !enrolled} transparent animationType="fade">
-        <View style={styles.busyOverlay}>
-          <ActivityIndicator size="large" color={IL_BRAND.white} />
-          <Text style={styles.busyText}>Confirming your payment…</Text>
-        </View>
-      </Modal>
-
-      <Modal visible={Boolean(enrolled)} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.successSheet} edges={['top', 'bottom']}>
-          <View style={styles.successBody}>
-            <View style={styles.successIconWrap}>
-              <MaterialIcons name="check-circle" size={72} color="#1B7A4A" />
-            </View>
-            <Text style={styles.successTitle}>You’re enrolled</Text>
-            <Text style={styles.successSub}>
-              Payment received for {enrolled?.title || 'your programme'}. Your full access is unlocked.
-            </Text>
-            <TouchableOpacity style={styles.payButton} onPress={goProgramHome} activeOpacity={0.9}>
-              <Text style={styles.payButtonText}>Continue to Home</Text>
-            </TouchableOpacity>
-            {enrolled?.order ? (
-              <TouchableOpacity
-                style={styles.successSecondary}
-                onPress={() => {
-                  const order = enrolled.order;
-                  setEnrolled(null);
-                  navigation.replace('OrderReceipt', { orderId: order.id, order });
-                }}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.successSecondaryText}>View receipt</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </SafeAreaView>
-      </Modal>
+      {overlays}
     </SafeAreaView>
   );
 }
@@ -526,27 +317,38 @@ const styles = StyleSheet.create({
   paymentRowRight: {
     alignItems: 'flex-end',
   },
+  // Label and amount share one line height, and detail and status share another, so
+  // the two columns sit on the same lines.
   rowLabel: {
-    fontSize: 20,
+    fontSize: 17,
+    lineHeight: 24,
     fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
+    includeFontPadding: false,
   },
   rowDetail: {
     marginTop: 4,
-    fontSize: 13,
+    fontSize: 12.5,
+    lineHeight: 18,
     fontFamily: IL_FONTS.regular,
     color: IL_BRAND.forestMuted,
+    includeFontPadding: false,
   },
   rowAmount: {
-    fontSize: 22,
+    fontSize: 19,
+    lineHeight: 24,
     fontFamily: IL_FONTS.bold,
     color: IL_BRAND.forest,
+    includeFontPadding: false,
+    fontVariant: ['tabular-nums'],
   },
   rowStatus: {
     marginTop: 4,
     fontSize: 10,
+    lineHeight: 18,
     fontFamily: IL_FONTS.bold,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    includeFontPadding: false,
   },
   statusPaid: {
     color: IL_BRAND.paidGreen,
@@ -609,62 +411,6 @@ const styles = StyleSheet.create({
     fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
   },
-  batchCard: {
-    marginTop: 20,
-    backgroundColor: IL_BRAND.cardDark,
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: IL_BRAND.cardDarkBorder,
-  },
-  batchHeading: {
-    fontSize: 11,
-    fontFamily: IL_FONTS.bold,
-    letterSpacing: 1.2,
-    color: IL_BRAND.red,
-    marginBottom: 16,
-  },
-  batchRow: {
-    flexDirection: 'row',
-    marginBottom: 18,
-  },
-  batchDay: {
-    width: 52,
-    fontSize: 11,
-    fontFamily: IL_FONTS.bold,
-    letterSpacing: 0.5,
-    color: IL_BRAND.mutedOnDark,
-    paddingTop: 2,
-  },
-  batchContent: {
-    flex: 1,
-  },
-  batchTitle: {
-    fontSize: 16,
-    fontFamily: IL_FONTS.semibold,
-    color: IL_BRAND.white,
-    lineHeight: 22,
-  },
-  batchSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    fontFamily: IL_FONTS.regular,
-    color: IL_BRAND.mutedOnDark,
-  },
-  calendarButton: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#2A4545',
-    borderRadius: 28,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: '#0A2222',
-  },
-  calendarButtonText: {
-    color: IL_BRAND.white,
-    fontSize: 15,
-    fontFamily: IL_FONTS.semibold,
-  },
   continueLink: {
     marginTop: 28,
     alignItems: 'center',
@@ -674,54 +420,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: IL_FONTS.semibold,
     color: IL_BRAND.forest,
-  },
-  busyOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(12, 53, 53, 0.72)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  busyText: {
-    marginTop: 16,
-    fontSize: 16,
-    fontWeight: '600',
-    color: IL_BRAND.white,
-    textAlign: 'center',
-  },
-  successSheet: {
-    flex: 1,
-    backgroundColor: IL_BRAND.cream,
-  },
-  successBody: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 48,
-    alignItems: 'center',
-  },
-  successIconWrap: {
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: IL_BRAND.forest,
-    textAlign: 'center',
-  },
-  successSub: {
-    marginTop: 12,
-    fontSize: 17,
-    lineHeight: 26,
-    color: IL_BRAND.forest,
-    textAlign: 'center',
-  },
-  successSecondary: {
-    marginTop: 14,
-    paddingVertical: 12,
-  },
-  successSecondaryText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: IL_BRAND.red,
   },
 });

@@ -44,7 +44,7 @@ import { updateUserProfile } from '../../services/firestore';
 import { updateMyWelcomeProfile } from '../../services/functions';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
 import { usePrograms } from '../../context/ProgramsContext';
-import RegisteredHomeView, { openDay1Calendar } from './RegisteredHomeView';
+import RegisteredHomeView, { BhagHomeCard, openDay1Calendar } from './RegisteredHomeView';
 import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
 import { buildLepDueWeek } from '../../utils/lepBatchDueWeek';
 import { nextCmsBatchSession } from '../../utils/cmsBatchSessions';
@@ -75,7 +75,8 @@ import {
   buildUpcomingSessionCard,
   enrolledWhisperFallback,
 } from '../../utils/lepEnrolledHomeHint';
-import { nextJourneyTask } from '../../utils/ilGuideJourney';
+import { isGuideTaskOpen, nextJourneyTask } from '../../utils/ilGuideJourney';
+import { phaseFlowFromBatch } from '../../utils/phaseUnlock';
 import { makeTaskDoneChecker } from '../../utils/taskDone';
 import PracticeDeck from '../../components/lep/PracticeDeck';
 import LepHomeTakeAMoment from '../../components/lep/LepHomeTakeAMoment';
@@ -442,6 +443,9 @@ function EnrolledHome({ cmsBatch }) {
   const showRitualsWatch = ritualsUnlocked && !ritualsWatch.done;
   const showRitualsTracker = ritualsUnlocked && ritualsWatch.done;
   const streak = useLepPracticeStreak();
+  const enrolledBhag = String(
+    learnerBhagText(profile) || demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || ''
+  ).trim();
   const hero = buildLepEnrolledHero(profile, group);
   const heroChip =
     cohortPhase === 'active' && day1Offset != null && day1Offset >= 0
@@ -467,9 +471,15 @@ function EnrolledHome({ cmsBatch }) {
     () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
     [demo.isDone, demo.done, getTaskSubmission]
   );
+  // The guide only nudges what she can open today — a locked phase's task (e.g. Program
+  // Access Essentials before Orientation opens) must not be "still open this week".
+  const guideFlow = useMemo(
+    () => phaseFlowFromBatch(PROGRAMS.LEP, cmsBatch, practiceTodayIso()),
+    [cmsBatch]
+  );
   const journeyNext = useMemo(
-    () => nextJourneyTask(PROGRAMS.LEP, profile, taskIsDone),
-    [profile, taskIsDone]
+    () => nextJourneyTask(PROGRAMS.LEP, profile, taskIsDone, guideFlow),
+    [profile, taskIsDone, guideFlow]
   );
   const guideContext = useMemo(() => {
     const practiceDoneToday = practice.filter((p) => p.done).length;
@@ -492,22 +502,24 @@ function EnrolledHome({ cmsBatch }) {
               nextSessionWhen: nextSession?.meta || nextSession?.doneMeta || upcoming.when || null,
             }
           : null,
-      lepDues: (dueWeek.items || []).map((item) => {
-        const lmsDone = item.taskId
-          ? isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, item.taskId)?.status)
-          : false;
-        const done = item.taskId
-          ? demo.isDone(PROGRAMS.LEP, item.taskId) || lmsDone
-          : !!item.done;
-        return {
-          title: item.title,
-          due: item.due,
-          urgent: !!item.urgent,
-          taskId: item.taskId || null,
-          sessionCode: item.sessionCode || null,
-          done,
-        };
-      }),
+      lepDues: (dueWeek.items || [])
+        .filter((item) => !item.taskId || isGuideTaskOpen(PROGRAMS.LEP, profile, guideFlow, item.taskId))
+        .map((item) => {
+          const lmsDone = item.taskId
+            ? isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, item.taskId)?.status)
+            : false;
+          const done = item.taskId
+            ? demo.isDone(PROGRAMS.LEP, item.taskId) || lmsDone
+            : !!item.done;
+          return {
+            title: item.title,
+            due: item.due,
+            urgent: !!item.urgent,
+            taskId: item.taskId || null,
+            sessionCode: item.sessionCode || null,
+            done,
+          };
+        }),
       openPractice: (() => {
         const weekItem = practice.find(
           (p) =>
@@ -542,6 +554,8 @@ function EnrolledHome({ cmsBatch }) {
     journeyNext,
     demo,
     getTaskSubmission,
+    profile,
+    guideFlow,
   ]);
   const dueItemsWithDone = useMemo(
     () =>
@@ -815,6 +829,12 @@ function EnrolledHome({ cmsBatch }) {
           </ILText>
         </Pressable>
       </WhiteCard>
+
+      <BhagHomeCard
+        bhag={enrolledBhag}
+        onBhag={() => nav.goPractice('lep', 'lep-bhag')}
+        style={{ marginTop: 16 }}
+      />
     </RegisteredShell>
   );
 }

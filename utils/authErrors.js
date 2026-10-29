@@ -32,7 +32,7 @@ export function friendlyAuthError(error) {
     'auth/network-request-failed':
       'Network error. Check your internet connection.',
     'auth/operation-not-allowed':
-      'Email/Password sign-in is disabled in the Firebase console.',
+      'This sign-in method is off in Firebase. For SMS login: Firebase Console → Authentication → Sign-in method → enable Phone.',
     'auth/configuration-not-found':
       'Firebase Auth is not set up. Enable Email/Password in the Firebase console.',
     'auth/app-not-authorized':

@@ -11,4 +11,8 @@
 -keep class com.swmansion.reanimated.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 
+# @react-native-firebase (release / R8)
+-keep class io.invertase.firebase.** { *; }
+-dontwarn io.invertase.firebase.**
+
 # Add any project specific keep options here:

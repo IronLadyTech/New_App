@@ -9,7 +9,11 @@ import {
   journeyProgressForProgram,
   nextJourneyTask,
   primaryProgramForGuide,
+  upcomingUnlocks,
 } from '../utils/ilGuideJourney';
+import { useLearnerCmsBatch } from './useLearnerCmsBatch';
+import { phaseFlowFromBatch } from '../utils/phaseUnlock';
+import { todayIsoIST } from '../utils/lepDailyPractice';
 import { makeTaskDoneChecker } from '../utils/taskDone';
 import { fetchILGuideWhisper } from '../services/ilGuide';
 import { IL_GUIDE_SURFACES } from '../constants/ilGuide';
@@ -45,14 +49,24 @@ export function useILGuideWhisper(surface, extraContext = null) {
     () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
     [demo.isDone, getTaskSubmission, demo.done, subsByProgram]
   );
+  // Her batch dates: the same unlock rule My Program uses, so the guide never sends her
+  // to a locked task and can say when the next ones open.
+  const { batch: guideBatch } = useLearnerCmsBatch(guideProgramId);
+  const today = todayIsoIST();
+  const phaseFlow = useMemo(
+    () => phaseFlowFromBatch(guideProgramId, guideBatch, today),
+    [guideProgramId, guideBatch, today]
+  );
   const journeyProgress = useMemo(
-    () => journeyProgressForProgram(guideProgramId, profile, taskIsDone),
-    [guideProgramId, profile, taskIsDone]
+    () => journeyProgressForProgram(guideProgramId, profile, taskIsDone, phaseFlow),
+    [guideProgramId, profile, taskIsDone, phaseFlow]
   );
   const journeyNext = useMemo(
-    () => nextJourneyTask(guideProgramId, profile, taskIsDone),
-    [guideProgramId, profile, taskIsDone]
+    () => nextJourneyTask(guideProgramId, profile, taskIsDone, phaseFlow),
+    [guideProgramId, profile, taskIsDone, phaseFlow]
   );
+  const unlocksKey = JSON.stringify(upcomingUnlocks(guideProgramId, profile, phaseFlow));
+  const unlocks = useMemo(() => JSON.parse(unlocksKey), [unlocksKey]);
   const firstLogin =
     surface === IL_GUIDE_SURFACES.ONBOARD ||
     (surface === IL_GUIDE_SURFACES.HOME && !profile?.ilGuideOnboarded);
@@ -128,6 +142,7 @@ export function useILGuideWhisper(surface, extraContext = null) {
         journeyProgress,
         journeyNextTask: journeyNext,
         primaryProgramId: guideProgramId,
+        upcomingUnlocks: unlocks,
         ...(extraStable && typeof extraStable === 'object' ? extraStable : {}),
       });
 
@@ -178,6 +193,7 @@ export function useILGuideWhisper(surface, extraContext = null) {
     journeyProgress,
     journeyNext,
     guideProgramId,
+    unlocks,
     extraStable,
   ]);
 

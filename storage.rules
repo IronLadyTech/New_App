@@ -4,7 +4,8 @@ service firebase.storage {
     function userRole() {
       return request.auth != null
         && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
-        ? firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role
+        // Some phone sign-up records have no `role` — read that as no role, not an error.
+        ? firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('role', '')
         : '';
     }
 

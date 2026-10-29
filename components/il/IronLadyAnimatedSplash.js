@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
-  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -11,7 +10,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Polygon } from 'react-native-svg';
 import * as SplashScreen from 'expo-splash-screen';
 import { markLaunchRevealed } from '../../utils/launchReveal';
 
@@ -51,8 +49,6 @@ export const SPLASH_INTRO_MS = 2200;
 const OUTRO_MS = 750;
 /** Kept for callers that budget the whole splash. */
 export const SPLASH_ANIMATION_MS = SPLASH_INTRO_MS + OUTRO_MS;
-
-const AnimatedPolygon = Animated.createAnimatedComponent(Polygon);
 
 /** Sounds: optional, never blocking — a phone on silent stays silent. */
 function useLaunchSound(enabled) {
@@ -98,7 +94,7 @@ function useLaunchSound(enabled) {
 export default function IronLadyAnimatedSplash({ onFinish, ready = true }) {
   const { width: W, height: H } = useWindowDimensions();
   const reduced = useReducedMotion();
-  const size = Math.min(W * 0.62, 260); // on-screen size of the 1024px logo canvas
+  const size = Math.min(W * 0.72, 300); // on-screen size of the 1024px logo canvas
   const k = size / CANVAS;
   const sound = useLaunchSound(!reduced);
 
@@ -176,16 +172,22 @@ export default function IronLadyAnimatedSplash({ onFinish, ready = true }) {
     if (introDone && ready) startOutro();
   }, [introDone, ready, startOutro]);
 
-  // The black mark: front square ∪ its copy pushed by `extrude` — a hexagon at every step.
-  const blockProps = useAnimatedProps(() => {
-    const e = extrude.value;
-    const ox = EXTRUDE.dx * e;
-    const oy = EXTRUDE.dy * e;
-    const { x, y, size: s } = FRONT;
-    return {
-      points: `${x},${y} ${x + s},${y} ${x + s},${y + s} ${x + s + ox},${y + s + oy} ${x + ox},${y + s + oy} ${x + ox},${y + oy}`,
-    };
-  });
+  // The black mark: front square ∪ its copy pushed by `extrude` ∪ the band swept between them.
+  // Plain Views, not an animated SVG polygon — animated SVG points do not redraw on Android.
+  // The extrusion (−1, +1) is perpendicular to the square's diagonal, so the band is a
+  // rectangle: the diagonal's length, turned 45°, stretched by `extrude`.
+  const backStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: EXTRUDE.dx * extrude.value * k }, { translateY: EXTRUDE.dy * extrude.value * k }],
+  }));
+  const bandStyle = useAnimatedStyle(() => ({
+    opacity: extrude.value > 0 ? 1 : 0,
+    transform: [
+      { translateX: ((EXTRUDE.dx * extrude.value) / 2) * k },
+      { translateY: ((EXTRUDE.dy * extrude.value) / 2) * k },
+      { rotate: '45deg' },
+      { scaleY: extrude.value },
+    ],
+  }));
 
   const stageStyle = useAnimatedStyle(() => {
     // Keep the growing shape centred: shift by half the extrusion still to come.
@@ -209,15 +211,26 @@ export default function IronLadyAnimatedSplash({ onFinish, ready = true }) {
 
   const ironStyle = useAnimatedStyle(() => ({
     opacity: iron.value > 0 ? Math.min(1, iron.value * 1.6) : 0,
-    transform: [{ scale: 1.9 - 0.9 * iron.value }],
+    transform: [{ scale: 1.22 - 0.22 * iron.value }],
   }));
   const ladyStyle = useAnimatedStyle(() => ({
     opacity: lady.value > 0 ? Math.min(1, lady.value * 1.6) : 0,
-    transform: [{ scale: 1.9 - 0.9 * lady.value }],
+    transform: [{ scale: 1.22 - 0.22 * lady.value }],
   }));
   const rootStyle = useAnimatedStyle(() => ({ opacity: rootOpacity.value }));
 
   const box = (b) => ({ position: 'absolute', left: b.x * k, top: b.y * k, width: b.w * k, height: b.h * k });
+  const square = { position: 'absolute', left: FRONT.x * k, top: FRONT.y * k, width: FRONT.size * k, height: FRONT.size * k, backgroundColor: '#000' };
+  const bandLength = FRONT.size * Math.SQRT2;
+  const bandDepth = Math.hypot(EXTRUDE.dx, EXTRUDE.dy);
+  const band = {
+    position: 'absolute',
+    left: (FRONT.x + FRONT.size / 2 - bandLength / 2) * k,
+    top: (FRONT.y + FRONT.size / 2 - bandDepth / 2) * k,
+    width: bandLength * k,
+    height: bandDepth * k,
+    backgroundColor: '#000',
+  };
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.root, rootStyle]}>
@@ -229,13 +242,23 @@ export default function IronLadyAnimatedSplash({ onFinish, ready = true }) {
       >
         <View pointerEvents="none" style={StyleSheet.absoluteFill}>
           <Animated.View
-            style={[{ position: 'absolute', width: size, height: size, left: (W - size) / 2, top: (H - size) / 2 }, stageStyle]}
+            style={[
+              {
+                position: 'absolute',
+                width: size,
+                height: size,
+                left: (W - size) / 2,
+                top: (H - size) / 2,
+                overflow: 'visible',
+              },
+              stageStyle,
+            ]}
           >
-            <Svg width={size} height={size} viewBox={`0 0 ${CANVAS} ${CANVAS}`}>
-              <AnimatedPolygon animatedProps={blockProps} fill="#000000" />
-            </Svg>
-            <Animated.Image source={IRON.src} resizeMode="stretch" style={[box(IRON), ironStyle]} />
-            <Animated.Image source={LADY.src} resizeMode="stretch" style={[box(LADY), ladyStyle]} />
+            <Animated.View style={[square, backStyle]} />
+            <Animated.View style={[band, bandStyle]} />
+            <View style={square} />
+            <Animated.Image source={IRON.src} resizeMode="contain" style={[box(IRON), ironStyle]} />
+            <Animated.Image source={LADY.src} resizeMode="contain" style={[box(LADY), ladyStyle]} />
           </Animated.View>
         </View>
       </Pressable>

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
-import { Alert, Linking, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Platform, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
+import { useBalancePayment } from '../../hooks/useBalancePayment';
+import { showAlert } from '../../utils/showAlert';
 import { useAuth } from '../../context/AuthContext';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
 import { buildPaymentEnrollmentView } from '../../utils/paymentEnrollment';
@@ -155,6 +157,11 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
     lockLepBatchChoice({ user, profile, patchProfile, picked: batch }).catch(() => {});
   }, [batch?.cmsBatchId, batch?.id, batch?.day1Date, user?.uid]);
 
+  // Paying here is the same Razorpay flow as Profile → Payment; the tick page then continues
+  // into the app, where Home opens as enrolled.
+  const canPay = Boolean(user?.uid && user.uid !== 'preview');
+  const { startPayment, paying, overlays } = useBalancePayment(vm, { onDone: () => finish() });
+
   const finish = () => {
     if (typeof onContinue === 'function') {
       onContinue();
@@ -258,9 +265,9 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           <View style={{ borderTopWidth: 1, borderTopColor: LINE, marginTop: 8 }}>
             <MoneyRow
               label="Registration fee"
-              detail={`Received · txn ending ${vm.txnLast4}`}
+              detail={vm.txnLast4 ? `Received · txn ending ${vm.txnLast4}` : 'Received'}
               amount={vm.registrationFeeLabel}
-              status={`Paid ${vm.registrationPaidLabel}`}
+              status={vm.registrationPaidLabel !== '—' ? `Paid ${vm.registrationPaidLabel}` : 'Paid'}
               paid
             />
             <View style={{ height: 1, backgroundColor: LINE }} />
@@ -292,12 +299,8 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           </View>
 
           <Pressable
-            onPress={() =>
-              Alert.alert(
-                'Pay balance',
-                'Razorpay checkout will open here on the signed-in build.'
-              )
-            }
+            onPress={canPay ? startPayment : () => showAlert('Pay balance', 'Sign in to pay — this is a demo journey.')}
+            disabled={paying}
             accessibilityRole="button"
             accessibilityLabel="Pay balance"
             style={({ pressed }) => ({
@@ -316,9 +319,13 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               elevation: 4,
             })}
           >
-            <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 18 }}>
-              Pay {vm.programBalanceLabel}
-            </ILText>
+            {paying ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 18 }}>
+                Pay {vm.programBalanceLabel}
+              </ILText>
+            )}
           </Pressable>
 
           <Pressable
@@ -447,6 +454,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           />
         </Pressable>
       </ScrollView>
+      {overlays}
     </View>
   );
 }

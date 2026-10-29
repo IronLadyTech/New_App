@@ -21,6 +21,7 @@ import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
 import OtpDeck from '../../src/components/otp/OtpDeck';
+import { friendlyAuthError } from '../../utils/authErrors';
 
 const CTA = '#ED1D24';
 const PAGE = '#FAF7F2';
@@ -68,6 +69,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
   const liveWhatsApp = !!confirmation?.whatsapp;
   const liveFirebase = !!confirmation?.firebase;
   const live = liveWhatsApp || liveFirebase;
+  const showDemoCode = !live;
   const routePhone = route?.params?.phone;
   const masked = useMemo(() => maskPhone(routePhone || phone), [routePhone, phone]);
   const [expected, setExpected] = useState(randomCode);
@@ -90,7 +92,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
         }
         return false;
       } catch (e) {
-        setMessage(e.message);
+        setMessage(friendlyAuthError(e));
         return false;
       }
     },
@@ -224,11 +226,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
             <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 10 }}>
               Check SMS for your 6-digit code.
             </ILText>
-          ) : (
+          ) : showDemoCode ? (
             <ILText role="label" color={IL_BRAND.ink} style={{ marginTop: 10, letterSpacing: 0.4 }}>
               Demo code · {expected}
             </ILText>
-          )}
+          ) : null}
 
           <View
             style={[

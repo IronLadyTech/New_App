@@ -3,7 +3,12 @@ import { resolveCmsBatchSessions } from './cmsBatchSessions';
 import { lepFirstName, lepFullName } from './lepState';
 import { buildLepBatchSessions } from './lepBatchSchedule';
 import { formatLepDay } from './registeredHomeData';
-import { getEnrolledPrograms, learnerProgramDates, programPaymentStatus } from './programAccess';
+import {
+  getEnrolledPrograms,
+  learnerProgramDates,
+  programPaymentStatus,
+  zohoRegistrationTxn,
+} from './programAccess';
 
 function formatTimeRangeIst(startTime, endTime) {
   const fmt = (hhmm) => {
@@ -185,8 +190,10 @@ export function buildPaymentEnrollmentView(
     access.registrationPaidAt ?? access.paidAt ?? profile?.registrationPaidAt ?? null;
   const balanceDueDate =
     access.balanceDueDate ?? access.dueDate ?? profile?.balanceDueDate ?? null;
+  // Real reference only — null when Zoho has none, and the screens then show no number.
+  const regTxn = zohoRegistrationTxn(profile, pid);
   const txnLast4 =
-    access.txnLast4 ?? access.transactionLast4 ?? profile?.paymentTxnLast4 ?? '4471';
+    access.txnLast4 ?? access.transactionLast4 ?? profile?.paymentTxnLast4 ?? regTxn ?? null;
 
   const regPaidLabel = formatShortDate(registrationPaidAt);
   const dueLabel =
@@ -242,7 +249,8 @@ export function buildPaymentEnrollmentView(
     programBalanceLabel: formatInr(programBalance) || '₹ 1',
     registrationPaidLabel: regPaidLabel || '—',
     balanceDueLabel: dueLabel || '—',
-    txnLast4: String(txnLast4).slice(-4),
+    txnLast4: txnLast4 ? String(txnLast4).slice(-4) : null,
+    registrationTxn: regTxn,
     balanceNote: access.balanceNote || balanceDetailNote,
     progressPercent,
     showPayButton: payStatus !== PAYMENT_STATUS.PAID,
@@ -276,8 +284,9 @@ export function registrationFeeOrder(profile, user) {
     programTitle: vm.programTitle,
     programId: vm.programId,
     description: `${vm.programTitle} — registration fee`,
-    transactionId: `ILREG${vm.txnLast4}`,
-    receiptNumber: `IL-REG-${vm.txnLast4}`,
+    // No made-up numbers: rows with no value are left off the receipt.
+    transactionId: vm.registrationTxn || null,
+    receiptNumber: vm.txnLast4 ? `IL-REG-${vm.txnLast4}` : null,
     paidAt,
     payerName: lepFullName(profile) || user?.displayName || '',
     payerEmail: profile?.email || user?.email || '',

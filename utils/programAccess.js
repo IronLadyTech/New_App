@@ -654,6 +654,17 @@ export function zohoPaymentDetail(profile, programId) {
   };
 }
 
+/** The registration payment's own reference — not the balance one, which shares the `txn` list above. */
+const REGISTRATION_TXN_FIELDS = {
+  lep: ['LEP_Registration_Transaction_Id', 'LEP Registration Transaction Id'],
+};
+
+/** Zoho Leads registration transaction id, or null when Zoho does not have it. */
+export function zohoRegistrationTxn(profile, programId) {
+  const names = REGISTRATION_TXN_FIELDS[normalizeProgramId(programId)];
+  return names ? usableLeadText(readLeadField(profile, names)) || null : null;
+}
+
 /** Zoho Leads registration amount, e.g. LEP Payment Amount 2999. */
 export function zohoRegistrationAmount(profile, programId) {
   const spec = ZOHO_LEAD_FIELDS[normalizeProgramId(programId)];

@@ -392,37 +392,6 @@ export default function RegisteredHomeView({
         </View>
       </ScrollView>
 
-      <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
-        <ILText role="eyebrow" color={T.redText} style={[af, { fontSize: 10, letterSpacing: 0.6 }]}>
-          YOUR B-HAG (BIG HAIRY AUDACIOUS GOAL)
-        </ILText>
-        <ILText
-          role="title"
-          color={T.ink}
-          style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-        >
-          {bhag || 'Name the goal big enough to scare you'}
-        </ILText>
-        <ILText role="bodySm" color={T.muted} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-          {bhag
-            ? 'Calibrated during your initial leadership assessment'
-            : 'Write it in one sentence. Day 2 prints it on your CoDeSeF sheet.'}
-        </ILText>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: T.red, marginRight: 8 }} />
-            <ILText role="bodySm" color={T.redText} style={{ fontSize: 12 }}>
-              Primary LEP Focus Track
-            </ILText>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Refine B-HAG" onPress={onBhag} hitSlop={8}>
-            <ILText role="label" color={T.redText} style={{ fontSize: 14 }}>
-              Refine it →
-            </ILText>
-          </Pressable>
-        </View>
-      </View>
-
       {upcomingSession ? (
         <RegisteredNextSessionCard
           upcoming={upcomingSession}
@@ -433,6 +402,44 @@ export default function RegisteredHomeView({
           onOpenSchedule={onOpenSchedule}
         />
       ) : null}
+
+      <BhagHomeCard bhag={bhag} onBhag={onBhag} />
+    </View>
+  );
+}
+
+/** Her B-HAG — last card on Home, registered and enrolled alike. */
+export function BhagHomeCard({ bhag, onBhag, style }) {
+  return (
+    <View style={[{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }, style]}>
+      <ILText role="eyebrow" color={T.redText} style={[af, { fontSize: 10, letterSpacing: 0.6 }]}>
+        YOUR B-HAG (BIG HAIRY AUDACIOUS GOAL)
+      </ILText>
+      <ILText
+        role="title"
+        color={T.ink}
+        style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
+      >
+        {bhag || 'Name the goal big enough to scare you'}
+      </ILText>
+      <ILText role="bodySm" color={T.muted} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
+        {bhag
+          ? 'Calibrated during your initial leadership assessment'
+          : 'Write it in one sentence. Day 2 prints it on your CoDeSeF sheet.'}
+      </ILText>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+          <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: T.red, marginRight: 8 }} />
+          <ILText role="bodySm" color={T.redText} style={{ fontSize: 12 }}>
+            Primary LEP Focus Track
+          </ILText>
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Refine B-HAG" onPress={onBhag} hitSlop={8}>
+          <ILText role="label" color={T.redText} style={{ fontSize: 14 }}>
+            Refine it →
+          </ILText>
+        </Pressable>
+      </View>
     </View>
   );
 }

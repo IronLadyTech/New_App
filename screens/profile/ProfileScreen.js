@@ -255,7 +255,7 @@ export default function ProfileScreen({ navigation }) {
         ) : null}
         <Row
           icon="ribbon-outline"
-          label="Certificates & achievements"
+          label="Certificates & program record"
           onPress={() => navigation.navigate('Certificates')}
         />
         <Row
