@@ -191,8 +191,8 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
         id: `home-early-${nextUnlock.opensOn}`,
         job: IL_GUIDE_JOBS.RECOMMEND,
         message: name
-          ? `${name}, you're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles or an Iron Lady Army story.`
-          : `You're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles or an Iron Lady Army story.`,
+          ? `${name}, you're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles, a C-Suite League story or an Iron Lady Army podcast.`
+          : `You're ahead. ${nextUnlock.phase} opens ${nextUnlock.opensLabel}. Until then, watch the 27 Principles, a C-Suite League story or an Iron Lady Army podcast.`,
       });
     }
 
@@ -205,13 +205,23 @@ function localWhisper(context, lastId, quotations = IL_GUIDE_QUOTATIONS) {
           : `You're at ${pct}% in ${progName}. Next up: ${nextOpen.title}.`,
       });
     } else if (!nextUnlock && (pct >= 100 || (!nextOpen && !openDue))) {
-      candidates.push({
-        id: 'home-done',
-        job: IL_GUIDE_JOBS.NUDGE,
-        message: name
-          ? `${name}, you're caught up in ${progName}. Check Engage for what's happening in your cohort.`
-          : `${progName} looks clear. Check Engage for what's happening in your cohort.`,
-      });
+      // Caught up with time to spare: something worth watching, not an empty "all done".
+      const spare = [
+        {
+          id: 'home-spare-csuite',
+          text: 'watch a C-Suite League story — women who made it to the top table',
+        },
+        { id: 'home-spare-podcast', text: 'play an Iron Lady Army podcast on your next commute' },
+      ];
+      spare.forEach((s2) =>
+        candidates.push({
+          id: s2.id,
+          job: IL_GUIDE_JOBS.RECOMMEND,
+          message: name
+            ? `${name}, you're caught up in ${progName}. With the time you have, ${s2.text}.`
+            : `You're caught up in ${progName}. With the time you have, ${s2.text}.`,
+        })
+      );
     }
 
     const quote = pickQuote(quotations, lastId);

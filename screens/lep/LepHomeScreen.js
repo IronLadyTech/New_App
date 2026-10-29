@@ -44,7 +44,12 @@ import { updateUserProfile } from '../../services/firestore';
 import { updateMyWelcomeProfile } from '../../services/functions';
 import { lockLepBatchChoice } from '../../utils/lockLepBatch';
 import { usePrograms } from '../../context/ProgramsContext';
-import RegisteredHomeView, { BhagHomeCard, openDay1Calendar } from './RegisteredHomeView';
+import RegisteredHomeView, {
+  BhagHomeCard,
+  JourneyRail,
+  NextStepsCard,
+  openDay1Calendar,
+} from './RegisteredHomeView';
 import ChooseBatchDateScreen from '../auth/ChooseBatchDateScreen';
 import { buildLepDueWeek } from '../../utils/lepBatchDueWeek';
 import { nextCmsBatchSession } from '../../utils/cmsBatchSessions';
@@ -77,6 +82,7 @@ import {
 } from '../../utils/lepEnrolledHomeHint';
 import { isGuideTaskOpen, nextJourneyTask } from '../../utils/ilGuideJourney';
 import { phaseFlowFromBatch } from '../../utils/phaseUnlock';
+import { enrolmentNudge, journeyNextSteps, journeyRail } from '../../utils/lepNudgePlan';
 import { makeTaskDoneChecker } from '../../utils/taskDone';
 import PracticeDeck from '../../components/lep/PracticeDeck';
 import LepHomeTakeAMoment from '../../components/lep/LepHomeTakeAMoment';
@@ -115,8 +121,6 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
   const nav = useLepNav();
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
-    RNStatusBar.setTranslucent(true);
-    RNStatusBar.setBackgroundColor('transparent');
     RNStatusBar.setBarStyle('light-content');
     return undefined;
   }, []);
@@ -194,6 +198,11 @@ function RegisteredHome({ cmsBatch, preview }) {
       ''
     );
   }, [preview, cmsBatch?.day1Date, model.day1Iso, profile, lepAccess, batchLabel]);
+  // Part-paid: the enrolment ask gets louder as orientation nears (gentle → firm → urgent → last call).
+  const enrolNudge = useMemo(
+    () => (day1Iso ? enrolmentNudge(profile, day1Iso, practiceTodayIso()) : null),
+    [profile, day1Iso]
+  );
   const upcomingSession = useMemo(
     () =>
       buildUpcomingSessionCard(cmsBatch, {
@@ -312,6 +321,8 @@ function RegisteredHome({ cmsBatch, preview }) {
         <RegisteredHomeView
           model={model}
           guideContext={guideContext}
+          nudge={enrolNudge}
+          onEnrol={nav.goEnroll}
           onCta={onCta}
           onPhaseCta={onPhaseCta}
           onTask={openTask}
@@ -481,6 +492,12 @@ function EnrolledHome({ cmsBatch }) {
     () => nextJourneyTask(PROGRAMS.LEP, profile, taskIsDone, guideFlow),
     [profile, taskIsDone, guideFlow]
   );
+  // Same batch calendar as My Program: where she is, and what is still open to do.
+  const rail = useMemo(() => journeyRail(profile, guideFlow), [profile, guideFlow]);
+  const nextSteps = useMemo(
+    () => journeyNextSteps(profile, guideFlow, taskIsDone),
+    [profile, guideFlow, taskIsDone]
+  );
   const guideContext = useMemo(() => {
     const practiceDoneToday = practice.filter((p) => p.done).length;
     return {
@@ -639,6 +656,7 @@ function EnrolledHome({ cmsBatch }) {
             {hero.subline}
           </ILText>
         ) : null}
+        <JourneyRail rail={rail} onOpen={() => nav.goMyProgram()} />
       </View>
 
       <ILGuideWhisperLep
@@ -647,6 +665,23 @@ function EnrolledHome({ cmsBatch }) {
         fallbackQuote={whisperFallback}
         subtitle="Your guide"
       />
+
+      {nextSteps.tasks.length || nextSteps.total ? (
+        <View style={{ marginTop: 14 }}>
+          <NextStepsCard
+            countText={nextSteps.total ? `${nextSteps.done} of ${nextSteps.total} done` : ''}
+            note={nextSteps.note}
+            more={nextSteps.more}
+            tasks={nextSteps.tasks.map((t) => ({
+              ...t,
+              state: t.state === 'overdue' ? 'now' : 'todo',
+              chip: t.state === 'overdue' ? 'Catch up' : null,
+              required: true,
+            }))}
+            onTask={(t) => nav.goCourseTask(PROGRAMS.LEP, t.taskId)}
+          />
+        </View>
+      ) : null}
 
       <PracticeDeck
         items={practice}

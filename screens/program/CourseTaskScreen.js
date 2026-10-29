@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Platform, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
@@ -36,6 +36,7 @@ import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
 import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
+import { removeSubmissionFile } from '../../services/programs';
 import { showAlert } from '../../utils/showAlert';
 import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
 import {
@@ -205,25 +206,74 @@ function TaskFiles({ task, skipReadingDocument = false }) {
   );
 }
 
-function ChosenChip({ label }) {
+function ChosenChip({ label, picked, onRemove, disabled }) {
+  const image = picked?.uri && String(picked?.mimeType || '').startsWith('image/');
   return (
     <View
       style={{
         marginTop: 12,
         borderRadius: 14,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        padding: image ? 10 : 12,
         backgroundColor: G.pink,
         flexDirection: 'row',
         alignItems: 'center',
       }}
     >
-      <MaterialIcons name="check-circle" size={18} color={G.cta} />
-      <ILText role="label" color={G.ink} style={{ marginLeft: 8, flex: 1, fontSize: 13 }}>
+      {image ? (
+        <Image
+          source={{ uri: picked.uri }}
+          style={{ width: 52, height: 52, borderRadius: 10, backgroundColor: G.line }}
+          resizeMode="cover"
+        />
+      ) : (
+        <MaterialIcons name="check-circle" size={18} color={G.cta} />
+      )}
+      <ILText role="label" color={G.ink} style={{ marginLeft: image ? 12 : 8, flex: 1, fontSize: 13 }}>
         {label}
       </ILText>
+      {onRemove ? <RemoveButton label={`Remove ${label}`} onPress={onRemove} disabled={disabled} /> : null}
     </View>
   );
+}
+
+function RemoveButton({ label, onPress, disabled }) {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={10}
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginLeft: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <MaterialIcons name="close" size={18} color={G.ink} />
+    </Pressable>
+  );
+}
+
+/** Native Alert with buttons; web has no Alert, so window.confirm. */
+function confirmRemove(name, onYes) {
+  const title = 'Remove this file?';
+  const body = `${name} will be taken off this task.`;
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    if (window.confirm(`${title}
+
+${body}`)) onYes();
+    return;
+  }
+  Alert.alert(title, body, [
+    { text: 'Keep', style: 'cancel' },
+    { text: 'Remove', style: 'destructive', onPress: onYes },
+  ]);
 }
 
 function chosenLabel(picked) {
@@ -243,7 +293,7 @@ function hasSubmissionContent(sub) {
 }
 
 /** What she already handed in — each file on its own row; photos show a thumbnail. */
-function SubmittedFilesList({ submission, navigation, title }) {
+function SubmittedFilesList({ submission, navigation, title, onRemove, removing }) {
   const files = normalizeSubmissionFiles(submission);
   if (!files.length) return null;
   return (
@@ -277,7 +327,15 @@ function SubmittedFilesList({ submission, navigation, title }) {
             <ILText role="label" color={G.ink} style={{ marginLeft: image ? 12 : 8, flex: 1, fontSize: 13 }}>
               {label}
             </ILText>
-            <MaterialIcons name="chevron-right" size={18} color={G.meta} />
+            {onRemove ? (
+              <RemoveButton
+                label={`Remove ${label}`}
+                disabled={removing === file.url}
+                onPress={() => confirmRemove(label, () => onRemove(file))}
+              />
+            ) : (
+              <MaterialIcons name="chevron-right" size={18} color={G.meta} />
+            )}
           </Pressable>
         );
       })}
@@ -340,10 +398,10 @@ function ReviewCard({ state, sub }) {
 }
 
 function reviewHeadline(review) {
+  // CX does not review every task yet: speak about CX only once they have acted.
   if (review === 'approved') return 'Approved by your CX';
-  if (review === 'reviewing') return 'Your CX is reviewing this — it can’t be changed now';
   if (review === 'sentBack') return 'Your CX asked for changes — resubmit when ready';
-  return 'Submitted — waiting for your CX to review';
+  return 'Submitted';
 }
 
 /** Pink status row after submit — same on every task type. */
@@ -486,6 +544,9 @@ export default function CourseTaskScreen({ route, navigation }) {
     };
   }, [task]);
 
+  // A different task: start from a clean form. Only the task's identity resets this —
+  // listing the progress data here wiped a picked file whenever any listener fired
+  // (returning from the file picker, mid-upload), so the file "disappeared".
   useEffect(() => {
     setText('');
     setLink('');
@@ -514,14 +575,19 @@ export default function CourseTaskScreen({ route, navigation }) {
       setForm(initialFormForTemplate(task?.templateId) || {});
       setSubmittedAt(null);
     }
+    setEditing(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programId, taskId, task?.templateId]);
+
+  // Done state follows the data (her submission arriving, CX review) without touching the form.
+  useEffect(() => {
     setDone(
       isProgramTaskDone(programId, taskId, {
         isDone: demo.isDone,
         getTaskSubmission,
       })
     );
-    setEditing(false);
-  }, [programId, taskId, task?.templateId, demo.isDone, demo.done, getTaskSubmission]);
+  }, [programId, taskId, demo.isDone, demo.done, getTaskSubmission]);
 
   // Sent back, or editing before review: start from what she handed in, not a blank form.
   const prefillKey = `${taskId}|${review}|${editing}`;
@@ -547,6 +613,25 @@ export default function CourseTaskScreen({ route, navigation }) {
       if (chosen) setPicked(chosen);
     } catch (e) {
       showAlert(e?.code === 'permission' ? 'Permission needed' : 'Could not use that file', e?.message || 'Try again.');
+    }
+  };
+
+  const [removingUrl, setRemovingUrl] = useState(null);
+  const removeFile = async (file) => {
+    if (!user?.uid || user.uid === 'preview' || removingUrl) return;
+    setRemovingUrl(file.url);
+    try {
+      await removeSubmissionFile({
+        programId,
+        userId: user.uid,
+        taskId,
+        submission: getTaskSubmission(programId, taskId),
+        url: file.url,
+      });
+    } catch (e) {
+      showAlert('Could not remove that file', e?.message || 'Try again.');
+    } finally {
+      setRemovingUrl(null);
     }
   };
 
@@ -621,6 +706,8 @@ export default function CourseTaskScreen({ route, navigation }) {
   const multiFileUpload = isMultiFileUploadTask(task);
   const canAddAnotherFile =
     multiFileUpload && done && !editing && displayReview === 'submitted';
+  // Her own upload can come off until CX has acted on it (approved, or locked while reviewing).
+  const canRemoveFiles = displayReview !== 'approved' && displayReview !== 'reviewing';
   const showReviewBanner = Boolean(displayReview && hasSubmissionContent(submission));
   const items = task.checklistItems || [];
   // Watched 90%, or the player cannot report progress (never strand her).
@@ -900,11 +987,20 @@ export default function CourseTaskScreen({ route, navigation }) {
               sub="Pick a video already on this phone · up to 200 MB"
               onPress={() => pickFile('library')}
             />
-            {picked ? <ChosenChip label={chosenLabel(picked)} /> : null}
+            {picked ? (
+              <ChosenChip
+                label={chosenLabel(picked)}
+                picked={picked}
+                disabled={syncing}
+                onRemove={() => setPicked(null)}
+              />
+            ) : null}
             <SubmittedFilesList
               submission={getTaskSubmission(programId, taskId)}
               navigation={navigation}
               title={task.title}
+              onRemove={canRemoveFiles ? removeFile : null}
+              removing={removingUrl}
             />
           </View>
         ) : null}
@@ -926,11 +1022,20 @@ export default function CourseTaskScreen({ route, navigation }) {
                 Submit each file once — your report and all three photos stay on this task.
               </ILText>
             ) : null}
-            {picked ? <ChosenChip label={chosenLabel(picked)} /> : null}
+            {picked ? (
+              <ChosenChip
+                label={chosenLabel(picked)}
+                picked={picked}
+                disabled={syncing}
+                onRemove={() => setPicked(null)}
+              />
+            ) : null}
             <SubmittedFilesList
               submission={getTaskSubmission(programId, taskId)}
               navigation={navigation}
               title={task.title}
+              onRemove={canRemoveFiles ? removeFile : null}
+              removing={removingUrl}
             />
           </View>
         ) : null}
@@ -956,7 +1061,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                   <RedCta
                     label={
                       syncing
-                        ? uploadPct !== null
+                        ? uploadPct !== null && uploadPct < 100
                           ? `Uploading ${uploadPct}%…`
                           : 'Saving…'
                         : 'Submit this file'
@@ -1052,7 +1157,7 @@ export default function CourseTaskScreen({ route, navigation }) {
               {!canAddAnotherFile ? (
                 <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
                   <RedCta
-                    label={syncing ? (uploadPct !== null ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
+                    label={syncing ? (uploadPct !== null && uploadPct < 100 ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
                     onPress={ready && !syncing ? submit : () => {}}
                   />
                 </View>

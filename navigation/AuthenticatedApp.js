@@ -14,6 +14,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useNotificationOpen } from '../hooks/useNotificationOpen';
 import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNotifications';
 import { useActivityTracking } from '../hooks/useActivityTracking';
+import { prefetchArmyEvents } from '../hooks/useArmyEventCalendar';
 
 export default function AuthenticatedApp() {
   const { profile, user } = useAuth();
@@ -22,6 +23,11 @@ export default function AuthenticatedApp() {
   useLocalEngagementNotifications();
   useNotificationOpen();
   useActivityTracking();
+
+  // Engage's events come from a Google Sheet: start that download now, not when she opens Engage.
+  useEffect(() => {
+    prefetchArmyEvents();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setGaveUp(true), 8000);

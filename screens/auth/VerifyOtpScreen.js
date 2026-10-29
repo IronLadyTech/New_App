@@ -16,7 +16,10 @@ import {
   signInWithOtpToken,
   verifyWhatsAppOtp,
 } from '../../services/whatsappOtp';
-import { confirmFirebasePhoneOtp } from '../../services/firebasePhoneOtp';
+import {
+  confirmFirebasePhoneOtp,
+  verifyFirebasePhoneOtpOnly,
+} from '../../services/firebasePhoneOtp';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
@@ -84,6 +87,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
       try {
         if (liveWhatsApp) {
           tokenRef.current = await verifyWhatsAppOtp(phone, code);
+          return true;
+        }
+        if (liveFirebase && confirmation.access?.guest) {
+          // Guest: prove the number, but don't open an account (onContinue sends her to Guest).
+          await verifyFirebasePhoneOtpOnly(confirmation.confirmation, code);
           return true;
         }
         if (liveFirebase) {

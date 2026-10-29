@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isExpoGo } from './pushNotifications';
 
@@ -194,6 +194,59 @@ export async function syncStreakReminders(reminders) {
     return { ok: true, scheduled: reminders.length };
   } catch (e) {
     return { ok: false, reason: e?.message || 'streak_failed' };
+  }
+}
+
+const BATTERY_ASKED = 'il.notif.batteryAsked.v1';
+
+// Makers whose battery savers kill scheduled reminders unless the app is set to "No restrictions".
+const AGGRESSIVE_BATTERY = /xiaomi|redmi|poco|oppo|realme|oneplus|vivo|iqoo|huawei|honor/i;
+
+/** True on the phones above, from the build's manufacturer/brand (Android only). */
+export function hasAggressiveBatterySaver() {
+  if (Platform.OS !== 'android') return false;
+  const c = Platform.constants || {};
+  return AGGRESSIVE_BATTERY.test(`${c.Manufacturer || ''} ${c.Brand || ''}`);
+}
+
+/**
+ * Once, on those phones: explain, then open this app's settings page, where Battery →
+ * "No restrictions" (and Autostart on Xiaomi) keeps the 7 PM reminder alive. Apps cannot
+ * change this themselves; `explain` resolves true when she wants to go there.
+ */
+export async function suggestBatteryUnrestrictedOnce(explain) {
+  if (!hasAggressiveBatterySaver()) return;
+  try {
+    if (await AsyncStorage.getItem(BATTERY_ASKED)) return;
+    await AsyncStorage.setItem(BATTERY_ASKED, '1');
+    if (await explain()) await Linking.openSettings();
+  } catch {
+    /* settings page unavailable: nothing else to do */
+  }
+}
+
+const EXACT_ALARM_ASKED = 'il.notif.exactAlarmAsked.v1';
+
+/**
+ * Android 12+: without "Alarms & reminders" the 7 PM reminder is an inexact alarm that
+ * battery savers (Xiaomi, Oppo, Vivo…) push back by many minutes or drop. Asks once —
+ * `explain` shows our reason first and resolves true to open the system setting.
+ * @returns {Promise<boolean>} true when exact alarms are allowed (now or after she allowed it)
+ */
+export async function ensureExactAlarmsOnce(explain) {
+  const Notifications = notifications();
+  if (Platform.OS !== 'android' || !Notifications?.getExactAlarmPermissionsAsync) return true;
+  try {
+    const now = await Notifications.getExactAlarmPermissionsAsync();
+    if (now?.granted) return true;
+    if (now?.canAskAgain === false) return false;
+    if (await AsyncStorage.getItem(EXACT_ALARM_ASKED)) return false;
+    await AsyncStorage.setItem(EXACT_ALARM_ASKED, '1');
+    if (!(await explain())) return false;
+    const after = await Notifications.requestExactAlarmPermissionsAsync();
+    return !!after?.granted;
+  } catch {
+    return false;
   }
 }
 

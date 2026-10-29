@@ -13,7 +13,8 @@ import {
   serverTimestamp,
   deleteField,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { deleteObject, ref } from 'firebase/storage';
+import { db, storage } from './firebase';
 import {
   PROGRAM_JOURNEY,
   SUBMISSION_STATUS,
@@ -21,7 +22,7 @@ import {
   getProgramEntry,
   isTaskDoneStatus,
 } from '../constants/programs';
-import { appendUploadFields } from '../utils/taskSubmissionFiles';
+import { appendUploadFields, normalizeSubmissionFiles } from '../utils/taskSubmissionFiles';
 
 function clearReviewFieldsForResubmit(prev) {
   if (
@@ -180,6 +181,37 @@ export async function submitProgramTask({
     batchId,
     previousSubmission,
   });
+}
+
+/**
+ * Take one uploaded file back off a task (VIA report + photos keep their own rows).
+ * The legacy single-file fields follow the newest file left, so the web LMS and the
+ * CX queue see the same list. The last file gone leaves the task open to submit again.
+ */
+export async function removeSubmissionFile({ programId, userId, taskId, submission, url }) {
+  const entry = getProgramEntry(programId);
+  if (!entry) throw new Error('Unknown program');
+  if (!userId || !taskId || !url) throw new Error('Nothing to remove');
+
+  const left = normalizeSubmissionFiles(submission).filter((f) => f.url !== url);
+  const last = left[left.length - 1] || null;
+  const isVideo = last?.kind === 'video';
+  const data = {
+    files: left,
+    updatedAt: serverTimestamp(),
+    fileUrl: last && !isVideo ? last.url : deleteField(),
+    videoUrl: last && isVideo ? last.url : deleteField(),
+    fileName: last ? last.name : deleteField(),
+    fileType: last?.type || deleteField(),
+  };
+  if (!left.length) {
+    data.status = SUBMISSION_STATUS.UNLOCKED;
+    data.submittedAt = deleteField();
+  }
+  await setDoc(doc(db, entry.submissionsCollection, submissionDocId(userId, taskId)), data, { merge: true });
+
+  // The record is what CX reads; the stored file is cleanup — never fail the removal over it.
+  deleteObject(ref(storage, url)).catch(() => {});
 }
 
 export function submissionsByTaskId(submissions = []) {

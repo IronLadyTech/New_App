@@ -13,13 +13,27 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
       },
-      "ios": {}
+      "ios": {},
+      "channel": "production"
+    },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_PHONE_OTP": "firebase"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      }
     }
   }
 }

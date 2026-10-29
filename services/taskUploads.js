@@ -14,6 +14,8 @@ import { PROGRAMS } from '../constants/programs';
 export const MAX_DOCUMENT_BYTES = 15 * 1024 * 1024;
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 export const MAX_VIDEO_SECONDS = 300;
+/** No upload progress for this long counts as stalled. */
+const UPLOAD_STALL_MS = 45000;
 
 const STORAGE_FOLDER = { [PROGRAMS.LEP]: 'lep', [PROGRAMS.BM100]: 'bm100', [PROGRAMS.MBW]: 'mbw' };
 
@@ -103,6 +105,8 @@ export async function uploadTaskSubmission({ programId, userId, taskId, kind, pi
 
   const safeName = String(picked.name || kind).replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `${folder}/${userId}/${taskId}/${kind}/${Date.now()}_${safeName}`;
+  // Show "Uploading 0%" at once: reading a large file into memory takes a moment.
+  onProgress?.(0);
   const blob = await (await fetch(picked.uri)).blob();
   const limit = kind === 'video' ? MAX_VIDEO_BYTES : MAX_DOCUMENT_BYTES;
   if (blob.size > limit) {
@@ -111,11 +115,30 @@ export async function uploadTaskSubmission({ programId, userId, taskId, kind, pi
 
   const task = uploadBytesResumable(ref(storage, path), blob, { contentType: picked.mimeType });
   await new Promise((resolve, reject) => {
+    // No byte moved for a while (weak signal, network switched): stop instead of hanging forever.
+    let stall = null;
+    const arm = () => {
+      clearTimeout(stall);
+      stall = setTimeout(() => {
+        task.cancel();
+        reject(pickError('The upload stopped — check your connection and submit again.', 'stalled'));
+      }, UPLOAD_STALL_MS);
+    };
+    arm();
     task.on(
       'state_changed',
-      (s) => s.totalBytes && onProgress?.(Math.round((s.bytesTransferred / s.totalBytes) * 100)),
-      reject,
-      resolve
+      (s) => {
+        arm();
+        if (s.totalBytes) onProgress?.(Math.round((s.bytesTransferred / s.totalBytes) * 100));
+      },
+      (err) => {
+        clearTimeout(stall);
+        reject(err);
+      },
+      () => {
+        clearTimeout(stall);
+        resolve();
+      }
     );
   });
   const url = await getDownloadURL(task.snapshot.ref);

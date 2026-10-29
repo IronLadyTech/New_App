@@ -2,7 +2,7 @@
   "expo": {
     "name": "Iron Lady",
     "slug": "lms-app",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -27,12 +27,13 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.ironlady.app",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ]
     },
     "web": {
@@ -93,12 +94,20 @@
         {
           "initialOrientation": "PORTRAIT_UP"
         }
-      ]
+      ],
+      "expo-dev-client",
+      "expo-updates"
     ],
     "extra": {
       "eas": {
         "projectId": "105ad21e-a20b-4925-8fd3-221ed9706bbe"
       }
+    },
+    "runtimeVersion": "1.1.0",
+    "updates": {
+      "url": "https://u.expo.dev/105ad21e-a20b-4925-8fd3-221ed9706bbe",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

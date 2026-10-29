@@ -1,11 +1,27 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Reanimated, {
+  runOnJS,
+  useAnimatedProps,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import { G } from '../../constants/guestTheme';
+
+/*
+ * The bead, the socket it sits in and the drag all run on the UI thread (Reanimated +
+ * Gesture Handler). A busy JS thread — a screen mounting, a Firestore snapshot — can no
+ * longer stall or desync them; JS only hears when the tab under the bead changes.
+ */
 
 const BEAD = 48;
 const BOWL = BEAD / 2 + 7;
@@ -19,33 +35,45 @@ const GLASS = 'rgba(17,55,68,0.86)';
 const GLASS_EDGE = 'rgba(248,214,212,0.45)';
 const NAME = '#F5F2E8';
 const ICON_DIM = 'rgba(245,242,232,0.78)';
+const SPRING = { damping: 15, stiffness: 220, mass: 0.6 };
+/** Let the bead get most of the way before the new screen mounts. */
+const NAV_DELAY_MS = 140;
 
 export const LIQUID_TAB_PAD = BAR_TOP + PILL_H + 24;
 
+const AnimatedPath = Reanimated.createAnimatedComponent(Path);
+const IS_WEB = Platform.OS === 'web';
+
 function clamp(n, min, max) {
+  'worklet';
   return Math.min(max, Math.max(min, n));
 }
 
 function slotCenter(index, slot) {
+  'worklet';
   return SIDE + (index + 0.5) * slot;
 }
 
 function nearestIndex(x, slot, count) {
+  'worklet';
   if (slot <= 0) return 0;
   return clamp(Math.round((x - SIDE) / slot - 0.5), 0, count - 1);
 }
 
 function smoothstep(a, b, t) {
+  'worklet';
   const k = clamp((t - a) / (b - a), 0, 1);
   return k * k * (3 - 2 * k);
 }
 
 /** 0 at rest, 1 at a fast flick (velocity in px/ms). */
 function speedOf(v) {
+  'worklet';
   return clamp(Math.abs(v) / 1.2, 0, 1);
 }
 
 function arc(rad, x, y, sweep) {
+  'worklet';
   return rad < 0.5 ? `L ${x} ${y}` : `A ${rad} ${rad} 0 0 ${sweep} ${x} ${y}`;
 }
 
@@ -54,6 +82,7 @@ function arc(rad, x, y, sweep) {
  * `room` px from the notch centre. Tangency: d² = BOWL² + 2·BOWL·s.
  */
 function fitShoulder(want, room) {
+  'worklet';
   return clamp((room * room - BOWL * BOWL) / (2 * BOWL), 0, want);
 }
 
@@ -64,6 +93,7 @@ function fitShoulder(want, room) {
  * long and the leading one tightens.
  */
 function dockPath(width, cx, v) {
+  'worklet';
   const w = Math.max(width, 1);
   const top = BAR_TOP;
   const bot = top + PILL_H;
@@ -103,10 +133,11 @@ function dockPath(width, cx, v) {
 }
 
 const GlassBlur = React.memo(function GlassBlur() {
-  if (Platform.OS === 'web') return null;
+  // Android: the fill on top is near-opaque, so the blur is invisible but costs a pass every frame.
+  if (Platform.OS !== 'ios') return null;
   return (
     <BlurView
-      intensity={Platform.OS === 'ios' ? 48 : 32}
+      intensity={48}
       tint="dark"
       style={{
         position: 'absolute',
@@ -122,36 +153,59 @@ const GlassBlur = React.memo(function GlassBlur() {
   );
 });
 
-function GlassDock({ width, height, d }) {
+function GlassDock({ width, height, x, v }) {
+  const pathProps = useAnimatedProps(() => ({ d: dockPath(width, x.value, v.value) }));
+  // Web blurs what is behind the bar, clipped to the same outline.
+  const webClip = useAnimatedStyle(() =>
+    IS_WEB ? { clipPath: `path('${dockPath(width, x.value, v.value)}')` } : {}
+  );
   return (
     <View pointerEvents="none" style={{ position: 'absolute', left: 0, top: 0, width, height }}>
       {Platform.OS === 'web' ? (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width,
-            height,
-            backgroundColor: GLASS,
-            backdropFilter: 'blur(28px) saturate(180%)',
-            WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-            clipPath: `path('${d}')`,
-            boxShadow: '0 10px 24px rgba(17,55,68,0.18)',
-          }}
+        <Reanimated.View
+          style={[
+            {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width,
+              height,
+              backgroundColor: GLASS,
+              backdropFilter: 'blur(28px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+              boxShadow: '0 10px 24px rgba(17,55,68,0.18)',
+            },
+            webClip,
+          ]}
         />
       ) : (
         <GlassBlur />
       )}
       <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Path
-          d={d}
+        <AnimatedPath
+          animatedProps={pathProps}
           fill={Platform.OS === 'web' ? 'rgba(17,55,68,0.35)' : GLASS}
           stroke={GLASS_EDGE}
           strokeWidth={1}
         />
       </Svg>
     </View>
+  );
+}
+
+/** Each icon rises on its own proximity curve as the bead nears, then dips into it. */
+function TabIcon({ item, index, slot, x }) {
+  const lift = useAnimatedStyle(() => {
+    const p = clamp(1 - Math.abs(x.value - slotCenter(index, slot)) / (slot * 0.8), 0, 1);
+    return {
+      opacity: 1 - smoothstep(0.6, 0.92, p),
+      transform: [{ translateY: -8 * Math.sin(Math.PI * p) }],
+    };
+  });
+  return (
+    <Reanimated.View style={lift}>
+      <TabGlyph name={item.outline} pack={item.pack} size={20} color={ICON_DIM} />
+    </Reanimated.View>
   );
 }
 
@@ -162,159 +216,137 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
   const count = items.length || 1;
   const slot = Math.max(width - SIDE * 2, 1) / count;
   const safeIndex = clamp(activeIndex, 0, count - 1);
-  const beadX = useRef(new Animated.Value(slotCenter(safeIndex, slot))).current;
-  const [frame, setFrame] = useState({ cx: 0, v: 0 });
   const [hover, setHover] = useState(safeIndex);
-  const cxRef = useRef(0);
-  const motion = useRef({ x: 0, lastX: 0, v: 0, t: 0, raf: 0 });
+
+  const x = useSharedValue(slotCenter(safeIndex, slot));
+  const v = useSharedValue(0); // smoothed velocity, px/ms — stretches the socket
+  const dragging = useSharedValue(false);
+
   const placed = useRef(false);
-  const dragging = useRef(false);
-  const widthRef = useRef(0);
-  const slotRef = useRef(slot);
-  const countRef = useRef(count);
+  // Where the bead is already springing to, so the focus change that follows a tap doesn't restart it.
+  const aim = useRef({ index: -1, slot: 0 });
+  const navTimer = useRef(null);
   const itemsRef = useRef(items);
   const onPressRef = useRef(onPress);
-  const barLeft = useRef(0);
-  const barRef = useRef(null);
-
-  widthRef.current = width;
-  slotRef.current = slot;
-  countRef.current = count;
+  const safeIndexRef = useRef(safeIndex);
   itemsRef.current = items;
   onPressRef.current = onPress;
+  safeIndexRef.current = safeIndex;
 
-  // One rAF loop tracks position + smoothed velocity, and parks itself once still.
-  useEffect(() => {
-    const m = motion.current;
-    const tick = () => {
-      const now = Date.now();
-      const moved = m.x - m.lastX;
-      m.v += (moved / Math.max(now - m.t, 1) - m.v) * 0.35;
-      m.lastX = m.x;
-      m.t = now;
-      if (moved === 0 && Math.abs(m.v) < 0.01) {
-        m.v = 0;
-        m.raf = 0;
-        setFrame({ cx: m.x, v: 0 });
-        return;
-      }
-      setFrame({ cx: m.x, v: m.v });
-      m.raf = requestAnimationFrame(tick);
-    };
-    const sub = beadX.addListener(({ value }) => {
-      cxRef.current = value;
-      m.x = value;
-      if (!m.raf) {
-        m.t = Date.now();
-        m.raf = requestAnimationFrame(tick);
-      }
-    });
-    return () => {
-      beadX.removeListener(sub);
-      if (m.raf) cancelAnimationFrame(m.raf);
-      m.raf = 0;
-    };
-  }, [beadX]);
-
-  const xFromEvent = (e) => {
-    const pageX = e.nativeEvent.pageX;
-    if (typeof pageX === 'number') return pageX - barLeft.current;
-    return e.nativeEvent.locationX;
-  };
-
-  const hoverRef = useRef(safeIndex);
-
-  const slideTo = (x) => {
-    const min = SIDE + slotRef.current * 0.5;
-    const max = widthRef.current - SIDE - slotRef.current * 0.5;
-    const next = clamp(x, min, max);
-    beadX.setValue(next);
-    const index = nearestIndex(next, slotRef.current, countRef.current);
-    if (index !== hoverRef.current) {
-      hoverRef.current = index;
-      setHover(index);
+  // Velocity from the bead's own motion; it settles back to 0 when a spring ends.
+  useAnimatedReaction(
+    () => x.value,
+    (cur, prev) => {
+      if (prev == null) return;
+      v.value += ((cur - prev) / 16 - v.value) * 0.35;
     }
+  );
+
+  // JS hears only when the tab under the bead changes (label colour, bead icon).
+  useAnimatedReaction(
+    () => nearestIndex(x.value, slot, count),
+    (i, prev) => {
+      if (i !== prev) runOnJS(setHover)(i);
+    },
+    [slot, count]
+  );
+
+  const settle = () => {
+    'worklet';
+    v.value = withTiming(0, { duration: 160 });
   };
 
-  const snapTo = (index) => {
+  const springTo = (target) => {
+    'worklet';
+    x.value = withSpring(target, SPRING, (finished) => {
+      if (finished) settle();
+    });
+  };
+
+  const navigate = (index) => {
     const item = itemsRef.current[index];
-    const target = slotCenter(index, slotRef.current);
-    hoverRef.current = index;
-    setHover(index);
-    Animated.spring(beadX, {
-      toValue: target,
-      damping: 15,
-      stiffness: 220,
-      mass: 0.6,
-      useNativeDriver: false,
-    }).start();
-    if (item) onPressRef.current(item, index);
-  };
-
-  const pan = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
-      onPanResponderGrant: (e) => {
-        dragging.current = true;
-        slideTo(xFromEvent(e));
-      },
-      onPanResponderMove: (e) => {
-        slideTo(xFromEvent(e));
-      },
-      onPanResponderRelease: (e, g) => {
-        dragging.current = false;
-        const x = xFromEvent(e);
-        const tapped = Math.abs(g.dx) < 8 && Math.abs(g.dy) < 8;
-        snapTo(nearestIndex(tapped ? x : cxRef.current || x, slotRef.current, countRef.current));
-      },
-      onPanResponderTerminate: () => {
-        dragging.current = false;
-      },
-    })
-  ).current;
-
-  useEffect(() => {
-    if (!width || dragging.current) return;
-    const next = slotCenter(safeIndex, slot);
-    if (!placed.current) {
-      motion.current.x = next;
-      motion.current.lastX = next;
-      beadX.setValue(next);
-      setFrame({ cx: next, v: 0 });
-      hoverRef.current = safeIndex;
-      setHover(safeIndex);
-      placed.current = true;
+    if (!item) return;
+    aim.current = { index, slot };
+    if (navTimer.current) clearTimeout(navTimer.current);
+    // Same tab again (back to its root) has no slide to protect.
+    if (index === safeIndexRef.current) {
+      onPressRef.current(item, index);
       return;
     }
-    hoverRef.current = safeIndex;
-    setHover(safeIndex);
-    Animated.spring(beadX, {
-      toValue: next,
-      damping: 15,
-      stiffness: 220,
-      mass: 0.6,
-      useNativeDriver: false,
-    }).start();
-  }, [beadX, safeIndex, slot, width]);
+    navTimer.current = setTimeout(() => {
+      navTimer.current = null;
+      onPressRef.current(item, index);
+    }, NAV_DELAY_MS);
+  };
+
+  useEffect(() => () => navTimer.current && clearTimeout(navTimer.current), []);
+
+  const minX = SIDE + slot * 0.5;
+  const maxX = width - SIDE - slot * 0.5;
+
+  const snapAt = (px) => {
+    'worklet';
+    const index = nearestIndex(px, slot, count);
+    springTo(slotCenter(index, slot));
+    runOnJS(navigate)(index);
+  };
+
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .minDistance(2)
+      // Move only once it is a drag: a tap glides from where the bead is, never jumps to the finger.
+      .onStart((e) => {
+        dragging.value = true;
+        x.value = clamp(e.x, minX, maxX);
+      })
+      .onUpdate((e) => {
+        x.value = clamp(e.x, minX, maxX);
+      })
+      .onEnd(() => {
+        snapAt(x.value);
+      })
+      .onFinalize(() => {
+        dragging.value = false;
+      });
+    const tap = Gesture.Tap().onEnd((e, ok) => {
+      if (ok) snapAt(e.x);
+    });
+    return Gesture.Race(pan, tap);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot, count, minX, maxX]);
+
+  // Focus changed from elsewhere (a deep link, a "Go to Learn" button): slide there.
+  useEffect(() => {
+    if (!width || dragging.value) return;
+    const target = slotCenter(safeIndex, slot);
+    if (!placed.current) {
+      x.value = target;
+      placed.current = true;
+      aim.current = { index: safeIndex, slot };
+      setHover(safeIndex);
+      return;
+    }
+    // A tap elsewhere is still pending navigation: don't pull the bead back to the old tab.
+    if (navTimer.current) return;
+    if (aim.current.index === safeIndex && aim.current.slot === slot) return;
+    aim.current = { index: safeIndex, slot };
+    springTo(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeIndex, slot, width]);
+
+  const beadStyle = useAnimatedStyle(() => {
+    const speed = speedOf(v.value);
+    return {
+      transform: [{ translateX: x.value }, { scaleX: 1 + 0.14 * speed }, { scaleY: 1 - 0.1 * speed }],
+    };
+  });
 
   const svgH = BAR_TOP + PILL_H;
-  const { cx, v } = frame;
-  const speed = speedOf(v);
 
   return (
     <View
-      ref={barRef}
       pointerEvents="box-none"
-      onLayout={(e) => {
-        setWidth(e.nativeEvent.layout.width);
-        const node = barRef.current;
-        if (node && typeof node.measureInWindow === 'function') {
-          node.measureInWindow((x) => {
-            barLeft.current = x || 0;
-          });
-        }
-      }}
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       style={{
         position: 'absolute',
         left: 0,
@@ -325,40 +357,36 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
         elevation: 40,
       }}
     >
-      <View style={{ height: svgH, overflow: 'visible' }} {...pan.panHandlers}>
-        {width > 0 ? <GlassDock width={width} height={svgH} d={dockPath(width, cx, v)} /> : null}
+      <GestureDetector gesture={gesture}>
+        <View style={{ height: svgH, overflow: 'visible' }}>
+          {width > 0 ? <GlassDock width={width} height={svgH} x={x} v={v} /> : null}
 
-        <View
-          pointerEvents="none"
-          accessibilityRole="tablist"
-          style={{
-            position: 'absolute',
-            left: SIDE,
-            right: SIDE,
-            top: BAR_TOP,
-            height: PILL_H,
-            flexDirection: 'row',
-          }}
-        >
-          {items.map((item, index) => {
-            // Each icon rises on its own proximity curve as the bead nears, then dips into it.
-            const p = clamp(1 - Math.abs(cx - slotCenter(index, slot)) / (slot * 0.8), 0, 1);
-            return (
+          <View
+            accessibilityRole="tablist"
+            style={{
+              position: 'absolute',
+              left: SIDE,
+              right: SIDE,
+              top: BAR_TOP,
+              height: PILL_H,
+              flexDirection: 'row',
+            }}
+          >
+            {items.map((item, index) => (
               <View
                 key={item.key}
+                accessible
                 accessibilityRole="tab"
                 accessibilityLabel={item.label}
                 accessibilityState={{ selected: index === safeIndex }}
+                accessibilityActions={[{ name: 'activate' }]}
+                onAccessibilityAction={() => {
+                  springTo(slotCenter(index, slot));
+                  navigate(index);
+                }}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 9 }}
               >
-                <View
-                  style={{
-                    opacity: 1 - smoothstep(0.6, 0.92, p),
-                    transform: [{ translateY: -8 * Math.sin(Math.PI * p) }],
-                  }}
-                >
-                  <TabGlyph name={item.outline} pack={item.pack} size={20} color={ICON_DIM} />
-                </View>
+                {width > 0 ? <TabIcon item={item} index={index} slot={slot} x={x} /> : null}
                 <Text
                   numberOfLines={1}
                   style={{
@@ -373,64 +401,42 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
                   {item.label}
                 </Text>
               </View>
-            );
-          })}
-        </View>
-
-        {width > 0 ? (
-          <>
-            {items.map((item, index) => (
-              <Pressable
-                key={`tap-${item.key}`}
-                accessibilityRole="tab"
-                accessibilityLabel={item.label}
-                accessibilityState={{ selected: index === safeIndex }}
-                onPress={() => snapTo(index)}
-                style={{
-                  position: 'absolute',
-                  left: SIDE + index * slot,
-                  width: slot,
-                  top: BAR_TOP,
-                  height: PILL_H,
-                  zIndex: 2,
-                }}
-              />
             ))}
-            <Animated.View
+          </View>
+
+          {width > 0 ? (
+            <Reanimated.View
               pointerEvents="none"
-              style={{
-                position: 'absolute',
-                top: BAR_TOP - BEAD / 2,
-                width: BEAD,
-                height: BEAD,
-                marginLeft: -BEAD / 2,
-                borderRadius: BEAD / 2,
-                backgroundColor: ACCENT,
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 3,
-                // Squash along the direction of travel.
-                transform: [
-                  { translateX: beadX },
-                  { scaleX: 1 + 0.14 * speed },
-                  { scaleY: 1 - 0.1 * speed },
-                ],
-                ...(Platform.OS === 'web'
-                  ? { boxShadow: '0 8px 16px rgba(237,29,36,0.28)' }
-                  : {
-                      shadowColor: ACCENT,
-                      shadowOffset: { width: 0, height: 6 },
-                      shadowOpacity: 0.28,
-                      shadowRadius: 8,
-                      elevation: 14,
-                    }),
-              }}
+              style={[
+                {
+                  position: 'absolute',
+                  top: BAR_TOP - BEAD / 2,
+                  width: BEAD,
+                  height: BEAD,
+                  marginLeft: -BEAD / 2,
+                  borderRadius: BEAD / 2,
+                  backgroundColor: ACCENT,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 3,
+                  ...(Platform.OS === 'web'
+                    ? { boxShadow: '0 8px 16px rgba(237,29,36,0.28)' }
+                    : {
+                        shadowColor: ACCENT,
+                        shadowOffset: { width: 0, height: 6 },
+                        shadowOpacity: 0.28,
+                        shadowRadius: 8,
+                        elevation: 14,
+                      }),
+                },
+                beadStyle,
+              ]}
             >
               <TabGlyph name={items[hover]?.icon} pack={items[hover]?.pack} size={22} color="#FFFFFF" />
-            </Animated.View>
-          </>
-        ) : null}
-      </View>
+            </Reanimated.View>
+          ) : null}
+        </View>
+      </GestureDetector>
     </View>
   );
 }

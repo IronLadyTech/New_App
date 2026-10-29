@@ -122,6 +122,14 @@ function resolveWhisperOpenTarget(guideContext, { message = '', apiTaskId = null
     };
   }
 
+  // Spare-time suggestions open the list they name.
+  if (/c-suite/i.test(msg)) {
+    return { kind: 'media', list: 'csuite', label: 'Watch C-Suite stories →' };
+  }
+  if (/podcast/i.test(msg)) {
+    return { kind: 'media', list: 'podcast', label: 'Open podcasts →' };
+  }
+
   const practice = guideContext?.openPractice;
   if (practice?.taskId || practice?.practiceId) {
     return { kind: 'practice', item: practice, label: 'Start practice →' };
@@ -150,6 +158,10 @@ function openWhisperTarget(nav, target) {
   }
   if (target.kind === 'watch' && target.watch) {
     nav.goWatch?.(target.watch);
+    return;
+  }
+  if (target.kind === 'media' && target.list) {
+    nav.goEngageMediaList?.(target.list);
   }
 }
 

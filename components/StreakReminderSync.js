@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { AppState, Platform } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useLepPracticeStreak } from '../hooks/useLepPracticeStreak';
 import { programsOnProfile } from '../utils/programAccess';
 import { buildStreakReminders } from '../utils/streakReminderPlan';
-import { syncStreakReminders } from '../services/localEngagementNotifications';
+import {
+  ensureExactAlarmsOnce,
+  suggestBatteryUnrestrictedOnce,
+  syncStreakReminders,
+} from '../services/localEngagementNotifications';
 
 /**
  * Keeps this phone's week of streak reminders in step with her real streak — rebuilt when
@@ -31,7 +35,42 @@ export default function StreakReminderSync() {
     const reminders = isLep
       ? buildStreakReminders({ streak: streak.currentStreak, todayActive: streak.todayActive, name })
       : null; // not an LEP learner: no streak to keep — clear any old reminders
-    syncStreakReminders(reminders).catch(() => {});
+    syncStreakReminders(reminders)
+      .then(async (res) => {
+        if (!reminders?.length || !res?.ok) return;
+        // Once: ask for exact alarms so 7 PM means 7 PM. Allowed → rebuild with exact timing.
+        const allowed = await ensureExactAlarmsOnce(
+          () =>
+            new Promise((resolve) => {
+              Alert.alert(
+                'Get your 7 PM reminder on time',
+                'Android delays practice reminders unless Iron Lady may set reminders. On the next screen, turn on "Allow setting alarms and reminders".',
+                [
+                  { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+                  { text: 'Continue', onPress: () => resolve(true) },
+                ],
+                { cancelable: true, onDismiss: () => resolve(false) }
+              );
+            })
+        );
+        if (allowed) await syncStreakReminders(reminders);
+        // Xiaomi / Oppo / Vivo…: their battery saver can still kill the reminder. Ask once.
+        await suggestBatteryUnrestrictedOnce(
+          () =>
+            new Promise((resolve) => {
+              Alert.alert(
+                'Keep your 7 PM reminder working',
+                'This phone stops reminders to save battery. On the next screen open Battery and choose "No restrictions" (on Xiaomi also turn on Autostart).',
+                [
+                  { text: 'Not now', style: 'cancel', onPress: () => resolve(false) },
+                  { text: 'Open settings', onPress: () => resolve(true) },
+                ],
+                { cancelable: true, onDismiss: () => resolve(false) }
+              );
+            })
+        );
+      })
+      .catch(() => {});
   }, [key]);
 
   return null;

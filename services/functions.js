@@ -84,6 +84,15 @@ export async function resolvePhoneAccess(phone) {
   return data;
 }
 
+/**
+ * Wake resolvePhoneAccess while she types her number. With no phone the function
+ * answers "invalid-argument" at once, but its instance is now up, so the real call
+ * skips the 2–3 s cold start.
+ */
+export function warmPhoneAccess() {
+  call('resolvePhoneAccess', {}).catch(() => {});
+}
+
 /** Save city, domain, or B-HAG onto this learner's Zoho Lead. */
 export async function updateMyWelcomeProfile(fields) {
   const { data } = await call('updateMyWelcomeProfile', fields);

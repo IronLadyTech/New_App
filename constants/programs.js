@@ -101,8 +101,9 @@ export function statusLabel(status) {
       return 'Completed';
     case SUBMISSION_STATUS.SUBMITTED:
       return 'Submitted';
+    // CX review is not on every task yet: until CX gives feedback, it reads as submitted.
     case SUBMISSION_STATUS.UNDER_REVIEW:
-      return 'Under review';
+      return 'Submitted';
     case SUBMISSION_STATUS.NEEDS_IMPROVEMENT:
       return 'Needs improvement';
     case SUBMISSION_STATUS.REJECTED:

@@ -20,6 +20,7 @@
     "expo-audio": "~58.0.10",
     "expo-blur": "~58.0.5",
     "expo-constants": "~58.0.13",
+    "expo-dev-client": "~58.0.17",
     "expo-device": "~58.0.5",
     "expo-document-picker": "~58.0.4",
     "expo-firebase-recaptcha": "~2.3.1",
@@ -32,6 +33,7 @@
     "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
+    "expo-updates": "~58.0.19",
     "expo-video": "~58.0.12",
     "firebase": "^12.19.0",
     "nativewind": "^4.2.7",
@@ -67,7 +69,9 @@
     "android:dev:phone": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"& { . ./scripts/android-build-env.ps1; $env:ORG_GRADLE_PROJECT_reactNativeArchitectures='arm64-v8a'; npx expo run:android -d }\"",
     "android:phone": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/wait-android-phone-and-run.ps1",
     "start:web": "expo start --web",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "ota": "node scripts/ota.js",
+    "dev:phone": "expo start --dev-client"
   },
   "private": true,
   "devDependencies": {

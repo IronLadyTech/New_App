@@ -272,6 +272,10 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
       <Modal
         visible={landscape}
         animationType="fade"
+        // Draw under the system bars, so the inset padding below is the only gap. Without these,
+        // Android already shrinks the modal for the bars and the padding took them off twice.
+        statusBarTranslucent
+        navigationBarTranslucent
         supportedOrientations={['landscape', 'landscape-left', 'landscape-right']}
         onRequestClose={closeLandscape}
       >

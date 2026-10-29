@@ -219,8 +219,6 @@ export default function LepEngageScreen() {
 
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
-    RNStatusBar.setTranslucent(true);
-    RNStatusBar.setBackgroundColor('transparent');
     RNStatusBar.setBarStyle('light-content');
     return undefined;
   }, []);

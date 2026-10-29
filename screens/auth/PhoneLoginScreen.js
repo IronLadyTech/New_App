@@ -7,7 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
 import { friendlyAuthError } from '../../utils/authErrors';
-import { formatCallableError, resolvePhoneAccess } from '../../services/functions';
+import { formatCallableError, resolvePhoneAccess, warmPhoneAccess } from '../../services/functions';
 import {
   USE_FIREBASE_PHONE_OTP,
   USE_WHATSAPP_OTP,
@@ -98,6 +98,10 @@ export default function PhoneLoginScreen({ navigation }) {
     return () => cancelAnimationFrame(id);
   }, [useWebRecaptcha]);
 
+  useEffect(() => {
+    warmPhoneAccess();
+  }, []);
+
   const busy = checking || sending;
 
   const onContinue = async () => {
@@ -109,6 +113,10 @@ export default function PhoneLoginScreen({ navigation }) {
     setError('');
     const phone = `+91${local}`;
     setChecking(true);
+    // Native Firebase SMS goes to every number now (guests too), so start it alongside the
+    // Zoho check instead of after it: the device check / captcha overlaps the server lookup.
+    const smsEarly = USE_FIREBASE_PHONE_OTP && !useWebRecaptcha ? sendFirebasePhoneOtp(phone) : null;
+    smsEarly?.catch(() => {});
     try {
       const access = await resolvePhoneAccess(phone);
       if (!access?.ok) {
@@ -118,8 +126,8 @@ export default function PhoneLoginScreen({ navigation }) {
       if (__DEV__ && access.cmsBatchId) {
         console.log('[login] CMS batch pinned:', access.cmsBatchId);
       }
-      // Guests: no SMS — explore / MC tier only.
-      if (access.guest) {
+      // Guests get the same Firebase SMS (checked without opening an account); other channels skip it.
+      if (access.guest && !USE_FIREBASE_PHONE_OTP) {
         stashPhoneAuth({ demo: true, access }, phone);
       } else if (USE_WHATSAPP_OTP) {
         setSending(true);
@@ -142,7 +150,7 @@ export default function PhoneLoginScreen({ navigation }) {
         try {
           const confirmation = useWebRecaptcha
             ? await sendFirebasePhoneOtp(phone, recaptchaVerifier.current)
-            : await sendFirebasePhoneOtp(phone);
+            : await (smsEarly || sendFirebasePhoneOtp(phone));
           stashPhoneAuth({ firebase: true, confirmation, access }, phone);
         } catch (e) {
           setError(friendlyAuthError(e));

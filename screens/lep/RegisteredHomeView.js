@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Linking, Pressable, ScrollView, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
+import Reanimated, {
+  cancelAnimation,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
@@ -10,6 +19,7 @@ import { GuideFace } from './LepBits';
 import { PODCASTS } from './lepData';
 import { ROLE_OPTIONS } from '../../utils/registeredHomeData';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { isLoudNudge } from '../../utils/lepNudgePlan';
 
 const T = {
   bg: '#F4F1E8',
@@ -101,6 +111,153 @@ function Fact({ label, value }) {
   );
 }
 
+/** "Your next steps" — the same card on the registered and the enrolled home. */
+export function NextStepsCard({ countText, note, tasks, onTask, title = 'Your next steps', more = 0 }) {
+  return (
+    <View style={{ backgroundColor: T.surface, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 18 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <ILText role="title" color={T.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 21, lineHeight: 26 }}>
+          {title}
+        </ILText>
+        <ILText role="label" color={T.teal} style={{ fontSize: 13 }}>
+          {countText}
+        </ILText>
+      </View>
+      <ILText role="bodySm" color={T.muted} style={{ marginTop: 4, fontSize: 12.5, lineHeight: 18 }}>
+        {note}
+      </ILText>
+      {tasks.map((task) => (
+        <Pressable
+          key={task.id}
+          accessibilityRole="button"
+          accessibilityLabel={`${task.title}. ${task.meta}`}
+          onPress={() => onTask(task)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            paddingVertical: 12,
+            minHeight: 44,
+            borderTopWidth: 1,
+            borderTopColor: T.line,
+            marginTop: 6,
+          }}
+        >
+          <StatusIcon state={task.state} />
+          <View style={{ flex: 1 }}>
+            <ILText role="label" color={task.state === 'done' ? T.muted : T.ink} style={{ fontSize: 14.5 }}>
+              {task.title}
+            </ILText>
+            <ILText role="bodySm" color={T.muted} style={{ marginTop: 2, fontSize: 12.5 }}>
+              {task.meta}
+            </ILText>
+          </View>
+          <View
+            style={{
+              backgroundColor: task.chip === 'Catch up' ? T.redSoft : task.required ? '#DCE6EA' : T.chip,
+              borderRadius: 999,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+            }}
+          >
+            <ILText
+              role="label"
+              color={task.chip === 'Catch up' ? T.redText : task.required ? T.teal : T.chipInk}
+              style={{ fontSize: 11 }}
+            >
+              {task.chip || (task.required ? 'Required' : 'Optional')}
+            </ILText>
+          </View>
+        </Pressable>
+      ))}
+      {more > 0 ? (
+        <ILText role="bodySm" color={T.muted} style={{ marginTop: 10, fontSize: 12.5 }}>
+          {`+${more} more in My Program`}
+        </ILText>
+      ) : null}
+    </View>
+  );
+}
+
+/** Part-paid learner, orientation close: one clear ask above everything else on Home. */
+export function EnrolmentNudgeBanner({ nudge, onEnrol }) {
+  if (!nudge) return null;
+  const hot = nudge.level !== 'firm';
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${nudge.title}. ${nudge.body}`}
+      onPress={onEnrol}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        backgroundColor: hot ? T.red : T.redSoft,
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+      }}
+    >
+      <MaterialIcons name="event-available" size={22} color={hot ? '#FFFFFF' : T.redText} />
+      <View style={{ flex: 1 }}>
+        <ILText role="label" color={hot ? '#FFFFFF' : T.redText} style={{ fontSize: 15 }}>
+          {nudge.title}
+        </ILText>
+        <ILText
+          role="bodySm"
+          color={hot ? 'rgba(255,255,255,0.88)' : T.ink}
+          style={{ marginTop: 2, fontSize: 12.5, lineHeight: 17 }}
+        >
+          {nudge.body}
+        </ILText>
+      </View>
+      <ILText role="label" color={hot ? '#FFFFFF' : T.redText} style={{ fontSize: 13 }}>
+        Enrol →
+      </ILText>
+    </Pressable>
+  );
+}
+
+/** Enrolled: where she is in the batch — last step done, this one, the next. */
+export function JourneyRail({ rail, onOpen }) {
+  if (!rail?.steps?.length) return null;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`You are in ${rail.current?.title || 'your programme'}. Open My Program.`}
+      onPress={onOpen}
+      style={{ marginTop: 18 }}
+    >
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {rail.steps.map((s) => (
+          <View
+            key={`bar-${s.id}`}
+            style={{
+              flex: 1,
+              height: 5,
+              borderRadius: 3,
+              backgroundColor:
+                s.state === 'current' ? '#E8585E' : s.state === 'done' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.22)',
+            }}
+          />
+        ))}
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+        {rail.steps.map((s) => (
+          <ILText
+            key={`lbl-${s.id}`}
+            role="label"
+            color={s.state === 'current' ? '#FFFFFF' : s.state === 'done' ? '#DCE6EA' : '#9FB3B9'}
+            style={{ flex: 1, fontSize: 11, fontWeight: s.state === 'current' ? '800' : '600' }}
+          >
+            {s.state === 'done' ? `✓ ${s.label}` : s.label}
+          </ILText>
+        ))}
+      </View>
+    </Pressable>
+  );
+}
+
 export default function RegisteredHomeView({
   model,
   guideContext,
@@ -119,6 +276,8 @@ export default function RegisteredHomeView({
   topPad,
   upcomingSession,
   onOpenSchedule,
+  nudge,
+  onEnrol,
 }) {
   return (
     <View style={{ gap: 16 }}>
@@ -141,6 +300,8 @@ export default function RegisteredHomeView({
         />
       </View>
 
+      {isLoudNudge(nudge) ? <EnrolmentNudgeBanner nudge={nudge} onEnrol={onEnrol} /> : null}
+
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.HOME}
         guideContext={guideContext}
@@ -149,59 +310,17 @@ export default function RegisteredHomeView({
         style={{ borderRadius: 18 }}
       />
 
-      <View style={{ backgroundColor: T.surface, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <ILText role="title" color={T.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 21, lineHeight: 26 }}>
-            Your next steps
-          </ILText>
-          <ILText role="label" color={T.teal} style={{ fontSize: 13 }}>
-            {`${model.doneCount} of ${model.taskCount} done`}
-          </ILText>
-        </View>
-        <ILText role="bodySm" color={T.muted} style={{ marginTop: 4, fontSize: 12.5, lineHeight: 18 }}>
-          {model.note}
-        </ILText>
-        {model.tasks.map((task) => (
-          <Pressable
-            key={task.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${task.title}. ${task.meta}`}
-            onPress={() => onTask(task)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 12,
-              paddingVertical: 12,
-              minHeight: 44,
-              borderTopWidth: 1,
-              borderTopColor: T.line,
-              marginTop: 6,
-            }}
-          >
-            <StatusIcon state={task.state} />
-            <View style={{ flex: 1 }}>
-              <ILText role="label" color={task.state === 'done' ? T.muted : T.ink} style={{ fontSize: 14.5 }}>
-                {task.title}
-              </ILText>
-              <ILText role="bodySm" color={T.muted} style={{ marginTop: 2, fontSize: 12.5 }}>
-                {task.meta}
-              </ILText>
-            </View>
-            <View
-              style={{
-                backgroundColor: task.required ? '#DCE6EA' : T.chip,
-                borderRadius: 999,
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-              }}
-            >
-              <ILText role="label" color={task.required ? T.teal : T.chipInk} style={{ fontSize: 11 }}>
-                {task.required ? 'Required' : 'Optional'}
-              </ILText>
-            </View>
-          </Pressable>
-        ))}
-      </View>
+      <NextStepsCard
+        countText={`${model.doneCount} of ${model.taskCount} done`}
+        note={model.note}
+        // Enrolment's line follows the batch calendar: "3 days to orientation", "Orientation tomorrow"…
+        tasks={
+          nudge
+            ? model.tasks.map((t) => (t.id === 'enroll' && t.state !== 'done' ? { ...t, meta: nudge.short } : t))
+            : model.tasks
+        }
+        onTask={onTask}
+      />
 
       {roleOn ? (
         <View
@@ -540,45 +659,52 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const count = Math.max(phases.length, 1);
   const [index, setIndex] = useState(lockerStep);
   const [trackW, setTrackW] = useState(0);
-  const slide = useRef(new Animated.Value(lockerStep)).current;
-  const fade = useRef(new Animated.Value(1)).current;
+  // UI thread (Reanimated): the fade and the red bar keep moving while JS is busy.
+  // JS only swaps the caption, once every 5 s, while the card is faded out.
+  const slide = useSharedValue(lockerStep);
+  const fade = useSharedValue(1);
   const indexRef = useRef(lockerStep);
+  // Rotate only while Home is on screen; a hidden timer just loads the JS thread.
+  const focused = useIsFocused();
   const gap = 6;
+  const seg = trackW > 0 ? (trackW - gap * (count - 1)) / count : 0;
 
   useEffect(() => {
     indexRef.current = lockerStep;
     setIndex(lockerStep);
-    slide.setValue(lockerStep);
-    fade.setValue(1);
+    slide.value = lockerStep;
+    fade.value = 1;
   }, [lockerStep, slide, fade]);
 
   useEffect(() => {
-    if (count < 2) return undefined;
+    if (count < 2 || !focused) return undefined;
+    const showNext = (next) => {
+      indexRef.current = next;
+      setIndex(next);
+      slide.value = withSpring(next, { damping: 18, stiffness: 120 });
+      fade.value = withTiming(1, { duration: 240 });
+    };
     const timer = setInterval(() => {
       const next = (indexRef.current + 1) % count;
-      Animated.timing(fade, { toValue: 0, duration: 160, useNativeDriver: true }).start(() => {
-        indexRef.current = next;
-        setIndex(next);
-        Animated.parallel([
-          Animated.spring(slide, {
-            toValue: next,
-            useNativeDriver: true,
-            friction: 9,
-            tension: 70,
-          }),
-          Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: true }),
-        ]).start();
+      fade.value = withTiming(0, { duration: 180 }, (finished) => {
+        if (finished) runOnJS(showNext)(next);
       });
     }, 5000);
-    return () => clearInterval(timer);
-  }, [count, fade, slide]);
+    return () => {
+      clearInterval(timer);
+      // Never leave the card half-faded when the timer stops (tab switch, unmount).
+      cancelAnimation(fade);
+      fade.value = 1;
+    };
+  }, [count, fade, slide, focused]);
+
+  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
+  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slide.value * (seg + gap) }] }), [seg]);
 
   const phase = phases[index] || phases[0];
   if (!phase) return null;
 
   const registeredDone = Boolean(phases[0]?.done || lockerStep > 0);
-  const seg = trackW > 0 ? (trackW - gap * (count - 1)) / count : 0;
-  const thumbX = Animated.multiply(slide, seg + gap);
   const canPress = phase.unlocked && !phase.ctaBlocked;
 
   return (
@@ -614,11 +740,11 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         {`${dayGreeting()}, ${firstName}.`}
       </ILText>
 
-      <Animated.View style={{ opacity: fade, minHeight: 40 }}>
+      <Reanimated.View style={[{ minHeight: 40 }, fadeStyle]}>
         <ILText role="body" color="#DCE6EA" style={{ fontSize: 14, lineHeight: 20 }}>
           {phase.body}
         </ILText>
-      </Animated.View>
+      </Reanimated.View>
 
       <View>
         <View
@@ -639,18 +765,20 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
             ))}
           </View>
           {seg > 0 ? (
-            <Animated.View
+            <Reanimated.View
               pointerEvents="none"
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: seg,
-                height: 5,
-                borderRadius: 3,
-                backgroundColor: '#E8585E',
-                transform: [{ translateX: thumbX }],
-              }}
+              style={[
+                {
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: seg,
+                  height: 5,
+                  borderRadius: 3,
+                  backgroundColor: '#E8585E',
+                },
+                thumbStyle,
+              ]}
             />
           ) : null}
         </View>
@@ -669,7 +797,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         </View>
       </View>
 
-      <Animated.View style={{ opacity: fade, gap: 14 }}>
+      <Reanimated.View style={[{ gap: 14 }, fadeStyle]}>
         {phase.dated && phase.orientation ? (
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <DateTile label="ORIENTATION" value={phase.orientation} />
@@ -695,7 +823,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
             {canPress ? `${phase.cta} →` : phase.ctaBlocked ? `${phase.cta} · Locked` : phase.cta}
           </ILText>
         </Pressable>
-      </Animated.View>
+      </Reanimated.View>
     </View>
   );
 }
