@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
@@ -35,7 +35,15 @@ import PracticeVideo from '../../components/program/PracticeVideo';
 import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
 import { fetchPublishedCmsForTask } from '../../services/cms';
-import { pickTaskDocument, pickTaskVideo, uploadTaskSubmission } from '../../services/taskUploads';
+import {
+  discardUploadedFile,
+  pickTaskDocument,
+  pickTaskDocuments,
+  pickTaskVideo,
+  uploadTaskSubmission,
+} from '../../services/taskUploads';
+import UploadProgressButton from '../../components/program/UploadProgressButton';
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { removeSubmissionFile } from '../../services/programs';
 import { showAlert } from '../../utils/showAlert';
 import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
@@ -206,8 +214,14 @@ function TaskFiles({ task, skipReadingDocument = false }) {
   );
 }
 
-function ChosenChip({ label, picked, onRemove, disabled }) {
+function ChosenChip({ label, picked, onRemove, disabled, status, progress = null }) {
   const image = picked?.uri && String(picked?.mimeType || '').startsWith('image/');
+  // The row itself fills as the bytes go up (UI thread), so she sees each file travelling.
+  const fill = useSharedValue(0);
+  useEffect(() => {
+    fill.value = withTiming(progress ?? 0, { duration: progress === 100 ? 220 : 300 });
+  }, [progress, fill]);
+  const fillStyle = useAnimatedStyle(() => ({ width: `${fill.value}%`, opacity: fill.value >= 100 ? 0.55 : 1 }));
   return (
     <View
       style={{
@@ -217,8 +231,15 @@ function ChosenChip({ label, picked, onRemove, disabled }) {
         backgroundColor: G.pink,
         flexDirection: 'row',
         alignItems: 'center',
+        overflow: 'hidden',
       }}
     >
+      {progress !== null ? (
+        <Reanimated.View
+          pointerEvents="none"
+          style={[{ position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(237,29,36,0.16)' }, fillStyle]}
+        />
+      ) : null}
       {image ? (
         <Image
           source={{ uri: picked.uri }}
@@ -228,9 +249,16 @@ function ChosenChip({ label, picked, onRemove, disabled }) {
       ) : (
         <MaterialIcons name="check-circle" size={18} color={G.cta} />
       )}
-      <ILText role="label" color={G.ink} style={{ marginLeft: image ? 12 : 8, flex: 1, fontSize: 13 }}>
-        {label}
-      </ILText>
+      <View style={{ marginLeft: image ? 12 : 8, flex: 1 }}>
+        <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
+          {label}
+        </ILText>
+        {status ? (
+          <ILText role="bodySm" color={status.error ? G.cta : G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+            {status.text}
+          </ILText>
+        ) : null}
+      </View>
       {onRemove ? <RemoveButton label={`Remove ${label}`} onPress={onRemove} disabled={disabled} /> : null}
     </View>
   );
@@ -462,8 +490,9 @@ export default function CourseTaskScreen({ route, navigation }) {
   const [form, setForm] = useState({});
   const [checked, setChecked] = useState([]);
   /** { uri, name, mimeType, size } chosen for a file / video task — uploaded on Submit. */
-  const [picked, setPicked] = useState(null);
-  const [uploadPct, setUploadPct] = useState(null);
+  // Files picked and not yet submitted — each uploading on its own, in pick order.
+  const [pending, setPending] = useState([]);
+  const picked = pending[0]?.picked || null;
   // Furthest point watched (0–1), and whether playback started — "Mark watched" waits for 90%.
   const [watchMax, setWatchMax] = useState(null);
   const [watchStarted, setWatchStarted] = useState(false);
@@ -551,8 +580,7 @@ export default function CourseTaskScreen({ route, navigation }) {
     setText('');
     setLink('');
     setChecked([]);
-    setPicked(null);
-    setUploadPct(null);
+    setPending([]);
     setWatchMax(null);
     setWatchStarted(false);
     setWatchUntracked(false);
@@ -607,14 +635,92 @@ export default function CourseTaskScreen({ route, navigation }) {
     return () => clearTimeout(t);
   }, [watchStarted, watchMax]);
 
+  // Each file starts uploading the moment she picks it, so Submit is only the quick save.
+  // pending item: { id, picked, status: 'uploading' | 'ready' | 'error', pct, uploaded }
+  const jobs = useRef(new Map());
+  const canUpload = !!user?.uid && user.uid !== 'preview';
+
+  const patchPending = (id, patch) =>
+    setPending((list) => list.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+
+  const dropJob = (id) => {
+    const job = jobs.current.get(id);
+    jobs.current.delete(id);
+    if (!job) return;
+    try {
+      job.task?.cancel();
+    } catch {
+      /* already finished */
+    }
+    job.promise?.then(discardUploadedFile).catch(() => {});
+  };
+
+  const startUpload = (id, chosen) => {
+    if (!canUpload || !task?.id) return null;
+    const job = { task: null, promise: null };
+    jobs.current.set(id, job);
+    patchPending(id, { status: 'uploading', pct: 0, uploaded: null });
+    job.promise = uploadTaskSubmission({
+      programId,
+      userId: user.uid,
+      taskId: task.id,
+      kind: task.type === TASK_TYPES.VIDEO_RECORD ? 'video' : 'file',
+      picked: chosen,
+      onTask: (t) => {
+        job.task = t;
+      },
+      onProgress: (pct) => jobs.current.get(id) === job && patchPending(id, { pct }),
+    });
+    job.promise.then(
+      (uploaded) => jobs.current.get(id) === job && patchPending(id, { status: 'ready', pct: 100, uploaded }),
+      () => jobs.current.get(id) === job && patchPending(id, { status: 'error', pct: null })
+    );
+    return job;
+  };
+
   const pickFile = async (source) => {
     try {
-      const chosen = source === 'file' ? await pickTaskDocument() : await pickTaskVideo(source);
-      if (chosen) setPicked(chosen);
+      const chosen =
+        source === 'file'
+          ? isMultiFileUploadTask(task)
+            ? await pickTaskDocuments()
+            : [await pickTaskDocument()].filter(Boolean)
+          : [await pickTaskVideo(source)].filter(Boolean);
+      if (!chosen.length) return;
+      const items = chosen.map((c, i) => ({
+        id: `${Date.now()}-${i}-${c.name}`,
+        picked: c,
+        status: canUpload ? 'uploading' : 'ready',
+        pct: 0,
+        uploaded: null,
+      }));
+      if (isMultiFileUploadTask(task)) {
+        // VIA report + photos: every pick is added below the ones already waiting.
+        setPending((list) => [...list, ...items]);
+      } else {
+        // One-file tasks: a new pick replaces the old one.
+        pending.forEach((it) => dropJob(it.id));
+        setPending(items);
+      }
+      items.forEach((it) => startUpload(it.id, it.picked));
     } catch (e) {
       showAlert(e?.code === 'permission' ? 'Permission needed' : 'Could not use that file', e?.message || 'Try again.');
     }
   };
+
+  const unpick = (id) => {
+    dropJob(id);
+    setPending((list) => list.filter((it) => it.id !== id));
+  };
+
+  // Leaving the task (or opening another) drops uploads she never submitted.
+  useEffect(
+    () => () => {
+      [...jobs.current.keys()].forEach(dropJob);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [taskId]
+  );
 
   const [removingUrl, setRemovingUrl] = useState(null);
   const removeFile = async (file) => {
@@ -642,22 +748,32 @@ export default function CourseTaskScreen({ route, navigation }) {
       let uploaded = null;
       const isUpload = task.type === TASK_TYPES.FILE_UPLOAD || task.type === TASK_TYPES.VIDEO_RECORD;
       // Preview / demo learners have no Storage folder; real learners always upload.
-      if (isUpload && picked && user?.uid && user.uid !== 'preview') {
-        setUploadPct(0);
-        uploaded = await uploadTaskSubmission({
-          programId,
-          userId: user.uid,
-          taskId: task.id,
-          kind: task.type === TASK_TYPES.VIDEO_RECORD ? 'video' : 'file',
-          picked,
-          onProgress: setUploadPct,
-        });
+      if (isUpload && pending.length && canUpload) {
+        // Usually already up. Still going: wait for it. Failed: try once more now.
+        const list = await Promise.all(
+          pending.map((it) => {
+            let job = jobs.current.get(it.id);
+            if (!job || it.status === 'error') job = startUpload(it.id, it.picked);
+            return job.promise;
+          })
+        );
+        jobs.current.clear(); // submitted: keep the files
+        uploaded = { ...list[list.length - 1], batch: list };
       }
-      await submitTask(
+      const saving = submitTask(
         programId,
         task,
         lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded })
       );
+      if (isUpload && uploaded) {
+        // The file is already safe in Storage and Firestore shows the write locally at once:
+        // don't hold her on "Saving…" for the server's ack. Only a real failure speaks up.
+        saving.catch((e) =>
+          showAlert('Not saved yet', `${TASK_SAVE_FAILED}${e?.message ? `\n\n(${e.message})` : ''}`)
+        );
+      } else {
+        await saving;
+      }
       if (isErrcTask) {
         demo.saveSubmission(programId, taskId, form);
         setSubmittedAt(Date.now());
@@ -668,7 +784,7 @@ export default function CourseTaskScreen({ route, navigation }) {
       }
       setDone(true);
       setEditing(false);
-      setPicked(null);
+      setPending([]);
     } catch (e) {
       showAlert(
         'Not saved yet',
@@ -678,7 +794,6 @@ export default function CourseTaskScreen({ route, navigation }) {
       );
     } finally {
       setSyncing(false);
-      setUploadPct(null);
     }
   };
 
@@ -708,6 +823,13 @@ export default function CourseTaskScreen({ route, navigation }) {
     multiFileUpload && done && !editing && displayReview === 'submitted';
   // Her own upload can come off until CX has acted on it (approved, or locked while reviewing).
   const canRemoveFiles = displayReview !== 'approved' && displayReview !== 'reviewing';
+  const isUploadTask = type === TASK_TYPES.FILE_UPLOAD || type === TASK_TYPES.VIDEO_RECORD;
+  // Each file's row says where its upload is; the button sums them up.
+  const uploading = pending.filter((it) => it.status === 'uploading');
+  const allUp = pending.length > 0 && pending.every((it) => it.status === 'ready');
+  const overallPct = pending.length
+    ? Math.round(pending.reduce((sum, it) => sum + (it.status === 'ready' ? 100 : it.pct || 0), 0) / pending.length)
+    : 0;
   const showReviewBanner = Boolean(displayReview && hasSubmissionContent(submission));
   const items = task.checklistItems || [];
   // Watched 90%, or the player cannot report progress (never strand her).
@@ -747,6 +869,16 @@ export default function CourseTaskScreen({ route, navigation }) {
                 : 'Submit answer';
   const cta =
     review === 'sentBack' || editing ? 'Resubmit' : alumniPractice ? alumniSubmitCta(baseCta) : baseCta;
+  const submitFiles = pending.length > 1 ? `Submit ${pending.length} files` : canAddAnotherFile ? 'Submit this file' : cta;
+  const uploadCta = syncing
+    ? { label: 'Saving…', progress: null, done: true }
+    : uploading.length
+      ? {
+          label: pending.length > 1 ? `Uploading ${pending.length - uploading.length + 1} of ${pending.length} · ${overallPct}%` : `Uploading ${overallPct}%`,
+          progress: overallPct,
+          done: false,
+        }
+      : { label: submitFiles, progress: null, done: allUp };
 
   const submittedLabel =
     submittedAt
@@ -987,21 +1119,30 @@ export default function CourseTaskScreen({ route, navigation }) {
               sub="Pick a video already on this phone · up to 200 MB"
               onPress={() => pickFile('library')}
             />
-            {picked ? (
-              <ChosenChip
-                label={chosenLabel(picked)}
-                picked={picked}
-                disabled={syncing}
-                onRemove={() => setPicked(null)}
-              />
-            ) : null}
-            <SubmittedFilesList
+                        <SubmittedFilesList
               submission={getTaskSubmission(programId, taskId)}
               navigation={navigation}
               title={task.title}
               onRemove={canRemoveFiles ? removeFile : null}
               removing={removingUrl}
             />
+            {pending.map((it) => (
+              <ChosenChip
+                key={it.id}
+                label={chosenLabel(it.picked)}
+                picked={it.picked}
+                disabled={syncing}
+                onRemove={() => unpick(it.id)}
+                progress={it.status === 'uploading' ? it.pct || 0 : it.status === 'ready' ? 100 : null}
+                status={
+                  it.status === 'uploading'
+                    ? { text: `Uploading ${it.pct || 0}%` }
+                    : it.status === 'ready'
+                      ? { text: 'Uploaded ✓ — tap Submit to add it' }
+                      : { text: 'Upload stopped — Submit will try again', error: true }
+                }
+              />
+            ))}
           </View>
         ) : null}
 
@@ -1022,21 +1163,30 @@ export default function CourseTaskScreen({ route, navigation }) {
                 Submit each file once — your report and all three photos stay on this task.
               </ILText>
             ) : null}
-            {picked ? (
-              <ChosenChip
-                label={chosenLabel(picked)}
-                picked={picked}
-                disabled={syncing}
-                onRemove={() => setPicked(null)}
-              />
-            ) : null}
-            <SubmittedFilesList
+                        <SubmittedFilesList
               submission={getTaskSubmission(programId, taskId)}
               navigation={navigation}
               title={task.title}
               onRemove={canRemoveFiles ? removeFile : null}
               removing={removingUrl}
             />
+            {pending.map((it) => (
+              <ChosenChip
+                key={it.id}
+                label={chosenLabel(it.picked)}
+                picked={it.picked}
+                disabled={syncing}
+                onRemove={() => unpick(it.id)}
+                progress={it.status === 'uploading' ? it.pct || 0 : it.status === 'ready' ? 100 : null}
+                status={
+                  it.status === 'uploading'
+                    ? { text: `Uploading ${it.pct || 0}%` }
+                    : it.status === 'ready'
+                      ? { text: 'Uploaded ✓ — tap Submit to add it' }
+                      : { text: 'Upload stopped — Submit will try again', error: true }
+                }
+              />
+            ))}
           </View>
         ) : null}
 
@@ -1057,16 +1207,14 @@ export default function CourseTaskScreen({ route, navigation }) {
           {canAddAnotherFile ? (
             <>
               {picked ? (
-                <View style={{ opacity: !syncing ? 1 : 0.45, marginBottom: 12 }}>
-                  <RedCta
-                    label={
-                      syncing
-                        ? uploadPct !== null && uploadPct < 100
-                          ? `Uploading ${uploadPct}%…`
-                          : 'Saving…'
-                        : 'Submit this file'
-                    }
-                    onPress={!syncing ? submit : () => {}}
+                <View style={{ marginBottom: 12 }}>
+                  <UploadProgressButton
+                    label={uploadCta.label}
+                    progress={uploadCta.progress}
+                    done={uploadCta.done}
+                    busy={syncing}
+                    disabled={syncing}
+                    onPress={submit}
                   />
                 </View>
               ) : null}
@@ -1155,12 +1303,20 @@ export default function CourseTaskScreen({ route, navigation }) {
           {!done || editing ? (
             <>
               {!canAddAnotherFile ? (
-                <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
-                  <RedCta
-                    label={syncing ? (uploadPct !== null && uploadPct < 100 ? `Uploading ${uploadPct}%…` : 'Saving…') : cta}
-                    onPress={ready && !syncing ? submit : () => {}}
+                isUploadTask && picked ? (
+                  <UploadProgressButton
+                    label={uploadCta.label}
+                    progress={uploadCta.progress}
+                    done={uploadCta.done}
+                    busy={syncing}
+                    disabled={syncing}
+                    onPress={submit}
                   />
-                </View>
+                ) : (
+                  <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
+                    <RedCta label={syncing ? 'Saving…' : cta} onPress={ready && !syncing ? submit : () => {}} />
+                  </View>
+                )
               ) : null}
               {done && isErrcTask ? (
                 <Pressable

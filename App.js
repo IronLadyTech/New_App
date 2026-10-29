@@ -14,6 +14,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import IronLadyAnimatedSplash from './components/il/IronLadyAnimatedSplash';
 import { DevLaunchSplashPreviewProvider } from './context/DevLaunchSplashPreviewContext';
 import { isAdminPath } from './utils/adminRoute';
+import { useOtaUpdates } from './hooks/useOtaUpdates';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -90,6 +91,7 @@ function Root() {
 }
 
 export default function App() {
+  useOtaUpdates();
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import LiquidTabBar, { useLiquidItems } from './LiquidTabBar';
 
@@ -12,6 +12,9 @@ const ICONS = {
   Engage: { icon: 'people', outline: 'people-outline' },
   Programs: { icon: 'layers', outline: 'layers-outline' },
 };
+
+/** Let the first screen settle (splash, data) before building the other tabs. */
+const PRELOAD_AFTER_MS = 2500;
 
 /** Tab stacks keep nested screens (e.g. Week 2 phase) until we explicitly return to root. */
 const TAB_ROOT_SCREEN = {
@@ -28,6 +31,22 @@ export default function ILTabBar({ state, descriptors, navigation }) {
   const found = items.findIndex((item) => item.key === state.routes[state.index]?.key);
   const activeIndex = found >= 0 ? (last.current = found) : last.current;
   const focused = getFocusedRouteNameFromRoute(state.routes[state.index]);
+
+  // Build every tab once, in the background, soon after launch: the first visit to Learn or
+  // Engage then only shows a screen that already exists instead of building it on the tap.
+  const preloaded = useRef(false);
+  useEffect(() => {
+    if (preloaded.current) return undefined;
+    preloaded.current = true;
+    const timer = setTimeout(() => {
+      items.forEach((item, i) => {
+        if (i !== activeIndex && typeof navigation.preload === 'function') navigation.preload(item.name);
+      });
+    }, PRELOAD_AFTER_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (FULL_SCREEN.has(focused)) return null;
 
   return (
@@ -41,8 +60,11 @@ export default function ILTabBar({ state, descriptors, navigation }) {
           canPreventDefault: true,
         });
         if (event.defaultPrevented) return;
+        // Back to the tab's first screen only if she had gone deeper; re-sending the root
+        // screen when she is already on it just re-renders it for nothing.
         const root = TAB_ROOT_SCREEN[item.name];
-        if (root) navigation.navigate(item.name, { screen: root });
+        const deep = (state.routes.find((r) => r.key === item.key)?.state?.index ?? 0) > 0;
+        if (root && deep) navigation.navigate(item.name, { screen: root });
         else navigation.navigate(item.name);
       }}
     />

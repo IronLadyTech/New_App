@@ -166,6 +166,7 @@ export async function submitProgramTask({
   if (type === 'file_upload' || type === 'video_record') {
     const merged = appendUploadFields(previousSubmission, fields);
     Object.assign(payload, merged);
+    delete payload.batch; // the picked-together list is folded into `files`, not stored
   }
 
   if (type === 'watch_only') {

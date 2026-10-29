@@ -1,5 +1,4 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import ILTabBar from '../components/il/ILTabBar';
 
@@ -11,8 +10,9 @@ export default function TabNavigator() {
       tabBar={(props) => <ILTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        // Frozen screens on Android have caused “dead” taps after tab switches in some RN builds.
-        freezeOnBlur: Platform.OS !== 'android',
+        // Hidden tabs stop re-rendering on every data change, so the tab she opens gets the
+        // JS thread. (The old Android "dead tap" after a switch was fixed in react-native-screens 4.x.)
+        freezeOnBlur: true,
         tabBarStyle: {
           position: 'absolute',
           backgroundColor: 'transparent',

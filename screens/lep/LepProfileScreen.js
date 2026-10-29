@@ -55,6 +55,7 @@ import {
   ProfileBhagCard,
   ProfileStrengthCard,
 } from './LepProfileSections';
+import { otaLabel } from '../../hooks/useOtaUpdates';
 
 function hasMasterclassOnProfile(source) {
   if (!source) return false;
@@ -248,6 +249,8 @@ export default function LepProfileScreen() {
   };
 
   const appVersion = Constants.expoConfig?.version || '1.0.0';
+  // Which over-the-air update this phone runs, so a fix can be checked on the device.
+  const ota = otaLabel();
   const buildNumber =
     Constants.expoConfig?.android?.versionCode ||
     Constants.expoConfig?.ios?.buildNumber ||
@@ -624,7 +627,7 @@ export default function LepProfileScreen() {
           </ILText>
         </Pressable>
         <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', fontSize: 11, marginTop: 10, marginBottom: 8 }}>
-          {`Iron Lady · Version ${appVersion}${buildNumber ? ` (build ${buildNumber})` : ''}`}
+          {`Iron Lady · Version ${appVersion}${buildNumber ? ` (build ${buildNumber})` : ''}${ota ? ` · ${ota}` : ''}`}
         </ILText>
       </ScrollView>
     </Page>

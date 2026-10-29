@@ -7,7 +7,7 @@
  */
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { storage } from './firebase';
 import { PROGRAMS } from '../constants/programs';
 
@@ -36,17 +36,9 @@ function pickError(message, code = 'invalid') {
   return error;
 }
 
-/** A PDF, Word file or photo. Returns { uri, name, mimeType, size } or null when cancelled. */
-export async function pickTaskDocument() {
-  const result = await DocumentPicker.getDocumentAsync({
-    type: DOCUMENT_TYPES,
-    copyToCacheDirectory: true,
-    multiple: false,
-  });
-  const asset = result.canceled ? null : result.assets?.[0];
-  if (!asset?.uri) return null;
+function documentFromAsset(asset) {
   if (asset.size && asset.size > MAX_DOCUMENT_BYTES) {
-    throw pickError(`That file is over the ${mb(MAX_DOCUMENT_BYTES)} limit. Pick a smaller one.`);
+    throw pickError(`${asset.name || 'That file'} is over the ${mb(MAX_DOCUMENT_BYTES)} limit. Pick a smaller one.`);
   }
   return {
     uri: asset.uri,
@@ -54,6 +46,26 @@ export async function pickTaskDocument() {
     mimeType: asset.mimeType || 'application/octet-stream',
     size: asset.size || null,
   };
+}
+
+/** A PDF, Word file or photo. Returns { uri, name, mimeType, size } or null when cancelled. */
+export async function pickTaskDocument() {
+  const [first] = (await pickTaskDocuments({ multiple: false })) || [];
+  return first || null;
+}
+
+/**
+ * Several at once (VIA report + photos). Returns an array (empty when cancelled).
+ * One file over the limit stops the pick with its name, so she knows which one.
+ */
+export async function pickTaskDocuments({ multiple = true } = {}) {
+  const result = await DocumentPicker.getDocumentAsync({
+    type: DOCUMENT_TYPES,
+    copyToCacheDirectory: true,
+    multiple,
+  });
+  if (result.canceled) return [];
+  return (result.assets || []).filter((a) => a?.uri).map(documentFromAsset);
 }
 
 /** Record with the camera (source 'camera') or pick from the gallery (source 'library'). */
@@ -96,9 +108,10 @@ export async function pickTaskVideo(source) {
 
 /**
  * Upload a picked file and return the submission fields the web LMS reads.
- * kind: 'file' | 'video'. onProgress receives 0–100.
+ * kind: 'file' | 'video'. onProgress receives 0–100. onTask receives the Storage upload
+ * task as soon as it exists, so the caller can cancel() it (she removed the file).
  */
-export async function uploadTaskSubmission({ programId, userId, taskId, kind, picked, onProgress }) {
+export async function uploadTaskSubmission({ programId, userId, taskId, kind, picked, onProgress, onTask }) {
   const folder = STORAGE_FOLDER[programId];
   if (!folder) throw new Error('Uploads are not set up for this program.');
   if (!userId || !taskId || !picked?.uri) throw new Error('Nothing to upload.');
@@ -114,6 +127,7 @@ export async function uploadTaskSubmission({ programId, userId, taskId, kind, pi
   }
 
   const task = uploadBytesResumable(ref(storage, path), blob, { contentType: picked.mimeType });
+  onTask?.(task);
   await new Promise((resolve, reject) => {
     // No byte moved for a while (weak signal, network switched): stop instead of hanging forever.
     let stall = null;
@@ -147,4 +161,10 @@ export async function uploadTaskSubmission({ programId, userId, taskId, kind, pi
   return kind === 'video'
     ? { ...common, videoUrl: url, videoPath: path, fileType: picked.mimeType, durationSec: picked.durationSec || null }
     : { ...common, fileUrl: url, filePath: path, fileType: picked.mimeType };
+}
+
+/** Throw away a file uploaded ahead of submit that she then removed. Best effort. */
+export function discardUploadedFile(uploaded) {
+  const path = uploaded?.filePath || uploaded?.videoPath;
+  if (path) deleteObject(ref(storage, path)).catch(() => {});
 }

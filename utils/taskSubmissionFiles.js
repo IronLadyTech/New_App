@@ -25,23 +25,31 @@ export function isImageSubmissionFile(file) {
   return type.startsWith('image/') || /\.(jpe?g|png|gif|webp|heic)$/i.test(name);
 }
 
-/** Keep prior uploads when she adds another file on the same task (VIA report + photos). */
-export function appendUploadFields(previousSubmission, uploaded) {
-  if (!uploaded) return uploaded;
-  const url = uploaded.videoUrl || uploaded.fileUrl;
-  if (!url) return uploaded;
-  const files = normalizeSubmissionFiles(previousSubmission);
-  const entry = {
+function fileEntry(uploaded) {
+  const url = uploaded?.videoUrl || uploaded?.fileUrl;
+  if (!url) return null;
+  return {
     url,
     name: uploaded.fileName || 'File',
     type: uploaded.fileType || null,
     uploadedAt: new Date().toISOString(),
     kind: uploaded.videoUrl ? 'video' : 'file',
   };
-  return {
-    ...uploaded,
-    files: [...files.filter((f) => f.url !== url), entry],
-  };
+}
+
+/**
+ * Keep prior uploads when she adds more files on the same task (VIA report + photos).
+ * `uploaded.batch` (several files picked together) are all appended, in pick order; the
+ * single-file fields (fileUrl, fileName…) are the last one, as the web LMS expects.
+ */
+export function appendUploadFields(previousSubmission, uploaded) {
+  if (!uploaded) return uploaded;
+  const { batch, ...single } = uploaded;
+  const added = (Array.isArray(batch) && batch.length ? batch : [single]).map(fileEntry).filter(Boolean);
+  if (!added.length) return single;
+  const urls = new Set(added.map((f) => f.url));
+  const files = normalizeSubmissionFiles(previousSubmission).filter((f) => !urls.has(f.url));
+  return { ...single, files: [...files, ...added] };
 }
 
 export function submissionFileLabel(file) {

@@ -20,7 +20,8 @@ import { G } from '../../constants/guestTheme';
 /*
  * The bead, the socket it sits in and the drag all run on the UI thread (Reanimated +
  * Gesture Handler). A busy JS thread — a screen mounting, a Firestore snapshot — can no
- * longer stall or desync them; JS only hears when the tab under the bead changes.
+ * longer stall or desync them. The bead's icon and the labels cross-fade from the bead's
+ * position too, so they change in the same frame the bead moves.
  */
 
 const BEAD = 48;
@@ -36,8 +37,6 @@ const GLASS_EDGE = 'rgba(248,214,212,0.45)';
 const NAME = '#F5F2E8';
 const ICON_DIM = 'rgba(245,242,232,0.78)';
 const SPRING = { damping: 15, stiffness: 220, mass: 0.6 };
-/** Let the bead get most of the way before the new screen mounts. */
-const NAV_DELAY_MS = 140;
 
 export const LIQUID_TAB_PAD = BAR_TOP + PILL_H + 24;
 
@@ -193,6 +192,45 @@ function GlassDock({ width, height, x, v }) {
   );
 }
 
+/** 1 with the bead centred on this tab, 0 half a tab away — drives the cross-fades. */
+function nearness(x, index, slot) {
+  'worklet';
+  return clamp(1 - Math.abs(x - slotCenter(index, slot)) / (slot * 0.5), 0, 1);
+}
+
+/** The bead's white icon: every tab's glyph stacked, cross-faded by where the bead is. */
+function BeadGlyph({ item, index, slot, x }) {
+  const show = useAnimatedStyle(() => {
+    const p = nearness(x.value, index, slot);
+    return { opacity: p, transform: [{ scale: 0.7 + 0.3 * p }] };
+  });
+  return (
+    <Reanimated.View pointerEvents="none" style={[{ position: 'absolute' }, show]}>
+      <TabGlyph name={item.icon} pack={item.pack} size={22} color="#FFFFFF" />
+    </Reanimated.View>
+  );
+}
+
+/** Label: the bright weight fades in over the dim one as the bead arrives. */
+function TabLabel({ label, index, slot, x }) {
+  const bright = useAnimatedStyle(() => ({ opacity: nearness(x.value, index, slot) }));
+  const dim = useAnimatedStyle(() => ({ opacity: 1 - nearness(x.value, index, slot) }));
+  const base = { fontSize: 11, lineHeight: 13, textAlign: 'center' };
+  return (
+    <View style={{ marginTop: 3, alignSelf: 'stretch' }}>
+      <Reanimated.Text numberOfLines={1} style={[base, { color: ICON_DIM, fontFamily: IL_FONTS.medium }, dim]}>
+        {label}
+      </Reanimated.Text>
+      <Reanimated.Text
+        numberOfLines={1}
+        style={[base, { position: 'absolute', left: 0, right: 0, color: NAME, fontFamily: IL_FONTS.semibold }, bright]}
+      >
+        {label}
+      </Reanimated.Text>
+    </View>
+  );
+}
+
 /** Each icon rises on its own proximity curve as the bead nears, then dips into it. */
 function TabIcon({ item, index, slot, x }) {
   const lift = useAnimatedStyle(() => {
@@ -216,7 +254,6 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
   const count = items.length || 1;
   const slot = Math.max(width - SIDE * 2, 1) / count;
   const safeIndex = clamp(activeIndex, 0, count - 1);
-  const [hover, setHover] = useState(safeIndex);
 
   const x = useSharedValue(slotCenter(safeIndex, slot));
   const v = useSharedValue(0); // smoothed velocity, px/ms — stretches the socket
@@ -225,13 +262,10 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
   const placed = useRef(false);
   // Where the bead is already springing to, so the focus change that follows a tap doesn't restart it.
   const aim = useRef({ index: -1, slot: 0 });
-  const navTimer = useRef(null);
   const itemsRef = useRef(items);
   const onPressRef = useRef(onPress);
-  const safeIndexRef = useRef(safeIndex);
   itemsRef.current = items;
   onPressRef.current = onPress;
-  safeIndexRef.current = safeIndex;
 
   // Velocity from the bead's own motion; it settles back to 0 when a spring ends.
   useAnimatedReaction(
@@ -240,15 +274,6 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
       if (prev == null) return;
       v.value += ((cur - prev) / 16 - v.value) * 0.35;
     }
-  );
-
-  // JS hears only when the tab under the bead changes (label colour, bead icon).
-  useAnimatedReaction(
-    () => nearestIndex(x.value, slot, count),
-    (i, prev) => {
-      if (i !== prev) runOnJS(setHover)(i);
-    },
-    [slot, count]
   );
 
   const settle = () => {
@@ -266,20 +291,10 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
   const navigate = (index) => {
     const item = itemsRef.current[index];
     if (!item) return;
+    // aim first: the focus change this causes must not restart the bead's spring.
     aim.current = { index, slot };
-    if (navTimer.current) clearTimeout(navTimer.current);
-    // Same tab again (back to its root) has no slide to protect.
-    if (index === safeIndexRef.current) {
-      onPressRef.current(item, index);
-      return;
-    }
-    navTimer.current = setTimeout(() => {
-      navTimer.current = null;
-      onPressRef.current(item, index);
-    }, NAV_DELAY_MS);
+    onPressRef.current(item, index);
   };
-
-  useEffect(() => () => navTimer.current && clearTimeout(navTimer.current), []);
 
   const minX = SIDE + slot * 0.5;
   const maxX = width - SIDE - slot * 0.5;
@@ -323,11 +338,8 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
       x.value = target;
       placed.current = true;
       aim.current = { index: safeIndex, slot };
-      setHover(safeIndex);
       return;
     }
-    // A tap elsewhere is still pending navigation: don't pull the bead back to the old tab.
-    if (navTimer.current) return;
     if (aim.current.index === safeIndex && aim.current.slot === slot) return;
     aim.current = { index: safeIndex, slot };
     springTo(target);
@@ -387,19 +399,13 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 9 }}
               >
                 {width > 0 ? <TabIcon item={item} index={index} slot={slot} x={x} /> : null}
-                <Text
-                  numberOfLines={1}
-                  style={{
-                    marginTop: 3,
-                    fontSize: 11,
-                    lineHeight: 13,
-                    textAlign: 'center',
-                    color: index === hover ? NAME : ICON_DIM,
-                    fontFamily: index === hover ? IL_FONTS.semibold : IL_FONTS.medium,
-                  }}
-                >
-                  {item.label}
-                </Text>
+                {width > 0 ? (
+                  <TabLabel label={item.label} index={index} slot={slot} x={x} />
+                ) : (
+                  <Text numberOfLines={1} style={{ marginTop: 3, fontSize: 11, lineHeight: 13, color: ICON_DIM }}>
+                    {item.label}
+                  </Text>
+                )}
               </View>
             ))}
           </View>
@@ -432,7 +438,9 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
                 beadStyle,
               ]}
             >
-              <TabGlyph name={items[hover]?.icon} pack={items[hover]?.pack} size={22} color="#FFFFFF" />
+              {items.map((item, index) => (
+                <BeadGlyph key={`bead-${item.key}`} item={item} index={index} slot={slot} x={x} />
+              ))}
             </Reanimated.View>
           ) : null}
         </View>
