@@ -95,7 +95,6 @@ function labProfile({ program, state, regStatus, cmsBatchId, late, cmsPreview })
       cmsPreview: true,
     };
   }
-  useChangeProbe('Auth', value);
   return {
     displayName: 'Ananya Rao',
     firstName: 'Ananya',
@@ -421,6 +420,7 @@ export function AuthProvider({ children }) {
     ]
   );
 
+  useChangeProbe('Auth', value);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

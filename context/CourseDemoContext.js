@@ -17,7 +17,6 @@ function storageKeys(uid) {
 const CourseDemoContext = createContext(null);
 
 function taskKey(programId, taskId) {
-  useChangeProbe('CourseDemo', value);
   return `${programId}:${taskId}`;
 }
 
@@ -128,6 +127,7 @@ export function CourseDemoProvider({ children }) {
     }),
     [done, isDone, isDoneOnDay, markDone, markDoneOnDay, clearDone, recordLepActiveDay, getSubmission, saveSubmission]
   );
+  useChangeProbe('CourseDemo', value);
   return <CourseDemoContext.Provider value={value}>{children}</CourseDemoContext.Provider>;
 }
 

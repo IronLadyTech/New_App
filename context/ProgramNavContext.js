@@ -38,7 +38,6 @@ export function programStage(profile, programId) {
   if (profile?.labProgram === programId && (profile?.labState === 'enrolled' || profile?.labState === 'registered')) {
     return profile.labState;
   }
-  useChangeProbe('ProgramNav', value);
   return programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID ? 'enrolled' : 'registered';
 }
 
@@ -80,6 +79,7 @@ export function ProgramNavProvider({ children }) {
     [shown, section, setProgram, stageOverride, profile]
   );
 
+  useChangeProbe('ProgramNav', value);
   return <ProgramNavContext.Provider value={value}>{children}</ProgramNavContext.Provider>;
 }
 
