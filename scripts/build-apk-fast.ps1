@@ -9,6 +9,14 @@ $buildRoot = 'C:\i'
 $env:EXPO_PUBLIC_PHONE_OTP = 'firebase'
 $env:ORG_GRADLE_PROJECT_reactNativeArchitectures = 'arm64-v8a'
 
+# A Gradle daemon left from the last build can still hold files under C:\i open, and Windows
+# then refuses to overwrite them ("Unable to delete file …classes.jar"). Stop it first.
+if (Test-Path "$buildRoot\android\gradlew.bat") {
+  Push-Location "$buildRoot\android"
+  & .\gradlew.bat --stop | Out-Null
+  Pop-Location
+}
+
 Write-Host "[1/4] Sync source to $buildRoot (node_modules and build outputs kept)"
 $exclude = @('.git', '.expo', 'node_modules', 'android\app\build', 'android\app\.cxx', 'android\build', 'android\.gradle', '_tmp_*', '.gstack', 'dist', 'web-build', '_pre_pull_backup')
 $xd = ($exclude | ForEach-Object { "/XD"; $_ }) -join ' '
