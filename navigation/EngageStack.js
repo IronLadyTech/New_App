@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
+import { useRenderProbe } from '../utils/perfHud';
 import EngageHome from '../screens/engage/EngageHome';
 import LepEngageScreen from '../screens/lep/LepEngageScreen';
 import { LepEventDetailScreen, LepEventTicketScreen } from '../screens/lep/LepFlowScreens';
@@ -9,6 +10,7 @@ import LepEngageMediaListScreen from '../screens/lep/LepEngageMediaListScreen';
 const Stack = createNativeStackNavigator();
 
 function EngageRoot(props) {
+  useRenderProbe('Engage');
   const { program } = useProgramNav();
   return program === 'lep' ? <LepEngageScreen {...props} /> : <EngageHome {...props} />;
 }

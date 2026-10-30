@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
+import { useRenderProbe } from '../utils/perfHud';
 import HomeScreen from '../screens/home/HomeScreen';
 import LepHomeScreen from '../screens/lep/LepHomeScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
@@ -24,6 +25,7 @@ const Stack = createNativeStackNavigator();
 
 /** LEP keeps its own home; 100BM, MBW and two-program users get the program homes. */
 function HomeRoot(props) {
+  useRenderProbe('Home');
   const { program } = useProgramNav();
   return program === 'lep' ? <LepHomeScreen {...props} /> : <HomeScreen {...props} />;
 }

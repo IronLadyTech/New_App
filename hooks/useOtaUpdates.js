@@ -1,6 +1,15 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import * as Updates from 'expo-updates';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/** Set just before restarting into an update: the restart must not replay the intro. */
+export const OTA_SKIP_INTRO_KEY = 'il.ota.skipIntro';
+
+async function restartIntoUpdate() {
+  await AsyncStorage.setItem(OTA_SKIP_INTRO_KEY, '1').catch(() => {});
+  await Updates.reloadAsync();
+}
 
 /** An update that lands this soon after launch is applied at once, behind the splash. */
 const APPLY_DURING_SPLASH_MS = 6000;
@@ -27,7 +36,7 @@ export function useOtaUpdates() {
         const fetched = await Updates.fetchUpdateAsync();
         if (!fetched.isNew || cancelled) return;
         ready = true;
-        if (Date.now() - startedAt < APPLY_DURING_SPLASH_MS) await Updates.reloadAsync();
+        if (Date.now() - startedAt < APPLY_DURING_SPLASH_MS) await restartIntoUpdate();
       } catch {
         /* offline or server busy: the default check on next launch still runs */
       }
@@ -35,7 +44,7 @@ export function useOtaUpdates() {
 
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') leftApp = true;
-      if (state === 'active' && leftApp && ready) Updates.reloadAsync().catch(() => {});
+      if (state === 'active' && leftApp && ready) restartIntoUpdate().catch(() => {});
     });
     return () => {
       cancelled = true;

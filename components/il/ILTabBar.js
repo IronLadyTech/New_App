@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import LiquidTabBar, { useLiquidItems } from './LiquidTabBar';
+import { markTabShown, markTabTap } from '../../utils/perfHud';
 
 // Screens with their own bottom composer; the floating bar would cover it.
 const FULL_SCREEN = new Set(['ManagerChat']);
@@ -31,6 +32,10 @@ export default function ILTabBar({ state, descriptors, navigation }) {
   const found = items.findIndex((item) => item.key === state.routes[state.index]?.key);
   const activeIndex = found >= 0 ? (last.current = found) : last.current;
   const focused = getFocusedRouteNameFromRoute(state.routes[state.index]);
+  const shownName = state.routes[state.index]?.name;
+  useEffect(() => {
+    markTabShown(shownName);
+  }, [shownName]);
 
   // Build every tab once, in the background, soon after launch: the first visit to Learn or
   // Engage then only shows a screen that already exists instead of building it on the tap.
@@ -53,13 +58,14 @@ export default function ILTabBar({ state, descriptors, navigation }) {
     <LiquidTabBar
       items={items}
       activeIndex={activeIndex}
-      onPress={(item) => {
+      onPress={(item, index, tapAt) => {
         const event = navigation.emit({
           type: 'tabPress',
           target: item.key,
           canPreventDefault: true,
         });
         if (event.defaultPrevented) return;
+        markTabTap(item.name, tapAt);
         // Back to the tab's first screen only if she had gone deeper; re-sending the root
         // screen when she is already on it just re-renders it for nothing.
         const root = TAB_ROOT_SCREEN[item.name];

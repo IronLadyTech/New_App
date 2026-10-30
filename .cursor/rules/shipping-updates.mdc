@@ -1,0 +1,17 @@
+---
+description: How changes reach phones — over-the-air update for JS, new APK only for native changes
+alwaysApply: true
+---
+
+# Shipping changes to phones
+
+Follow the "Shipping changes to phones" section of `AGENTS.md` in the repo root. In short:
+
+- **JS / screen / text / style change** → `npm run ota -- "what changed"` (about 2 minutes, no APK).
+  Never run plain `eas update`.
+- **Native change** (new native package, permission, `android/`, app.json plugins, Expo SDK) →
+  bump `runtimeVersion` + `version` in `app.json` **and** `expo_runtime_version` in
+  `android/app/src/main/res/values/strings.xml` (same value), bump `versionCode`, then
+  `npm run build:apk:fast`.
+- Bundle-check before publishing: `npx expo export --platform android --output-dir <temp>`.
+- Verify on the phone: Profile → bottom line `update xxxxxxxx` matches the published update ID.

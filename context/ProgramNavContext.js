@@ -8,6 +8,7 @@ import {
   programPaymentStatus,
 } from '../utils/programAccess';
 import { programIdNeedingBalancePayment } from '../utils/paymentEnrollment';
+import { useChangeProbe } from '../utils/perfHud';
 
 const ProgramNavContext = createContext(null);
 
@@ -37,6 +38,7 @@ export function programStage(profile, programId) {
   if (profile?.labProgram === programId && (profile?.labState === 'enrolled' || profile?.labState === 'registered')) {
     return profile.labState;
   }
+  useChangeProbe('ProgramNav', value);
   return programPaymentStatus(profile, programId) === PAYMENT_STATUS.PAID ? 'enrolled' : 'registered';
 }
 

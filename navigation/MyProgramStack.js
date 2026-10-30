@@ -1,6 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
+import { useRenderProbe } from '../utils/perfHud';
 import MyProgramScreen from '../screens/program/MyProgramScreen';
 import LepMyProgramScreen from '../screens/lep/LepMyProgramScreen';
 import {
@@ -12,6 +13,7 @@ import {
 const Stack = createNativeStackNavigator();
 
 function MyProgramRoot(props) {
+  useRenderProbe('MyProgram');
   const { program } = useProgramNav();
   return program === 'lep' ? (
     <LepMyProgramScreen {...props} />

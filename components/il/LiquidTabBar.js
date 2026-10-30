@@ -288,12 +288,12 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
     });
   };
 
-  const navigate = (index) => {
+  const navigate = (index, tapAt) => {
     const item = itemsRef.current[index];
     if (!item) return;
     // aim first: the focus change this causes must not restart the bead's spring.
     aim.current = { index, slot };
-    onPressRef.current(item, index);
+    onPressRef.current(item, index, tapAt);
   };
 
   const minX = SIDE + slot * 0.5;
@@ -303,7 +303,8 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
     'worklet';
     const index = nearestIndex(px, slot, count);
     springTo(slotCenter(index, slot));
-    runOnJS(navigate)(index);
+    // UI-thread time of the tap, so the timing can tell a busy JS thread from a slow screen.
+    runOnJS(navigate)(index, Date.now());
   };
 
   const gesture = useMemo(() => {

@@ -71,7 +71,8 @@
     "start:web": "expo start --web",
     "postinstall": "patch-package",
     "ota": "node scripts/ota.js",
-    "dev:phone": "expo start --dev-client"
+    "dev:phone": "expo start --dev-client",
+    "build:apk:fast": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-apk-fast.ps1"
   },
   "private": true,
   "devDependencies": {

@@ -15,6 +15,8 @@ import { useNotificationOpen } from '../hooks/useNotificationOpen';
 import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNotifications';
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { prefetchArmyEvents } from '../hooks/useArmyEventCalendar';
+import PerfHud from '../components/PerfHud';
+import { setPerfUser } from '../utils/perfHud';
 
 export default function AuthenticatedApp() {
   const { profile, user } = useAuth();
@@ -28,6 +30,11 @@ export default function AuthenticatedApp() {
   useEffect(() => {
     prefetchArmyEvents();
   }, []);
+
+  // Tab-switch timings for the learner (testing aid, see utils/perfHud.js).
+  useEffect(() => {
+    setPerfUser(user?.uid && user.uid !== 'preview' ? user.uid : null);
+  }, [user?.uid]);
 
   useEffect(() => {
     const timer = setTimeout(() => setGaveUp(true), 8000);
@@ -48,6 +55,7 @@ export default function AuthenticatedApp() {
               <TabNavigator />
               <LandingGate profile={profile} />
               <StreakReminderSync />
+              <PerfHud />
             </View>
           </ProgramNavProvider>
         </EngagementProvider>

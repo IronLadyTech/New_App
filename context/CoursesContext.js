@@ -20,6 +20,7 @@ import {
 } from '../utils/eventVisibility';
 import { learnerBatchId } from '../utils/programAccess';
 import { useAuth } from './AuthContext';
+import { useChangeProbe } from '../utils/perfHud';
 
 const CoursesContext = createContext(null);
 
@@ -144,6 +145,7 @@ export function CoursesProvider({ children }) {
     ]
   );
 
+  useChangeProbe('Courses', value);
   return (
     <CoursesContext.Provider value={value}>{children}</CoursesContext.Provider>
   );

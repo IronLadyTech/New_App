@@ -89,8 +89,11 @@ export default function VerifyOtpScreen({ navigation, route }) {
           tokenRef.current = await verifyWhatsAppOtp(phone, code);
           return true;
         }
-        if (liveFirebase && confirmation.access?.guest) {
-          // Guest: prove the number, but don't open an account (onContinue sends her to Guest).
+        if (liveFirebase && (confirmation.access?.guest || confirmation.access?.token)) {
+          // The SMS only proves the number. Guest: no account. Learner: onContinue signs in to
+          // the account resolvePhoneAccess prepared (name, programmes, batch) with its token —
+          // signing in with the phone credential instead opened a second, empty phone-only
+          // account, so she lost her name, programmes and the welcome/batch steps.
           await verifyFirebasePhoneOtpOnly(confirmation.confirmation, code);
           return true;
         }
@@ -129,7 +132,8 @@ export default function VerifyOtpScreen({ navigation, route }) {
       return;
     }
 
-    if (liveFirebase) {
+    // Already signed in by the phone credential only when the server had no account token.
+    if (liveFirebase && !access.token) {
       return;
     }
 

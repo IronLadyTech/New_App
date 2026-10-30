@@ -56,6 +56,7 @@ import {
   ProfileStrengthCard,
 } from './LepProfileSections';
 import { otaLabel } from '../../hooks/useOtaUpdates';
+import { togglePerfHud } from '../../utils/perfHud';
 
 function hasMasterclassOnProfile(source) {
   if (!source) return false;
@@ -626,9 +627,12 @@ export default function LepProfileScreen() {
             Delete account
           </ILText>
         </Pressable>
-        <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', fontSize: 11, marginTop: 10, marginBottom: 8 }}>
-          {`Iron Lady · Version ${appVersion}${buildNumber ? ` (build ${buildNumber})` : ''}${ota ? ` · ${ota}` : ''}`}
-        </ILText>
+        {/* Long-press: on-screen speed meter for testing (tab switch times, JS thread). */}
+        <Pressable onLongPress={togglePerfHud} delayLongPress={600} accessibilityRole="text">
+          <ILText role="bodySm" color={G.meta} style={{ textAlign: 'center', fontSize: 11, marginTop: 10, marginBottom: 8 }}>
+            {`Iron Lady · Version ${appVersion}${buildNumber ? ` (build ${buildNumber})` : ''}${ota ? ` · ${ota}` : ''}`}
+          </ILText>
+        </Pressable>
       </ScrollView>
     </Page>
     {batchOpen ? (

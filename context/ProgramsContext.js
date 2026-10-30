@@ -20,6 +20,7 @@ import {
   canOpenProgramTasks,
   learnerBatchId,
 } from '../utils/programAccess';
+import { useChangeProbe } from '../utils/perfHud';
 
 const ProgramsContext = createContext(null);
 
@@ -121,6 +122,7 @@ export function ProgramsProvider({ children }) {
     ]
   );
 
+  useChangeProbe('Programs', value);
   return (
     <ProgramsContext.Provider value={value}>{children}</ProgramsContext.Provider>
   );

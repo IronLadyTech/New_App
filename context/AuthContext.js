@@ -17,6 +17,7 @@ import {
 } from '../utils/programAccess';
 import { PAYMENT_STATUS } from '../constants/programs';
 import { devToolsEnabled } from '../utils/devToolsEnabled';
+import { useChangeProbe } from '../utils/perfHud';
 
 const GUEST_KEY = 'il_guest_mode';
 const LAB_LEP_KEY = 'il_lab_lep';
@@ -94,6 +95,7 @@ function labProfile({ program, state, regStatus, cmsBatchId, late, cmsPreview })
       cmsPreview: true,
     };
   }
+  useChangeProbe('Auth', value);
   return {
     displayName: 'Ananya Rao',
     firstName: 'Ananya',

@@ -14,6 +14,7 @@ import {
   addComment,
 } from '../services/firestore';
 import { useAuth } from './AuthContext';
+import { useChangeProbe } from '../utils/perfHud';
 
 const EngagementContext = createContext(null);
 
@@ -94,6 +95,7 @@ export function EngagementProvider({ children }) {
     [posts, leaderboard, loading, error, publishPost, likePost, commentOnPost]
   );
 
+  useChangeProbe('Engagement', value);
   return (
     <EngagementContext.Provider value={value}>
       {children}

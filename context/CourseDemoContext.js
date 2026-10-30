@@ -4,6 +4,7 @@ import { todayIsoIST } from '../utils/lepDailyPractice';
 import { lepActiveDayKey } from '../utils/lepPracticeStreak';
 import { recordPracticeDone } from '../services/activityTracking';
 import { useAuth } from './AuthContext';
+import { useChangeProbe } from '../utils/perfHud';
 
 function storageKeys(uid) {
   const id = uid && uid !== 'preview' ? uid : 'guest';
@@ -16,6 +17,7 @@ function storageKeys(uid) {
 const CourseDemoContext = createContext(null);
 
 function taskKey(programId, taskId) {
+  useChangeProbe('CourseDemo', value);
   return `${programId}:${taskId}`;
 }
 

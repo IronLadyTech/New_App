@@ -12,9 +12,11 @@ import AppNavigator from './navigation/AppNavigator';
 import { useILFonts } from './hooks/useILFonts';
 import ErrorBoundary from './components/ErrorBoundary';
 import IronLadyAnimatedSplash from './components/il/IronLadyAnimatedSplash';
+import OfflineBanner from './components/OfflineBanner';
 import { DevLaunchSplashPreviewProvider } from './context/DevLaunchSplashPreviewContext';
 import { isAdminPath } from './utils/adminRoute';
-import { useOtaUpdates } from './hooks/useOtaUpdates';
+import { OTA_SKIP_INTRO_KEY, useOtaUpdates } from './hooks/useOtaUpdates';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -25,6 +27,19 @@ function Root() {
   const [gaveUp, setGaveUp] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
   const onSplashFinish = useCallback(() => setSplashDone(true), []);
+  // Restarted into an over-the-air update a moment ago: she already saw the intro once.
+  const [introChecked, setIntroChecked] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(OTA_SKIP_INTRO_KEY)
+      .then((v) => {
+        if (v === '1') {
+          AsyncStorage.removeItem(OTA_SKIP_INTRO_KEY).catch(() => {});
+          setSplashDone(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIntroChecked(true));
+  }, []);
 
   // Safety net: the launch splash can never hold the app for more than 6s.
   useEffect(() => {
@@ -75,12 +90,17 @@ function Root() {
           <AuthProvider>
             <StatusBar style="dark" translucent backgroundColor="transparent" />
             <AppNavigator />
+            <OfflineBanner />
           </AuthProvider>
         </DevLaunchSplashPreviewProvider>
       ) : (
         <View style={{ flex: 1, backgroundColor: '#112B32' }} />
       )}
-      {!splashDone ? (
+      {!splashDone && !introChecked ? (
+        // A few ms while the skip note is read: the splash colour, so nothing flashes.
+        <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: '#112B32' }} />
+      ) : null}
+      {!splashDone && introChecked ? (
         <>
           <StatusBar style="light" translucent backgroundColor="transparent" />
           <IronLadyAnimatedSplash ready={appReady} onFinish={onSplashFinish} />
