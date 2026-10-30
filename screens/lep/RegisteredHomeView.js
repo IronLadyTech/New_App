@@ -2,12 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
 import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
 import Reanimated, {
-  cancelAnimation,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -659,10 +656,9 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const count = Math.max(phases.length, 1);
   const [index, setIndex] = useState(lockerStep);
   const [trackW, setTrackW] = useState(0);
-  // UI thread (Reanimated): the fade and the red bar keep moving while JS is busy.
+  // UI thread (Reanimated): the red bar and the cross-fade keep moving while JS is busy.
   // JS only swaps the caption, once every 5 s, while the card is faded out.
   const slide = useSharedValue(lockerStep);
-  const fade = useSharedValue(1);
   const indexRef = useRef(lockerStep);
   // Rotate only while Home is on screen; a hidden timer just loads the JS thread.
   const focused = useIsFocused();
@@ -673,39 +669,24 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
     indexRef.current = lockerStep;
     setIndex(lockerStep);
     slide.value = lockerStep;
-    fade.value = 1;
-  }, [lockerStep, slide, fade]);
+  }, [lockerStep, slide]);
 
   useEffect(() => {
     if (count < 2 || !focused) return undefined;
-    const showNext = (next) => {
-      indexRef.current = next;
-      setIndex(next);
-      slide.value = withSpring(next, { damping: 18, stiffness: 120 });
-      fade.value = withTiming(1, { duration: 240 });
-    };
     const timer = setInterval(() => {
       const next = (indexRef.current + 1) % count;
-      fade.value = withTiming(0, { duration: 180 }, (finished) => {
-        if (finished) runOnJS(showNext)(next);
-      });
+      indexRef.current = next;
+      setIndex(next); // labels + which button takes taps; the visible cross-fade does not wait for it
+      slide.value = withSpring(next, { damping: 18, stiffness: 120 });
     }, 5000);
-    return () => {
-      clearInterval(timer);
-      // Never leave the card half-faded when the timer stops (tab switch, unmount).
-      cancelAnimation(fade);
-      fade.value = 1;
-    };
-  }, [count, fade, slide, focused]);
-
-  const fadeStyle = useAnimatedStyle(() => ({ opacity: fade.value }));
+    return () => clearInterval(timer);
+  }, [count, slide, focused]);
   const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slide.value * (seg + gap) }] }), [seg]);
 
   const phase = phases[index] || phases[0];
   if (!phase) return null;
 
   const registeredDone = Boolean(phases[0]?.done || lockerStep > 0);
-  const canPress = phase.unlocked && !phase.ctaBlocked;
 
   return (
     <View style={{ paddingHorizontal: 20, gap: 14 }}>
@@ -740,11 +721,17 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         {`${dayGreeting()}, ${firstName}.`}
       </ILText>
 
-      <Reanimated.View style={[{ minHeight: 40 }, fadeStyle]}>
-        <ILText role="body" color="#DCE6EA" style={{ fontSize: 14, lineHeight: 20 }}>
-          {phase.body}
-        </ILText>
-      </Reanimated.View>
+      <CrossFadeStack
+        count={count}
+        slide={slide}
+        index={index}
+        minHeight={40}
+        render={(i) => (
+          <ILText role="body" color="#DCE6EA" style={{ fontSize: 14, lineHeight: 20 }}>
+            {phases[i]?.body}
+          </ILText>
+        )}
+      />
 
       <View>
         <View
@@ -797,34 +784,86 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         </View>
       </View>
 
-      <Reanimated.View style={[{ gap: 14 }, fadeStyle]}>
-        {phase.dated && phase.orientation ? (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <DateTile label="ORIENTATION" value={phase.orientation} />
-            <DateTile label="SAT – SUN" value={phase.day1When || ''} />
-          </View>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={phase.cta}
-          disabled={!canPress}
-          onPress={() => canPress && onPhaseCta?.(phase)}
-          style={{
-            minHeight: 50,
-            borderRadius: 999,
-            backgroundColor: canPress ? T.red : 'rgba(255,255,255,0.16)',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: 16,
-            opacity: canPress ? 1 : 0.7,
-          }}
-        >
-          <ILText role="label" color="#FFFFFF" style={{ fontSize: 16 }}>
-            {canPress ? `${phase.cta} →` : phase.ctaBlocked ? `${phase.cta} · Locked` : phase.cta}
-          </ILText>
-        </Pressable>
-      </Reanimated.View>
+      <CrossFadeStack
+        count={count}
+        slide={slide}
+        index={index}
+        minHeight={50}
+        render={(i) => {
+          const p = phases[i];
+          if (!p) return null;
+          const press = p.unlocked && !p.ctaBlocked;
+          return (
+            <View style={{ gap: 14 }}>
+              {p.dated && p.orientation ? (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <DateTile label="ORIENTATION" value={p.orientation} />
+                  <DateTile label="SAT – SUN" value={p.day1When || ''} />
+                </View>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={p.cta}
+                disabled={!press}
+                onPress={() => press && onPhaseCta?.(p)}
+                style={{
+                  minHeight: 50,
+                  borderRadius: 999,
+                  backgroundColor: press ? T.red : 'rgba(255,255,255,0.16)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 16,
+                  opacity: press ? 1 : 0.7,
+                }}
+              >
+                <ILText role="label" color="#FFFFFF" style={{ fontSize: 16 }}>
+                  {press ? `${p.cta} →` : p.ctaBlocked ? `${p.cta} · Locked` : p.cta}
+                </ILText>
+              </Pressable>
+            </View>
+          );
+        }}
+      />
     </View>
+  );
+}
+
+/**
+ * Every phase's content stacked in one spot, each faded by how close the slide is to it
+ * (UI thread). The rotation never waits on JS to swap text in, so there is no blank frame.
+ * Height = the tallest layer; only the phase in front takes taps.
+ */
+function CrossFadeStack({ count, slide, index, minHeight, render }) {
+  const [height, setHeight] = useState(minHeight);
+  return (
+    <View style={{ height }}>
+      {Array.from({ length: count }, (_, i) => (
+        <FadeLayer
+          key={i}
+          i={i}
+          slide={slide}
+          active={i === index}
+          onHeight={(h) => setHeight((prev) => (h > prev ? h : prev))}
+        >
+          {render(i)}
+        </FadeLayer>
+      ))}
+    </View>
+  );
+}
+
+function FadeLayer({ i, slide, active, onHeight, children }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: Math.max(0, Math.min(1, 1 - Math.abs(slide.value - i) * 1.6)),
+  }));
+  return (
+    <Reanimated.View
+      pointerEvents={active ? 'auto' : 'none'}
+      onLayout={(e) => onHeight(Math.ceil(e.nativeEvent.layout.height))}
+      style={[{ position: 'absolute', left: 0, right: 0, top: 0 }, style]}
+    >
+      {children}
+    </Reanimated.View>
   );
 }
 
