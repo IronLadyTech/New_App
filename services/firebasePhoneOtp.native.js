@@ -14,8 +14,9 @@ export async function sendFirebasePhoneOtp(phoneE164) {
 }
 
 /**
- * Guests: check the SMS code on the native auth instance only, then sign that out.
- * The app watches the JS SDK auth, so no account opens and no user doc is written.
+ * Check the SMS code on the native auth instance only, then sign that out. The app watches
+ * the JS SDK auth, so no account opens and no user doc is written. Returns the Firebase ID
+ * token proving the number (learners exchange it for their account via claimPhoneAccess).
  */
 export async function verifyFirebasePhoneOtpOnly(confirmation, code) {
   const trimmed = String(code || '').replace(/\D/g, '');
@@ -24,8 +25,12 @@ export async function verifyFirebasePhoneOtpOnly(confirmation, code) {
     throw new Error('Sign-in session expired. Go back and request a new code.');
   }
   await confirmation.checkCodeOnly(trimmed);
+  // Firebase's proof that this phone received the code: claimPhoneAccess checks it on the
+  // server before handing out the account token. Then leave the native session.
+  const current = rnAuth().currentUser;
+  const idToken = current ? await current.getIdToken().catch(() => null) : null;
   await rnAuth().signOut().catch(() => {});
-  return true;
+  return idToken || null;
 }
 
 export { confirmFirebasePhoneOtp };

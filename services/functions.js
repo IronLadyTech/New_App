@@ -84,6 +84,12 @@ export async function resolvePhoneAccess(phone) {
   return data;
 }
 
+/** After the SMS: the account token for the number Firebase verified (idToken). */
+export async function claimPhoneAccess(idToken) {
+  const { data } = await call('claimPhoneAccess', { idToken });
+  return data;
+}
+
 /**
  * Wake resolvePhoneAccess while she types her number. With no phone the function
  * answers "invalid-argument" at once, but its instance is now up, so the real call

@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { peekPhoneAuth } from '../../services/phoneAuthSession';
 import { signInWithAccessToken } from '../../services/auth';
+import { claimPhoneAccess } from '../../services/functions';
 import {
   sendWhatsAppOtp,
   signInWithOtpToken,
@@ -79,6 +80,8 @@ export default function VerifyOtpScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
   const [continueError, setContinueError] = useState('');
   const tokenRef = useRef(null);
+  // Firebase ID token from the verified SMS (learners exchange it for their account).
+  const proofRef = useRef(null);
 
   const onVerify = useCallback(
     async (code) => {
@@ -89,12 +92,12 @@ export default function VerifyOtpScreen({ navigation, route }) {
           tokenRef.current = await verifyWhatsAppOtp(phone, code);
           return true;
         }
-        if (liveFirebase && (confirmation.access?.guest || confirmation.access?.token)) {
+        if (liveFirebase && confirmation.access?.ok !== false) {
           // The SMS only proves the number. Guest: no account. Learner: onContinue signs in to
           // the account resolvePhoneAccess prepared (name, programmes, batch) with its token —
           // signing in with the phone credential instead opened a second, empty phone-only
           // account, so she lost her name, programmes and the welcome/batch steps.
-          await verifyFirebasePhoneOtpOnly(confirmation.confirmation, code);
+          proofRef.current = await verifyFirebasePhoneOtpOnly(confirmation.confirmation, code);
           return true;
         }
         if (liveFirebase) {
@@ -132,8 +135,27 @@ export default function VerifyOtpScreen({ navigation, route }) {
       return;
     }
 
-    // Already signed in by the phone credential only when the server had no account token.
-    if (liveFirebase && !access.token) {
+    if (liveFirebase) {
+      // The SMS proof buys the account token (server checks the verified number). Until the
+      // server has claimPhoneAccess, fall back to the token the phone check still includes.
+      try {
+        let token = null;
+        try {
+          const claimed = await claimPhoneAccess(proofRef.current);
+          if (claimed?.guest) {
+            navigation.replace('GuestStart', { tier: claimed.tier || 'explore', phone: peekPhoneAuth().phone });
+            return;
+          }
+          if (claimed?.ok === false) throw new Error(claimed.reason || 'Could not open your program.');
+          token = claimed?.token || null;
+        } catch (e) {
+          const code = String(e?.code || '');
+          if (!code.includes('not-found') && !code.includes('unimplemented')) throw e;
+        }
+        await signInWithAccessToken(token || access.token);
+      } catch (err) {
+        setContinueError(err?.message || 'Could not open your program.');
+      }
       return;
     }
 
