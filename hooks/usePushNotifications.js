@@ -15,6 +15,7 @@ import {
 export function usePushNotifications() {
   const { user, profile } = useAuth();
   const registeredRef = useRef(false);
+  const lastToken = useRef(null);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -29,6 +30,7 @@ export function usePushNotifications() {
       try {
         const result = await registerPushTokenForUser(user.uid);
         if (cancelled) return;
+        if (result.token) lastToken.current = result.token;
         if (result.ok) {
           registeredRef.current = true;
           setupLocalEngagementNotifications(profile).catch(() => {});
@@ -40,7 +42,12 @@ export function usePushNotifications() {
       }
     })();
 
-    const sub = addPushTokenListener(async () => {
+    // Only a real token change re-registers. Asking for the token (which registering does)
+    // also fires this listener, so registering here unconditionally looped forever: a write to
+    // users/{uid} every few seconds, and every screen redrew on each one.
+    const sub = addPushTokenListener(async (event) => {
+      const next = event?.data;
+      if (!next || next === lastToken.current) return;
       try {
         await registerPushTokenForUser(user.uid);
       } catch {

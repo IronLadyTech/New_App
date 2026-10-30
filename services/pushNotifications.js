@@ -6,6 +6,8 @@ import { removePushDevice, saveFcmToken, savePushDevice } from './firestore';
 
 const INSTALL_ID_KEY = 'il.push.installId';
 const NATIVE_TOKEN_KEY = 'il.push.nativeToken';
+/** `${uid}:${token}` last written to Firestore from this phone. */
+const SAVED_FOR_KEY = 'il.push.savedFor.v1';
 
 /** Stable id for this install — one devices/{installId} row per phone. */
 async function getInstallId() {
@@ -107,6 +109,11 @@ export async function registerPushTokenForUser(uid) {
   if (!uid) return { ok: false, reason: 'no_user' };
   const { token, reason } = await getNativePushToken();
   if (!token) return { ok: false, reason };
+  // Already saved for this learner on this phone: no write (each write re-renders the app).
+  const savedKey = `${uid}:${token}`;
+  if ((await AsyncStorage.getItem(SAVED_FOR_KEY).catch(() => null)) === savedKey) {
+    return { ok: true, token, skipped: true };
+  }
   const [installId, expoToken] = await Promise.all([getInstallId(), getExpoToken()]);
   await savePushDevice(uid, installId, {
     platform: Platform.OS,
@@ -117,6 +124,7 @@ export async function registerPushTokenForUser(uid) {
   // An iPhone's native token is an APNs token, which FCM cannot use — Android only.
   if (Platform.OS === 'android') await saveFcmToken(uid, token);
   await AsyncStorage.setItem(NATIVE_TOKEN_KEY, token).catch(() => {});
+  await AsyncStorage.setItem(SAVED_FOR_KEY, savedKey).catch(() => {});
   return { ok: true, token, expoToken };
 }
 
@@ -129,6 +137,8 @@ export async function unregisterPushForUser(uid) {
   ]);
   await removePushDevice(uid, installId, nativeToken);
   await AsyncStorage.removeItem(NATIVE_TOKEN_KEY).catch(() => {});
+  // Signed out: the next sign-in must write this phone's token again.
+  await AsyncStorage.removeItem(SAVED_FOR_KEY).catch(() => {});
 }
 
 export function addPushTokenListener(callback) {
