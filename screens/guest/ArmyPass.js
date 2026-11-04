@@ -3,7 +3,16 @@ import { Animated, Platform, View } from 'react-native';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
-import { guestGreetingFirstName } from '../../services/appGuest';
+import { cachedGuestPassNo, fetchGuestPassNo, guestGreetingFirstName } from '../../services/appGuest';
+
+/** 78001 → "78,001"; 100001 → "1,00,001" (Indian grouping). */
+function formatPassNo(n) {
+  const s = String(Math.round(n));
+  if (s.length <= 3) return s;
+  const last3 = s.slice(-3);
+  const rest = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+  return `${rest},${last3}`;
+}
 
 const PAPER = '#FFFDF7';
 const STUB_W = 74;
@@ -46,11 +55,21 @@ function Notch({ edge }) {
  */
 export default function ArmyPass() {
   const [name, setName] = useState('');
+  const [passNo, setPassNo] = useState(null);
   const drop = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let alive = true;
     guestGreetingFirstName().then((first) => setName(first)).catch(() => {});
+    // Her own number: the saved one at once, then the server's (first visit, or a new phone).
+    cachedGuestPassNo().then((n) => {
+      if (alive && n) setPassNo(n);
+      if (!n) fetchGuestPassNo().then((fresh) => alive && fresh && setPassNo(fresh));
+    });
     Animated.spring(drop, { toValue: 1, damping: 11, stiffness: 120, mass: 0.8, useNativeDriver: true }).start();
+    return () => {
+      alive = false;
+    };
   }, [drop]);
 
   return (
@@ -145,10 +164,10 @@ export default function ArmyPass() {
               color="#FFFFFF"
               style={{ marginTop: 2, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 26 }}
             >
-              No. 78,001
+              {passNo ? `No. ${formatPassNo(passNo)}` : 'You’re in'}
             </ILText>
             <ILText role="bodySm" color="rgba(255,255,255,0.8)" style={{ fontSize: 10 }}>
-              that’s you
+              {passNo ? 'that’s you' : 'welcome'}
             </ILText>
           </View>
         </View>

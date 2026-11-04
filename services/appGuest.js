@@ -20,7 +20,9 @@ export async function saveGuestIdentity({ phone, tier }) {
     const nextPhone = phone ? String(phone) : '';
     const prevPhone = await AsyncStorage.getItem(PHONE_KEY);
     // A different number on this phone: forget the previous guest's name.
-    if (nextPhone && prevPhone && prevPhone !== nextPhone) await AsyncStorage.removeItem(NAME_KEY);
+    if (nextPhone && prevPhone && prevPhone !== nextPhone) {
+      await AsyncStorage.multiRemove([NAME_KEY, 'il_guest_pass_no']);
+    }
     if (nextPhone) await AsyncStorage.setItem(PHONE_KEY, nextPhone);
     await AsyncStorage.setItem(TIER_KEY, tier === 'mc' ? 'mc' : 'explore');
   } catch {
@@ -47,6 +49,34 @@ export async function guestGreetingFirstName() {
     return raw.split(/\s+/)[0] || '';
   } catch {
     return '';
+  }
+}
+
+const PASS_KEY = 'il_guest_pass_no';
+
+/** Her saved guest pass number (No. 78,xxx), or null before the server has given one. */
+export async function cachedGuestPassNo() {
+  if (GUEST_PREVIEW) return 78001;
+  try {
+    const raw = Number(await AsyncStorage.getItem(PASS_KEY));
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Ask the server for her guest pass number (given once, kept for good) and remember it. */
+export async function fetchGuestPassNo() {
+  const { phone } = await getGuestIdentity();
+  if (!phone) return null;
+  try {
+    const { data } = await httpsCallable(functions, 'trackAppGuest')({ phone, event: 'pass' });
+    const n = Number(data?.passNo);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    await AsyncStorage.setItem(PASS_KEY, String(n)).catch(() => {});
+    return n;
+  } catch {
+    return null;
   }
 }
 

@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { Image, ScrollView, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,7 +62,11 @@ function slideFromCms(row) {
   };
 }
 import ArmyPass from './ArmyPass';
+import { dayState, doneCount, nextDay, useGuestChallenge } from '../../services/guestChallenge';
 import McRecordingsCard from '../../components/guest/McRecordingsCard';
+
+/** How long each programme card stays before the next one slides in. */
+const AUTO_SLIDE_MS = 4500;
 
 const navDot = {
   width: 36,
@@ -83,6 +88,8 @@ export default function GuestHomeScreen() {
   const slides = cmsSlides ? cmsSlides.map(slideFromCms) : HOME_SLIDES;
   const [slide, setSlide] = useState(0);
   const pager = useRef(null);
+  const { progress: challenge, now: challengeNow } = useGuestChallenge();
+  const challengeDone = doneCount(challenge) >= 4;
   const cardW = width - 40;
 
   const goSlide = (next) => {
@@ -90,6 +97,21 @@ export default function GuestHomeScreen() {
     pager.current?.scrollTo({ x: n * cardW, animated: true });
     setSlide(n);
   };
+
+  // Programme cards (Masterclass, LEP, 100BM, MBW) move on by themselves every few seconds
+  // and loop back to the first. They wait while she is touching them, restart the count
+  // after any manual swipe or arrow tap, and stop while the guest home is not on screen.
+  const focused = useIsFocused();
+  const [holding, setHolding] = useState(false);
+  useEffect(() => {
+    if (!focused || holding || slides.length < 2) return undefined;
+    const t = setTimeout(() => {
+      const n = slide + 1 >= slides.length ? 0 : slide + 1;
+      pager.current?.scrollTo({ x: n * cardW, animated: true });
+      setSlide(n);
+    }, AUTO_SLIDE_MS);
+    return () => clearTimeout(t);
+  }, [focused, holding, slide, slides.length, cardW]);
 
   return (
     <Page>
@@ -157,6 +179,8 @@ export default function GuestHomeScreen() {
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
+            onScrollBeginDrag={() => setHolding(true)}
+            onScrollEndDrag={() => setHolding(false)}
             onMomentumScrollEnd={(e) =>
               setSlide(Math.round(e.nativeEvent.contentOffset.x / cardW))
             }
@@ -184,7 +208,7 @@ export default function GuestHomeScreen() {
                         </ILText>
                       </View>
                       <ILText role="bodySm" color="rgba(255,255,255,0.8)" style={{ fontSize: 11 }}>
-                        {slide + 1}/4
+                        {slide + 1}/{slides.length}
                       </ILText>
                     </View>
                     <ILText
@@ -336,7 +360,7 @@ export default function GuestHomeScreen() {
                 Featured · from the Masterclass
               </ILText>
               <ILText role="bodySm" color="rgba(255,255,255,0.7)" style={{ fontSize: 12 }}>
-                Starts Mon
+                {challengeDone ? 'Complete' : challenge.startedAt ? `${doneCount(challenge)} of 4 done` : 'Start any day'}
               </ILText>
             </View>
             <ILText
@@ -347,9 +371,9 @@ export default function GuestHomeScreen() {
               The 4-Day Challenge
             </ILText>
             <ILText role="bodySm" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}>
-              One video and one task each evening. Your Leadership Card fills as you go.
+              One short lesson and one task a day. Your Leadership Card fills as you go.
             </ILText>
-            {CHALLENGE_DAYS.map((d) => (
+            {CHALLENGE_DAYS.map((d) => ({ ...d, on: dayState(challenge, Number(d.n), challengeNow) === 'done' })).map((d) => (
               <View
                 key={d.n}
                 style={{
@@ -402,7 +426,11 @@ export default function GuestHomeScreen() {
               }}
             >
               <ILText role="label" color="#FFFFFF">
-                See the challenge
+                {challengeDone
+                  ? 'See my Leadership Card'
+                  : challenge.startedAt
+                    ? `Continue · Day ${nextDay(challenge, challengeNow) || 4}`
+                    : 'Start the challenge'}
               </ILText>
               <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
             </Pressable>

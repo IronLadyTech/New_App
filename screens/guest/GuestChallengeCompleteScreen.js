@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Pressable, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -7,20 +7,23 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
-import { trackGuest } from '../../services/appGuest';
-import { cancelGuestReminder } from '../../services/localEngagementNotifications';
+import { doneCount, opensLabel, useGuestChallenge } from '../../services/guestChallenge';
+import { CHALLENGE_LENGTH, dayContent } from './challengeContent';
 
-const FALLBACK = 'By March 2028 I will run the India P&L, not report into it.';
-
+/** After she submits a day: a short moment, then her bonus. */
 export default function GuestChallengeCompleteScreen({ navigation, route }) {
-  useEffect(() => {
-    trackGuest('challenge-done');
-    cancelGuestReminder();
-  }, []);
   const insets = useSafeAreaInsets();
-  const bhag = route?.params?.bhag || FALLBACK;
+  const n = Number(route?.params?.day) || 1;
+  const { progress, now } = useGuestChallenge();
+  const day = dayContent(n);
+  const all = doneCount(progress) >= CHALLENGE_LENGTH;
+  const nextN = n + 1;
 
-  const goBonus = () => navigation.replace('ChallengeBonus', { bhag });
+  const line = all
+    ? 'All four days are done. Your Leadership Card is complete.'
+    : nextN <= CHALLENGE_LENGTH
+      ? `${day.cardLabel} is on your Leadership Card. Day ${nextN}: ${opensLabel(progress, nextN, now).replace('Opens', 'opens')}.`
+      : `${day.cardLabel} is on your Leadership Card.`;
 
   return (
     <View style={{ flex: 1, backgroundColor: G.dark }}>
@@ -76,18 +79,18 @@ export default function GuestChallengeCompleteScreen({ navigation, route }) {
             textAlign: 'center',
           }}
         >
-          Day 1 — done.
+          Day {n}, done.
         </ILText>
         <ILText
           role="body"
           color="rgba(248,214,212,0.88)"
           style={{ marginTop: 14, fontSize: 16, lineHeight: 24, textAlign: 'center' }}
         >
-          Your BHAG is on your Leadership Card. Day 2 unlocks tomorrow at 7:00 PM.
+          {line}
         </ILText>
 
         <Pressable
-          onPress={goBonus}
+          onPress={() => navigation.replace('ChallengeBonus', { day: n })}
           style={{
             marginTop: 40,
             alignSelf: 'stretch',

@@ -286,7 +286,7 @@ export default function RegisteredHomeView({
           borderBottomLeftRadius: 24,
           borderBottomRightRadius: 24,
           paddingTop: topPad + 28,
-          paddingBottom: 20,
+          paddingBottom: 24,
         }}
       >
         <PhaseSlider
@@ -656,14 +656,17 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const count = Math.max(phases.length, 1);
   const [index, setIndex] = useState(lockerStep);
   const [trackW, setTrackW] = useState(0);
-  // UI thread (Reanimated): the red bar and the cross-fade keep moving while JS is busy.
-  // JS only swaps the caption, once every 5 s, while the card is faded out.
+  // UI thread (Reanimated): red bar, cross-fade, and spring rotation stay smooth while JS is busy.
   const slide = useSharedValue(lockerStep);
+  const segW = useSharedValue(0);
   const indexRef = useRef(lockerStep);
-  // Rotate only while Home is on screen; a hidden timer just loads the JS thread.
   const focused = useIsFocused();
   const gap = 6;
   const seg = trackW > 0 ? (trackW - gap * (count - 1)) / count : 0;
+
+  useEffect(() => {
+    segW.value = seg;
+  }, [seg, segW]);
 
   useEffect(() => {
     indexRef.current = lockerStep;
@@ -681,7 +684,9 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
     }, 5000);
     return () => clearInterval(timer);
   }, [count, slide, focused]);
-  const thumbStyle = useAnimatedStyle(() => ({ transform: [{ translateX: slide.value * (seg + gap) }] }), [seg]);
+  const thumbStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: slide.value * (segW.value + gap) }],
+  }));
 
   const phase = phases[index] || phases[0];
   if (!phase) return null;
@@ -726,6 +731,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         slide={slide}
         index={index}
         minHeight={40}
+        layoutKey={lockerStep}
         render={(i) => (
           <ILText role="body" color="#DCE6EA" style={{ fontSize: 14, lineHeight: 20 }}>
             {phases[i]?.body}
@@ -789,6 +795,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         slide={slide}
         index={index}
         minHeight={50}
+        layoutKey={lockerStep}
         render={(i) => {
           const p = phases[i];
           if (!p) return null;
@@ -833,17 +840,28 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
  * (UI thread). The rotation never waits on JS to swap text in, so there is no blank frame.
  * Height = the tallest layer; only the phase in front takes taps.
  */
-function CrossFadeStack({ count, slide, index, minHeight, render }) {
+function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render }) {
+  // Each layer's own measured height; the stack is as tall as the tallest. A layer only
+  // reports when its size changes, so heights are kept per layer rather than reset —
+  // a reset would leave unchanged layers clipped to minHeight.
+  const heights = useRef({});
   const [height, setHeight] = useState(minHeight);
+  const onLayerHeight = (i, h) => {
+    heights.current[i] = h;
+    const tallest = Object.entries(heights.current)
+      .filter(([k]) => Number(k) < count)
+      .reduce((m, [, v]) => Math.max(m, v), 0);
+    setHeight((prev) => (prev === tallest ? prev : tallest));
+  };
   return (
-    <View style={{ height }}>
+    <View style={{ height: Math.max(height, minHeight) }}>
       {Array.from({ length: count }, (_, i) => (
         <FadeLayer
           key={i}
           i={i}
           slide={slide}
           active={i === index}
-          onHeight={(h) => setHeight((prev) => (h > prev ? h : prev))}
+          onHeight={(h) => onLayerHeight(i, h)}
         >
           {render(i)}
         </FadeLayer>
@@ -859,10 +877,11 @@ function FadeLayer({ i, slide, active, onHeight, children }) {
   return (
     <Reanimated.View
       pointerEvents={active ? 'auto' : 'none'}
-      onLayout={(e) => onHeight(Math.ceil(e.nativeEvent.layout.height))}
       style={[{ position: 'absolute', left: 0, right: 0, top: 0 }, style]}
     >
-      {children}
+      <View collapsable={false} onLayout={(e) => onHeight(Math.ceil(e.nativeEvent.layout.height))}>
+        {children}
+      </View>
     </Reanimated.View>
   );
 }
