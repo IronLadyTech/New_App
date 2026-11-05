@@ -637,6 +637,18 @@ export function linkBatchToLmsGroup(batchId, groupId) {
   return setDoc(doc(db, CMS.BATCHES, batchId), { lmsGroupId: groupId, ...stamp() }, { merge: true });
 }
 
+/**
+ * Link a CMS batch to every web LMS group of its dates: `main` as lmsGroupId (the largest),
+ * the rest in lmsGroupIds. Reminders, counts and the LMS calendar cover all of them.
+ */
+export function linkBatchToLmsGroups(batchId, main, others = []) {
+  return setDoc(
+    doc(db, CMS.BATCHES, batchId),
+    { lmsGroupId: main, lmsGroupIds: others.filter((id) => id && id !== main), ...stamp() },
+    { merge: true }
+  );
+}
+
 // ---------- Zoho batch sync (runs nightly on the server; "Sync now" at most hourly) ----------
 
 export async function fetchZohoSyncStatus() {

@@ -14,8 +14,9 @@ import {
   fetchProgramBatches,
   ensureCmsBatchForGroup,
   linkBatchToLmsGroup,
+  linkBatchToLmsGroups,
 } from '../../services/cms';
-import { matchLmsGroup } from '../../utils/matchLmsGroup';
+import { batchGroupIds, matchLmsGroups } from '../../utils/matchLmsGroup';
 import { CMS_QA_BATCH_ID } from '../../constants/cms';
 import { fetchLepGroups } from '../../services/lmsGroups';
 import { fetchZohoLepBatchKeys } from '../../services/zohoLepBatches';
@@ -131,19 +132,28 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
     };
   }, [programId, syncTick]);
 
+  // Link each batch to every LMS group of its dates. Zoho makes two groups per date
+  // ("24/10/2026 - …" with a few learners, "24 Oct 2026 – …" with the cohort), so a batch
+  // takes all of them; one already linked to the small one picks up the cohort too.
   useEffect(() => {
     if (!lmsBatches?.length || !canEdit) return;
     const mine = batches.filter((b) => String(b.program || 'LEP').toLowerCase() === programId);
-    const taken = new Set(mine.map((b) => String(b.lmsGroupId || '')).filter(Boolean));
+    const taken = new Set(mine.flatMap(batchGroupIds));
     mine
       // The CMS QA test batch shares a real Day 1 (17 Oct) — it must never take a real group.
-      .filter((b) => !b.lmsGroupId && b.id !== CMS_QA_BATCH_ID && !autoLinked.current.has(b.id))
+      .filter((b) => b.id !== CMS_QA_BATCH_ID && !autoLinked.current.has(b.id))
+      // A batch already linked goes first, so a duplicate CMS batch of the same Day 1
+      // never takes the cohort away from it.
+      .sort((a, b) => batchGroupIds(b).length - batchGroupIds(a).length)
       .forEach((b) => {
         autoLinked.current.add(b.id);
-        const match = matchLmsGroup(b, lmsBatches, taken);
-        if (!match) return;
-        taken.add(match.id);
-        linkBatchToLmsGroup(b.id, match.id).catch(() => autoLinked.current.delete(b.id));
+        const found = matchLmsGroups(b, lmsBatches, taken);
+        if (!found.length) return;
+        found.forEach((g) => taken.add(g.id));
+        const have = batchGroupIds(b);
+        const main = have[0] || found[0].id;
+        const others = [...new Set([...have, ...found.map((g) => g.id)])].filter((id) => id !== main);
+        linkBatchToLmsGroups(b.id, main, others).catch(() => autoLinked.current.delete(b.id));
       });
   }, [lmsBatches, batches, programId, canEdit]);
 
@@ -303,11 +313,16 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
   };
 
   const programBatches = batches.filter((b) => String(b.program || 'LEP').toLowerCase() === programId);
-  const linkedGroups = new Set(programBatches.map((b) => String(b.lmsGroupId || '')).filter(Boolean));
+  const linkedGroups = new Set(programBatches.flatMap(batchGroupIds));
   const notSetUp = (lmsBatches || [])
     .filter((g) => !linkedGroups.has(g.id))
     .sort((a, b) => String(b.id).localeCompare(String(a.id)));
-  const sizeOf = (b) => (lmsBatches || []).find((g) => g.id === b.lmsGroupId)?.memberCount;
+  // Learners across all of the batch's groups.
+  const sizeOf = (b) => {
+    const ids = new Set(batchGroupIds(b));
+    const rows = (lmsBatches || []).filter((g) => ids.has(g.id));
+    return rows.length ? rows.reduce((n, g) => n + (g.memberCount || 0), 0) : undefined;
+  };
   // An unlinked LEP batch whose Zoho batch (same Day 1) is already on another CMS batch:
   // that other batch is the one its learners see.
   const twin = (() => {

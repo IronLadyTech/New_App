@@ -19,3 +19,29 @@ export function matchLmsGroup(batch, groups, takenIds = new Set()) {
   }
   return null;
 }
+
+/**
+ * Every web LMS batch (groups doc) of an LEP CMS batch's Day 1, largest first. Zoho sync
+ * makes more than one group for the same dates ("24/10/2026 - 24/11/2026" and
+ * "24 Oct 2026 – 24 Nov 2026"); the cohort sits in one, a few learners in the other, so a
+ * CMS batch takes all of them: the largest as lmsGroupId, the rest in lmsGroupIds.
+ * Groups already on another CMS batch (takenIds) are never taken twice.
+ */
+export function matchLmsGroups(batch, groups, takenIds = new Set()) {
+  const day1 = String(batch?.day1Date || '').slice(0, 10);
+  if (!day1 || String(batch?.program || 'LEP').toUpperCase() !== 'LEP') {
+    const one = matchLmsGroup(batch, groups, takenIds);
+    return one ? [one] : [];
+  }
+  return (groups || [])
+    .filter((g) => !takenIds.has(g.id) && inferLepDay1FromGroup(g) === day1)
+    .sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0));
+}
+
+/** All group ids a CMS batch covers: lmsGroupId plus lmsGroupIds. */
+export function batchGroupIds(batch) {
+  const ids = [batch?.lmsGroupId, ...(Array.isArray(batch?.lmsGroupIds) ? batch.lmsGroupIds : [])]
+    .map((x) => String(x || '').trim())
+    .filter(Boolean);
+  return [...new Set(ids)];
+}
