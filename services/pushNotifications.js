@@ -4,6 +4,11 @@ import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { removePushDevice, saveFcmToken, savePushDevice } from './firestore';
 
+/** Android notification channel for "session starting" pushes (stronger vibration). */
+export const SESSION_CHANNEL = 'session';
+/** Channels this app creates; saved on the device row so the server knows it can use them. */
+const PUSH_CHANNELS = ['default', SESSION_CHANNEL];
+
 const INSTALL_ID_KEY = 'il.push.installId';
 const NATIVE_TOKEN_KEY = 'il.push.nativeToken';
 /** `${uid}:${token}` last written to Firestore from this phone. */
@@ -88,6 +93,17 @@ export async function getNativePushToken() {
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
     });
+    // "Your session starts in 10 minutes": two long, firm pulses she can tell apart from
+    // every other notification without looking. The server only uses this channel for
+    // phones whose device row lists it (PUSH_CHANNELS below).
+    await Notifications.setNotificationChannelAsync(SESSION_CHANNEL, {
+      name: 'Session reminders',
+      description: 'Your live session is about to start',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 600, 250, 600],
+      enableVibrate: true,
+      sound: 'default',
+    });
   }
 
   try {
@@ -110,7 +126,8 @@ export async function registerPushTokenForUser(uid) {
   const { token, reason } = await getNativePushToken();
   if (!token) return { ok: false, reason };
   // Already saved for this learner on this phone: no write (each write re-renders the app).
-  const savedKey = `${uid}:${token}`;
+  // The channel list is part of the key, so phones saved before it existed write once more.
+  const savedKey = `${uid}:${token}:${PUSH_CHANNELS.join(',')}`;
   if ((await AsyncStorage.getItem(SAVED_FOR_KEY).catch(() => null)) === savedKey) {
     return { ok: true, token, skipped: true };
   }
@@ -120,6 +137,7 @@ export async function registerPushTokenForUser(uid) {
     nativeToken: token,
     expoToken,
     appVersion: Constants.expoConfig?.version || '',
+    ...(Platform.OS === 'android' ? { channels: PUSH_CHANNELS } : {}),
   });
   // An iPhone's native token is an APNs token, which FCM cannot use — Android only.
   if (Platform.OS === 'android') await saveFcmToken(uid, token);
