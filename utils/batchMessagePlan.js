@@ -216,7 +216,10 @@ export function buildBatchMessagePlan(batch, events, { learner = 'paid', now = D
 
   let blocker = null;
   if (!batch?.lmsGroupId) blocker = 'This batch is not linked to its learners yet (Batch setup), so no reminder can reach them.';
-  else if (batch.status !== 'live' || batch.automationEnabled !== true) blocker = 'Automatic reminders are off for this batch. Turn them on at the top when the dates and Zoom links are right.';
+  else if (batch.status !== 'live' || batch.automationEnabled !== true) blocker =
+      batch.status === 'live'
+        ? 'Automatic reminders are paused for this batch. Start them again at the top.'
+        : 'Automatic reminders start by themselves once the dates, the schedule and the learner link are set.';
   const automatic = !blocker;
 
   const rows = [];

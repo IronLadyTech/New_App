@@ -31,7 +31,16 @@ export default function ReminderChecklist({ batch, events, isLep, learnerCount, 
   const remindersRow = {
     key: 'reminders',
     state: state === 'on' ? 'ok' : 'todo',
-    text: state === 'on' ? 'Automatic reminders are on' : state === 'paused' ? 'Automatic reminders are paused' : 'Automatic reminders are off',
+    // Ready batches switch on by themselves (LMS batchAutoStart.js, every 15 min); only a
+    // batch CX paused waits for a person.
+    text:
+      state === 'on'
+        ? 'Automatic reminders are on'
+        : state === 'paused'
+          ? 'Automatic reminders are paused — they stay off until you start them again'
+          : ready
+            ? 'Reminders start by themselves within 15 minutes — or start them now'
+            : 'Reminders start by themselves once the ❌ items above are fixed',
   };
 
   return (
@@ -82,7 +91,7 @@ export default function ReminderChecklist({ batch, events, isLep, learnerCount, 
         ) : (
           <View style={{ marginTop: 8 }}>
             <Btn
-              label={state === 'paused' ? 'Start reminders again' : 'Start automatic reminders'}
+              label={state === 'paused' ? 'Start reminders again' : 'Start reminders now'}
               small
               disabled={!ready}
               style={{ alignSelf: 'flex-start' }}

@@ -242,7 +242,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
       } else {
         setMsg({
           tone: 'ok',
-          text: `Imported ${added} batch(es). Skipped ${skipped}. Check dates and Zoom under Setup, then Go live.`,
+          text: `Imported ${added} batch(es). Skipped ${skipped}. Check dates and Zoom under Setup — reminders then start by themselves.`,
         });
       }
     } catch (e) {
