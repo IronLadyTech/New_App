@@ -14,6 +14,7 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useNotificationOpen } from '../hooks/useNotificationOpen';
 import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNotifications';
 import { useActivityTracking } from '../hooks/useActivityTracking';
+import { useAccessRefreshOnOpen } from '../hooks/useAccessRefreshOnOpen';
 import { prefetchArmyEvents } from '../hooks/useArmyEventCalendar';
 import PerfHud from '../components/PerfHud';
 import { setPerfUser } from '../utils/perfHud';
@@ -25,6 +26,7 @@ export default function AuthenticatedApp() {
   useLocalEngagementNotifications();
   useNotificationOpen();
   useActivityTracking();
+  useAccessRefreshOnOpen(user?.uid);
 
   // Engage's events come from a Google Sheet: start that download now, not when she opens Engage.
   useEffect(() => {
