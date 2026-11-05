@@ -152,7 +152,6 @@ export default function LepProfileScreen() {
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const zohoWelcomeResyncRef = useRef(false);
   const [batchOpen, setBatchOpen] = useState(false);
-  const [batchSaving, setBatchSaving] = useState(false);
   const [localFacts, setLocalFacts] = useState({});
   const source = {
     ...(profile || {}),
@@ -263,24 +262,22 @@ export default function LepProfileScreen() {
     return undefined;
   }, []);
 
-  const lockBatch = async (picked) => {
-    if (batchSaving) return;
-    setBatchSaving(true);
-    try {
-      const result = await lockLepBatchChoice({ user, profile: source, patchProfile, picked });
-      setBatchOpen(false);
-      const feedback = batchZohoFeedback(result?.zoho);
-      if (feedback.showAlert && feedback.message) {
-        Alert.alert('Batch saved', feedback.message);
-      }
-      if (__DEV__ && result?.zoho) {
-        console.warn('[batch change]', batchSyncStageLabel(result.zoho), result.zohoBatchKey);
-      }
-    } catch {
-      Alert.alert('Batch', 'Could not save that batch date. Check your connection and try again.');
-    } finally {
-      setBatchSaving(false);
-    }
+  // Her new dates show at once (patchProfile) and are saved to her profile in a second;
+  // the Zoho Lead update can take up to a minute, so it carries on after the screen closes.
+  // She hears about Zoho only if it reports a problem — once.
+  const lockBatch = (picked) => {
+    setBatchOpen(false);
+    lockLepBatchChoice({ user, profile: source, patchProfile, picked, silent: true })
+      .then((result) => {
+        const feedback = batchZohoFeedback(result?.zoho);
+        if (feedback.showAlert && feedback.message) Alert.alert('Batch saved', feedback.message);
+        if (__DEV__ && result?.zoho) {
+          console.warn('[batch change]', batchSyncStageLabel(result.zoho), result.zohoBatchKey);
+        }
+      })
+      .catch(() => {
+        Alert.alert('Batch', 'Could not save that batch date. Check your connection and try again.');
+      });
   };
 
   const onMenuPress = (row) => {
@@ -644,8 +641,7 @@ export default function LepProfileScreen() {
       >
         <ChooseBatchDateScreen
           allowChange
-          saving={batchSaving}
-          onBack={() => !batchSaving && setBatchOpen(false)}
+          onBack={() => setBatchOpen(false)}
           onLock={lockBatch}
         />
       </Modal>

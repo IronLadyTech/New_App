@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { subscribeToBatches } from '../../services/cms';
 import { cmsBatchToSignupCard } from '../../utils/cmsBatchDisplay';
 import { formatDateIST } from '../../utils/lepBatchSchedule';
@@ -330,6 +330,18 @@ export default function ChooseBatchDateScreen({
     }
   }, [profile, navigation, onBack, allowChange]);
 
+  // Her current batch (Profile → change batch): the screen opens on it, not on the first card.
+  const currentDay1 = String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10);
+  const currentId = String(profile?.programAccess?.lep?.cmsBatchId || '');
+  // What she tapped stays chosen when the batch list updates. (This listener is created once,
+  // so it reads her latest choice through a ref — a plain variable here kept her first one and
+  // snapped every later tap, and any calendar date, back to the first card.)
+  const touched = useRef(false);
+  const choose = (id) => {
+    touched.current = true;
+    setSelected(id);
+  };
+
   useEffect(() => {
     return subscribeToBatches(
       (rows) => {
@@ -344,12 +356,15 @@ export default function ChooseBatchDateScreen({
           .map(cmsBatchToSignupCard)
           .sort((a, b) => String(a.day1Date).localeCompare(String(b.day1Date)));
         setCmsBatches(open);
-        if (open.length && !open.some((b) => b.id === selected) && !custom) {
-          setSelected(open[0].id);
-        }
+        if (!open.length || touched.current) return;
+        const mine =
+          (currentId && open.find((b) => b.id === currentId)) ||
+          (currentDay1 && open.find((b) => String(b.day1Date).slice(0, 10) === currentDay1));
+        setSelected((mine || open[0]).id);
       },
       () => {}
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fallback = useMemo(() => upcomingSaturdayBatches(4), []);
@@ -383,7 +398,7 @@ export default function ChooseBatchDateScreen({
         onPick={(day) => {
           const next = batchFromDate(day);
           setCustom(next);
-          setSelected(next.id);
+          choose(next.id);
           setCalOpen(false);
         }}
       />
@@ -460,7 +475,7 @@ export default function ChooseBatchDateScreen({
               key={batch.id}
               batch={batch}
               selected={selected === batch.id}
-              onPress={() => setSelected(batch.id)}
+              onPress={() => choose(batch.id)}
             />
           ))}
         </View>
