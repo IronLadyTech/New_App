@@ -144,7 +144,7 @@ export const DEFAULT_NOTIFICATION_POLICY = {
   quietStart: '21:30',
   quietEnd: '07:00',
   dailyCap: 3,
-  capExempt: ['R-10m'],
+  capExempt: ['R-15m', 'R-LIVE'],
 };
 
 function rule(code, name, fields) {
@@ -176,7 +176,7 @@ export const LEP_DEFAULT_EVENTS = [
     channels: { push: true, whatsapp: true, email: false },
     body: 'Tomorrow: {{session}} at {{time}} IST. {{task}}',
     notes:
-      'Core sessions only (S0–S8). Optional FT/PTW use OPT-5PM / OPT-R-10m — no R-24h. Morning sessions (before 12 PM) send at 7:00 PM the evening before.',
+      'Core sessions only (S0–S8). Optional FT/PTW use OPT-5PM / OPT-R-15m / OPT-R-LIVE — no R-24h. Morning sessions (before 12 PM) send at 7:00 PM the evening before.',
   }),
   rule('R-1h', 'Session in 1 hour', {
     anchor: { type: 'sessionStart', ref: '*', offsetMinutes: -60 },
@@ -184,11 +184,18 @@ export const LEP_DEFAULT_EVENTS = [
     channels: { push: true, whatsapp: true, email: false },
     body: '{{session}} starts in 1 hour. Join: {{joinLink}}',
   }),
-  rule('R-10m', 'Session in 10 minutes', {
-    anchor: { type: 'sessionStart', ref: '*', offsetMinutes: -10 },
+  // Three messages per session: 1 hour before, 15 minutes before, and when it goes live.
+  rule('R-15m', 'Session in 15 minutes', {
+    anchor: { type: 'sessionStart', ref: '*', offsetMinutes: -15 },
     priority: 'session',
     countsTowardCap: false,
-    body: 'Starting in 10 minutes. Join: {{joinLink}}',
+    body: 'Starting in 15 minutes. Join: {{joinLink}}',
+  }),
+  rule('R-LIVE', 'Your session is live', {
+    anchor: { type: 'sessionStart', ref: '*', offsetMinutes: 0 },
+    priority: 'session',
+    countsTowardCap: false,
+    body: '{{session}} has started. Join now: {{joinLink}}',
   }),
   rule('POST', 'Congratulations after session', {
     anchor: { type: 'sessionEnd', ref: '*', offsetMinutes: 30 },
@@ -276,19 +283,31 @@ export const LEP_DEFAULT_EVENTS = [
     body: 'Tonight (optional): {{session}} at {{time}} IST. Join if you can: {{joinLink}}',
     notes: 'Prepare to Win Fridays. Same-day only — no chase if they skip.',
   }),
-  rule('OPT-R-10m', 'Optional session in 10 minutes (FT)', {
-    anchor: { type: 'sessionStart', ref: 'FT', offsetMinutes: -10 },
+  rule('OPT-R-15m', 'Optional session in 15 minutes (FT)', {
+    anchor: { type: 'sessionStart', ref: 'FT', offsetMinutes: -15 },
     priority: 'optional',
     countsTowardCap: false,
     channels: { push: true, whatsapp: true, email: false },
-    body: '{{session}} starts in 10 minutes (optional). Join: {{joinLink}}',
+    body: '{{session}} starts in 15 minutes (optional). Join: {{joinLink}}',
   }),
-  rule('OPT-R-10m-PTW', 'Optional session in 10 minutes (PTW)', {
-    anchor: { type: 'sessionStart', ref: 'PTW', offsetMinutes: -10 },
+  rule('OPT-R-15m-PTW', 'Optional session in 15 minutes (PTW)', {
+    anchor: { type: 'sessionStart', ref: 'PTW', offsetMinutes: -15 },
     priority: 'optional',
     countsTowardCap: false,
     channels: { push: true, whatsapp: true, email: false },
-    body: '{{session}} starts in 10 minutes (optional). Join: {{joinLink}}',
+    body: '{{session}} starts in 15 minutes (optional). Join: {{joinLink}}',
+  }),
+  rule('OPT-R-LIVE', 'Optional session is live (FT)', {
+    anchor: { type: 'sessionStart', ref: 'FT', offsetMinutes: 0 },
+    priority: 'optional',
+    countsTowardCap: false,
+    body: '{{session}} is live now (optional). Join: {{joinLink}}',
+  }),
+  rule('OPT-R-LIVE-PTW', 'Optional session is live (PTW)', {
+    anchor: { type: 'sessionStart', ref: 'PTW', offsetMinutes: 0 },
+    priority: 'optional',
+    countsTowardCap: false,
+    body: '{{session}} is live now (optional). Join: {{joinLink}}',
   }),
   // Staff notifications (section 8)
   ...[

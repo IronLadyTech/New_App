@@ -13,6 +13,8 @@ function whenWords(row) {
   if (row.code === 'R-24h') return 'Evening before';
   if (row.code === 'R-1h') return '1 hour before';
   if (row.code === 'R-10m' || row.code === 'OPT-R-10m' || row.code === 'OPT-R-10m-PTW') return '10 minutes before';
+  if (row.code === 'R-15m' || row.code === 'OPT-R-15m' || row.code === 'OPT-R-15m-PTW') return '15 minutes before';
+  if (row.code === 'R-LIVE' || row.code === 'OPT-R-LIVE' || row.code === 'OPT-R-LIVE-PTW') return 'When it goes live';
   if (row.code === 'OPT-5PM' || row.code === 'OPT-5PM-PTW') return 'Same day, 2 hours before';
   return row.title;
 }
