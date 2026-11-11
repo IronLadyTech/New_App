@@ -467,6 +467,18 @@ export async function deleteContent(item) {
 // ---------- Learner counts (numbers only — via Cloud Function) ----------
 
 /** { linked, counts: { all, register, paid, late, unknown } } for one cms_batches doc. */
+/** Compare a batch's learners with Zoho: counts and the names that differ, with the reason. */
+export async function checkBatchWithZoho(batchId) {
+  const { data } = await httpsCallable(functions, 'cmsBatchZohoCheck')({ batchId });
+  return data;
+}
+
+/** Split a batch's learners into groups of about `size` (Group 1, 2, 3 …). */
+export async function splitBatchIntoGroups(batchId, size) {
+  const { data } = await httpsCallable(functions, 'cmsSplitBatchGroups')({ batchId, size });
+  return data;
+}
+
 export async function fetchBatchLearnerCounts(batchId) {
   const { data } = await httpsCallable(functions, 'cmsBatchLearnerCounts')({ batchId });
   return data;
