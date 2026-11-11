@@ -7,7 +7,8 @@ import { A, Btn, Card, Input, Notice, Row, T } from '../adminUi';
 /**
  * Groups and Zoom rooms for one batch, as three steps the CEM team can follow top to bottom:
  *   1. Check the learners against Zoho (counts and names that differ, with what to do)
- *   2. Split into groups (Group 1, 2, 3 of about 15)
+ *   2. Split into groups (Group 1, 2, 3 of about 15). The server reads Zoho first: only learners
+ *      Zoho has on this batch get a group, and anyone changed only in the app is left out.
  *   3. Paste one Zoom link per group (optional: a different link for one session)
  * New learners from Zoho, and learners who reschedule into this batch, are added and put in
  * the smallest group by the server within the hour; nobody has to do that by hand.
@@ -77,6 +78,9 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState(null);
   const [openGroup, setOpenGroup] = useState('');
+  const [splitResult, setSplitResult] = useState(null);
+  const [showRoster, setShowRoster] = useState(false);
+  const [find, setFind] = useState('');
 
   useEffect(() => {
     setDraft(Object.fromEntries(groups.map((g) => [g.id, { joinLink: g.joinLink || '', links: { ...(g.links || {}) } }])));
@@ -89,6 +93,7 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
   useEffect(() => {
     setCheck(null);
     setMsg(null);
+    setSplitResult(null);
     if (batch?.id) loadCounts();
   }, [batch?.id, groups.length]);
 
@@ -110,7 +115,10 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
     try {
       const data = await splitBatchIntoGroups(batch.id, Number(size) || 15);
       const text = (data?.groups || []).map((g) => `${g.name}: ${g.learners}`).join(' · ');
-      setMsg({ tone: 'ok', text: `Split done. ${text}. Next: paste each group’s Zoom link in step 3.` });
+      const left = data?.leftOut?.length ? ` ${data.leftOut.length} left out (not in Zoho for this date, listed below).` : '';
+      setMsg({ tone: 'ok', text: `Checked with Zoho and split. ${text}.${left} Next: paste each group’s Zoom link in step 3.` });
+      setSplitResult(data || null);
+      setShowRoster(true);
       loadCounts();
     } catch (e) {
       setMsg({ tone: 'error', text: e?.message || 'Could not split the batch. Try again.' });
@@ -153,6 +161,19 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
   const splitDone = groups.length > 0 && !(gc?.none > 0);
   const linksDone = groups.length > 0 && savedLinks === groups.length;
   const doneCount = [checkDone, splitDone, linksDone].filter(Boolean).length;
+
+  // Who is in which group (names and the last 4 mobile digits come from the server).
+  const roster = counts?.roster || null;
+  const q = find.trim().toLowerCase();
+  const hit = (r) => Boolean(q) && (r.name.toLowerCase().includes(q) || (q.length >= 3 && r.phone.includes(q)));
+  const columns = [
+    ...groups.map((g) => ({ id: g.id, name: g.name })),
+    { id: 'none', name: 'Not placed yet' },
+    { id: 'leftOut', name: 'Left out (not in Zoho)' },
+  ]
+    .map((c) => ({ ...c, rows: (roster || []).filter((r) => r.group === c.id) }))
+    .filter((c) => c.rows.length || groups.some((g) => g.id === c.id))
+    .map((c) => (q ? { ...c, rows: [...c.rows].sort((a, b) => Number(hit(b)) - Number(hit(a))) } : c));
 
   if (!linked && counts) {
     return (
@@ -212,8 +233,8 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
         done={splitDone}
         hint={
           groups.length
-            ? 'Groups are set. Splitting again re-shares everyone evenly and keeps the links.'
-            : 'Choose how many learners per group. 45 learners at 15 each make Group 1, 2 and 3.'
+            ? 'Groups are set. Splitting again checks Zoho again, re-shares everyone evenly and keeps the links.'
+            : 'Choose how many learners per group. 45 learners at 15 each make Group 1, 2 and 3. Zoho is checked first: only learners Zoho has on this batch get a group.'
         }
       >
         {canEdit ? (
@@ -239,7 +260,73 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
           <T size={13} style={{ marginTop: 8 }}>
             {groups.map((g) => `${g.name}: ${gc && gc[g.id] != null ? gc[g.id] : '…'}`).join('   ·   ')}
             {gc?.none ? `   ·   Not placed yet: ${gc.none} (placed automatically within minutes)` : ''}
+            {gc?.leftOut ? `   ·   Left out: ${gc.leftOut} (not in Zoho for this date)` : ''}
           </T>
+        ) : null}
+        {splitResult?.leftOut?.length ? (
+          <NameList title="Left out: in the app, not in Zoho for this date" rows={splitResult.leftOut} />
+        ) : null}
+        {splitResult?.zohoOnly?.length ? (
+          <NameList
+            title="In Zoho, no app account in this batch yet"
+            rows={splitResult.zohoOnly.map((name) => ({
+              name,
+              why: 'Gets a group automatically once she signs in to the app.',
+            }))}
+          />
+        ) : null}
+        {groups.length && roster?.length ? (
+          <View style={{ marginTop: 12 }}>
+            <Btn
+              label={showRoster ? 'Hide who is in each group' : 'See who is in each group'}
+              kind="ghost"
+              small
+              onPress={() => setShowRoster(!showRoster)}
+            />
+            {showRoster ? (
+              <View style={{ marginTop: 10 }}>
+                <Input
+                  nativeID="group-find"
+                  value={find}
+                  onChangeText={setFind}
+                  placeholder="Find a learner by name or last 4 digits"
+                  style={{ maxWidth: 360, marginBottom: 10 }}
+                />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16 }}>
+                  {columns.map((c) => (
+                    <View key={c.id} style={{ minWidth: 220, flexGrow: 1, flexBasis: 220 }}>
+                      <T size={13} weight="bold" color={c.id === 'leftOut' ? A.danger : A.ink} style={{ marginBottom: 4 }}>
+                        {`${c.name} (${c.rows.length})`}
+                      </T>
+                      {c.rows.map((r, i) => (
+                        <Row
+                          key={`${r.name}-${i}`}
+                          gap={8}
+                          style={{
+                            justifyContent: 'space-between',
+                            paddingVertical: 4,
+                            borderBottomWidth: 1,
+                            borderBottomColor: A.line,
+                            backgroundColor: hit(r) ? '#FFF4CC' : 'transparent',
+                          }}
+                        >
+                          <T size={13}>{r.name}</T>
+                          <T size={12} color={A.muted}>
+                            {r.phone ? `…${r.phone}` : ''}
+                          </T>
+                        </Row>
+                      ))}
+                      {!c.rows.length ? (
+                        <T size={12} color={A.muted}>
+                          Nobody
+                        </T>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </View>
         ) : null}
       </Step>
 
