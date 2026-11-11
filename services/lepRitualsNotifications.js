@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { isExpoGo } from './pushNotifications';
 
-const FLAG = 'il.notif.lep-rituals.v1';
+// v2: new wording — bumping the key makes every phone reschedule once with it.
+const FLAG = 'il.notif.lep-rituals.v2';
 const DAILY_ID = 'il-lep-rituals-daily';
 const WEEKLY_ID = 'il-lep-rituals-weekly';
 const CHANNEL = 'lep-rituals';
@@ -54,8 +55,8 @@ export async function scheduleLepRitualsNotifications({ serverDaily = false } = 
     if (!serverDaily) await Notifications.scheduleNotificationAsync({
       identifier: DAILY_ID,
       content: {
-        title: '5 Daily Rituals',
-        body: 'Tick your five rituals in the tracker — up to 5 marks today.',
+        title: 'Before your first meeting',
+        body: 'Lead yourself before you lead the room. 5 Rituals, ten minutes.',
         color: '#ED1D24',
         data: { go: { to: 'home', screen: 'RitualsDashboard' }, kind: 'lep-rituals-daily' },
       },
@@ -69,8 +70,8 @@ export async function scheduleLepRitualsNotifications({ serverDaily = false } = 
     await Notifications.scheduleNotificationAsync({
       identifier: WEEKLY_ID,
       content: {
-        title: 'Weekly rituals score',
-        body: 'Check your 35-mark week on the 5 Rituals dashboard.',
+        title: 'Your week, scored',
+        body: 'You keep a scorecard for your team. This one is yours: 35 marks, one week.',
         color: '#ED1D24',
         data: { go: { to: 'profile', screen: 'WeeklyBrief' }, kind: 'lep-rituals-weekly' },
       },

@@ -14,35 +14,41 @@
 export const STREAK_REMINDER_HOUR = 19;
 export const STREAK_REMINDER_DAYS = 7;
 
+// Voice for senior leaders (managers to CXOs, 15+ years): direct like a board brief, about
+// stakes and identity rather than the app, respectful of her time, a peer and never a
+// cheerleader. No emojis, no exclamation marks. Title up to 40, body up to 80 characters.
 const MILESTONES = {
-  3: 'Three days in a row — this is where habits start.',
-  7: 'A full week of showing up. Finish it tonight.',
-  14: 'Two weeks straight. This is who you are now.',
-  21: 'Twenty-one days — the habit is yours.',
-  28: 'Day 28. Finish the way you started.',
+  3: 'Three days in a row. This is where most people stop.',
+  7: 'Seven days of leading yourself first. Close the week tonight.',
+  14: 'Two weeks straight. Your team would notice this discipline.',
+  21: 'Day 21. This is no longer effort. It is who you are.',
+  28: 'Day 28. Finish it the way you close a quarter.',
 };
 
 const COMEBACK = [
-  ['Your practice is waiting', 'Ten minutes tonight puts you back on track.'],
-  ['Show up, lead the room', 'Pick up where you left off — one practice tonight.'],
-  ['Still with you', "Your 5 Rituals and today's practice are one tap away."],
-  ['Small steps, every day', 'One practice tonight starts a new streak.'],
-  ['We saved your seat', "Come back for ten minutes — that's all it takes."],
+  ['Your seat is still yours', 'Ten minutes tonight and you are back in the 0.5% league.'],
+  ['You make the hard calls at work', 'Make the easy one tonight: ten minutes of practice.'],
+  ['The gap to your BHAG grows', 'Every day away widens it. Ten minutes tonight closes it.'],
+  ['Still the leader you were', 'One practice tonight is all it takes to prove it.'],
+  ['This is our last nudge', 'We will stop here. When you are ready, your practice is waiting.'],
 ];
 
 function atRisk(streak, name) {
+  if (!(streak > 0)) return start(name); // no run to protect yet
   const next = streak + 1;
   if (MILESTONES[next]) {
-    return { title: `Day ${next} is tonight 🏆`, body: MILESTONES[next] };
+    return { title: `Day ${next} is tonight`, body: MILESTONES[next] };
   }
-  const who = name ? `${name}, one` : 'One';
-  return { title: `${streak}-day streak on the line 🔥`, body: `${who} practice before midnight makes it Day ${next}.` };
+  return {
+    title: `${streak} days strong. Keep the run alive.`,
+    body: `${name ? `${name}, ten` : 'Ten'} minutes tonight makes it Day ${next}. Consistency is your edge.`,
+  };
 }
 
 function start(name) {
   return {
-    title: 'Start your streak tonight',
-    body: `${name ? `${name}, one` : 'One'} practice — about ten minutes. Day 1 begins with you.`,
+    title: 'Your streak starts tonight',
+    body: `${name ? `${name}, the` : 'The'} most senior thing you will do today: ten minutes on yourself.`,
   };
 }
 
@@ -64,7 +70,12 @@ export function buildStreakReminders({ streak = 0, todayActive = false, now = ne
   // Tomorrow: practised today → tomorrow's streak is at stake; missed today → a fresh start.
   if (todayActive) out.push({ key: 'd1', at: at(1), ...atRisk(streak, name) });
   else if (streak > 0) {
-    out.push({ key: 'd1', at: at(1), title: 'Fresh start tonight', body: `Your ${streak}-day run ended. Day 1 is ten minutes away.` });
+    out.push({
+      key: 'd1',
+      at: at(1),
+      title: 'Restart tonight',
+      body: `Your ${streak}-day run ended. The best leaders restart fast. Day 1 takes ten minutes.`,
+    });
   } else out.push({ key: 'd1', at: at(1), ...start(name) });
 
   // Away since: one gentle line per evening, then stop.
