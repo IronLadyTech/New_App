@@ -23,7 +23,13 @@ function programMatches(batch, programId) {
 export function resolveLearnerCmsBatch(batches, { profile, programId = 'lep' } = {}) {
   if (!profile || !batches?.length) return null;
 
-  const rows = batches.filter((b) => programMatches(b, programId));
+  const all = batches.filter((b) => programMatches(b, programId));
+  // Two batches with the same Day 1, one linked to its learners and one empty (a duplicate
+  // made from the other Zoho batch style): the empty one never wins. Otherwise its exact Zoho
+  // text matched first and learners saw a batch with no groups and no Zoom links.
+  const linked = (b) => Boolean(norm(b.lmsGroupId) || (Array.isArray(b.lmsGroupIds) && b.lmsGroupIds.length));
+  const day = (b) => String(b.day1Date || '').slice(0, 10);
+  const rows = all.filter((b) => linked(b) || !all.some((o) => o !== b && linked(o) && day(o) && day(o) === day(b)));
   if (!rows.length) return null;
 
   const access = profile?.programAccess?.[programId] || profile?.programAccess?.lep || null;
