@@ -438,7 +438,15 @@ export type OtpDeckProps = {
   resendSeconds?: number;
   /** Stage + resend only — host screen keeps its own title and chrome. */
   embedded?: boolean;
+  /**
+   * The phone read the SMS itself (Android): play the same check-and-verified sequence
+   * without typed digits. onVerify is called with AUTO_CODE.
+   */
+  autoVerified?: boolean;
 };
+
+/** What onVerify receives when the phone verified the number itself. */
+export const AUTO_CODE = 'auto';
 
 export default function OtpDeck({
   length = 4,
@@ -451,6 +459,7 @@ export default function OtpDeck({
   logo,
   resendSeconds = 30,
   embedded = false,
+  autoVerified = false,
 }: OtpDeckProps) {
   const { width: winW } = useWindowDimensions();
   const theme = typeof themeProp === 'string' ? OTP_THEMES[themeProp] : themeProp;
@@ -530,7 +539,7 @@ export default function OtpDeck({
 
   const verify = useCallback(
     async (value: string) => {
-      if (busyRef.current || value.length < length) return;
+      if (busyRef.current || (value !== AUTO_CODE && value.length < length)) return;
       busyRef.current = true;
       setBusy(true);
       setError(false);
@@ -574,6 +583,15 @@ export default function OtpDeck({
     },
     [length, onVerify, offsets, angles, stackRot, swapText, theme.ok, resendAlpha, doneAlpha, resetDeck, embedded],
   );
+
+  // The phone read the SMS itself: fill the slots and run the same sequence, so she sees
+  // her number being verified rather than a sudden jump to the next screen.
+  useEffect(() => {
+    if (!autoVerified || busyRef.current || verified) return;
+    setCode('•'.repeat(length));
+    const t = setTimeout(() => verify(AUTO_CODE), 300);
+    return () => clearTimeout(t);
+  }, [autoVerified]);
 
   const onChange = (raw: string) => {
     if (busyRef.current) return;

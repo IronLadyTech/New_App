@@ -14,4 +14,9 @@ export async function verifyFirebasePhoneOtpOnly() {
   throw new Error('Phone check is not available here. Go back and try again.');
 }
 
+/** No SMS auto-read in the browser. */
+export function watchAutoVerified() {
+  return () => {};
+}
+
 export { confirmFirebasePhoneOtp };

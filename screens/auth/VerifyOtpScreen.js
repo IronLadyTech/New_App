@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -20,11 +20,12 @@ import {
 import {
   confirmFirebasePhoneOtp,
   verifyFirebasePhoneOtpOnly,
+  watchAutoVerified,
 } from '../../services/firebasePhoneOtp';
 import { IL_BRAND } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { ilShadow } from '../../components/il/ilShadow';
-import OtpDeck from '../../src/components/otp/OtpDeck';
+import OtpDeck, { AUTO_CODE } from '../../src/components/otp/OtpDeck';
 import { friendlyAuthError } from '../../utils/authErrors';
 
 const CTA = '#ED1D24';
@@ -83,9 +84,23 @@ export default function VerifyOtpScreen({ navigation, route }) {
   // Firebase ID token from the verified SMS (learners exchange it for their account).
   const proofRef = useRef(null);
 
+  // Android can read the SMS itself, even when her SMS app hides it as spam with no
+  // notification: the number is then verified without her typing the code.
+  const [autoVerified, setAutoVerified] = useState(false);
+  const autoRef = useRef(false);
+  useEffect(() => {
+    if (!liveFirebase || confirmation.access?.ok === false) return undefined;
+    return watchAutoVerified(routePhone || phone, (idToken) => {
+      proofRef.current = idToken;
+      autoRef.current = true;
+      setAutoVerified(true);
+    });
+  }, [liveFirebase]);
+
   const onVerify = useCallback(
     async (code) => {
       if (!live) return code === expected;
+      if (code === AUTO_CODE) return autoRef.current;
       setMessage('');
       try {
         if (liveWhatsApp) {
@@ -287,6 +302,7 @@ export default function VerifyOtpScreen({ navigation, route }) {
               onVerify={onVerify}
               onContinue={onContinue}
               onResend={onResend}
+              autoVerified={autoVerified}
             />
             {continueError ? (
               <ILText role="bodySm" color={CTA} align="center" style={{ marginTop: 10 }}>
