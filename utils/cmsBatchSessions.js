@@ -1,9 +1,10 @@
 import { splitBatchSessions } from './eventVisibility';
 import { buildLepBatchSessions, mergeCustomSessions } from './lepBatchSchedule';
+import { groupJoinLink } from './batchGroups';
 
 function sessionAsCalendarEvent(session, batch) {
   if (!session?.date || !session?.title) return null;
-  const detail = [session.weekLabel, session.code].filter(Boolean).join(' · ');
+  const detail = [session.weekLabel, session.groupName, session.code].filter(Boolean).join(' · ');
   return {
     id: `cms-${batch?.id || 'batch'}-${session.code}`,
     date: session.date,
@@ -77,7 +78,14 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
     };
   });
   // Moved dates, cancellations and sessions CX added in the CMS calendar.
-  return mergeCustomSessions(patched, Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => !s.cancelled);
+  const merged = mergeCustomSessions(patched, Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => !s.cancelled);
+  // Batch split into groups: every session uses her group's room (utils/batchGroups.js).
+  if (!batch?.myGroupId) return merged;
+  return merged.map((s) => ({
+    ...s,
+    joinLink: groupJoinLink(batch, batch.myGroupId, s.code) || s.joinLink,
+    groupName: batch.myGroupName || '',
+  }));
 }
 
 /** Core + optional sessions from template + CMS anchor → calendar cards. */

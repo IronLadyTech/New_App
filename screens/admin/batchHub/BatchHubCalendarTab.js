@@ -6,6 +6,7 @@ import { resolveCmsBatchSessions } from '../../../utils/cmsBatchSessions';
 import { buildLepBatchSessions, toISTIso } from '../../../utils/lepBatchSchedule';
 import { A, Btn, Card, Input, Notice, Row, T } from '../adminUi';
 import { DateInput, FieldLabel, Pill } from './cmsBits';
+import BatchGroupsCard from './BatchGroupsCard';
 
 function niceDay(iso) {
   const d = iso ? new Date(`${String(iso).slice(0, 10)}T12:00:00`) : null;
@@ -196,6 +197,7 @@ export default function BatchHubCalendarTab({ batch, programId, canEdit }) {
 
   return (
     <View>
+      <BatchGroupsCard batch={batch} sessions={sessions.filter((s) => !s.cancelled)} canEdit={canEdit} />
       {msg ? <Notice tone={msg.tone}>{msg.text}</Notice> : null}
       <Notice tone="neutral">
         {isLep

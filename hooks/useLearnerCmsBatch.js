@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { subscribeToBatches } from '../services/cms';
 import { resolveLearnerCmsBatch } from '../utils/resolveLearnerCmsBatch';
+import { withLearnerGroup } from '../utils/batchGroups';
 
 /** One Firestore listener for all mounted screens — avoids duplicate subs + re-render storms. */
 let sharedBatches = [];
@@ -72,8 +73,9 @@ export function useLearnerCmsBatch(programId = 'lep') {
 
   const { batches, error, loading } = useSharedBatchRows(active);
 
+  // Her batch, carrying her group (Group 1, 2 …) so every Join uses her group's room.
   const batch = useMemo(
-    () => (active ? resolveLearnerCmsBatch(batches, { profile, programId }) : null),
+    () => (active ? withLearnerGroup(resolveLearnerCmsBatch(batches, { profile, programId }), profile) : null),
     [active, batches, profile, programId]
   );
 
