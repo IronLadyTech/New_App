@@ -16,6 +16,7 @@ import OfflineBanner from './components/OfflineBanner';
 import { DevLaunchSplashPreviewProvider } from './context/DevLaunchSplashPreviewContext';
 import { isAdminPath } from './utils/adminRoute';
 import { OTA_SKIP_INTRO_KEY, useOtaUpdates } from './hooks/useOtaUpdates';
+import { markLaunchRevealed } from './utils/launchReveal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -46,6 +47,13 @@ function Root() {
     const t = setTimeout(() => setSplashDone(true), 6000);
     return () => clearTimeout(t);
   }, []);
+
+  // However the splash ended (finished, skipped after an update restart, or the 6s net), the
+  // first screen must be told to show itself. Only the splash used to send this, so after an
+  // update restart the sign-in screen kept its header and phone card invisible: a bare photo.
+  useEffect(() => {
+    if (splashDone) markLaunchRevealed();
+  }, [splashDone]);
 
   // Android measures text once; drawing before the fonts load clips words ("Iron", "Continu").
   // Fonts are bundled, so this is a split second. Never hold the app longer than 2.5s.
