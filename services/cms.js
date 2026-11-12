@@ -479,6 +479,24 @@ export async function splitBatchIntoGroups(batchId, size) {
   return data;
 }
 
+/** CMS "App payments": every payment made in the app and its Zoho result. */
+export async function listAppPayments() {
+  const { data } = await httpsCallable(functions, 'cmsListAppPayments')({});
+  return data;
+}
+
+/** Send one app payment to Zoho again (Lead Status + Note). */
+export async function retryPaymentZoho(paymentId) {
+  const { data } = await httpsCallable(functions, 'cmsRetryPaymentZoho')({ paymentId });
+  return data;
+}
+
+/** Ask Razorpay now for app payments of the last 2 days the app never confirmed. */
+export async function checkRazorpayNow() {
+  const { data } = await httpsCallable(functions, 'cmsCheckRazorpayNow')({ days: 2 });
+  return data;
+}
+
 export async function fetchBatchLearnerCounts(batchId) {
   const { data } = await httpsCallable(functions, 'cmsBatchLearnerCounts')({ batchId });
   return data;

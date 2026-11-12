@@ -16,6 +16,7 @@ import BatchHubAdmin from './BatchHubAdmin';
 import AnalyticsAdmin from './AnalyticsAdmin';
 import GuestsAdmin from './GuestsAdmin';
 import GuestContentAdmin from './GuestContentAdmin';
+import PaymentsAdmin from './PaymentsAdmin';
 import { AdminWorkflowStrip } from './AdminSectionGuide';
 
 const SECTIONS = [
@@ -23,6 +24,7 @@ const SECTIONS = [
   { key: 'analytics', label: 'App analytics', hint: 'Who opens the app · activity · practice', Screen: AnalyticsAdmin },
   { key: 'guests', label: 'App guests', hint: 'Guests · Masterclass · follow-up', Screen: GuestsAdmin },
   { key: 'guestContent', label: 'Guest app', hint: 'Recordings · home slides · events', Screen: GuestContentAdmin },
+  { key: 'payments', label: 'App payments', hint: 'Paid in the app · Zoho status · Razorpay check', Screen: PaymentsAdmin },
   // Program Lead tools — CX does not need these day to day.
   { key: 'templates', label: 'Program templates', hint: 'Default reminder rules', Screen: NotificationsAdmin, advanced: true },
   { key: 'ilguide', label: 'IL Guide settings', hint: 'Playbook · quotations', Screen: ILGuideAdmin, advanced: true },

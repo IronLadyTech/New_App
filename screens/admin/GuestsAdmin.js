@@ -104,7 +104,7 @@ export default function GuestsAdmin() {
       <H style={{ marginBottom: 4 }}>App guests</H>
       <T color={A.muted} style={{ marginBottom: 14, maxWidth: 780 }}>
         People who signed in with a number that has no program seat. Masterclass guests (MC Enrolled / MC Completed)
-        also see their recordings. New numbers are added to Zoho as a Lead (source “Online - IronLady App”). Guests get a
+        also see their recordings. New numbers are added to Zoho as a Lead (Lead Source “App”). Guests get a
         daily evening reminder in the app until they finish the 4-day challenge.
       </T>
 
