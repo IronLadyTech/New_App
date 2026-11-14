@@ -18,6 +18,39 @@ import {
 import { PAYMENT_STATUS } from '../constants/programs';
 import { devToolsEnabled } from '../utils/devToolsEnabled';
 import { useChangeProbe } from '../utils/perfHud';
+import { Timestamp } from 'firebase/firestore';
+
+/**
+ * Her last profile, kept on the phone: on the next open the app shows her own screen at once
+ * (like other apps) and refreshes it from the server in the background — no sign-in screen
+ * flash and no "Loading…" on every open. Timestamps are stored as { __ts: ms } and rebuilt.
+ */
+const PROFILE_CACHE_KEY = 'il_profile_cache_v1';
+
+function encodeForCache(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if (typeof v.toMillis === 'function') return { __ts: v.toMillis() };
+  if (v instanceof Date) return { __ts: v.getTime() };
+  if (Array.isArray(v)) return v.map(encodeForCache);
+  const out = {};
+  for (const [k, x] of Object.entries(v)) out[k] = encodeForCache(x);
+  return out;
+}
+
+function decodeFromCache(v) {
+  if (v == null || typeof v !== 'object') return v;
+  if (typeof v.__ts === 'number' && Object.keys(v).length === 1) return Timestamp.fromMillis(v.__ts);
+  if (Array.isArray(v)) return v.map(decodeFromCache);
+  const out = {};
+  for (const [k, x] of Object.entries(v)) out[k] = decodeFromCache(x);
+  return out;
+}
+
+function readProfileCache() {
+  return AsyncStorage.getItem(PROFILE_CACHE_KEY)
+    .then((raw) => (raw ? JSON.parse(raw) : null))
+    .catch(() => null);
+}
 
 const GUEST_KEY = 'il_guest_mode';
 const LAB_LEP_KEY = 'il_lab_lep';
@@ -164,11 +197,17 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
 
+  // Read at once on launch, while Firebase restores her sign-in.
+  const cacheRef = useRef(null);
+  if (!cacheRef.current) cacheRef.current = readProfileCache();
+
   useEffect(() => {
     let cancelled = false;
+    // Safety net only: a signed-out phone hears from Firebase in a moment. (At 400 ms the sign-in
+    // screen used to flash before Firebase had restored a signed-in learner.)
     const failOpen = setTimeout(() => {
       if (!cancelled) setInitializing(false);
-    }, 400);
+    }, 3000);
 
     Promise.all([
       AsyncStorage.getItem(GUEST_KEY),
@@ -207,6 +246,12 @@ export function AuthProvider({ children }) {
         AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(
           () => {}
         );
+      }
+      // Her own screen at once from the copy on this phone; the server copy follows.
+      const cached = await cacheRef.current;
+      if (!cancelled && cached?.uid === user.uid && cached.profile) {
+        setProfile((prev) => prev || decodeFromCache(cached.profile));
+        setInitializing(false);
       }
       try {
         const p = await fetchUserProfile(user.uid);
@@ -262,7 +307,26 @@ export function AuthProvider({ children }) {
     return unsub;
   }, [firebaseUser?.uid]);
 
+  // Keep the phone's copy of her profile current (a moment after changes settle).
+  useEffect(() => {
+    const uid = firebaseUser?.uid;
+    if (!uid || !profile || preview || labJourney || CMS_PREVIEW) return undefined;
+    const t = setTimeout(() => {
+      try {
+        AsyncStorage.setItem(
+          PROFILE_CACHE_KEY,
+          JSON.stringify({ uid, at: Date.now(), profile: encodeForCache(profile) })
+        ).catch(() => {});
+      } catch {
+        /* a profile that cannot be stored just loads from the server next time */
+      }
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [profile, firebaseUser?.uid, preview, labJourney]);
+
   const logout = useCallback(async () => {
+    AsyncStorage.removeItem(PROFILE_CACHE_KEY).catch(() => {});
+    cacheRef.current = Promise.resolve(null);
     previewRef.current = false;
     setPreview(false);
     await authLogOut();

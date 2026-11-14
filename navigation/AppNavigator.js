@@ -20,7 +20,7 @@ function GuestBranch() {
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isGuest, demo, journey, cmsPreview } = useAuth();
+  const { isAuthenticated, isGuest, demo, journey, cmsPreview, initializing } = useAuth();
   const insets = useSafeAreaInsets();
   const navRef = useNavigationContainerRef();
   const [route, setRoute] = useState(null);
@@ -44,6 +44,9 @@ export default function AppNavigator() {
     <AuthenticatedBranch key={journey ? `${journey.program}-${journey.state}` : 'account'} />
   ) : isGuest ? (
     <GuestBranch />
+  ) : initializing ? (
+    // Still finding out whether she is signed in: the splash colour, never a flash of sign-in.
+    <View style={{ flex: 1, backgroundColor: '#112B32' }} />
   ) : (
     <AuthNavigator />
   );
