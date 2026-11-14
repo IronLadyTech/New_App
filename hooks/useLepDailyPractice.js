@@ -13,10 +13,14 @@ import {
 import { useCmsPracticeRows } from './useCmsLearnerItems';
 import { resolveWeekFocus } from '../utils/lepWeekFocus';
 import { dedupeLepHomePractice } from '../utils/lepHomePracticeDedupe';
+import { useAuth } from '../context/AuthContext';
+import { learnerBhagText } from '../utils/programAccess';
 
 function usePracticeDoneChecker() {
   const demo = useCourseDemo();
   const { getTaskSubmission } = usePrograms();
+  const { profile } = useAuth();
+  const hasBhag = Boolean(String(learnerBhagText(profile) || '').trim());
 
   return useMemo(() => {
     const lmsDone = (programId, taskId) => {
@@ -28,13 +32,16 @@ function usePracticeDoneChecker() {
       const practiceSub = getTaskSubmission?.(programId, practiceKey(taskId));
       return isTaskDoneStatus(practiceSub?.status);
     };
+    // B-HAG lives in her profile (edited on the Profile B-HAG card): having one is done.
+    const isDone = (programId, key) =>
+      (hasBhag && (key === 'lep-bhag' || key === practiceKey('lep-bhag'))) || demo.isDone(programId, key);
     return {
-      isDone: demo.isDone,
+      isDone,
       isDoneOnDay: demo.isDoneOnDay,
       lmsDone,
       doneToken: demo.done,
     };
-  }, [demo, getTaskSubmission]);
+  }, [demo, getTaskSubmission, hasBhag]);
 }
 
 export function useEnrolledDailyPractice(group, cmsBatch) {

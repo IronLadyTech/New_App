@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
@@ -240,7 +240,7 @@ export function ProfileStrengthCard({ facts, onSaved }) {
   );
 }
 
-export function ProfileBhagCard({ bhag, field, onSaved }) {
+export function ProfileBhagCard({ bhag, field, onSaved, openSignal }) {
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
@@ -249,6 +249,11 @@ export function ProfileBhagCard({ bhag, field, onSaved }) {
     setDraft(String(bhag || ''));
     setEdit(true);
   };
+  // "Update your B-HAG" from Home: open the editor straight away.
+  useEffect(() => {
+    if (openSignal) openEdit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal]);
 
   const save = async () => {
     const value = draft.trim();

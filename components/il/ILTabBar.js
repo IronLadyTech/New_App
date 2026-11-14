@@ -4,7 +4,8 @@ import LiquidTabBar, { useLiquidItems } from './LiquidTabBar';
 import { markTabShown, markTabTap } from '../../utils/perfHud';
 
 // Screens with their own bottom composer; the floating bar would cover it.
-const FULL_SCREEN = new Set(['ManagerChat']);
+// Task and practice screens have their own back button; the floating bar covered the form.
+const FULL_SCREEN = new Set(['ManagerChat', 'Practice', 'CourseTask', 'CoursePhase']);
 
 const ICONS = {
   Home: { icon: 'home', outline: 'home-outline' },

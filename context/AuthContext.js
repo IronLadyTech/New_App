@@ -123,6 +123,32 @@ const PREVIEW_PROFILE = {
   },
 };
 
+/** Fields servers stamp on every sync; a change in only these is not a change she can see. */
+const SYNC_STAMP_KEYS = new Set([
+  'updatedAt',
+  'lastActiveAt',
+  'lastSeenAt',
+  'lastActivityAt',
+  'zohoEntitlementsSyncedAt',
+  'zohoWriteOrigin',
+  'zohoWriteOriginAt',
+  'zohoSyncedAt',
+]);
+
+function visibleJson(profile) {
+  try {
+    return JSON.stringify(profile, (key, value) => (SYNC_STAMP_KEYS.has(key) ? undefined : value));
+  } catch {
+    return null;
+  }
+}
+
+function sameVisibleProfile(prev, next) {
+  if (!prev || !next) return false;
+  const a = visibleJson(prev);
+  return a !== null && a === visibleJson(next);
+}
+
 export function AuthProvider({ children }) {
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -216,7 +242,7 @@ export function AuthProvider({ children }) {
               ? prev.paymentStatus
               : data?.paymentStatus;
           const welcome = mergeWelcomeProfilePreserving(prev, data);
-          return {
+          const next = {
             ...data,
             ...welcome,
             programAccess,
@@ -226,6 +252,10 @@ export function AuthProvider({ children }) {
               prev?.ilGuideOnboarded === true ||
               onboardedRef.current,
           };
+          // Server syncs (Zoho, access refresh, activity stamps) rewrite her profile often with
+          // nothing she can see changed. Keeping the same object then spares a redraw of every
+          // screen and provider that reads the profile — the main lag on weaker phones.
+          return sameVisibleProfile(prev, next) ? prev : next;
         }),
       (err) => setError(err.message)
     );

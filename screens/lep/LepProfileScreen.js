@@ -140,8 +140,15 @@ function useProgramGroups(profile, programIds) {
   return groups;
 }
 
-export default function LepProfileScreen() {
+export default function LepProfileScreen({ route }) {
   const { profile, accountProfile, logout, user, patchProfile } = useAuth();
+  // Opened from "Complete profile" or "Update your B-HAG": start at the top (B-HAG: open its editor).
+  const scrollRef = useRef(null);
+  const scrollTop = route?.params?.scrollTop;
+  const openBhag = route?.params?.openBhag;
+  useEffect(() => {
+    if (scrollTop || openBhag) scrollRef.current?.scrollTo?.({ y: 0, animated: false });
+  }, [scrollTop, openBhag]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const demo = useCourseDemo();
   const insets = useSafeAreaInsets();
@@ -190,7 +197,7 @@ export default function LepProfileScreen() {
   const name = facts.name || lepFullName(profile);
   const groups = useProgramGroups(source, programs.map((p) => p.id));
   const practiceBhag = String(demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || '').trim();
-  const bhag = learnerBhagText(source) || practiceBhag || localFacts.bhag || '';
+  const bhag = localFacts.bhag || learnerBhagText(source) || practiceBhag || '';
   const lepProgram = programs.find((p) => p.id === PROGRAMS.LEP) || programs[0] || { id: 'lep', title: 'Leadership Essentials' };
   const hasMasterclass = hasMasterclassOnProfile(source);
   const menuRows = profileMenuRows({ anyEnrolled, hasMasterclass });
@@ -301,6 +308,7 @@ export default function LepProfileScreen() {
         onProfile={() => {}}
       />
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: 0,
@@ -424,6 +432,7 @@ export default function LepProfileScreen() {
         />
         <ProfileBhagCard
           bhag={bhag}
+          openSignal={openBhag}
           field={facts.domain}
           onSaved={(partial) => {
             setLocalFacts((prev) => ({ ...prev, ...partial }));
