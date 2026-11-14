@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Modal, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Linking, Modal, ScrollView, TextInput, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -183,6 +184,7 @@ export function ProfileStrengthCard({ facts, onSaved }) {
           onPress={() => setEdit(null)}
         >
           <Pressable
+            pressFeedback={false}
             onPress={(e) => e.stopPropagation?.()}
             style={{ backgroundColor: G.white, borderRadius: 18, padding: 18 }}
           >
@@ -311,6 +313,7 @@ export function ProfileBhagCard({ bhag, field, onSaved, openSignal }) {
           onPress={() => setEdit(false)}
         >
           <Pressable
+            pressFeedback={false}
             onPress={(e) => e.stopPropagation?.()}
             style={{ backgroundColor: G.white, borderRadius: 18, padding: 18 }}
           >

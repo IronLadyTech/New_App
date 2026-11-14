@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';

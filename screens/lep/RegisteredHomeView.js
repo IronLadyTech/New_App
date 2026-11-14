@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useIsFocused } from '@react-navigation/native';
-import { Image, Linking, Pressable, ScrollView, View } from 'react-native';
+import { Image, Linking, ScrollView, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import Reanimated, {
   useAnimatedStyle,
   useSharedValue,

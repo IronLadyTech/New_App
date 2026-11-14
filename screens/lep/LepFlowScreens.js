@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Image, Linking, ScrollView, TextInput, View } from 'react-native';
+import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

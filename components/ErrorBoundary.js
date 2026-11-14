@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import Pressable from './il/Press';
 import { IL_BRAND } from '../constants/ironLadyBrand';
 
 export default class ErrorBoundary extends React.Component {
