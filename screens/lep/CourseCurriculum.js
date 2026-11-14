@@ -18,6 +18,19 @@ import { makeTaskDoneChecker } from '../../utils/taskDone';
 import { ProgressDark, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import { phaseLockLabel } from '../../utils/phaseUnlock';
+import { useAuth } from '../../context/AuthContext';
+import { learnerBhagText } from '../../utils/programAccess';
+import { isLepProfileInfoDone } from '../../utils/registeredHomeData';
+
+/**
+ * LEP Pre-Program asks only for her B-HAG and profile details (programme team, Nov 2026). They
+ * live on the B-HAG and Profile screens, not in the course task list, so the phase lists them
+ * as these two rows. VIA Survey is in Week 1 (before Differentiated Brand), NSDC in Week 4.
+ */
+const LEP_PREP_ROWS = [
+  { id: '__lep-bhag', title: 'Update your B-HAG', kind: 'Form' },
+  { id: '__lep-profile', title: 'Complete your profile details', kind: 'Form' },
+];
 
 function taskIcon(kind) {
   const k = String(kind || '').toLowerCase();
@@ -56,11 +69,22 @@ export default function CourseCurriculum({
 }) {
   const nav = useLepNav();
   const demo = useCourseDemo();
+  const { profile } = useAuth();
   const { getTaskSubmission } = usePrograms();
-  const taskIsDone = useMemo(
-    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
-    [demo.isDone, demo.done, getTaskSubmission]
-  );
+  const taskIsDone = useMemo(() => {
+    const base = makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission });
+    const bhagDone = Boolean(String(learnerBhagText(profile) || '').trim());
+    const profileDone = isLepProfileInfoDone(profile);
+    return (pid, taskId) =>
+      taskId === '__lep-bhag' ? bhagDone : taskId === '__lep-profile' ? profileDone : base(pid, taskId);
+  }, [demo.isDone, demo.done, getTaskSubmission, profile]);
+  const phaseTasks = (phase) =>
+    programId === PROGRAMS.LEP && phase.id === 'pre-program' ? LEP_PREP_ROWS : courseTasks(programId, phase.id);
+  const openTask = (taskId) => {
+    if (taskId === '__lep-bhag') nav.goPractice('lep', 'lep-bhag');
+    else if (taskId === '__lep-profile') nav.goProfile();
+    else nav.goCourseTask(programId, taskId);
+  };
   const phases = coursePhases(programId);
   const phaseId = currentPhaseId(programId, enrolled, lepFlow);
   const currentIndex = Math.max(0, phases.findIndex((p) => p.id === phaseId));
@@ -73,7 +97,7 @@ export default function CourseCurriculum({
   const progress = useMemo(() => {
     const all = [];
     phases.forEach((p) => {
-      courseTasks(programId, p.id).forEach((t) => all.push(t));
+      phaseTasks(p).forEach((t) => all.push(t));
     });
     const done = all.filter((t) => taskIsDone(programId, t.id)).length;
     const next = all.find((t) => !taskIsDone(programId, t.id));
@@ -123,7 +147,7 @@ export default function CourseCurriculum({
               !isPhaseOpen(phase, false, lepFlow);
         const now = phase.id === phaseId;
         const expanded = phase.id === activeId;
-        const tasks = courseTasks(programId, phase.id);
+        const tasks = phaseTasks(phase);
         const doneCount = tasks.filter((t) => taskIsDone(programId, t.id)).length;
         // Earlier phases only get a tick once their tasks are done, so it agrees with the % above.
         const done = enrolled && i < currentIndex && doneCount >= tasks.length;
@@ -141,7 +165,7 @@ export default function CourseCurriculum({
               nextTaskId={nextTask?.id}
               programId={programId}
               isDone={taskIsDone}
-              onTask={(taskId) => nav.goCourseTask(programId, taskId)}
+              onTask={openTask}
               onCollapse={() => setExpandedId('__none__')}
               complete={done && doneCount >= tasks.length && tasks.length > 0}
             />
@@ -156,8 +180,15 @@ export default function CourseCurriculum({
               key={phase.id}
               index={i}
               phase={phase}
-              hint={lock && !lock.enroll ? lock.text : unlockHint(prevTitle)}
-              onPress={!enrolled && (!lock || lock.enroll) ? nav.goEnroll : undefined}
+              hint={
+                lock && !lock.enroll
+                  ? lock.text
+                  : !enrolled
+                    ? 'Unlocks when you enrol · tap to see what is inside'
+                    : unlockHint(prevTitle)
+              }
+              // Registered: she can look inside a locked phase (tasks shown locked) before enrolling.
+              onPress={!enrolled && (!lock || lock.enroll) ? () => nav.goCoursePhase(programId, phase.id) : undefined}
             />
           );
         }

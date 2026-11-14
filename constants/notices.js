@@ -8,11 +8,11 @@ const LEP_REGISTERED = [
     id: 'lep-r-codesef',
     kind: 'attention',
     icon: 'assignment-late',
-    title: 'Fill the CoDeSeF Sheet before Thursday',
+    title: 'Update your B-HAG before Orientation',
     meta: 'LEP · pre-program · 10 min',
     action: 'Open task',
     ago: '1h',
-    go: { to: 'task', programId: 'lep', taskId: 'lep-prep-codesef-sheet' },
+    go: { to: 'today' },
   },
   {
     id: 'lep-r-pay',

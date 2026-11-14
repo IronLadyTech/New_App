@@ -5,23 +5,9 @@ import { daysFromDay1, todayIsoIST } from './lepDailyPractice';
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// Before the programme she is asked only for her B-HAG and profile (Home shows those), so no
+// CoDeSeF sheet or NSDC registration is due here (programme team, Nov 2026).
 const DUE_TEMPLATES = [
-  {
-    title: 'Fill the CoDeSeF Sheet',
-    tag: 'LEP',
-    kind: 'Form · pre-program',
-    icon: 'edit-note',
-    taskId: 'lep-prep-codesef-sheet',
-    anchor: 'orientation',
-  },
-  {
-    title: 'Complete NSDC Registration',
-    tag: 'LEP',
-    kind: 'Link · pre-program',
-    icon: 'how-to-reg',
-    taskId: 'lep-prep-nsdc',
-    anchor: 'nsdc',
-  },
   {
     title: 'Program Access Essentials',
     tag: 'LEP',
@@ -32,8 +18,9 @@ const DUE_TEMPLATES = [
   },
 ];
 
+// Her date in India for `now` (it used to ignore `now`, so a given date was never honoured).
 function istTodayKey(now = new Date()) {
-  return todayIsoIST();
+  return new Date(now.getTime() + 330 * 60000).toISOString().slice(0, 10);
 }
 
 function parseLocal(iso) {
@@ -110,6 +97,34 @@ function sessionDueItems(batch, now = new Date()) {
     }));
 }
 
+/**
+ * Tasks due during the programme, shown in the 7 days before they are due: VIA Survey before
+ * the Differentiated Brand session (S4, Day 1 + 7), NSDC registration before Graduation
+ * (S8, Day 1 + 28).
+ */
+const PROGRAM_TASK_DUES = [
+  { title: 'Complete your VIA Survey', kind: 'Assignment · before Differentiated Brand', icon: 'assignment', taskId: 'lep-via-survey', dayOffset: 7 },
+  { title: 'Complete NSDC Registration', kind: 'Link · before Graduation', icon: 'how-to-reg', taskId: 'lep-prep-nsdc', dayOffset: 28 },
+];
+
+function programTaskDues(day1, now = new Date()) {
+  const today = istTodayKey(now);
+  return PROGRAM_TASK_DUES.map((t) => {
+    const dateIso = addCalendarDays(day1, t.dayOffset);
+    const diff = daysBetween(today, dateIso);
+    if (diff < 0 || diff > 7) return null;
+    return {
+      title: t.title,
+      tag: 'LEP',
+      kind: t.kind,
+      icon: t.icon,
+      taskId: t.taskId,
+      due: dueLabelForAnchor(dateIso, { beforeDay1: true }, now),
+      urgent: diff <= 1,
+    };
+  }).filter(Boolean);
+}
+
 /** Due-this-week rows from batch Day 1 + LEP_Flow sessions. */
 export function buildLepDueWeek(batch, now = new Date()) {
   const anchors = anchorDates(batch);
@@ -119,7 +134,7 @@ export function buildLepDueWeek(batch, now = new Date()) {
 
   // After Day 1 weekend — show live session dues from the flow PDF.
   if (anchors && offset != null && offset >= 0) {
-    const sessions = sessionDueItems(batch, now);
+    const sessions = [...programTaskDues(anchors.day1, now), ...sessionDueItems(batch, now)];
     const d = parseLocal(anchors.day1);
     return {
       sub: `Your batch · Day 1 ${DOW_SHORT[d.getDay()]} ${d.getDate()} ${MON_SHORT[d.getMonth()]}`,

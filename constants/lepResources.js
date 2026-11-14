@@ -17,13 +17,6 @@ export const LEP_RESOURCES = {
   'lep-via-survey': {
     resourceLinks: [{ label: 'VIA Character Survey', url: 'https://www.viacharacter.org' }],
   },
-  'lep-prep-codesef-sheet': {
-    readingDocument: {
-      label: 'What CoDeSeF is',
-      url: lepDoc('codesef-guidelines-template.pdf'),
-      pages: [1],
-    },
-  },
   'lep-day1-promises': {
     readingDocument: {
       label: 'Promises and Agreements',

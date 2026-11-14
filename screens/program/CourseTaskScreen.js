@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { learnerBhagText } from '../../utils/programAccess';
+import { practiceKey } from '../../constants/practice';
 import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
@@ -600,7 +602,15 @@ export default function CourseTaskScreen({ route, navigation }) {
       });
       setSubmittedAt(saved.submittedAt || null);
     } else {
-      setForm(initialFormForTemplate(task?.templateId) || {});
+      const blank = initialFormForTemplate(task?.templateId) || {};
+      // Day 2 CoDeSeF: "My Goal" is her B-HAG — start it from the B-HAG she already wrote.
+      if (task?.templateId === TEMPLATE_IDS.CODESEF) {
+        const bhag = String(
+          learnerBhagText(profile) || demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || ''
+        ).trim();
+        if (bhag && !blank.goal) blank.goal = bhag;
+      }
+      setForm(blank);
       setSubmittedAt(null);
     }
     setEditing(false);
@@ -765,15 +775,12 @@ export default function CourseTaskScreen({ route, navigation }) {
         task,
         lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded })
       );
-      if (isUpload && uploaded) {
-        // The file is already safe in Storage and Firestore shows the write locally at once:
-        // don't hold her on "Saving…" for the server's ack. Only a real failure speaks up.
-        saving.catch((e) =>
-          showAlert('Not saved yet', `${TASK_SAVE_FAILED}${e?.message ? `\n\n(${e.message})` : ''}`)
-        );
-      } else {
-        await saving;
-      }
+      // Firestore shows the write on this phone at once and keeps it until the server has it:
+      // don't hold her on "Saving…" for the server's ack — on weak phones and networks that was
+      // seconds per Submit. Only a real failure speaks up.
+      saving.catch((e) =>
+        showAlert('Not saved yet', `${TASK_SAVE_FAILED}${e?.message ? `\n\n(${e.message})` : ''}`)
+      );
       if (isErrcTask) {
         demo.saveSubmission(programId, taskId, form);
         setSubmittedAt(Date.now());

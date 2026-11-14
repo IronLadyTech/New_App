@@ -16,7 +16,9 @@ import { db } from '../services/firebase';
  * While PERF_UPLOAD is on, the last samples also go to app_activity/{uid}.perfDebug so they
  * can be read without a screenshot — remove once tab switching is fixed.
  */
-const PERF_UPLOAD = true; // collecting from testers' phones to find the slow tab switch; turn off after
+// Off: it ran a 250 ms timer and wrote to Firestore every 8 s on every learner's phone, which
+// itself slowed weak phones. The overlay (long-press the version line in Profile) still works.
+const PERF_UPLOAD = false;
 const KEY = 'il.perfHud.v1';
 const state = { on: false, tap: null, history: [], worstLagMs: 0, uid: null };
 const bootAt = Date.now();

@@ -7,10 +7,6 @@ export const LEP_TASK_PURPOSE = {
     why: 'Your strengths are the foundation of Week 1 — Strength Based Excellence.',
     gain: 'Iron Lady can build your individualised excellence profile from your VIA report (and photos).',
   },
-  'lep-prep-codesef-sheet': {
-    why: 'Day 2 turns strategy into a plan toward your B-HAG.',
-    gain: 'A first draft of your CoDeSeF strategy so you arrive ready for the intensive weekend.',
-  },
   'lep-prep-nsdc': {
     why: 'Government registration is required for programme certification paperwork.',
     gain: 'NSDC on file — one less admin blocker before Day 1 and graduation.',

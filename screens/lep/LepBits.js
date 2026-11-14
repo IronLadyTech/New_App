@@ -182,7 +182,8 @@ export function RedCta({ label, onPress, icon }) {
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
-        opacity: pressed ? 0.92 : 1,
+        opacity: pressed ? 0.7 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
       {icon ? <MaterialIcons name={icon} size={16} color="#FFFFFF" style={{ marginRight: 8 }} /> : null}
@@ -250,7 +251,7 @@ export function WhisperCard({ quote, onPress, onDismiss }) {
   );
 }
 
-export function CheckRow({ item, last, onPress }) {
+export function CheckRow({ item, last, onPress, locked }) {
   return (
     <Pressable
       onPress={onPress}
@@ -264,9 +265,9 @@ export function CheckRow({ item, last, onPress }) {
       }}
     >
       <MaterialIcons
-        name={item.done ? 'check-circle' : 'radio-button-unchecked'}
+        name={locked ? 'lock-outline' : item.done ? 'check-circle' : 'radio-button-unchecked'}
         size={22}
-        color={item.done ? G.ink : '#C8C4B6'}
+        color={item.done && !locked ? G.ink : '#C8C4B6'}
       />
       <View style={{ marginLeft: 12, flex: 1 }}>
         <ILText role="label" color={G.ink} style={[af, { fontSize: 14, lineHeight: 20 }]}>

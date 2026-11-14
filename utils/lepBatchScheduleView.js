@@ -205,7 +205,6 @@ export function deadlineItemsForDate(batch, dateIso, now = new Date(), day1Iso =
   const orient = batchForDues.orientationDate || addDaysIso(day1, -2);
   const nsdc = orient ? addDaysIso(orient, 1) : null;
   const map = {
-    'lep-prep-codesef-sheet': orient,
     'lep-prep-nsdc': nsdc,
     'lep-orientation-access': day1,
   };

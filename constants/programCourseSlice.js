@@ -7,7 +7,7 @@ import { withLepResources } from './lepResources';
 
 export const COURSE_PHASES = {
   [PROGRAMS.LEP]: [
-    { id: 'pre-program', title: 'Pre-Program Preparation', sub: 'VIA Survey · 3 photographs · CoDeSeF · NSDC', openRegistered: true },
+    { id: 'pre-program', title: 'Pre-Program Preparation', sub: 'B-HAG · profile details', openRegistered: true },
     { id: 'orientation', title: 'Program Orientation', sub: 'Framework · Access Essentials · Schedule', openRegistered: true },
     { id: 'day-1', title: 'Day 1 – Personal Transformation', sub: '6 tasks · Day 1 Assignment', openRegistered: false },
     { id: 'day-2', title: 'Day 2 – Strategies and Tactics', sub: '5 tasks · Day 2 Assignment', openRegistered: false },
@@ -41,34 +41,23 @@ export const COURSE_TASKS = {
   [PROGRAMS.LEP]: withLepResources([
     {
       id: "lep-via-survey",
-      phase: "pre-program",
+      phase: "week-1",
       order: 0,
       title: "Complete your VIA Survey and Submit your 3 Photographs",
       type: TASK_TYPES.FILE_UPLOAD,
       kind: "Assignment",
       description: "Register and complete the VIA Character Survey, then upload your free survey report. Your individualised excellence profile depends on this — it cannot be produced without your report.",
-      week: "Prep",
-    },
-    {
-      id: "lep-prep-codesef-sheet",
-      phase: "pre-program",
-      order: 1,
-      title: "Fill the CoDeSeF Sheet",
-      type: TASK_TYPES.EDITABLE_TEMPLATE,
-      templateId: "codesef",
-      kind: "Form",
-      description: "Fill in your CoDeSeF sheet before Day 1. Work through the four steps in order — each one builds on the step above it.",
-      week: "Prep",
+      week: "Week 1",
     },
     {
       id: "lep-prep-nsdc",
-      phase: "pre-program",
+      phase: "week-4",
       order: 2,
       title: "Complete NSDC Registration",
       type: TASK_TYPES.LINK,
       kind: "Link",
       description: "Complete your NSDC registration and submit the confirmation link.",
-      week: "Prep",
+      week: "Week 4",
     },
     {
       id: "lep-orientation-framework",

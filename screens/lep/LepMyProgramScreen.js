@@ -57,7 +57,7 @@ import { openLink } from '../../utils/openLink';
 const REGISTERED_SESSION_CODES = new Set(['S0', 'S1', 'S2']);
 
 // Registered = partial payment = partial unlock. Everything after these stays locked.
-const REG_OPEN_PHASES = 3;
+const REG_OPEN_PHASES = 2; // Pre-Program + Orientation are open; 03–11 unlock on enrolment.
 
 export default function LepMyProgramScreen({ route }) {
   const { profile } = useAuth();

@@ -9,7 +9,7 @@ import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { useAuth } from '../../context/AuthContext';
 import { isLepEnrolled } from '../../utils/lepState';
 import { GuestBackBar } from '../guest/GuestBits';
-import { CheckRow, Page, WhiteCard } from '../lep/LepBits';
+import { CheckRow, Page, RedCta, WhiteCard } from '../lep/LepBits';
 import { useLepNav } from '../lep/useLepNav';
 import {
   COURSE_LABEL,
@@ -82,6 +82,7 @@ export default function CoursePhaseScreen({ route, navigation }) {
                   done: taskIsDone(programId, item.id),
                 }}
                 last={i === tasks.length - 1}
+                locked={!open}
                 onPress={
                   open
                     ? () => nav.goCourseTask(programId, item.id)
@@ -100,13 +101,18 @@ export default function CoursePhaseScreen({ route, navigation }) {
           )}
         </WhiteCard>
         {!open ? (
-          <ILText
-            role="bodySm"
-            color={G.meta}
-            style={{ marginTop: 14, fontFamily: IL_FONTS.regular, fontSize: 13 }}
-          >
-            Locked until enrollment. Tap a task to complete payment.
-          </ILText>
+          <View style={{ marginTop: 16 }}>
+            <ILText
+              role="bodySm"
+              color={G.meta}
+              style={{ fontFamily: IL_FONTS.regular, fontSize: 13, marginBottom: 12 }}
+            >
+              {enrolled
+                ? 'Opens on its date in your batch.'
+                : 'This is what you get in this phase. It unlocks when you complete your enrollment.'}
+            </ILText>
+            {!enrolled ? <RedCta label="Complete enrollment" icon="lock-open" onPress={nav.goEnroll} /> : null}
+          </View>
         ) : null}
       </ScrollView>
     </Page>

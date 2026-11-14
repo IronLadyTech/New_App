@@ -48,7 +48,6 @@ export function practiceSummary(items) {
 }
 
 export const DUE_WEEK = [
-  { title: 'Fill the CoDeSeF Sheet', tag: 'LEP', kind: 'Form · pre-program', due: 'Due Thu', urgent: true, icon: 'edit-note', taskId: 'lep-prep-codesef-sheet' },
   { title: 'Complete NSDC Registration', tag: 'LEP', kind: 'Link · pre-program', due: 'Due Fri', icon: 'how-to-reg', taskId: 'lep-prep-nsdc' },
   { title: 'Program Access Essentials', tag: 'LEP', kind: 'Checklist · orientation', due: 'Before Sat', icon: 'checklist', taskId: 'lep-orientation-access' },
 ];

@@ -323,6 +323,7 @@ function RegisteredHome({ cmsBatch, preview }) {
           guideContext={guideContext}
           nudge={enrolNudge}
           onEnrol={nav.goEnroll}
+          onJourney={() => nav.goMyProgram('Journey')}
           onCta={onCta}
           onPhaseCta={onPhaseCta}
           onTask={openTask}

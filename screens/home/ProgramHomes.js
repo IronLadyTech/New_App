@@ -841,14 +841,6 @@ function ComboHome() {
             onPress: () => nav.goCourseTask(PROGRAMS.LEP, 'lep-day1-assignment'),
           },
           {
-            title: 'Fill the CoDeSeF Sheet',
-            tag: 'LEP',
-            kind: 'Form',
-            due: 'Due Fri',
-            icon: 'edit-note',
-            onPress: () => nav.goCourseTask(PROGRAMS.LEP, 'lep-prep-codesef-sheet'),
-          },
-          {
             title: 'Brand creation video',
             tag: '100BM',
             kind: 'Pre-program · your Core Story',

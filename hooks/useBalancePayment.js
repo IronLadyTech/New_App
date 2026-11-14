@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import RazorpayCheckoutModal from '../components/RazorpayCheckoutModal';
@@ -35,6 +35,8 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
   const [paying, setPaying] = useState(false);
   const [checkout, setCheckout] = useState(null);
   const [enrolled, setEnrolled] = useState(null);
+  // What she is actually charged (the server's order), for the tick page and the receipt.
+  const amountRef = useRef(RAZORPAY_TEST_AMOUNT_PAISE);
 
   const checkoutSession = (cloudOrder) => {
     const payer = vm.payer || {};
@@ -74,8 +76,10 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
       return;
     }
 
+    // The server has verified it: she is enrolled now. Home switches on this patch; the access
+    // refresh (Zoho) runs in the background instead of holding the green tick for seconds.
     patchProfile(profilePatchAfterFullPayment(profile, vm.programId, { paymentId, orderId }));
-    const verifyTask = refreshMyAccess().catch(() => {});
+    refreshMyAccess().catch(() => {});
 
     let saved = null;
     try {
@@ -83,7 +87,7 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
         uid: user?.uid,
         transactionId: paymentId,
         razorpayOrderId: orderId || null,
-        amountPaise: RAZORPAY_TEST_AMOUNT_PAISE,
+        amountPaise: amountRef.current,
         programId: vm.programId,
         programTitle: vm.programTitle,
         description: `${vm.programTitle} — programme balance`,
@@ -97,13 +101,12 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
       console.warn('savePaymentOrder failed:', err?.message);
     }
 
-    await verifyTask;
     setPaying(false);
     setEnrolled({
       title: vm.programTitle,
       programId: vm.programId,
       order: saved,
-      amountRupees: RAZORPAY_TEST_AMOUNT_PAISE / 100,
+      amountRupees: amountRef.current / 100,
       reference: paymentId,
     });
   };
@@ -113,6 +116,7 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
     setPaying(true);
     try {
       const session = checkoutSession(await createRazorpayOrder(vm.programId));
+      amountRef.current = Number(session.amount) || RAZORPAY_TEST_AMOUNT_PAISE;
       if (isWebCheckout) {
         await onPaymentSuccess(await openRazorpayInBrowser(session));
         return;

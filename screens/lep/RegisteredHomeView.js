@@ -255,6 +255,47 @@ export function JourneyRail({ rail, onOpen }) {
   );
 }
 
+/** Registered: see the whole LEP journey (what unlocks on enrolment) before enrolling. */
+function JourneyPreviewCard({ onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="See the full LEP journey"
+      style={({ pressed }) => ({
+        backgroundColor: T.surface,
+        borderRadius: 22,
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: T.teal,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <MaterialIcons name="map" size={20} color="#FFFFFF" />
+      </View>
+      <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+        <ILText role="label" color={T.ink} style={{ fontSize: 14 }}>
+          See the full LEP journey
+        </ILText>
+        <ILText role="bodySm" color={T.muted} style={{ marginTop: 2, fontSize: 12.5 }}>
+          All 11 phases — Day 1, Day 2, four weeks, certificate. Locked ones open on enrolment.
+        </ILText>
+      </View>
+      <MaterialIcons name="chevron-right" size={22} color={T.muted} />
+    </Pressable>
+  );
+}
+
 export default function RegisteredHomeView({
   model,
   guideContext,
@@ -275,6 +316,7 @@ export default function RegisteredHomeView({
   onOpenSchedule,
   nudge,
   onEnrol,
+  onJourney,
 }) {
   return (
     <View style={{ gap: 16 }}>
@@ -318,6 +360,8 @@ export default function RegisteredHomeView({
         }
         onTask={onTask}
       />
+
+      {onJourney ? <JourneyPreviewCard onPress={onJourney} /> : null}
 
       {roleOn ? (
         <View
@@ -392,7 +436,7 @@ export default function RegisteredHomeView({
           <ILText role="title" color={T.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 21, lineHeight: 26 }}>
             Bring to Day 1
           </ILText>
-          {['Laptop with camera on', 'A notebook', 'Your B-HAG — we print it on your CoDeSeF sheet on Day 2'].map((line) => (
+          {['Laptop with camera on', 'A notebook', 'Your B-HAG'].map((line) => (
             <ILText key={line} role="body" color={T.ink} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
               {`•  ${line}`}
             </ILText>
@@ -541,7 +585,7 @@ export function BhagHomeCard({ bhag, onBhag, style }) {
       <ILText role="bodySm" color={T.muted} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
         {bhag
           ? 'Calibrated during your initial leadership assessment'
-          : 'Write it in one sentence. Day 2 prints it on your CoDeSeF sheet.'}
+          : 'Write it in one sentence. We build on it together on Day 2.'}
       </ILText>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>

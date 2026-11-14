@@ -17,7 +17,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useProgramRoutes } from '../../context/ProgramNavContext';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
-import { todayIsoIST } from '../../utils/lepDailyPractice';
+import { daysFromDay1, todayIsoIST } from '../../utils/lepDailyPractice';
+import { useEnrolledDailyPractice, useRegisteredDailyPractice } from '../../hooks/useLepDailyPractice';
+import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
 import { learnerBatchLabel, learnerProgramDates } from '../../utils/programAccess';
 import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import {
@@ -35,7 +37,6 @@ import {
   FACE,
   QUIZ_Q,
   ROAD,
-  TODAY_ITEMS,
 } from './lepData';
 import {
   buildScheduleFullAgenda,
@@ -644,49 +645,93 @@ export function LepQuizScreen() {
   );
 }
 
+/** Day 1 as "14 Nov". */
+function shortDay(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${d} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1]}`;
+}
+
+/**
+ * Today's checklist — her real plan for today (the same list as Home), never sample data:
+ * the count is only what she completed, and the day / week line follows her own Day 1
+ * (before Day 1 it says when the programme starts, never "Week 2").
+ */
 export function LepTodayChecklistScreen() {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
+  const { batch: cmsBatch } = useLearnerCmsBatch('lep');
+  const group = useLepBatchGroup(profile);
+  const enrolled = isLepEnrolled(profile);
+  const enrolledItems = useEnrolledDailyPractice(group, cmsBatch);
+  const registeredItems = useRegisteredDailyPractice(group, cmsBatch);
+  const items = (enrolled ? enrolledItems : registeredItems) || [];
+  const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
+  const offset = daysFromDay1(todayIsoIST(), day1Iso);
+
+  const done = items.filter((i) => i.done).length;
+  const percent = items.length ? Math.round((done / items.length) * 100) : 0;
+  const next = items.find((i) => !i.done) || null;
+  const sub =
+    offset == null
+      ? 'Before your programme'
+      : offset < 0
+        ? `Programme starts ${shortDay(day1Iso)} · ${-offset} day${offset === -1 ? '' : 's'} to go`
+        : `Day ${offset + 1} of your programme · Week ${Math.floor(offset / 7) + 1}`;
+
   return (
-    <Shell title={`Today, ${name}`} sub="Day 16 of your first month · Week 2">
-      <ProgressDark kicker="3 of 6 done" title="~22 min left" percent={50} right=" " />
-      <View style={{ marginTop: 14 }}>
-        <WhisperCard
-          quote={`Three left, ${name}. The Week 2 Engagement Form is four minutes — tonight’s session goes further if it is done.`}
-          onPress={nav.goAssignment}
-        />
-      </View>
+    <Shell title={`Today, ${name}`} sub={sub}>
+      <ProgressDark
+        kicker={`${done} of ${items.length} done`}
+        title={items.length && done === items.length ? 'All done for today' : 'Your plan for today'}
+        percent={percent}
+        right=" "
+      />
+      {next ? (
+        <View style={{ marginTop: 14 }}>
+          <WhisperCard quote={`Next, ${name}: ${next.title}.`} onPress={() => nav.goPracticeItem(next)} />
+        </View>
+      ) : null}
       <WhiteCard style={{ marginTop: 14, borderRadius: 22, paddingHorizontal: 16 }}>
-        {TODAY_ITEMS.map((item, i) => (
-          <View
-            key={item.title}
-            style={{
-              flexDirection: 'row',
-              paddingVertical: 14,
-              borderBottomWidth: i === TODAY_ITEMS.length - 1 ? 0 : 1,
-              borderBottomColor: G.line,
-            }}
-          >
-            <MaterialIcons
-              name={item.done ? 'check-circle' : 'radio-button-unchecked'}
-              size={22}
-              color={item.done ? G.ink : '#C8C4B6'}
-            />
-            <View style={{ marginLeft: 12 }}>
-              <ILText role="label" color={G.ink}>
-                {item.title}
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-                {item.meta}
-              </ILText>
-            </View>
+        {items.length ? (
+          items.map((item, i) => (
+            <Pressable
+              key={item.id || item.title}
+              onPress={() => nav.goPracticeItem(item)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                paddingVertical: 14,
+                borderBottomWidth: i === items.length - 1 ? 0 : 1,
+                borderBottomColor: G.line,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <MaterialIcons
+                name={item.done ? 'check-circle' : 'radio-button-unchecked'}
+                size={22}
+                color={item.done ? G.ink : '#C8C4B6'}
+              />
+              <View style={{ marginLeft: 12, flex: 1 }}>
+                <ILText role="label" color={G.ink}>
+                  {item.title}
+                </ILText>
+                {item.meta ? (
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                    {item.meta}
+                  </ILText>
+                ) : null}
+              </View>
+            </Pressable>
+          ))
+        ) : (
+          <View style={{ paddingVertical: 18 }}>
+            <ILText role="body" color={G.meta}>
+              Nothing due today.
+            </ILText>
           </View>
-        ))}
+        )}
       </WhiteCard>
-      <View style={{ marginTop: 18 }}>
-        <RedCta label="Join tonight’s session" onPress={nav.goCheckin} />
-      </View>
     </Shell>
   );
 }

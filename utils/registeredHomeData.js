@@ -56,9 +56,7 @@ const PREVIEW = {
     note: 'In this order. Nothing is locked; due dates follow your batch.',
     tasks: [
       ['enroll', 'Complete enrollment', 'About 5 minutes', true, 'now'],
-      ['via', 'VIA Survey · 15 min', 'Due dates appear once you pick a batch', true, 'todo'],
-      ['bhag', 'Write your B-HAG · 10 min', 'Due dates appear once you pick a batch', true, 'todo'],
-      ['nsdc', 'NSDC registration', 'Due dates appear once you pick a batch', true, 'todo'],
+      ['bhag', 'Update your B-HAG · 10 min', 'Due dates appear once you pick a batch', true, 'todo'],
       ['profile', 'Profile info', 'Due dates appear once you pick a batch', true, 'todo'],
     ],
   },
@@ -72,9 +70,7 @@ const PREVIEW = {
     note: 'Batch date is chosen on the welcome screen. Due dates follow once it is set.',
     tasks: [
       ['enroll', 'Complete enrollment', 'Done', true, 'done'],
-      ['via', 'VIA Survey · 15 min', 'Due dates appear once you pick a batch', true, 'todo'],
-      ['bhag', 'Write your B-HAG · 10 min', 'Due dates appear once you pick a batch', true, 'todo'],
-      ['nsdc', 'NSDC registration', 'Due dates appear once you pick a batch', true, 'todo'],
+      ['bhag', 'Update your B-HAG · 10 min', 'Due dates appear once you pick a batch', true, 'todo'],
       ['profile', 'Profile info', 'Due dates appear once you pick a batch', true, 'todo'],
     ],
   },
@@ -88,13 +84,11 @@ const PREVIEW = {
     day1When: 'Sat 24 Oct · 9:00 AM',
     day1Iso: '2026-10-24',
     day1Clock: '9:00 AM',
-    guide: 'Your VIA Survey and B-HAG are due Wednesday 8:00 PM — we discuss your B-HAG at Orientation.',
+    guide: 'Your B-HAG and profile are due Wednesday 8:00 PM — we discuss your B-HAG at Orientation.',
     note: 'Due before Orientation on Thursday.',
     tasks: [
       ['enroll', 'Complete enrollment', 'Done', true, 'done'],
-      ['via', 'VIA Survey · 15 min', 'Due Wed 21 Oct, 8:00 PM', true, 'now'],
-      ['bhag', 'Write your B-HAG · 10 min', 'Due Wed 21 Oct, 8:00 PM', true, 'todo'],
-      ['nsdc', 'NSDC registration', 'Due Fri 23 Oct', true, 'todo'],
+      ['bhag', 'Update your B-HAG · 10 min', 'Due Wed 21 Oct, 8:00 PM', true, 'todo'],
       ['profile', 'Profile info', 'Due Wed 21 Oct, 8:00 PM', true, 'todo'],
     ],
   },
@@ -112,9 +106,7 @@ const PREVIEW = {
     note: 'All pre-work done. Join links arrive 1 hour before each session.',
     tasks: [
       ['enroll', 'Complete enrollment', 'Done', true, 'done'],
-      ['via', 'VIA Survey', 'Done · report uploaded', true, 'done'],
-      ['bhag', 'Write your B-HAG', 'Done', true, 'done'],
-      ['nsdc', 'NSDC registration', 'Done', true, 'done'],
+      ['bhag', 'Update your B-HAG', 'Done', true, 'done'],
       ['profile', 'Profile info', 'Done', true, 'done'],
     ],
   },
@@ -155,13 +147,13 @@ function modelFrom(status, firstName, spec) {
       key: 'prework',
       label: 'Pre-work',
       pill: 'Pre-work',
-      body: spec.note || 'Finish VIA, B-HAG and NSDC before Day 1.',
+      body: spec.note || 'Update your B-HAG and profile before Orientation.',
       dated: Boolean(spec.dated),
       orientation: spec.orientation || '',
       day1Eyebrow: spec.day1Eyebrow || '',
       day1When: spec.day1When || '',
       cta: lockerStep >= 1 ? spec.cta : 'Finish Registered first',
-      ctaTaskId: lockerStep >= 1 ? nextTask?.id || 'via' : null,
+      ctaTaskId: lockerStep >= 1 ? nextTask?.id || 'bhag' : null,
       unlocked: lockerStep >= 1,
       active: lockerStep === 1,
       done: lockerStep > 1,
@@ -313,7 +305,9 @@ export function buildRegisteredHome(input) {
   const enrolled = pay === PAYMENT_STATUS.PAID;
   const seatHeld = pay === PAYMENT_STATUS.REGISTER || enrolled;
   const linked = lepBatchIsAssigned(profile);
-  const preworkComplete = Boolean(viaDone && bhagDone && nsdcDone && profileDone);
+  // Before the programme she is asked only for her B-HAG and profile details (programme team,
+  // Nov 2026): VIA and NSDC are not pre-work any more.
+  const preworkComplete = Boolean(bhagDone && profileDone);
   const dates = linked ? batchDates(profile, cmsBatch) : null;
 
   // CTA / copy phase — paying full fee early still leaves pre-work open.
@@ -345,27 +339,11 @@ export function buildRegisteredHome(input) {
       doneMeta: 'Done',
     },
     {
-      id: 'via',
-      title: status === 'ready' ? 'VIA Survey' : 'VIA Survey · 15 min',
-      required: true,
-      done: viaDone,
-      openMeta: dates ? dueMeta(viaDue, viaClock) : noDate,
-      doneMeta: 'Done · report uploaded',
-    },
-    {
       id: 'bhag',
-      title: status === 'ready' ? 'Write your B-HAG' : 'Write your B-HAG · 10 min',
+      title: status === 'ready' ? 'Update your B-HAG' : 'Update your B-HAG · 10 min',
       required: true,
       done: bhagDone,
       openMeta: dates ? dueMeta(viaDue, viaClock) : noDate,
-      doneMeta: 'Done',
-    },
-    {
-      id: 'nsdc',
-      title: 'NSDC registration',
-      required: true,
-      done: nsdcDone,
-      openMeta: dates ? dueMeta(nsdcDue, nsdcClock) : noDate,
       doneMeta: 'Done',
     },
     {
@@ -400,12 +378,12 @@ export function buildRegisteredHome(input) {
   const guide =
     status === 'enroll'
       ? lockerStep >= 1
-        ? 'Enrollment can wait — finish VIA, B-HAG and NSDC so you are ready for Day 1.'
+        ? 'Enrollment can wait — update your B-HAG and profile so you are ready for Day 1.'
         : 'Start with enrollment — it secures your seat and unlocks your batch dates.'
       : status === 'batch'
         ? 'Pick your batch first — your pre-work due dates follow it.'
         : status === 'prework'
-          ? `Your VIA Survey and B-HAG are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''} — we discuss your B-HAG at Orientation.`
+          ? `Your B-HAG and profile are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''} — we discuss your B-HAG at Orientation.`
           : `You are all set. See you at Orientation on ${orientDay}${orientClock ? `, ${orientClock}` : ''}.`;
 
   const note =
@@ -479,7 +457,7 @@ export function buildRegisteredHome(input) {
     lockerStep,
     phases,
     cta,
-    ctaTaskId: lockerStep === 1 ? preworkTask?.id || 'via' : nextTask?.id || null,
+    ctaTaskId: lockerStep === 1 ? preworkTask?.id || 'bhag' : nextTask?.id || null,
     guide,
     note,
     tasks,
@@ -504,7 +482,7 @@ function ctaForLocker({ lockerStep, linked, seatHeld, enrolled, nextTask, prewor
 
 function preworkCta(task) {
   if (task?.id === 'via') return 'Start VIA Survey';
-  if (task?.id === 'bhag') return 'Write your B-HAG';
+  if (task?.id === 'bhag') return 'Update your B-HAG';
   if (task?.id === 'nsdc') return 'Complete NSDC registration';
   if (task?.id === 'profile') return 'Complete profile info';
   return 'Continue pre-work';
@@ -535,15 +513,15 @@ function buildLockerPhases({
       : statusLine || 'Seat held. You are registered for Leadership Essentials.';
 
   const preworkBody = dates
-    ? `VIA and B-HAG are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''}. Finish NSDC before Day 1.`
-    : 'Pick your batch date first — then VIA, B-HAG and NSDC unlock with due dates.';
+    ? `Your B-HAG and profile are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''}.`
+    : 'Pick your batch date first — then your B-HAG and profile get due dates.';
 
   const day1Body = dates
     ? 'Orientation, then your Saturday–Sunday intensive — dates from your batch.'
     : 'Day 1 opens after pre-work is complete and your batch date is set.';
 
   const preCta = preworkCta(preworkTask);
-  const preTaskId = preworkTask?.id || 'via';
+  const preTaskId = preworkTask?.id || 'bhag';
 
   return [
     {

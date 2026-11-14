@@ -214,8 +214,11 @@ export function programPaymentStatus(profile, programId) {
       ? normalizePaymentStatus(profile?.paymentStatus)
       : PAYMENT_STATUS.UNPAID;
   const fromZoho = paymentFromZohoLead(profile, id);
-  // Zoho balance-due must not show as fully enrolled in the app.
-  if (tier === PAYMENT_STATUS.PAID && fromZoho === PAYMENT_STATUS.REGISTER) {
+  // Zoho balance-due must not show as fully enrolled in the app — unless she paid the balance
+  // in the app: then Zoho still says "Partial Payment" for a while (the Lead moves to Started a
+  // moment later), and she must land on the enrolled home straight after the green tick.
+  const paidInApp = Boolean(id && profile?.programAccess?.[id]?.razorpayPaymentId);
+  if (tier === PAYMENT_STATUS.PAID && fromZoho === PAYMENT_STATUS.REGISTER && !paidInApp) {
     tier = PAYMENT_STATUS.REGISTER;
   }
   if (tier === PAYMENT_STATUS.UNPAID && fromZoho) tier = fromZoho;
