@@ -27,6 +27,7 @@ import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { phaseFlowFromBatch } from '../../utils/phaseUnlock';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import { makeTaskDoneChecker } from '../../utils/taskDone';
+import { resolveLepDay1Iso } from '../../utils/lepEnrolledCohortPhase';
 
 export default function CoursePhaseScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -40,7 +41,7 @@ export default function CoursePhaseScreen({ route, navigation }) {
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const lepFlow =
     programId === PROGRAMS.LEP
-      ? { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() }
+      ? { ...lepFlowContextFromBatch({ cmsBatch, day1Iso: resolveLepDay1Iso(profile, cmsBatch) }), todayIso: todayIsoIST() }
       : phaseFlowFromBatch(programId, cmsBatch, todayIsoIST());
   const tasks = filterLepCourseTasks(courseTasks(programId, phaseId), programId, ritualsUnlocked);
   const open = isPhaseOpen(phase, enrolled, lepFlow);

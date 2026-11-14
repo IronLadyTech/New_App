@@ -108,8 +108,10 @@ export function currentLepPhaseIdForDate(todayIso, day1Iso, enrolled) {
   return lastOpen;
 }
 
-export function lepFlowContextFromBatch({ cmsBatch, group, zohoRawBatch } = {}) {
-  const day1Iso = resolveLepDay1Iso({ cmsBatch, group, zohoRawBatch });
+export function lepFlowContextFromBatch({ cmsBatch, group, zohoRawBatch, day1Iso: ownDay1 } = {}) {
+  // `day1Iso`: her own Day 1 (profile / Zoho), for a batch that is not in the CMS — e.g. a
+  // graduate of an older batch: without it every phase after Orientation said "Opening soon".
+  const day1Iso = resolveLepDay1Iso({ cmsBatch, group, zohoRawBatch }) || ownDay1 || null;
   return {
     programId: 'lep',
     day1Iso,

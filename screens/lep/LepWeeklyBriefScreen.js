@@ -39,8 +39,8 @@ export default function LepWeeklyBriefScreen() {
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
   const enrolled = isLepEnrolled(profile);
   const lepFlow = useMemo(
-    () => ({ ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() }),
-    [cmsBatch]
+    () => ({ ...lepFlowContextFromBatch({ cmsBatch, day1Iso: resolveLepDay1Iso(profile, cmsBatch) }), todayIso: todayIsoIST() }),
+    [cmsBatch, profile]
   );
   const taskIsDone = useMemo(
     () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),

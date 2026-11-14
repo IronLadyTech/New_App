@@ -117,7 +117,7 @@ export default function LepMyProgramScreen({ route }) {
           <UnderlineTabs items={['Journey', 'Sessions', 'Cohort']} value={tab} onChange={setTab} />
         </View>
         {tab === 'Journey' ? (
-          <JourneyBody cmsBatch={cmsBatch} locked={!enrolled} alumniGraduate={alumniGraduate} />
+          <JourneyBody cmsBatch={cmsBatch} day1Iso={day1Iso} locked={!enrolled} alumniGraduate={alumniGraduate} />
         ) : tab === 'Sessions' ? (
           <SessionsBody cmsBatch={cmsBatch} enrolled={enrolled} alumniGraduate={alumniGraduate} onEnroll={nav.goEnroll} />
         ) : (
@@ -194,9 +194,9 @@ function UnlockRest({ onEnroll }) {
   );
 }
 
-function JourneyBody({ cmsBatch, locked = false, alumniGraduate = false }) {
+function JourneyBody({ cmsBatch, day1Iso, locked = false, alumniGraduate = false }) {
   const nav = useLepNav();
-  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
+  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch, day1Iso }), todayIso: todayIsoIST() };
   return (
     <View style={{ marginTop: 18 }}>
       {alumniGraduate ? (

@@ -494,7 +494,7 @@ export function LepPhaseDetailScreen() {
   const { profile } = useAuth();
   const enrolled = isLepEnrolled(profile);
   const { batch: cmsBatch } = useLearnerCmsBatch('lep');
-  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch }), todayIso: todayIsoIST() };
+  const lepFlow = { ...lepFlowContextFromBatch({ cmsBatch, day1Iso: resolveLepDay1Iso(profile, cmsBatch) }), todayIso: todayIsoIST() };
   const batchLabel = cmsBatch?.name ? String(cmsBatch.name) : 'Your batch';
   return (
     <Shell title="Leadership Essentials" sub={`LEP · ${batchLabel} · Course`}>

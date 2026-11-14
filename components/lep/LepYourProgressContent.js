@@ -111,10 +111,10 @@ export default function LepYourProgressContent({ onOpenRitualsWeek, onOpenWeekly
   const enrolled = isLepEnrolled(profile);
   const lepFlow = useMemo(
     () => ({
-      ...lepFlowContextFromBatch({ cmsBatch }),
+      ...lepFlowContextFromBatch({ cmsBatch, day1Iso: resolveLepDay1Iso(profile, cmsBatch) }),
       todayIso: todayIsoIST(),
     }),
-    [cmsBatch]
+    [cmsBatch, profile]
   );
   const taskIsDone = useMemo(
     () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
