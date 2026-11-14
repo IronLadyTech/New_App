@@ -231,6 +231,14 @@ export function AuthProvider({ children }) {
       .catch(() => {});
 
     const unsubAuth = subscribeToAuth(async (user) => {
+      // Signed in: put the profile kept on this phone in place first, so the app opens on her
+      // own screen with it — never a "Loading…" frame between sign-in and profile.
+      if (user && !CMS_PREVIEW) {
+        const cached = await cacheRef.current;
+        if (!cancelled && cached?.uid === user.uid && cached.profile) {
+          setProfile((prev) => prev || decodeFromCache(cached.profile));
+        }
+      }
       setFirebaseUser(user);
       if (!user) {
         if (!previewRef.current) setProfile(null);
@@ -247,12 +255,9 @@ export function AuthProvider({ children }) {
           () => {}
         );
       }
-      // Her own screen at once from the copy on this phone; the server copy follows.
+      // Opened from the copy on this phone: show it now; the server copy follows.
       const cached = await cacheRef.current;
-      if (!cancelled && cached?.uid === user.uid && cached.profile) {
-        setProfile((prev) => prev || decodeFromCache(cached.profile));
-        setInitializing(false);
-      }
+      if (!cancelled && cached?.uid === user.uid && cached.profile) setInitializing(false);
       try {
         const p = await fetchUserProfile(user.uid);
         setProfile({
