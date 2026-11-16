@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { useIsFocused } from '@react-navigation/native';
 import { Image, ScrollView, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -23,6 +24,8 @@ import {
 import { CoverThumb } from '../lep/LepBits';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
+import { DailyQuestionCard, KnowYourWorthCard } from './GuestPracticeCards';
 import { useGuestActions } from './useGuestActions';
 import {
   CHALLENGE_DAYS,
@@ -117,7 +120,7 @@ export default function GuestHomeScreen() {
     <Page>
       <StatusBar style="dark" />
       <GuestHeader floating />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -511,78 +514,21 @@ export default function GuestHomeScreen() {
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
             One question a day · 30 seconds
           </ILText>
-          <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-                Question of the day
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ fontSize: 11 }}>
-                Principle · Projection
-              </ILText>
-            </View>
-            <ILText role="label" color={G.ink} style={{ marginTop: 10, fontSize: 16, lineHeight: 22 }}>
-              Your project saved the company ₹1.4 Cr. In the quarterly review, your manager presents it as the team’s win. What do you do?
-            </ILText>
-            {QOTD.map(([k, t]) => {
-              const on = k === 'B';
-              return (
-                <View
-                  key={k}
-                  style={{
-                    marginTop: 10,
-                    borderRadius: 16,
-                    borderWidth: 1,
-                    borderColor: on ? G.ink : G.line,
-                    padding: 12,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: on ? 'rgba(17,55,68,0.04)' : G.white,
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 13,
-                      backgroundColor: on ? G.ink : G.mutedFill,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 10,
-                    }}
-                  >
-                    <ILText role="label" color={on ? '#FFFFFF' : G.ink} style={[af, { fontSize: 12 }]}>
-                      {k}
-                    </ILText>
-                  </View>
-                  <ILText role="bodySm" color={G.ink} style={{ flex: 1, fontSize: 13, lineHeight: 18 }}>
-                    {t}
-                  </ILText>
-                </View>
-              );
-            })}
-            <View style={{ marginTop: 14, backgroundColor: '#F3F0E4', borderRadius: 16, padding: 14 }}>
-              <ILText role="label" color={G.ink} style={{ fontSize: 14 }}>
-                Spot on — that’s projection.
-              </ILText>
-              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 12, lineHeight: 18 }}>
-                Projection, not performance. Men show 60% of the work as 100%; women do 99% and point at the 1% still pending. One clear line in the room — what you did and what it unlocks next — is shameless pitching done well.
-              </ILText>
-            </View>
-          </WhiteCard>
+          <DailyQuestionCard />
         </View>
 
         <View style={{ marginTop: 28 }}>
-          <SectionHead title="C-suite conversations" accent="See all" />
+          <SectionHead title="C-suite Speaks" accent="See all" />
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
             Leaders who sit at the top table
           </ILText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-            {CSUITE_HOME.map((c) => (
-              <Pressable
-                key={c.title}
-                onPress={() => goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
-                style={{ width: 220, marginRight: 12 }}
-              >
+          <OneByOneRail
+            items={CSUITE_HOME}
+            keyOf={(c) => c.title}
+            inset={20}
+            style={{ marginTop: 12 }}
+            renderItem={(c) => (
+              <Pressable onPress={() => goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}>
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
                   <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                     <CoverThumb source={c.img} play time={c.tag} />
@@ -597,30 +543,11 @@ export default function GuestHomeScreen() {
                   </View>
                 </WhiteCard>
               </Pressable>
-            ))}
-          </ScrollView>
+            )}
+          />
         </View>
 
-        <WhiteCard style={{ marginTop: 24, borderRadius: 22, padding: 16 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-              Know your worth
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 11 }}>
-              The 5x rule
-            </ILText>
-          </View>
-          <ILText role="bodySm" color={G.ink} style={{ marginTop: 10, fontSize: 13 }}>
-            Years of experience: 10
-          </ILText>
-          <WorthTrack value={0.42} />
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 14 }}>
-            <StatNum size={28}>₹50 lakh</StatNum>
-            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 13 }}>
-              your market number
-            </ILText>
-          </View>
-        </WhiteCard>
+        <KnowYourWorthCard />
 
         <View style={{ marginTop: 20, backgroundColor: G.dark, borderRadius: 22, padding: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -675,26 +602,28 @@ export default function GuestHomeScreen() {
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
             Five guided practice drills, done right on this screen — no registration needed
           </ILText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
-            {DRILLS.map((d) => (
-              <WhiteCard
+          {/* All five at a glance, two to a row (the last one spans when the count is odd). */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginHorizontal: -5 }}>
+            {DRILLS.map((d, i) => (
+              <View
                 key={d.title}
-                onPress={() => goDrill(d.id)}
-                style={{ width: 140, marginRight: 10, borderRadius: 18, padding: 14 }}
+                style={{ width: i === DRILLS.length - 1 && DRILLS.length % 2 ? '100%' : '50%', padding: 5 }}
               >
-                <PinkDisc name={d.icon} size={36} />
-                <ILText role="label" color={G.ink} style={{ marginTop: 10, fontSize: 14 }}>
-                  {d.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
-                  {d.meta.split(' · ')[0]}
-                </ILText>
-                <ILText role="label" color={G.cta} style={{ marginTop: 10, fontSize: 13 }}>
-                  Start →
-                </ILText>
-              </WhiteCard>
+                <WhiteCard onPress={() => goDrill(d.id)} style={{ borderRadius: 18, padding: 14, minHeight: 132 }}>
+                  <PinkDisc name={d.icon} size={36} />
+                  <ILText role="label" color={G.ink} style={{ marginTop: 10, fontSize: 14 }}>
+                    {d.title}
+                  </ILText>
+                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
+                    {d.meta.split(' · ')[0]}
+                  </ILText>
+                  <ILText role="label" color={G.cta} style={{ marginTop: 10, fontSize: 13 }}>
+                    Start →
+                  </ILText>
+                </WhiteCard>
+              </View>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <View style={{ marginTop: 28 }}>
@@ -702,13 +631,13 @@ export default function GuestHomeScreen() {
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12 }}>
             Real women · real turning points
           </ILText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 14 }}>
-            {COMMUNITY_VIDEOS.map((v) => (
-              <Pressable
-                key={v.title}
-                onPress={() => goWatch({ assetKey: v.assetKey, title: v.title, sub: v.meta })}
-                style={{ width: 240, marginRight: 12 }}
-              >
+          <OneByOneRail
+            items={COMMUNITY_VIDEOS}
+            keyOf={(v) => v.title}
+            inset={20}
+            style={{ marginTop: 14 }}
+            renderItem={(v) => (
+              <Pressable onPress={() => goWatch({ assetKey: v.assetKey, title: v.title, sub: v.meta })}>
                 <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
                   <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                     <CoverThumb source={v.img} play />
@@ -725,8 +654,8 @@ export default function GuestHomeScreen() {
                   </View>
                 </WhiteCard>
               </Pressable>
-            ))}
-          </ScrollView>
+            )}
+          />
         </View>
 
         <View style={{ marginTop: 28 }}>
@@ -914,11 +843,6 @@ export default function GuestHomeScreen() {
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13, lineHeight: 19 }}>
             You can watch and read everything here. Your own batch, principles and community open once we can match you to a registration.
           </ILText>
-          <Pressable onPress={findRegistration} style={{ marginTop: 10 }}>
-            <ILText role="label" color={G.cta}>
-              Find my registration →
-            </ILText>
-          </Pressable>
         </WhiteCard>
 
         <FindCta
@@ -927,7 +851,7 @@ export default function GuestHomeScreen() {
           body="Tell us the number you registered with, or the email, and we will connect this device to your record."
           onPress={findRegistration}
         />
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

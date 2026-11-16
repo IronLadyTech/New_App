@@ -18,13 +18,17 @@ import AppPreview from './AppPreview';
 const TABS = [
   { value: GUEST_KINDS.MC_RECORDING, label: 'Masterclass recordings' },
   { value: GUEST_KINDS.HOME_SLIDE, label: 'Home slides' },
+  { value: GUEST_KINDS.DAILY_QUESTION, label: 'Daily questions' },
   { value: 'events', label: 'Events' },
 ];
 
 const EMPTY = {
   [GUEST_KINDS.MC_RECORDING]: { title: '', url: '', body: '' },
   [GUEST_KINDS.HOME_SLIDE]: { kicker: '', program: '', title: '', body: '', chips: '', cta: '', target: 'mc', url: '', imageUrl: '' },
+  [GUEST_KINDS.DAILY_QUESTION]: { title: '', principle: '', optionA: '', optionB: '', optionC: '', optionD: '', answer: 'A', body: '' },
 };
+
+const ANSWER_OPTIONS = ['A', 'B', 'C', 'D'].map((k) => ({ value: k, label: `Option ${k}` }));
 
 function pickFile(accept, onFile) {
   if (typeof document === 'undefined') return;
@@ -75,7 +79,16 @@ export default function GuestContentAdmin({ canEdit }) {
   };
 
   const save = () => {
-    if (!draft.title.trim()) return setMsg({ tone: 'error', text: 'Give it a title first.' });
+    if (!draft.title.trim()) {
+      return setMsg({ tone: 'error', text: kind === GUEST_KINDS.DAILY_QUESTION ? 'Write the question first.' : 'Give it a title first.' });
+    }
+    if (kind === GUEST_KINDS.DAILY_QUESTION) {
+      const filled = ['A', 'B', 'C', 'D'].filter((k) => String(draft[`option${k}`] || '').trim());
+      if (filled.length < 2) return setMsg({ tone: 'error', text: 'Add at least two answer options.' });
+      if (!String(draft[`option${draft.answer}`] || '').trim()) {
+        return setMsg({ tone: 'error', text: `The right answer is option ${draft.answer}, but that option is empty.` });
+      }
+    }
     if (kind === GUEST_KINDS.MC_RECORDING && !draft.url.trim()) {
       return setMsg({ tone: 'error', text: 'Paste the recording link (YouTube, Zoom or Drive).' });
     }
@@ -143,7 +156,9 @@ export default function GuestContentAdmin({ canEdit }) {
             <>
               {!rows.length ? (
                 <Notice tone="neutral">
-                  {`The app is showing its ${builtIn.length} built-in ${tab === GUEST_KINDS.HOME_SLIDE ? 'slides' : 'recordings'}.`}
+                  {`The app is showing its ${builtIn.length} built-in ${
+                    tab === GUEST_KINDS.HOME_SLIDE ? 'slides' : tab === GUEST_KINDS.DAILY_QUESTION ? 'questions' : 'recordings'
+                  }.`}
                   {canEdit ? ' Start from those to edit them, or add your own — once you add any, the app shows only yours.' : ''}
                 </Notice>
               ) : null}
@@ -159,8 +174,43 @@ export default function GuestContentAdmin({ canEdit }) {
               ) : null}
 
               {canEdit ? (
-                <AddBox title={draft.id ? 'Edit' : tab === GUEST_KINDS.HOME_SLIDE ? 'New home slide' : 'New recording'}>
-                  {kind === GUEST_KINDS.MC_RECORDING ? (
+                <AddBox
+                  title={
+                    draft.id
+                      ? 'Edit'
+                      : tab === GUEST_KINDS.HOME_SLIDE
+                        ? 'New home slide'
+                        : tab === GUEST_KINDS.DAILY_QUESTION
+                          ? 'New daily question'
+                          : 'New recording'
+                  }
+                >
+                  {kind === GUEST_KINDS.DAILY_QUESTION ? (
+                    <>
+                      <T size={12} color={A.muted} style={{ marginBottom: 10, lineHeight: 17 }}>
+                        Guests get one question a day, in this list's order (top first), then it starts again. A right
+                        answer shows "Well done" with your explanation; a wrong one gets one more try, then the right
+                        answer is shown with the explanation.
+                      </T>
+                      <Field label="Question">
+                        <Input value={draft.title} onChangeText={(v) => set({ title: v })} multiline rows={3} placeholder="Your project saved the company ₹1.4 Cr…" />
+                      </Field>
+                      <Field label="Principle" hint="Shown on the card, e.g. Projection, Shameless pitching">
+                        <Input value={draft.principle} onChangeText={(v) => set({ principle: v })} placeholder="Projection" />
+                      </Field>
+                      {['A', 'B', 'C', 'D'].map((k) => (
+                        <Field key={k} label={`Option ${k}${k === 'D' || k === 'C' ? ' (optional)' : ''}`}>
+                          <Input value={draft[`option${k}`]} onChangeText={(v) => set({ [`option${k}`]: v })} />
+                        </Field>
+                      ))}
+                      <Field label="Right answer">
+                        <Select value={draft.answer} onChange={(v) => set({ answer: v })} options={ANSWER_OPTIONS} />
+                      </Field>
+                      <Field label="Why it is right" hint="Shown after she answers — one or two sentences">
+                        <Input value={draft.body} onChangeText={(v) => set({ body: v })} multiline rows={3} />
+                      </Field>
+                    </>
+                  ) : kind === GUEST_KINDS.MC_RECORDING ? (
                     <>
                       <Field label="Title" hint="Shown on the button, e.g. “Day 1 recording”">
                         <Input value={draft.title} onChangeText={(v) => set({ title: v })} placeholder="Day 1 recording" />
@@ -239,7 +289,9 @@ export default function GuestContentAdmin({ canEdit }) {
                       <T size={12} color={A.muted} numberOfLines={1}>
                         {kind === GUEST_KINDS.HOME_SLIDE
                           ? `${r.program || ''} · button: ${r.cta || '—'} → ${GUEST_SLIDE_TARGETS.find((t) => t.value === r.target)?.label || r.target}`
-                          : r.url}
+                          : kind === GUEST_KINDS.DAILY_QUESTION
+                            ? `${r.principle || 'Principle'} · answer ${r.answer || '?'}`
+                            : r.url}
                       </T>
                     </View>
                     {r.published === false ? <Pill label="Hidden" tone="lock" /> : <Pill label="Live" tone="ok" />}

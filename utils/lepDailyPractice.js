@@ -1,4 +1,5 @@
 import { addCalendarDays, formatDateIST, orientationFromDay1Saturday, parseISODate } from './lepBatchSchedule';
+import { videoLength } from '../constants/videoDurations';
 import { inferLepDay1FromZohoRaw } from './lepDeskBatchDate';
 import {
   isLepRitualsUnlocked,
@@ -108,7 +109,7 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
       row({
         id: 'pre-principles',
         title: 'Watch the 27 Principles video',
-        meta: 'Pre-work · 14 min',
+        meta: `Pre-work · ${videoLength('lep-principles-video')}`,
         practiceId: 'lep-principles-video',
       }),
     ];
@@ -270,7 +271,7 @@ export function buildRegisteredDailyPractice(todayIso, anchorIso, day1Iso) {
       row({
         id: 'reg-principles',
         title: 'Watch the 27 Principles video',
-        meta: 'Pre-work · 14 min',
+        meta: `Pre-work · ${videoLength('lep-principles-video')}`,
         practiceId: 'lep-principles-video',
       }),
     ];

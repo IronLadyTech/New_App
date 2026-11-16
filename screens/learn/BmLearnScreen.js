@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,7 +76,7 @@ export default function BmLearnScreen() {
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
       />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: headerPad + 4,
@@ -106,7 +108,7 @@ export default function BmLearnScreen() {
         ) : (
           <ForYouRegistered onEnroll={nav.goEnroll} onTicket={nav.goTicket} />
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }
@@ -695,14 +697,17 @@ function ForYouEnrolled({ onTicket }) {
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent="2 in progress" />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {[
-            { kicker: 'ONBOARDING', title: 'Core story & milestone table', pct: 65, left: '8m left' },
-            { kicker: 'PHASE 1', title: 'Foundation', pct: 35, left: '14m left' },
-          ].map((c) => (
-            <WhiteCard key={c.title} style={{ width: 240, marginRight: 12, borderRadius: 20, padding: 12 }}>
-              <View style={{ height: 118, borderRadius: 14, overflow: 'hidden', backgroundColor: G.dark }}>
+      <OneByOneRail
+        items={[
+          { kicker: 'ONBOARDING', title: 'Core story & milestone table', pct: 65, left: '8m left' },
+          { kicker: 'PHASE 1', title: 'Foundation', pct: 35, left: '14m left' },
+        ]}
+        keyOf={(c) => c.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(c) => (
+            <WhiteCard style={{ borderRadius: 20, padding: 12 }}>
+              <View style={{ aspectRatio: 16 / 9, borderRadius: 14, overflow: 'hidden', backgroundColor: G.dark }}>
                 <Image source={HERO} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                 <View style={{ position: 'absolute', right: 8, bottom: 10 }}>
                   <Pill label={c.left} tone="dark" />
@@ -726,9 +731,8 @@ function ForYouEnrolled({ onTicket }) {
                 </ILText>
               </View>
             </WhiteCard>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Practice huddles" accent="View all" />

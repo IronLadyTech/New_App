@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, Linking, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -77,7 +79,7 @@ export default function LepLearnScreen() {
     <Page>
       <StatusBar style="dark" />
       <LepHeader floating photoUrl={profile?.photoURL} onNotifications={nav.goNotifications} onProfile={nav.goProfile} onCalendar={nav.goSchedule} />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
         paddingTop: headerPad + 4,
@@ -142,7 +144,7 @@ export default function LepLearnScreen() {
             )}
           </>
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }
@@ -266,17 +268,19 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent={`${LEARN_CONTINUE.length} open`} />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
-          {LEARN_CONTINUE.map((item) => (
+      <OneByOneRail
+        items={LEARN_CONTINUE}
+        keyOf={(item) => item.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(item, { width }) => (
             <ContinueCard
-              key={item.title}
               item={item}
+              width={width}
               onPress={() => (item.open ? openWatch(item) : onEnroll?.())}
             />
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Fresh this month" accent="View all" />
@@ -354,21 +358,21 @@ function ForYouPane({ enrolled, onEnroll, onTicket, onPractice, onWatch }) {
   );
 }
 
-function ContinueCard({ item, onPress }) {
+/** `width` set (inside OneByOneRail): fills that width with a 16:9 thumb; unset: the old 240-wide card. */
+function ContinueCard({ item, onPress, width }) {
   const showProgress = item.open && Number(item.pct) > 0;
   return (
     <WhiteCard
       onPress={onPress}
       style={{
-        width: 240,
-        marginRight: 12,
+        ...(width ? null : { width: 240, marginRight: 12 }),
         borderRadius: 22,
         overflow: 'hidden',
         padding: 0,
         opacity: item.open ? 1 : 0.72,
       }}
     >
-      <View style={{ width: '100%', height: 135, backgroundColor: G.dark }}>
+      <View style={{ width: '100%', height: width ? Math.round((width * 9) / 16) : 135, backgroundColor: G.dark }}>
         {item.img ? <CoverThumb source={item.img} height="100%" play={!item.open ? false : true} /> : null}
         {!item.open ? (
           <View
@@ -641,13 +645,16 @@ function CasesPane({ onEnroll, onWatch }) {
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Locked until enrollment" accent="8 case studies" />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {locked.map((c) => (
-            <WhiteCard key={c.title} style={{ width: 230, marginRight: 12, borderRadius: 20, padding: 12 }}>
+      <OneByOneRail
+        items={locked}
+        keyOf={(c) => c.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(c) => (
+            <WhiteCard style={{ borderRadius: 20, padding: 12 }}>
               <View
                 style={{
-                  height: 92,
+                  aspectRatio: 16 / 9,
                   borderRadius: 14,
                   backgroundColor: G.mutedFill,
                   alignItems: 'center',
@@ -669,9 +676,8 @@ function CasesPane({ onEnroll, onWatch }) {
                 {c.meta}
               </ILText>
             </WhiteCard>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       <WhyCard
         title="Why cases stay inside the cohort"
@@ -967,11 +973,14 @@ function EnrolledForYou({ onTicket, onWatch }) {
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Continue watching" accent={`${continueRows.length} in progress`} />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {continueRows.map((item) => (
-            <Pressable key={item.title} onPress={() => openWatch(item)} style={{ marginRight: 12 }}>
-              <WhiteCard style={{ width: 248, borderRadius: 22, overflow: 'hidden' }}>
+      <OneByOneRail
+        items={continueRows}
+        keyOf={(item) => item.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(item) => (
+            <Pressable onPress={() => openWatch(item)}>
+              <WhiteCard style={{ borderRadius: 22, overflow: 'hidden' }}>
                 <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                   <CoverThumb source={item.img} play time={item.left} />
                   <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: G.mutedFill }}>
@@ -1000,9 +1009,8 @@ function EnrolledForYou({ onTicket, onWatch }) {
                 </View>
               </WhiteCard>
             </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Fresh this month" accent="View all" />
@@ -1398,10 +1406,13 @@ function CasesEnrolled({ onShareReflection }) {
           See all
         </ILText>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {more.map((item) => (
-            <WhiteCard key={item.title} style={{ width: 240, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
+      <OneByOneRail
+        items={more}
+        keyOf={(item) => item.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(item) => (
+            <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }}>
               <View style={{ aspectRatio: 16 / 9 }}>
                 <CoverThumb source={item.img} play time={item.time} />
               </View>
@@ -1414,9 +1425,8 @@ function CasesEnrolled({ onShareReflection }) {
                 </ILText>
               </View>
             </WhiteCard>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
       <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
         <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
           HOUSE RULE
@@ -1695,16 +1705,18 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
           </ILText>
         </Pressable>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-          {STORIES_FUNC_ENR.map((item) => (
+      <OneByOneRail
+        items={STORIES_FUNC_ENR}
+        keyOf={(item) => item.title}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(item) => (
             <Pressable
-              key={item.title}
               onPress={() => play(item)}
               accessibilityRole="button"
               accessibilityLabel={`Play ${item.title}`}
             >
-            <WhiteCard style={{ width: 200, marginRight: 12, borderRadius: 20, overflow: 'hidden' }}>
+            <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }}>
               <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                 <CoverThumb source={item.img} play time={item.time} />
               </View>
@@ -1718,9 +1730,8 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
               </View>
             </WhiteCard>
             </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>

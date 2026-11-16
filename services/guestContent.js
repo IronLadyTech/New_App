@@ -19,6 +19,7 @@ import { auth, db } from './firebase';
 import { CMS, GUEST_KINDS } from '../constants/cms';
 import { MC_RECORDINGS } from '../constants/masterclassRecordings';
 import { HOME_SLIDES } from '../screens/guest/guestData';
+import { DAILY_QUESTIONS } from '../screens/guest/guestPractice';
 
 const byOrder = (a, b) => (a.order ?? 0) - (b.order ?? 0);
 
@@ -94,6 +95,17 @@ export function guestDefaults(kind) {
       target: s.id,
       url: '',
       imageUrl: '',
+    }));
+  }
+  if (kind === GUEST_KINDS.DAILY_QUESTION) {
+    return DAILY_QUESTIONS.map((q, i) => ({
+      kind,
+      order: i,
+      title: q.question,
+      principle: q.principle,
+      ...Object.fromEntries(q.options.map(([k, t]) => [`option${k}`, t])),
+      answer: q.answer,
+      body: q.explain,
     }));
   }
   return [];

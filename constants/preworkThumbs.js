@@ -56,8 +56,9 @@ export const VIDEO_POSTERS = {
   'mbw:indra': PREWORK_THUMBS['lep-principles-video'],
   'mbw:impact-s1': P.speaks06,
   'mbw:impact-s2': P.speaks05,
-  'community:iron-ladies': require('../assets/il/suvarna-hero.jpg'),
-  'community:indra-nooyi': require('../assets/il/suvarna-hero.jpg'),
+  // Their own branded covers (the generic portrait made both look the same).
+  'community:iron-ladies': require('../assets/il/community-75-crore.jpg'),
+  'community:indra-nooyi': require('../assets/il/community-indra-nooyi.jpg'),
   'lep:mentors': P.smriti,
   'lep:brand-roadmap': PREWORK_THUMBS['lep-brand-roadmap'],
 };

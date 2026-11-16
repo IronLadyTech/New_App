@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import * as Linking from 'expo-linking';
@@ -92,7 +93,7 @@ export default function LepMyProgramScreen({ route }) {
         onProfile={nav.goProfile}
         onCalendar={nav.goSchedule}
       />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
         paddingTop: headerPad + 4,
@@ -129,7 +130,7 @@ export default function LepMyProgramScreen({ route }) {
             onEnroll={nav.goEnroll}
           />
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

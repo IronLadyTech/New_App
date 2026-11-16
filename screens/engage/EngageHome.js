@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Linking, ScrollView, View } from 'react-native';
+import { Linking, View } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
@@ -42,22 +43,17 @@ function RedButton({ label, icon, onPress }) {
 
 function ArmyStories({ onWatch }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      nestedScrollEnabled
-      keyboardShouldPersistTaps="handled"
-      style={{ marginTop: 12, marginHorizontal: -IL_SPACE.page }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: IL_SPACE.page }}>
-        {ARMY_STORIES.map((story) => (
+    <OneByOneRail
+      items={ARMY_STORIES}
+      keyOf={(story) => story.title}
+      inset={IL_SPACE.page}
+      style={{ marginTop: 12 }}
+      renderItem={(story, { width }) => (
           <Pressable
-            key={story.title}
             onPress={() => onWatch?.({ assetKey: story.assetKey, title: story.title, sub: story.meta })}
-            style={{ width: 220, marginRight: 12 }}
           >
-            <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
-              <CoverThumb source={story.img} height={124} radius={16} play time={story.time} />
+            <View style={{ height: Math.round((width * 9) / 16), borderRadius: 16, overflow: 'hidden' }}>
+              <CoverThumb source={story.img} height={Math.round((width * 9) / 16)} radius={16} play time={story.time} />
             </View>
             <ILText
               role="label"
@@ -70,9 +66,8 @@ function ArmyStories({ onWatch }) {
               {story.meta}
             </ILText>
           </Pressable>
-        ))}
-      </View>
-    </ScrollView>
+      )}
+    />
   );
 }
 
@@ -88,20 +83,17 @@ function CsuiteVideos({ onWatch }) {
       <ILText role="bodySm" color={IL_BRAND.muted} style={{ marginTop: 4 }}>
         Learn from women at the top table
       </ILText>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ marginTop: 12, marginHorizontal: -IL_SPACE.page }}
-      >
-        <View style={{ flexDirection: 'row', paddingHorizontal: IL_SPACE.page }}>
-          {CSUITE_HOME.map((c) => (
+      <OneByOneRail
+        items={CSUITE_HOME}
+        keyOf={(c) => c.title}
+        inset={IL_SPACE.page}
+        style={{ marginTop: 12 }}
+        renderItem={(c, { width }) => (
             <Pressable
-              key={c.title}
               onPress={() => onWatch?.({ assetKey: c.assetKey, title: c.title, sub: c.who })}
-              style={{ width: 220, marginRight: 12 }}
             >
-              <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
-                <CoverThumb source={c.img} height={124} radius={16} play />
+              <View style={{ height: Math.round((width * 9) / 16), borderRadius: 16, overflow: 'hidden' }}>
+                <CoverThumb source={c.img} height={Math.round((width * 9) / 16)} radius={16} play />
                 <View
                   style={{
                     position: 'absolute',
@@ -129,9 +121,8 @@ function CsuiteVideos({ onWatch }) {
                 {c.who}
               </ILText>
             </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
     </>
   );
 }
@@ -346,11 +337,12 @@ function EnrolledEngage({ navigation, onWatch }) {
   );
 }
 
-function Episode({ ep, onPress }) {
+function Episode({ ep, onPress, width = 200 }) {
+  const thumbH = Math.round((width * 9) / 16);
   return (
-    <Pressable onPress={onPress} style={{ width: 200, marginRight: 12 }}>
-      <View style={{ height: 124, borderRadius: 16, overflow: 'hidden' }}>
-        <CoverThumb source={ep.img} height={124} radius={16} play />
+    <Pressable onPress={onPress}>
+      <View style={{ height: thumbH, borderRadius: 16, overflow: 'hidden' }}>
+        <CoverThumb source={ep.img} height={thumbH} radius={16} play />
         <View
           style={{
             position: 'absolute',
@@ -467,15 +459,19 @@ function RegisteredEngage({ navigation, onWatch }) {
           All episodes
         </ILText>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-        {PODCASTS.map((ep) => (
+      <OneByOneRail
+        items={PODCASTS}
+        keyOf={(ep) => ep.title}
+        inset={IL_SPACE.page}
+        style={{ marginTop: 12 }}
+        renderItem={(ep, { width }) => (
           <Episode
-            key={ep.title}
             ep={ep}
+            width={width}
             onPress={() => onWatch?.({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
           />
-        ))}
-      </ScrollView>
+        )}
+      />
 
       <ILText role="title" style={{ marginTop: 22 }}>
         Events

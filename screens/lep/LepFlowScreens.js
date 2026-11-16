@@ -21,6 +21,7 @@ import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { daysFromDay1, todayIsoIST } from '../../utils/lepDailyPractice';
 import { useEnrolledDailyPractice, useRegisteredDailyPractice } from '../../hooks/useLepDailyPractice';
 import { useLepBatchGroup } from '../../hooks/useLepBatchGroup';
+import { useLepGraduationChecklist } from '../../utils/lepGraduation';
 import { learnerBatchLabel, learnerProgramDates } from '../../utils/programAccess';
 import { inferLepDay1FromZohoRaw } from '../../utils/lepDeskBatchDate';
 import {
@@ -1130,12 +1131,91 @@ export function LepNudgeSettingsScreen() {
   );
 }
 
+/**
+ * Graduation is earned: until every required step is done (utils/lepGraduation.js), she sees
+ * what stands between her and the certificate — each step one tap away — not the celebration.
+ */
+function GraduationPending({ name, checklist }) {
+  const nav = useLepNav();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ flex: 1, backgroundColor: G.dark }}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: Math.max(insets.top, 8) + 48,
+          paddingHorizontal: 24,
+          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 20),
+        }}
+      >
+        <SoftChip onDark>Leadership Essentials program</SoftChip>
+        <ILText
+          role="display"
+          color="#FFFFFF"
+          style={{ marginTop: 18, fontFamily: IL_FONTS.display, fontSize: 30, lineHeight: 36 }}
+        >
+          Your certificate is one step away, {name}.
+        </ILText>
+        <ILText role="body" color="rgba(248,214,212,0.88)" style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
+          {`${checklist.doneCount} of ${checklist.total} done. Graduation is earned — finish the ${
+            checklist.missing.length === 1 ? 'last step' : `${checklist.missing.length} steps`
+          } below and your LEP certificate opens.`}
+        </ILText>
+        <View style={{ marginTop: 18, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)' }}>
+          <View
+            style={{
+              width: `${Math.round((checklist.doneCount / Math.max(1, checklist.total)) * 100)}%`,
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: G.cta,
+            }}
+          />
+        </View>
+        <View style={{ marginTop: 18 }}>
+          {checklist.items.map((item) => (
+            <Pressable
+              key={item.taskId}
+              onPress={item.done ? undefined : () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)}
+              disabled={item.done}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 14,
+                paddingHorizontal: 14,
+                marginBottom: 8,
+                borderRadius: 16,
+                backgroundColor: item.done ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)',
+              }}
+            >
+              <MaterialIcons
+                name={item.done ? 'check-circle' : 'radio-button-unchecked'}
+                size={22}
+                color={item.done ? '#8FD3A8' : '#FFFFFF'}
+              />
+              <ILText
+                role="label"
+                color={item.done ? 'rgba(255,255,255,0.55)' : '#FFFFFF'}
+                style={{ flex: 1, marginLeft: 12, fontSize: 14.5 }}
+              >
+                {item.title}
+              </ILText>
+              {item.done ? null : <MaterialIcons name="chevron-right" size={20} color="rgba(255,255,255,0.7)" />}
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 export function LepGraduationScreen({ onCelebrated }) {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
   const nav = useLepNav();
   const insets = useSafeAreaInsets();
   const batchShort = lepAlumniBatchShort(profile);
+  const checklist = useLepGraduationChecklist();
 
   const joinAlumni = () => {
     if (typeof onCelebrated === 'function') onCelebrated();
@@ -1143,12 +1223,14 @@ export function LepGraduationScreen({ onCelebrated }) {
   };
 
   const viewCert = () => {
-    nav.goCourseTask(PROGRAMS.LEP, 'lep-certification');
+    nav.goCourseTask(PROGRAMS.LEP, 'lep-certification', { fromGraduation: true });
   };
 
   const addLinkedIn = () => {
     Linking.openURL('https://www.linkedin.com/').catch(() => {});
   };
+
+  if (!checklist.eligible) return <GraduationPending name={name} checklist={checklist} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: G.dark }}>

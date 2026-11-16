@@ -174,11 +174,9 @@ export default function LepProfileScreen({ route }) {
   useEffect(() => {
     if (!user?.uid || user.uid === 'preview' || zohoWelcomeResyncRef.current) return;
     const payload = welcomeFieldsPayloadFromProfile(source);
-    if (!payload.city && !payload.day1Date && !payload.lepBatch) return;
+    if (!payload.city) return;
     zohoWelcomeResyncRef.current = true;
-    saveWelcomeProfileFields(payload, {
-      timeoutMs: payload.day1Date ? BATCH_ZOHO_SAVE_TIMEOUT_MS : undefined,
-    })
+    saveWelcomeProfileFields(payload)
       .then((result) => {
         if (result?.zohoLeadId) patchProfile({ zohoLeadId: result.zohoLeadId });
       })

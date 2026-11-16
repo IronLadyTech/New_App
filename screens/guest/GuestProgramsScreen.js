@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -46,7 +47,7 @@ export default function GuestProgramsScreen() {
     <Page>
       <StatusBar style="dark" />
       <GuestHeader floating />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -378,7 +379,7 @@ export default function GuestProgramsScreen() {
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12, lineHeight: 18 }}>
           LMS access · 1 year of free community · scholarships available
         </ILText>
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

@@ -68,6 +68,11 @@ export function useLepNav() {
       else navigation.navigate('MyProgram', { screen: 'CoursePhase', params });
     },
     goCourseTask: (programId, taskId, extraParams) => {
+      // The certificate opens through Graduation, which first checks every required step is done.
+      if (taskId === 'lep-certification' && !extraParams?.fromGraduation) {
+        goIn('Home', 'Graduation');
+        return;
+      }
       const params = { programId, taskId, ...(extraParams || {}) };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('CourseTask')) navigation.navigate('CourseTask', params);

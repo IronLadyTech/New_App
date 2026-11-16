@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -81,7 +82,7 @@ export default function MbwLearnScreen() {
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
       />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: headerPad + 4,
@@ -147,7 +148,7 @@ export default function MbwLearnScreen() {
         ) : (
           <ForYou enrolled={enrolled} onEnroll={nav.goEnroll} onOpen={openCourse} />
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

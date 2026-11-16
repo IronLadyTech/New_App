@@ -24,6 +24,9 @@ import {
   resolveLepEnrolledCohortPhase,
 } from '../../utils/lepEnrolledCohortPhase';
 import LepAlumniGate from './LepAlumniGate';
+import { RevealBlocks, RevealProvider } from '../../components/il/RevealScroll';
+import { useSharedValue } from 'react-native-reanimated';
+import { LEP_GRADUATION_DAY_OFFSET, useLepGraduationChecklist } from '../../utils/lepGraduation';
 import {
   buildPreviewRegisteredHome,
   buildRegisteredHome,
@@ -93,7 +96,10 @@ import { useLepFiveRitualsTracker } from '../../hooks/useLepFiveRitualsTracker';
 import { mergeGetReadyItems, toggleGetReadyItem } from '../../utils/lepGetReadyChecklist';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 import { recordSessionJoin } from '../../services/activityTracking';
-import { scheduleLepRitualsNotifications } from '../../services/lepRitualsNotifications';
+import {
+  cancelLepRitualsNotifications,
+  scheduleLepRitualsNotifications,
+} from '../../services/lepRitualsNotifications';
 
 function EnrolledRoute({ cmsBatch }) {
   const { profile } = useAuth();
@@ -116,6 +122,8 @@ export default function LepHomeScreen() {
 }
 
 function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
+  // Same scroll, also driving the page's scroll reveal (the header keeps its RN Animated value).
+  const revealY = useSharedValue(0);
   const insets = useSafeAreaInsets();
   const { profile } = useAuth();
   const nav = useLepNav();
@@ -144,7 +152,10 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
         nestedScrollEnabled
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: false,
-          listener: (e) => onScrollY?.(e.nativeEvent.contentOffset.y),
+          listener: (e) => {
+            revealY.value = e.nativeEvent.contentOffset.y;
+            onScrollY?.(e.nativeEvent.contentOffset.y);
+          },
         })}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -152,7 +163,9 @@ function RegisteredShell({ children, scrollY, headerGone, onScrollY }) {
           paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
         }}
       >
-        {children}
+        <RevealProvider scrollY={revealY}>
+          <RevealBlocks>{children}</RevealBlocks>
+        </RevealProvider>
       </Animated.ScrollView>
     </Page>
   );
@@ -365,6 +378,52 @@ function RegisteredHome({ cmsBatch, preview }) {
   );
 }
 
+/**
+ * Week 4 onward: what still stands between her and graduation, until it is all done — it stays
+ * after graduation day too, so nobody quietly misses the certificate.
+ */
+function GraduationNudge({ day1Iso, onOpen, onAll }) {
+  const checklist = useLepGraduationChecklist();
+  const off = day1Iso ? daysFromDay1(practiceTodayIso(), day1Iso) : null;
+  if (off == null || off < LEP_GRADUATION_DAY_OFFSET - 7 || checklist.eligible) return null;
+  const daysLeft = LEP_GRADUATION_DAY_OFFSET - off;
+  const when =
+    daysLeft > 1 ? `Graduation in ${daysLeft} days` : daysLeft === 1 ? 'Graduation tomorrow' : daysLeft === 0 ? 'Graduation today' : 'Graduation day has passed';
+  const left = checklist.missing.length;
+  return (
+    <WhiteCard style={{ borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
+      <ILText role="eyebrow" color={G.cta} style={{ fontSize: 10 }}>
+        {`${when} · ${left} step${left === 1 ? '' : 's'} left`}
+      </ILText>
+      <ILText role="title" color={G.ink} style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}>
+        {daysLeft < 0 ? 'Your certificate is waiting for these.' : 'Finish these to graduate.'}
+      </ILText>
+      <View style={{ marginTop: 8 }}>
+        {checklist.missing.slice(0, 4).map((item) => (
+          <Pressable
+            key={item.taskId}
+            onPress={() => onOpen(item.taskId)}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 9 }}
+          >
+            <MaterialIcons name="radio-button-unchecked" size={18} color={G.meta} />
+            <ILText role="label" color={G.ink} style={{ flex: 1, marginLeft: 10, fontSize: 14 }}>
+              {item.title}
+            </ILText>
+            <MaterialIcons name="chevron-right" size={18} color={G.meta} />
+          </Pressable>
+        ))}
+      </View>
+      {left > 4 ? (
+        <Pressable onPress={onAll} style={{ paddingTop: 6 }}>
+          <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+            {`See all ${left} steps`}
+          </ILText>
+        </Pressable>
+      ) : null}
+    </WhiteCard>
+  );
+}
+
 function EnrolledHome({ cmsBatch }) {
   const { profile } = useAuth();
   const name = lepFirstName(profile);
@@ -436,9 +495,14 @@ function EnrolledHome({ cmsBatch }) {
   // Batches with automatic reminders get the morning nudge from the scheduler instead.
   const serverDailyRituals = cmsBatch?.status === 'live' && cmsBatch?.automationEnabled === true;
   useEffect(() => {
-    if (!ritualsUnlocked) return;
-    scheduleLepRitualsNotifications({ serverDaily: serverDailyRituals }).catch(() => {});
-  }, [ritualsUnlocked, serverDailyRituals]);
+    if (ritualsUnlocked) {
+      scheduleLepRitualsNotifications({ serverDaily: serverDailyRituals }).catch(() => {});
+    } else if (day1Iso) {
+      // Her batch is known and the rituals are not open (she moved to a later batch): no
+      // rituals reminders on this phone until they open.
+      cancelLepRitualsNotifications().catch(() => {});
+    }
+  }, [ritualsUnlocked, serverDailyRituals, day1Iso]);
 
   const day1Offset = useMemo(
     () => (day1Iso ? daysFromDay1(practiceTodayIso(), day1Iso) : null),
@@ -683,6 +747,8 @@ function EnrolledHome({ cmsBatch }) {
           />
         </View>
       ) : null}
+
+      <GraduationNudge day1Iso={day1Iso} onOpen={(taskId) => nav.goCourseTask(PROGRAMS.LEP, taskId)} onAll={nav.goGraduation} />
 
       <PracticeDeck
         items={practice}

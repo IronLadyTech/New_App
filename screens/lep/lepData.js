@@ -1,4 +1,5 @@
 import { PREWORK_THUMBS } from '../../constants/preworkThumbs';
+import { videoLength } from '../../constants/videoDurations';
 
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
@@ -27,7 +28,7 @@ export const COVER = {
 export const ROLES = ['Technology', 'Marketing', 'Finance', 'HR', 'Founder', 'Other'];
 
 export const REG_PRACTICE = [
-  { id: 'p1', title: 'Watch the 27 Principles video', meta: 'Pre-work · 14 min', done: true, programId: 'lep', practiceId: 'lep-principles-video' },
+  { id: 'p1', title: 'Watch the 27 Principles video', meta: `Pre-work · ${videoLength('lep-principles-video')}`, done: true, programId: 'lep', practiceId: 'lep-principles-video' },
   { id: 'p2', title: '5 Daily Rituals — morning check', meta: 'Ritual · 18 min', done: false, programId: 'lep', practiceId: 'lep-rituals' },
   { id: 'p3', title: 'Power Pitch — say who you are in 30 seconds', meta: 'Challenge · 15 min', done: false, programId: 'lep', practiceId: 'lep-power-pitch' },
   { id: 'p4', title: 'A-Game Self Awareness — Beliefs', meta: 'Pre-read · 5 min', done: false, programId: 'lep', taskId: 'lep-day1-beliefs' },
@@ -35,7 +36,7 @@ export const REG_PRACTICE = [
 
 export const ENR_PRACTICE = [
   { id: 'e1', title: 'Revise Principle 3 from the 27 Principles', meta: 'Daily revision · 2 min', done: true, programId: 'lep', practiceId: 'lep-principle' },
-  { id: 'e2', title: 'Watch The Shameless Pitch', meta: 'Pre-work · 22 min', done: false, programId: 'lep', practiceId: 'lep-shameless' },
+  { id: 'e2', title: 'Watch The Shameless Pitch', meta: `Pre-work · ${videoLength('lep-shameless')}`, done: false, programId: 'lep', practiceId: 'lep-shameless' },
   { id: 'e3', title: 'Tick one item on your Get ready checklist', meta: 'Checklist · 1 min', done: false, programId: 'lep', practiceId: 'lep-get-ready' },
   { id: 'e4', title: 'Fill the ERRC Table', meta: 'Day 1 framework · 10 min', done: false, programId: 'lep', taskId: 'lep-day1-errc' },
 ];
@@ -57,7 +58,7 @@ export const TODAY_MESSAGE = {
   title: 'Your BHAG',
   sub: 'Principle 01 · Ask for what you want',
   hint: 'Name the goal big enough to scare you',
-  duration: '12 min',
+  duration: videoLength('lep-principles-video-preview', '12 min'),
   assetKey: 'lep-principles-video-preview',
   thumb: PREWORK_THUMBS['lep-principles-video'],
 };
@@ -68,7 +69,7 @@ export const PREWORK = [
     n: '01',
     title: 'The 27 Principles',
     sub: 'Mental models for unflinching leadership',
-    min: '14m',
+    min: videoLength('lep-principles-video', '14m'),
     done: false,
     practiceId: 'lep-principles-video',
     thumb: PREWORK_THUMBS['lep-principles-video'],
@@ -77,7 +78,7 @@ export const PREWORK = [
     n: '02',
     title: 'The Shameless Pitch',
     sub: 'Unlearning boardroom modesty and anchoring in unapologetic authority.',
-    min: '22 mins',
+    min: videoLength('lep-shameless', '22 mins'),
     done: false,
     practiceId: 'lep-shameless',
     thumb: PREWORK_THUMBS['lep-shameless'],
@@ -89,7 +90,7 @@ export const RITUALS_WATCH = {
   n: '01',
   title: '5 Daily Rituals',
   sub: 'Mirror work, A-Game, request, gratitude, and B-HAG — every morning',
-  min: '18m',
+  min: videoLength('lep-rituals', '18m'),
   done: false,
   practiceId: 'lep-rituals',
   thumb: PREWORK_THUMBS['lep-rituals'],
@@ -607,3 +608,34 @@ export const TODAY_ITEMS = [
   { title: 'Shameless Pitch practice', meta: 'Week task · 12 min', done: false },
   { title: 'Weekly Handholding Session', meta: 'Tonight · 8:00 PM', done: false },
 ];
+
+// Real video lengths (constants/videoDurations.js) over the typed ones, for every list that
+// knows its video. Lists without an assetKey get it from the speaker.
+const CSUITE_BY_WHO = {
+  'Priyanka Sunder': 'csuite:priyanka',
+  'Kamini Chawla': 'csuite:kamini',
+  'Rekha Sharma': 'csuite:rekha',
+  'Radhika Sharma': 'csuite:radhika',
+  'Suma Bhat': 'csuite:suma',
+  'Varsha Fulzele': 'csuite:varsha',
+  'Smriti Mishra': 'csuite:smriti',
+  'Meghna Makkar': 'csuite:meghna',
+  'Divya': 'csuite:divya',
+  'Poornima': 'csuite:poornima',
+};
+const keyFor = (item) => {
+  if (item.assetKey) return item.assetKey;
+  const who = String(item.who || item.meta || '');
+  const hit = Object.keys(CSUITE_BY_WHO).find((name) => who.startsWith(name));
+  return hit ? CSUITE_BY_WHO[hit] : null;
+};
+[CASES_ENR, LEARN_FRESH_ENR].forEach((list) =>
+  list.forEach((item) => {
+    const k = keyFor(item);
+    if (k) item.time = videoLength(k, item.time);
+  })
+);
+PODCASTS.forEach((ep) => {
+  const len = videoLength(ep.assetKey);
+  if (len) ep.meta = ep.meta.replace(/\d+\s*min$/, len);
+});

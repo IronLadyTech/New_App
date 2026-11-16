@@ -4,7 +4,6 @@ import { readWelcomeFields } from './programAccess';
 export function welcomeFieldsPayloadFromProfile(profile) {
   if (!profile) return {};
   const welcome = readWelcomeFields(profile);
-  const lep = profile?.programAccess?.lep || {};
   const payload = {};
   if (welcome.city) payload.city = welcome.city;
   if (welcome.domain) payload.domain = welcome.domain;
@@ -13,15 +12,8 @@ export function welcomeFieldsPayloadFromProfile(profile) {
   if (salary) payload.salaryRange = salary;
   const chapter = String(profile?.chapters || profile?.zohoLead?.Chapters || '').trim();
   if (chapter) payload.chapters = chapter;
-  const day1 = String(lep.day1Date || '').slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(day1)) {
-    payload.day1Date = day1;
-  } else {
-    const batch =
-      String(lep.zohoBatchKey || lep.zohoRawBatch || profile?.zohoLead?.LEP_Batch || '').trim();
-    if (batch) payload.lepBatch = batch;
-  }
-  const cmsBatchId = String(lep.cmsBatchId || profile?.cmsBatchId || '').trim();
-  if (cmsBatchId) payload.cmsBatchId = cmsBatchId;
+  // Never the batch. Zoho owns it; the app writes it only when she changes her batch herself
+  // (utils/lockLepBatch.js). Re-sending the copy on this phone overwrote CX's change in Zoho
+  // seconds after they made it (Sunitha, 16 Nov: 14 Nov → back to 21 Nov when she opened Profile).
   return payload;
 }

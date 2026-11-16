@@ -1,4 +1,5 @@
 import React from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -43,7 +44,7 @@ export default function GuestMeScreen() {
     <Page>
       <StatusBar style="dark" />
       <GuestHeader floating />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -269,7 +270,7 @@ export default function GuestMeScreen() {
           body="Tell us the number or email you registered with and everything above becomes real."
           onPress={findRegistration}
         />
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

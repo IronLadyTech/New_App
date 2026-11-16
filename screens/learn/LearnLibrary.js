@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { MaterialIcons } from '@expo/vector-icons';
-import { IL_BRAND } from '../../constants/ironLadyBrand';
+import { IL_BRAND, IL_SPACE } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { PROGRAM_FILTERS, useProgramNav } from '../../context/ProgramNavContext';
 import { useAuth } from '../../context/AuthContext';
@@ -196,25 +197,26 @@ function FilterRow({ value, onChange, lockedIds }) {
   );
 }
 
-function ContinueCard({ item, onPress }) {
+/** `width` set (inside OneByOneRail): fills that width with a 16:9 thumb; unset: the old 230-wide card. */
+function ContinueCard({ item, onPress, width }) {
+  const thumbH = width ? Math.round((width * 9) / 16) : 120;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       style={{
-        width: 230,
+        ...(width ? null : { width: 230, marginRight: 12 }),
         backgroundColor: IL_BRAND.white,
         borderRadius: 18,
-        marginRight: 12,
         overflow: 'hidden',
       }}
     >
-      <View style={{ height: 120, backgroundColor: IL_BRAND.cardDark, justifyContent: 'flex-end' }}>
+      <View style={{ height: thumbH, backgroundColor: IL_BRAND.cardDark, justifyContent: 'flex-end' }}>
         <View
           style={{
             position: 'absolute',
             alignSelf: 'center',
-            top: 36,
+            top: width ? Math.round((thumbH - 44) / 2) : 36,
             width: 44,
             height: 44,
             borderRadius: 22,
@@ -381,11 +383,13 @@ export default function LearnLibrary({ navigation }) {
           {library.continueCount}
         </ILText>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12 }}>
-        {library.continue.map((item) => (
-          <ContinueCard key={item.title} item={item} onPress={openProgram} />
-        ))}
-      </ScrollView>
+      <OneByOneRail
+        items={library.continue}
+        keyOf={(item) => item.title}
+        inset={IL_SPACE.page}
+        style={{ marginTop: 12 }}
+        renderItem={(item, { width }) => <ContinueCard item={item} width={width} onPress={openProgram} />}
+      />
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 22 }}>
         <ILText role="title">Fresh this month</ILText>

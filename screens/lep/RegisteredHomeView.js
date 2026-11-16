@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { videoLength } from '../../constants/videoDurations';
 import { useIsFocused } from '@react-navigation/native';
-import { Image, Linking, ScrollView, View } from 'react-native';
+import { Image, Linking, View } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
@@ -469,7 +471,7 @@ export default function RegisteredHomeView({
         </ILText>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Watch 27 Principles, 12 minutes, optional"
+          accessibilityLabel={`Watch 27 Principles, ${videoLength('lep-principles-video')}, optional`}
           onPress={onVideo}
           style={{ backgroundColor: T.teal, borderRadius: 16, padding: 16, marginTop: 12 }}
         >
@@ -482,7 +484,7 @@ export default function RegisteredHomeView({
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 18 }}>
             <View style={{ backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
               <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-                12 min · optional pre-watch
+                {`${videoLength('lep-principles-video')} · optional pre-watch`}
               </ILText>
             </View>
             <View
@@ -508,11 +510,12 @@ export default function RegisteredHomeView({
       >
         Welcome to Iron Lady Speaks
       </ILText>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          {PODCASTS.slice(0, 3).map((ep) => (
+      <OneByOneRail
+        items={PODCASTS.slice(0, 3)}
+        keyOf={(ep) => ep.assetKey}
+        inset={20}
+        renderItem={(ep) => (
             <Pressable
-              key={ep.assetKey}
               accessibilityRole="button"
               accessibilityLabel={ep.title}
               onPress={() =>
@@ -522,9 +525,8 @@ export default function RegisteredHomeView({
                   meta: ep.meta || ep.who,
                 })
               }
-              style={{ width: 250 }}
             >
-              <View style={{ height: 140, borderRadius: 16, overflow: 'hidden', backgroundColor: '#1D4A57' }}>
+              <View style={{ aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: '#1D4A57' }}>
                 <Image source={ep.img} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                 <View
                   style={{
@@ -549,9 +551,8 @@ export default function RegisteredHomeView({
                 {ep.who}
               </ILText>
             </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
 
       {upcomingSession ? (
         <RegisteredNextSessionCard

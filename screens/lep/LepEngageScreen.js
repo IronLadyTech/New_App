@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import {
   Image,
   Linking,
@@ -9,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -63,12 +65,14 @@ function EngageHeroShell({ children, style }) {
   );
 }
 
-function StoryVideoCard({ img, title, meta, time, onPress }) {
+/** `width` set (inside OneByOneRail): fills that width with a 16:9 thumb; unset: the old 220-wide card. */
+function StoryVideoCard({ img, title, meta, time, onPress, width }) {
+  const thumbH = width ? Math.round((width * 9) / 16) : STORY_THUMB_H;
   return (
-    <Pressable onPress={onPress} style={{ width: STORY_CARD_W, marginRight: 12 }}>
-      <WhiteCard style={{ borderRadius: 18, overflow: 'hidden', height: STORY_THUMB_H + 12 + STORY_TITLE_H + 4 + 16 + 12 }}>
-        <View style={{ height: STORY_THUMB_H, width: '100%', backgroundColor: G.dark }}>
-          <CoverThumb source={img} height={STORY_THUMB_H} play time={time} />
+    <Pressable onPress={onPress} style={width ? undefined : { width: STORY_CARD_W, marginRight: 12 }}>
+      <WhiteCard style={{ borderRadius: 18, overflow: 'hidden', height: thumbH + 12 + STORY_TITLE_H + 4 + 16 + 12 }}>
+        <View style={{ height: thumbH, width: '100%', backgroundColor: G.dark }}>
+          <CoverThumb source={img} height={thumbH} play time={time} />
         </View>
         <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12 }}>
           <ILText
@@ -128,26 +132,22 @@ function CsuiteVideos({ nav }) {
         countLabel={`${CSUITE_HOME.length} videos`}
         onViewAll={() => nav.goEngageMediaList('csuite')}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        style={{ marginTop: 12, marginHorizontal: -20 }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
-          {CSUITE_HOME.map((c) => (
+      <OneByOneRail
+        items={CSUITE_HOME}
+        keyOf={(c) => c.assetKey}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(c, { width }) => (
             <StoryVideoCard
-              key={c.assetKey}
+              width={width}
               img={c.img}
               title={c.title}
               meta={c.who}
               time={engageVideoShelfLabel(c)}
               onPress={() => nav.goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
             />
-          ))}
-        </View>
-      </ScrollView>
+        )}
+      />
     </>
   );
 }
@@ -161,29 +161,26 @@ function PodcastLibrary({ nav }) {
         countLabel={`${PODCASTS.length} episodes · free`}
         onViewAll={() => nav.goEngageMediaList('podcast')}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        nestedScrollEnabled
-        keyboardShouldPersistTaps="handled"
-        style={{ marginTop: 12, marginHorizontal: -20 }}
-      >
-        <View style={{ flexDirection: 'row', alignItems: 'stretch', paddingHorizontal: 20 }}>
-          {PODCASTS.map((ep) => (
+      <OneByOneRail
+        items={PODCASTS}
+        keyOf={(ep) => ep.assetKey}
+        inset={20}
+        style={{ marginTop: 12 }}
+        renderItem={(ep, { width }) => {
+          const thumbH = Math.round((width * 9) / 16);
+          return (
             <Pressable
-              key={ep.assetKey}
               onPress={() => nav.goWatch({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
-              style={{ width: STORY_CARD_W, marginRight: 12 }}
             >
               <WhiteCard
                 style={{
                   borderRadius: 18,
                   overflow: 'hidden',
-                  height: STORY_THUMB_H + 12 + 14 + 6 + STORY_TITLE_H + 4 + 16 + 12,
+                  height: thumbH + 12 + 14 + 6 + STORY_TITLE_H + 4 + 16 + 12,
                 }}
               >
-                <View style={{ height: STORY_THUMB_H, width: '100%', backgroundColor: G.dark }}>
-                  <CoverThumb source={ep.img} height={STORY_THUMB_H} play time={ep.meta} />
+                <View style={{ height: thumbH, width: '100%', backgroundColor: G.dark }}>
+                  <CoverThumb source={ep.img} height={thumbH} play time={ep.meta} />
                 </View>
                 <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12 }}>
                   <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9, height: 14 }]} numberOfLines={1}>
@@ -203,9 +200,9 @@ function PodcastLibrary({ nav }) {
                 </View>
               </WhiteCard>
             </Pressable>
-          ))}
-        </View>
-      </ScrollView>
+          );
+        }}
+      />
     </>
   );
 }
@@ -234,7 +231,7 @@ export default function LepEngageScreen() {
         onProfile={nav.goProfile}
         onCalendar={nav.goSchedule}
       />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
         contentContainerStyle={{
@@ -247,7 +244,7 @@ export default function LepEngageScreen() {
         ) : (
           <RegisteredEngage nav={nav} topPad={headerPad} />
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

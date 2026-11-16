@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Pressable from '../../components/il/Press';
+import OneByOneRail from '../../components/il/OneByOneRail';
 import { GuestBackBar } from '../guest/GuestBits';
 import ILText from '../../components/il/ILText';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -187,17 +188,15 @@ export default function WatchScreen() {
             <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 20 }}>
               Up next
             </ILText>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 12, marginHorizontal: -20 }}>
-              <View style={{ flexDirection: 'row', paddingHorizontal: 20 }}>
-                {meta.relatedKeys.map((key) => {
+            <OneByOneRail
+              items={meta.relatedKeys.filter((key) => lookupCard(key))}
+              keyOf={(key) => key}
+              inset={20}
+              style={{ marginTop: 12 }}
+              renderItem={(key) => {
                   const card = lookupCard(key);
-                  if (!card) return null;
                   return (
-                    <Pressable
-                      key={key}
-                      onPress={() => openRelated(key)}
-                      style={{ width: 200, marginRight: 12 }}
-                    >
+                    <Pressable onPress={() => openRelated(key)}>
                       <WhiteCard style={{ borderRadius: 16, overflow: 'hidden' }}>
                         <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
                           <CoverThumb source={card.img} play />
@@ -213,9 +212,8 @@ export default function WatchScreen() {
                       </WhiteCard>
                     </Pressable>
                   );
-                })}
-              </View>
-            </ScrollView>
+              }}
+            />
           </View>
         ) : null}
       </ScrollView>

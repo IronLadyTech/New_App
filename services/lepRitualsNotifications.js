@@ -25,6 +25,23 @@ async function ensurePermission(Notifications) {
 }
 
 /**
+ * Her batch moved and the 5 Rituals are not open yet (e.g. moved to a later batch): stop the
+ * phone's own rituals reminders. They are set up again when the rituals open.
+ */
+export async function cancelLepRitualsNotifications() {
+  const Notifications = notifications();
+  if (!Notifications) return;
+  try {
+    if (!(await AsyncStorage.getItem(FLAG))) return; // never scheduled on this phone
+    await Notifications.cancelScheduledNotificationAsync(DAILY_ID).catch(() => {});
+    await Notifications.cancelScheduledNotificationAsync(WEEKLY_ID).catch(() => {});
+    await AsyncStorage.removeItem(FLAG);
+  } catch {
+    /* nothing scheduled, nothing to stop */
+  }
+}
+
+/**
  * Local reminders after 5 Rituals unlock: 8:00 morning nudge + Monday 9:00 weekly score reminder.
  * serverDaily: her batch has automatic reminders on, so the scheduler sends the morning
  * nudge (CMS RITUALS-AM) — skip the phone's own, or she gets two.

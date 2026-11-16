@@ -26,6 +26,8 @@ import { Timestamp } from 'firebase/firestore';
  * flash and no "Loading…" on every open. Timestamps are stored as { __ts: ms } and rebuilt.
  */
 const PROFILE_CACHE_KEY = 'il_profile_cache_v1';
+/** The guest's verified number (services/appGuest.js) — present only after a real OTP. */
+const GUEST_PHONE_KEY = 'il_guest_phone';
 
 function encodeForCache(v) {
   if (v == null || typeof v !== 'object') return v;
@@ -209,18 +211,22 @@ export function AuthProvider({ children }) {
       if (!cancelled) setInitializing(false);
     }, 3000);
 
-    Promise.all([
+    const storageRead = Promise.all([
       AsyncStorage.getItem(GUEST_KEY),
       AsyncStorage.getItem(LAB_JOURNEY_KEY),
       AsyncStorage.getItem(LAB_LEP_KEY),
       AsyncStorage.getItem(DEMO_KEY),
+      AsyncStorage.getItem(GUEST_PHONE_KEY),
     ])
-      .then(([guest, journey, legacyLep, demoFlag]) => {
+      .then(([guest, journey, legacyLep, demoFlag, guestPhone]) => {
         if (cancelled || CMS_PREVIEW) return;
         if (!devToolsEnabled()) {
-          AsyncStorage.multiRemove([GUEST_KEY, LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(
-            () => {}
-          );
+          // Real app: drop testing journeys, but a guest who verified her number stays a guest —
+          // she used to be sent back to phone + OTP on every open.
+          AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(() => {});
+          const realGuest = guest === '1' && demoFlag !== '1' && Boolean(guestPhone);
+          if (realGuest) setGuestMode(true);
+          else AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
           return;
         }
         const lab = parseLabJourney(journey, legacyLep);
@@ -242,6 +248,8 @@ export function AuthProvider({ children }) {
       setFirebaseUser(user);
       if (!user) {
         if (!previewRef.current) setProfile(null);
+        // Know whether she is a returning guest before showing anything (no sign-in flash).
+        await storageRead;
         setInitializing(false);
         return;
       }
@@ -353,6 +361,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   const enterGuest = useCallback(async (firstName, { demo: fromDemo = false } = {}) => {
+    // Her name is saved before the guest app opens, so its first screen greets her by name
+    // (it used to say "future leader" until the next open).
+    if (firstName) await AsyncStorage.setItem('il_guest_name', firstName).catch(() => {});
     setLabJourney(null);
     setGuestMode(true);
     setDemo(fromDemo);
@@ -360,9 +371,6 @@ export function AuthProvider({ children }) {
     if (fromDemo) await AsyncStorage.setItem(DEMO_KEY, '1');
     else await AsyncStorage.removeItem(DEMO_KEY);
     await AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY]);
-    if (firstName) {
-      await AsyncStorage.setItem('il_guest_name', firstName);
-    }
   }, []);
 
   const enterAuthFromGuest = useCallback(async () => {

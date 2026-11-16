@@ -1,4 +1,5 @@
 import React from 'react';
+import { videoLength } from '../../constants/videoDurations';
 import { View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Pressable from '../../components/il/Press';
@@ -253,7 +254,7 @@ function BmRegistered() {
       />
 
       <SectionLabel
-        title="C-suite conversations"
+        title="C-suite Speaks"
         sub="Leaders who sit at the top table"
         action="See all"
         onAction={openLearn}
@@ -406,7 +407,7 @@ function BmEnrolled() {
       />
 
       <SectionLabel
-        title="C-suite conversations"
+        title="C-suite Speaks"
         sub="Leaders who sit at the top table"
         action="See all"
         onAction={openLearn}
@@ -534,7 +535,7 @@ function MbwRegistered() {
       </SoftCard>
 
       <SectionLabel
-        title="C-suite conversations"
+        title="C-suite Speaks"
         sub="Leaders who sit at the top table"
         action="See all"
         onAction={openLearn}
@@ -706,7 +707,7 @@ function MbwEnrolled() {
       </SoftCard>
 
       <SectionLabel
-        title="C-suite conversations"
+        title="C-suite Speaks"
         sub="Leaders who sit at the top table"
         action="See all"
         onAction={openLearn}
@@ -815,7 +816,7 @@ function ComboHome() {
         items={[
           { title: '5 Daily Rituals — morning check', detail: 'LEP ritual · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-rituals' },
           { title: 'Revise Principle 3 from the 27 Principles', detail: 'Daily revision · 2 min', done: true, tag: 'LEP', programId: 'lep', practiceId: 'lep-principle' },
-          { title: 'Watch The Shameless Pitch', detail: 'Pre-work · 22 min', done: false, tag: 'LEP', programId: 'lep', practiceId: 'lep-shameless' },
+          { title: 'Watch The Shameless Pitch', detail: `Pre-work · ${videoLength('lep-shameless')}`, done: false, tag: 'LEP', programId: 'lep', practiceId: 'lep-shameless' },
           {
             title: 'Draft two milestones for your Milestone Table',
             detail: 'Pre-program · 10 min',

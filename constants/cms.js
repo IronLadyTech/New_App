@@ -20,6 +20,8 @@ export const CMS = {
 export const GUEST_KINDS = {
   MC_RECORDING: 'mc_recording',
   HOME_SLIDE: 'home_slide',
+  /** Guest home "Question of the day": one a day, rotating through these in order. */
+  DAILY_QUESTION: 'daily_question',
 };
 
 /** Where a guest home slide's button goes: a program page, or any link. */

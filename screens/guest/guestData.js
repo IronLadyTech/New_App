@@ -1,4 +1,5 @@
 import { COVER } from '../lep/lepData';
+import { videoLength } from '../../constants/videoDurations';
 import { COMMUNITY_ASSET_KEYS, CSUITE_ASSET_KEYS, PODCAST_ASSET_KEYS } from '../../constants/lessonAssets';
 
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
@@ -43,7 +44,7 @@ export const PROGRAM_CARDS = [
     num: '04',
     badge: 'BY APPLICATION',
     title: 'Master of Business Warfare (MBW)',
-    body: 'A 1-year strategy circle for women already leading — four powerful in-person sessions.',
+    body: 'The C-Suite League: one year from capability to command — four powerful in-person sessions.',
     chips: ['1 year', '4 in-person sessions', '~5 batches a year'],
   },
 ];
@@ -250,6 +251,8 @@ const EPISODE_META = [
 export const EPISODES = EPISODE_META.map((ep, i) => ({
   ...ep,
   assetKey: PODCAST_ASSET_KEYS[i],
+  // the real length of the episode, not a typed one
+  min: videoLength(PODCAST_ASSET_KEYS[i], ep.min),
 }));
 
 const CSUITE_META = [
@@ -274,12 +277,12 @@ const COMMUNITY_META = [
   {
     title: "75+ Iron Ladies who've reached the 1 crore income!",
     meta: '100BM and LEP',
-    img: HERO,
+    img: require('../../assets/il/community-75-crore.jpg'),
   },
   {
     title: '26th April — Winning Ways for Women with Indra Nooyi',
     meta: '100BM and LEP',
-    img: HERO,
+    img: require('../../assets/il/community-indra-nooyi.jpg'),
   },
 ];
 
@@ -331,7 +334,7 @@ export const HOME_SLIDES = [
   {
     kicker: 'By application',
     program: 'Master of Business Warfare',
-    title: 'A year with women who already lead.',
+    title: 'From capability to command.',
     body: 'Four in-person intensives. Enterprise influence and board-ready authority.',
     chips: ['1 year', 'Closed cohort'],
     cta: 'Explore MBW',

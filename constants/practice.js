@@ -5,6 +5,7 @@ import {
   RITUALS_M3U8,
   SHAMELESS_KEY_YT,
 } from './lessonAssets';
+import { videoLength } from './videoDurations';
 import { PREWORK_THUMBS } from './preworkThumbs';
 
 /**
@@ -164,7 +165,7 @@ export const PRACTICE = {
   },
   'lep-principles-video': {
     programId: 'lep',
-    kind: 'Pre-work · 14 min',
+    kind: `Pre-work · ${videoLength('lep-principles-video')}`,
     minutes: 14,
     title: 'Watch the 27 Principles video',
     why: 'The mental models the whole program is built on.',
@@ -177,7 +178,7 @@ export const PRACTICE = {
   },
   'lep-shameless': {
     programId: 'lep',
-    kind: 'Pre-work · 22 min',
+    kind: `Pre-work · ${videoLength('lep-shameless')}`,
     minutes: 22,
     title: 'Watch The Shameless Pitch',
     why: 'Before Day 1, see what shameless pitching looks like done well.',

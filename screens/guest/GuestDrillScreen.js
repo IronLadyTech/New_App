@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import Reanimated, { Easing, cancelAnimation, useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
@@ -103,20 +104,21 @@ export default function GuestDrillScreen({ navigation, route }) {
 
           <View style={{ marginTop: 18 }}>
             {guide.steps.map((s, i) => (
-              <StepRow
-                key={s.n}
-                step={s}
-                last={i === total - 1}
-                done={isDone(i)}
-                now={i === current}
-                note={notes[i] || ''}
-                onNote={(v) => setNotes((n) => ({ ...n, [i]: v }))}
-                onTick={() => setTicked((t) => ({ ...t, [i]: !t[i] }))}
-              />
+              <React.Fragment key={s.n}>
+                <StepRow
+                  step={s}
+                  last={i === total - 1}
+                  done={isDone(i)}
+                  now={i === current}
+                  note={notes[i] || ''}
+                  onNote={(v) => setNotes((n) => ({ ...n, [i]: v }))}
+                  onTick={() => setTicked((t) => ({ ...t, [i]: !t[i] }))}
+                />
+                {/* The timer sits right under the step it times (Power Pose: step 02, not the end). */}
+                {guide.timer && i === timerStep ? <DrillTimer {...guide.timer} onEnd={onTimerEnd} tail={i === total - 1} /> : null}
+              </React.Fragment>
             ))}
           </View>
-
-          {guide.timer ? <DrillTimer {...guide.timer} onEnd={onTimerEnd} /> : null}
 
           {complete ? (
             <DoneCard
@@ -260,18 +262,37 @@ function StepRow({ step, last, done, now, note, onNote, onTick }) {
   );
 }
 
-function DrillTimer({ label, secs, start, hush, onEnd }) {
+const AnimatedTimerCircle = Reanimated.createAnimatedComponent(Circle);
+
+/**
+ * The drill timer, as part of the step it times: same width as the step cards, the timeline line
+ * running past it. Ring on the left drains smoothly (UI thread); title, status and controls on
+ * the right. Last 3 seconds pulse and buzz; when time is up the card turns red with a tick.
+ */
+function DrillTimer({ label, secs, start, hush, onEnd, tail = false }) {
   const [left, setLeft] = useState(secs);
   const [running, setRunning] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
   const pop = useRef(new Animated.Value(1)).current;
   const ended = left === 0;
   const final = running && left > 0 && left <= 3;
+  const drained = useSharedValue(0); // 0 → 1 over the whole countdown
 
   useEffect(() => {
     if (!running) return undefined;
     const t = setInterval(() => setLeft((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
+  }, [running]);
+
+  // Smooth ring: sweep to the end over the time left; stop where it is on pause.
+  useEffect(() => {
+    if (running) {
+      drained.value = withTiming(1, { duration: left * 1000, easing: Easing.linear });
+    } else {
+      cancelAnimation(drained);
+      drained.value = (secs - left) / secs;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running]);
 
   useEffect(() => {
@@ -304,131 +325,147 @@ function DrillTimer({ label, secs, start, hush, onEnd }) {
     return () => loop.stop();
   }, [hush, running, pulse]);
 
-  const size = 176;
-  const stroke = 8;
+  const size = 104;
+  const stroke = 7;
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
-  const progress = useMemo(() => (secs - left) / secs, [secs, left]);
+  const ringProps = useAnimatedProps(() => ({ strokeDashoffset: circ * drained.value }));
 
   const press = () => {
     if (ended) {
       setLeft(secs);
+      drained.value = 0;
       setRunning(true);
       return;
     }
     setRunning((v) => !v);
   };
+  const reset = () => {
+    setRunning(false);
+    setLeft(secs);
+    cancelAnimation(drained);
+    drained.value = 0;
+  };
 
   const cta = ended ? 'Go again' : running ? 'Pause' : left < secs ? 'Resume' : start;
   const status = ended
-    ? 'Time’s up'
+    ? hush
+      ? 'You held it. That stillness is your authority.'
+      : 'Done — this step is ticked.'
     : final
-      ? 'Almost there'
+      ? 'Almost there…'
       : running
         ? hush
-          ? 'Don’t speak.'
-          : 'Running · keep going'
+          ? 'Don’t speak. Hold it.'
+          : 'Keep going'
         : left < secs
           ? 'Paused'
-          : `Tap ${start.toLowerCase()} to begin`;
+          : `${secs < 60 ? `${secs} seconds` : `${Math.round(secs / 60)} minute${secs >= 120 ? 's' : ''}`} · start when you are ready`;
 
+  const ink = ended ? '#FFFFFF' : '#FFFFFF';
   return (
-    <View
-      style={{
-        marginTop: 18,
-        backgroundColor: ended ? G.cta : G.dark,
-        borderRadius: 24,
-        padding: 20,
-        alignItems: 'center',
-      }}
-    >
-      <ILText role="eyebrow" color={ended ? '#FFFFFF' : G.pink} style={[af, { fontSize: 10, letterSpacing: 1.2 }]}>
-        {label}
-      </ILText>
-      <View style={{ width: size, height: size, marginTop: 16, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.18)" strokeWidth={stroke} fill="none" />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={ended ? '#FFFFFF' : G.cta}
-            strokeWidth={stroke}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circ} ${circ}`}
-            strokeDashoffset={circ * (1 - progress)}
-          />
-        </Svg>
-        <Animated.View style={{ alignItems: 'center', transform: [{ scale: pop }] }}>
-          {ended ? (
-            <MaterialIcons name="check-circle" size={56} color="#FFFFFF" />
-          ) : (
-            <StatNum color={final ? G.pink : '#FFFFFF'} size={final ? 56 : 44}>
-              {final ? String(left) : clock(left)}
-            </StatNum>
-          )}
-        </Animated.View>
-        <Animated.View style={{ opacity: hush && running && !final ? pulse : 1 }}>
-          <ILText
-            role="label"
-            color={ended ? '#FFFFFF' : G.pink}
-            align="center"
-            style={{ marginTop: 4, fontSize: ended ? 15 : 12 }}
-          >
-            {status}
-          </ILText>
-        </Animated.View>
+    <View style={{ flexDirection: 'row' }}>
+      {/* the timeline keeps running past the timer */}
+      <View style={{ width: 46, alignItems: 'center' }}>
+        {tail ? null : <View style={{ width: 2, flex: 1, backgroundColor: G.line }} />}
       </View>
-      {ended ? (
-        <ILText role="bodySm" color="#FFFFFF" align="center" style={{ marginTop: 10, fontSize: 13 }}>
-          {hush ? 'You held it. That stillness is your authority.' : 'Done. Step ticked — finish below.'}
-        </ILText>
-      ) : null}
-      <View style={{ flexDirection: 'row', marginTop: 18, alignSelf: 'stretch' }}>
-        <Pressable
-          onPress={press}
-          accessibilityRole="button"
-          style={{
-            flex: 1,
-            backgroundColor: ended ? '#FFFFFF' : G.cta,
-            borderRadius: 999,
-            paddingVertical: 13,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-          }}
-        >
-          <MaterialIcons
-            name={ended ? 'replay' : running ? 'pause' : 'play-arrow'}
-            size={18}
-            color={ended ? G.cta : '#FFFFFF'}
-          />
-          <ILText role="label" color={ended ? G.cta : '#FFFFFF'} style={{ marginLeft: 4 }}>
-            {cta}
+      <View
+        style={{
+          flex: 1,
+          marginLeft: 8,
+          marginTop: tail ? 12 : 0,
+          marginBottom: tail ? 0 : 12,
+          borderRadius: 20,
+          padding: 14,
+          backgroundColor: ended ? G.cta : G.dark,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+      >
+        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+          <Svg width={size} height={size} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+            <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.16)" strokeWidth={stroke} fill="none" />
+            <AnimatedTimerCircle
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              stroke={ended ? '#FFFFFF' : G.cta}
+              strokeWidth={stroke}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${circ} ${circ}`}
+              animatedProps={ringProps}
+            />
+          </Svg>
+          <Animated.View style={{ alignItems: 'center', transform: [{ scale: pop }] }}>
+            {ended ? (
+              <MaterialIcons name="check" size={40} color="#FFFFFF" />
+            ) : (
+              <StatNum color={final ? G.pink : ink} size={final ? 34 : 26}>
+                {final ? String(left) : clock(left)}
+              </StatNum>
+            )}
+          </Animated.View>
+        </View>
+
+        <View style={{ flex: 1, marginLeft: 14 }}>
+          <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.display, fontSize: 18, lineHeight: 23 }}>
+            {label}
           </ILText>
-        </Pressable>
-        {left < secs && !ended ? (
-          <Pressable
-            onPress={() => {
-              setRunning(false);
-              setLeft(secs);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Reset timer"
-            style={{
-              marginLeft: 10,
-              width: 48,
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.4)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <MaterialIcons name="replay" size={18} color="#FFFFFF" />
-          </Pressable>
-        ) : null}
+          <Animated.View style={{ opacity: hush && running && !final ? pulse : 1 }}>
+            <ILText
+              role="bodySm"
+              color={ended ? '#FFFFFF' : 'rgba(248,214,212,0.9)'}
+              style={{ marginTop: 3, fontSize: 12.5, lineHeight: 17 }}
+            >
+              {status}
+            </ILText>
+          </Animated.View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
+            <Pressable
+              onPress={press}
+              accessibilityRole="button"
+              accessibilityLabel={cta}
+              style={{
+                backgroundColor: ended ? '#FFFFFF' : G.cta,
+                borderRadius: 999,
+                paddingVertical: 9,
+                paddingHorizontal: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <MaterialIcons
+                name={ended ? 'replay' : running ? 'pause' : 'play-arrow'}
+                size={18}
+                color={ended ? G.cta : '#FFFFFF'}
+              />
+              <ILText role="label" color={ended ? G.cta : '#FFFFFF'} style={{ marginLeft: 4, fontSize: 13.5 }}>
+                {cta}
+              </ILText>
+            </Pressable>
+            {left < secs && !ended ? (
+              <Pressable
+                onPress={reset}
+                accessibilityRole="button"
+                accessibilityLabel="Reset timer"
+                hitSlop={8}
+                style={{
+                  marginLeft: 8,
+                  width: 38,
+                  height: 38,
+                  borderRadius: 19,
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.35)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <MaterialIcons name="replay" size={17} color="#FFFFFF" />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       </View>
     </View>
   );

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,7 +56,7 @@ export default function GuestLearnScreen() {
     <Page>
       <StatusBar style="dark" />
       <GuestHeader floating />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -268,7 +269,7 @@ export default function GuestLearnScreen() {
           body="Takes two minutes to find your registration and pick up where these previews leave off."
           onPress={findRegistration}
         />
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

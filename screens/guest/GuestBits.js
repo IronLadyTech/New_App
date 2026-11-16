@@ -1,4 +1,14 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import Reanimated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -120,7 +130,7 @@ export function WhiteCard({ children, style, dashed, onPress }) {
   );
 }
 
-export function FindCta({ kicker, title, body, onPress }) {
+export function FindCta({ kicker, title, body, onPress, ctaLabel = 'Find my registration' }) {
   return (
     <View
       style={{
@@ -156,7 +166,7 @@ export function FindCta({ kicker, title, body, onPress }) {
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel="Find my registration"
+        accessibilityLabel={ctaLabel}
         style={({ pressed }) => ({
           marginTop: 16,
           width: '100%',
@@ -168,7 +178,7 @@ export function FindCta({ kicker, title, body, onPress }) {
         })}
       >
         <ILText role="label" color="#FFFFFF" style={{ fontSize: 14, lineHeight: 18 }}>
-          Find my registration
+          {ctaLabel}
         </ILText>
       </Pressable>
     </View>
@@ -418,97 +428,132 @@ export function GuestBackBar(props) {
 }
 
 /** MBW hero: thin ring, red arc Q1→Q2, Q nodes, Playfair “1 year”. */
-export function YearRing({ size = 216 }) {
-  const node = 36;
-  const stroke = 2.5;
+/**
+ * The MBW year as a campaign ring. On first show the red line draws the whole year (Q1 to Q4),
+ * lighting each quarter as it passes, then settles on the selected one; choosing a quarter sweeps
+ * the line to it, and quarters already passed stay lit. All on the UI thread (Reanimated);
+ * reduced motion skips the opening draw. With `onSelect`, each quarter node is tappable.
+ */
+const AnimatedRingCircle = Reanimated.createAnimatedComponent(Circle);
+const RING_NODE = 36;
+
+function RingNode({ i, label, x, y, progress, on, onPress }) {
+  const lit = useAnimatedStyle(() => {
+    const passed = progress.value > i * 0.25 + 0.001;
+    return {
+      backgroundColor: passed ? G.cta : G.dark,
+      borderWidth: passed ? 0 : 2,
+      transform: [{ scale: withTiming(on ? 1.14 : 1, { duration: 220 }) }],
+    };
+  }, [on, i]);
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      pressFeedback={false}
+      hitSlop={10}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={`Quarter ${i + 1}`}
+      accessibilityState={onPress ? { selected: on } : undefined}
+      style={{ position: 'absolute', left: x - RING_NODE / 2, top: y - RING_NODE / 2, width: RING_NODE, height: RING_NODE }}
+    >
+      <Reanimated.View
+        style={[
+          {
+            width: RING_NODE,
+            height: RING_NODE,
+            borderRadius: RING_NODE / 2,
+            borderColor: '#FFFFFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          lit,
+        ]}
+      >
+        <ILText
+          role="label"
+          color="#FFFFFF"
+          style={[af, { fontFamily: IL_FONTS.display, fontSize: 11, lineHeight: 13, letterSpacing: 0 }]}
+        >
+          {label}
+        </ILText>
+      </Reanimated.View>
+    </Pressable>
+  );
+}
+
+export function YearRing({ size = 216, active = 0, onSelect }) {
+  const stroke = 3;
   const c = size / 2;
-  const r = (size - node) / 2 - 2;
-  const start = { x: c, y: c - r };
-  const end = { x: c + r, y: c };
-  const arc = `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`;
-  const nodes = [
-    { label: 'Q1', deg: -90, on: true },
-    { label: 'Q2', deg: 0, on: false },
-    { label: 'Q3', deg: 90, on: false },
-    { label: 'Q4', deg: 180, on: false },
-  ];
+  const r = (size - RING_NODE) / 2 - 2;
+  const circumference = 2 * Math.PI * r;
+  const reduced = useReducedMotion();
+  const progress = useSharedValue(reduced ? (active + 1) / 4 : 0);
+  const intro = useRef(!reduced);
+
+  useEffect(() => {
+    const target = (active + 1) / 4;
+    if (intro.current) {
+      intro.current = false;
+      // The one opening moment: draw the full year, then settle on her quarter.
+      progress.value = withSequence(
+        withDelay(250, withTiming(1, { duration: 1400, easing: Easing.inOut(Easing.cubic) })),
+        withDelay(350, withTiming(target, { duration: 600, easing: Easing.out(Easing.cubic) }))
+      );
+      return;
+    }
+    progress.value = withTiming(target, { duration: 420, easing: Easing.out(Easing.cubic) });
+  }, [active]);
+
+  const arcProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - progress.value),
+  }));
+
+  const nodes = ['Q1', 'Q2', 'Q3', 'Q4'].map((label, i) => {
+    const rad = ((-90 + i * 90) * Math.PI) / 180;
+    return { label, i, x: c + r * Math.cos(rad), y: c + r * Math.sin(rad) };
+  });
 
   return (
     <View style={{ width: size, height: size, marginTop: 22, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Circle
+        <Circle cx={c} cy={c} r={r} stroke="rgba(255,255,255,0.22)" strokeWidth={2.5} fill="none" />
+        <AnimatedRingCircle
           cx={c}
           cy={c}
           r={r}
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth={stroke}
-          fill="none"
-        />
-        <Path
-          d={arc}
           stroke={G.cta}
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"
+          strokeDasharray={`${circumference} ${circumference}`}
+          rotation={-90}
+          originX={c}
+          originY={c}
+          animatedProps={arcProps}
         />
       </Svg>
-      {nodes.map((n) => {
-        const rad = (n.deg * Math.PI) / 180;
-        const x = c + r * Math.cos(rad);
-        const y = c + r * Math.sin(rad);
-        return (
-          <View
-            key={n.label}
-            style={{
-              position: 'absolute',
-              left: x - node / 2,
-              top: y - node / 2,
-              width: node,
-              height: node,
-              borderRadius: node / 2,
-              backgroundColor: n.on ? G.cta : G.dark,
-              borderWidth: n.on ? 0 : 2,
-              borderColor: '#FFFFFF',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ILText
-              role="label"
-              color="#FFFFFF"
-              style={[
-                af,
-                {
-                  fontFamily: IL_FONTS.display,
-                  fontSize: 11,
-                  lineHeight: 13,
-                  letterSpacing: 0,
-                },
-              ]}
-            >
-              {n.label}
-            </ILText>
-          </View>
-        );
-      })}
+      {nodes.map((n) => (
+        <RingNode
+          key={n.label}
+          i={n.i}
+          label={n.label}
+          x={n.x}
+          y={n.y}
+          progress={progress}
+          on={n.i === active}
+          onPress={onSelect ? () => onSelect(n.i) : undefined}
+        />
+      ))}
       <View style={{ alignItems: 'center', marginTop: 2 }}>
         <ILText
           role="display"
           color="#FFFFFF"
-          style={{
-            fontFamily: IL_FONTS.display,
-            fontSize: 28,
-            lineHeight: 32,
-            letterSpacing: -0.6,
-          }}
+          style={{ fontFamily: IL_FONTS.display, fontSize: 28, lineHeight: 32, letterSpacing: -0.6 }}
         >
           1 year
         </ILText>
-        <ILText
-          role="bodySm"
-          color="rgba(255,255,255,0.62)"
-          style={{ marginTop: 4, fontSize: 11, lineHeight: 14 }}
-        >
+        <ILText role="bodySm" color="rgba(255,255,255,0.62)" style={{ marginTop: 4, fontSize: 11, lineHeight: 14 }}>
           4 quarters
         </ILText>
       </View>

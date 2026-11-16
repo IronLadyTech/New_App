@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -82,7 +83,7 @@ export default function BmMyProgramScreen() {
         onNotifications={nav.goNotifications}
         onProfile={nav.goProfile}
       />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: headerPad + 4,
@@ -127,7 +128,7 @@ export default function BmMyProgramScreen() {
         ) : (
           <CohortBody locked={registered} />
         )}
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, Pressable as RNPressable, ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,7 +56,7 @@ export default function GuestEngageScreen() {
     <Page>
       <StatusBar style="dark" />
       <GuestHeader floating />
-      <ScrollView
+      <RevealScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -150,7 +151,7 @@ export default function GuestEngageScreen() {
           body="Find your registration and the batch circle, chapter events and closed-door triads open up."
           onPress={findRegistration}
         />
-      </ScrollView>
+      </RevealScrollView>
     </Page>
   );
 }

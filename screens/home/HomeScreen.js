@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useAuth } from '../../context/AuthContext';
@@ -86,7 +87,7 @@ function LegacyHome({ navigation }) {
         photoUrl={profile?.photoURL}
         onProfile={() => navigation.navigate('Profile', { screen: 'ProfileHome' })}
       />
-      <ScrollView
+      <RevealScrollView
         className="flex-1"
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
@@ -220,7 +221,7 @@ function LegacyHome({ navigation }) {
             </View>
           ))
         )}
-      </ScrollView>
+      </RevealScrollView>
     </View>
   );
 }
