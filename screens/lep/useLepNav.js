@@ -24,9 +24,9 @@ export function useLepNav() {
   };
   return {
     // Profile at the top (it used to open wherever it was last scrolled to).
-    goProfile: () => navigation.navigate('Profile', { screen: 'ProfileHome', params: { scrollTop: Date.now() } }),
+    goProfile: () => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { scrollTop: Date.now() } }),
     /** Her B-HAG has one home: the Profile B-HAG card (saved to her profile and Zoho). */
-    goBhag: () => navigation.navigate('Profile', { screen: 'ProfileHome', params: { openBhag: Date.now() } }),
+    goBhag: () => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { openBhag: Date.now() } }),
     goNotifications: () => goProfileScreen('Notifications'),
     goSchedule: () => goIn('Home', 'Schedule'),
     goToday: () => goIn('Home', 'TodayChecklist'),
@@ -44,6 +44,7 @@ export function useLepNav() {
     goReceipt: (order) => goProfileScreen('OrderReceipt', { orderId: order?.id, order }),
     goMyProgram: (tab) =>
       navigation.navigate('MyProgram', {
+        pop: true,
         screen: 'LepProgram',
         ...(tab ? { params: { tab } } : {}),
       }),
@@ -80,14 +81,14 @@ export function useLepNav() {
     },
     goPractice: (programId, practiceId, extra = {}) =>
       practiceId === 'lep-bhag'
-        ? navigation.navigate('Profile', { screen: 'ProfileHome', params: { openBhag: Date.now() } })
+        ? navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { openBhag: Date.now() } })
         : goIn('Home', 'Practice', { programId, practiceId, ...extra }),
     goWatch: (params) => navigateWatch(navigation, params),
     /** Today's practice row → its course task, or the Practice page when it isn't one. */
     goPracticeItem: (item) => {
       if (item.taskId) goIn('MyProgram', 'CourseTask', { programId: item.programId, taskId: item.taskId });
       else if (item.practiceId === 'lep-bhag') {
-        navigation.navigate('Profile', { screen: 'ProfileHome', params: { openBhag: Date.now() } });
+        navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { openBhag: Date.now() } });
       } else if (item.practiceId) {
         goIn('Home', 'Practice', {
           programId: item.programId,

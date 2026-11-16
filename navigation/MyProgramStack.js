@@ -24,7 +24,7 @@ function MyProgramRoot(props) {
 
 export default function MyProgramStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
       <Stack.Screen name="LepProgram" component={MyProgramRoot} />
       <Stack.Screen name="PhaseDetail" component={LepPhaseDetailScreen} />
       <Stack.Screen

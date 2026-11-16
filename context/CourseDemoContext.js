@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { todayIsoIST } from '../utils/lepDailyPractice';
 import { lepActiveDayKey } from '../utils/lepPracticeStreak';
@@ -27,8 +27,23 @@ export function CourseDemoProvider({ children }) {
   const [done, setDone] = useState({});
   const [submissions, setSubmissions] = useState({});
 
+  // Written to the phone only after this account's saved state has loaded (never an empty map over
+  // it), a moment after the last change, once — not inside every state update.
+  const loadedKeyRef = useRef(null);
+  useEffect(() => {
+    if (loadedKeyRef.current !== doneKey) return undefined;
+    const t = setTimeout(() => AsyncStorage.setItem(doneKey, JSON.stringify(done)).catch(() => {}), 400);
+    return () => clearTimeout(t);
+  }, [done, doneKey]);
+  useEffect(() => {
+    if (loadedKeyRef.current !== doneKey) return undefined;
+    const t = setTimeout(() => AsyncStorage.setItem(subKey, JSON.stringify(submissions)).catch(() => {}), 400);
+    return () => clearTimeout(t);
+  }, [submissions, subKey, doneKey]);
+
   useEffect(() => {
     let cancelled = false;
+    loadedKeyRef.current = null;
     setDone({});
     setSubmissions({});
     (async () => {
@@ -38,10 +53,13 @@ export function CourseDemoProvider({ children }) {
           AsyncStorage.getItem(subKey),
         ]);
         if (cancelled) return;
-        if (rawDone) setDone(JSON.parse(rawDone));
-        if (rawSub) setSubmissions(JSON.parse(rawSub));
+        // Merge: anything marked while the saved state was loading is kept.
+        if (rawDone) setDone((prev) => ({ ...JSON.parse(rawDone), ...prev }));
+        if (rawSub) setSubmissions((prev) => ({ ...JSON.parse(rawSub), ...prev }));
       } catch {
         // ignore
+      } finally {
+        if (!cancelled) loadedKeyRef.current = doneKey;
       }
     })();
     return () => {
@@ -50,14 +68,13 @@ export function CourseDemoProvider({ children }) {
   }, [doneKey, subKey]);
 
   const markDone = useCallback((programId, taskId) => {
-    setDone((prev) => {
-      const next = { ...prev, [taskKey(programId, taskId)]: true };
-      AsyncStorage.setItem(doneKey, JSON.stringify(next)).catch(() => {});
-      return next;
-    });
+    const key = taskKey(programId, taskId);
+    // Already done (e.g. "active today", marked on every practice): same object, so nothing
+    // that reads it re-renders.
+    setDone((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
     // Mirror to the server for the CX dashboard; no-op outside a real learner session.
     recordPracticeDone(programId, taskId);
-  }, [doneKey]);
+  }, []);
 
   const isDone = useCallback(
     (programId, taskId) => !!done[taskKey(programId, taskId)],
@@ -82,10 +99,9 @@ export function CourseDemoProvider({ children }) {
       if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
-      AsyncStorage.setItem(doneKey, JSON.stringify(next)).catch(() => {});
       return next;
     });
-  }, [doneKey]);
+  }, []);
 
   const recordLepActiveDay = useCallback(
     (isoDate) => {
@@ -103,15 +119,10 @@ export function CourseDemoProvider({ children }) {
   const saveSubmission = useCallback((programId, taskId, data, opts) => {
     const key = taskKey(programId, taskId);
     setSubmissions((prev) => {
-      const next = {
-        ...prev,
-        [key]: { data, submittedAt: Date.now() },
-      };
-      AsyncStorage.setItem(subKey, JSON.stringify(next)).catch(() => {});
-      return next;
+      return { ...prev, [key]: { data, submittedAt: Date.now() } };
     });
     if (!opts?.skipMarkDone) markDone(programId, taskId);
-  }, [markDone, subKey]);
+  }, [markDone]);
 
   const value = useMemo(
     () => ({

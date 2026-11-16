@@ -33,7 +33,7 @@ export default function ProgramTasksScreen({ route, navigation }) {
       <ILHeader
         photoUrl={profile?.photoURL}
         insetTop={false}
-        onProfile={() => navigation.getParent()?.navigate('Profile', { screen: 'ProfileHome' })}
+        onProfile={() => navigation.getParent()?.navigate('Profile', { pop: true, screen: 'ProfileHome' })}
       />
       <View className="px-4 pb-2 pt-2">
         <TouchableOpacity

@@ -117,7 +117,7 @@ export function useProgramRoutes() {
       if (programId && typeof programId === 'string' && programId !== nav.program) {
         nav.setProgram(programId);
       }
-      navigation.navigate('Learn', { screen: 'LepLearn' });
+      navigation.navigate('Learn', { pop: true, screen: 'LepLearn' });
     },
     [nav, navigation, profile]
   );
@@ -148,7 +148,7 @@ export function useProgramRoutes() {
     if (hasBm) {
       nav.setProgram('100bm');
       if (stackRoutes.includes('LepHome')) {
-        navigation.navigate('LepHome');
+        navigation.navigate('LepHome', undefined, { pop: true });
       } else {
         navigation.getParent()?.navigate('Home');
       }

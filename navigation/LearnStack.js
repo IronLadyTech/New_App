@@ -21,7 +21,7 @@ function LearnRoot(props) {
 
 export default function LearnStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
       <Stack.Screen name="LepLearn" component={LearnRoot} />
       <Stack.Screen
         name="Programs"

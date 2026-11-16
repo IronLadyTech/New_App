@@ -5,6 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LOGIN_PHONE_KEY } from '../../context/AuthContext';
 import { stashPhoneAuth } from '../../services/phoneAuthSession';
 import { friendlyAuthError } from '../../utils/authErrors';
 import { formatCallableError, resolvePhoneAccess, warmPhoneAccess } from '../../services/functions';
@@ -100,6 +102,20 @@ export default function PhoneLoginScreen({ navigation }) {
 
   useEffect(() => {
     warmPhoneAccess();
+  }, []);
+
+  // Came from the guest app because her number now has a programme: number filled in, one line why.
+  const [programReady, setProgramReady] = useState(false);
+  useEffect(() => {
+    AsyncStorage.getItem(LOGIN_PHONE_KEY)
+      .then((saved) => {
+        const ten = String(saved || '').replace(/\D/g, '').slice(-10);
+        if (ten.length !== 10) return;
+        AsyncStorage.removeItem(LOGIN_PHONE_KEY).catch(() => {});
+        setLocal(ten);
+        setProgramReady(true);
+      })
+      .catch(() => {});
   }, []);
 
   const busy = checking || sending;
@@ -397,6 +413,10 @@ export default function PhoneLoginScreen({ navigation }) {
             {error ? (
               <ILText role="bodySm" color={CTA} style={{ marginTop: 10 }}>
                 {error}
+              </ILText>
+            ) : programReady ? (
+              <ILText role="bodySm" color={IL_BRAND.ink || '#112B32'} style={{ marginTop: 10 }}>
+                Your programme is ready. Verify your number to open it.
               </ILText>
             ) : null}
 

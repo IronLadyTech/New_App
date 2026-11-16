@@ -85,7 +85,7 @@ function LegacyHome({ navigation }) {
       <StatusBar style="dark" />
       <ILHeader
         photoUrl={profile?.photoURL}
-        onProfile={() => navigation.navigate('Profile', { screen: 'ProfileHome' })}
+        onProfile={() => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome' })}
       />
       <RevealScrollView
         className="flex-1"

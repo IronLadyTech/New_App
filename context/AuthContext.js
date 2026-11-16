@@ -19,6 +19,7 @@ import { PAYMENT_STATUS } from '../constants/programs';
 import { devToolsEnabled } from '../utils/devToolsEnabled';
 import { useChangeProbe } from '../utils/perfHud';
 import { Timestamp } from 'firebase/firestore';
+import { resolvePhoneAccess } from '../services/functions';
 
 /**
  * Her last profile, kept on the phone: on the next open the app shows her own screen at once
@@ -28,6 +29,27 @@ import { Timestamp } from 'firebase/firestore';
 const PROFILE_CACHE_KEY = 'il_profile_cache_v1';
 /** The guest's verified number (services/appGuest.js) — present only after a real OTP. */
 const GUEST_PHONE_KEY = 'il_guest_phone';
+/** A guest whose number gets a programme later (enrolled in Zoho) is sent to sign-in with it. */
+export const LOGIN_PHONE_KEY = 'il_login_phone';
+const GUEST_RECHECK_KEY = 'il_guest_recheck_at';
+const GUEST_RECHECK_MS = 60 * 60 * 1000;
+
+/**
+ * Guest mode is kept on the phone, so she is never asked for the code again — but then a guest
+ * who is enrolled later (or whose Zoho record is fixed) stayed a guest for good. At most once an
+ * hour, ask the server about her number; true when it now has a programme seat.
+ */
+async function guestNowHasSeat(phone) {
+  try {
+    const last = Number(await AsyncStorage.getItem(GUEST_RECHECK_KEY)) || 0;
+    if (Date.now() - last < GUEST_RECHECK_MS) return false;
+    await AsyncStorage.setItem(GUEST_RECHECK_KEY, String(Date.now()));
+    const access = await resolvePhoneAccess(phone);
+    return Boolean(access && access.ok !== false && !access.guest);
+  } catch {
+    return false; // offline or server busy: she stays a guest, checked again next hour
+  }
+}
 
 function encodeForCache(v) {
   if (v == null || typeof v !== 'object') return v;
@@ -170,9 +192,25 @@ const SYNC_STAMP_KEYS = new Set([
   'zohoSyncedAt',
 ]);
 
+/**
+ * Same JSON for the same content whatever the key order: a profile patched on the phone and the
+ * server's copy of it list keys in a different order, so the server echo after every save used to
+ * count as a change and redraw the whole app a second time.
+ */
 function visibleJson(profile) {
   try {
-    return JSON.stringify(profile, (key, value) => (SYNC_STAMP_KEYS.has(key) ? undefined : value));
+    return JSON.stringify(profile, (key, value) => {
+      if (SYNC_STAMP_KEYS.has(key)) return undefined;
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+      if (typeof value.toMillis === 'function') return { __ts: value.toMillis() };
+      const sorted = {};
+      Object.keys(value)
+        .sort()
+        .forEach((k) => {
+          sorted[k] = value[k];
+        });
+      return sorted;
+    });
   } catch {
     return null;
   }
@@ -225,8 +263,16 @@ export function AuthProvider({ children }) {
           // she used to be sent back to phone + OTP on every open.
           AsyncStorage.multiRemove([LAB_LEP_KEY, LAB_JOURNEY_KEY, DEMO_KEY]).catch(() => {});
           const realGuest = guest === '1' && demoFlag !== '1' && Boolean(guestPhone);
-          if (realGuest) setGuestMode(true);
-          else AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
+          if (realGuest) {
+            setGuestMode(true);
+            guestNowHasSeat(guestPhone).then(async (seated) => {
+              if (!seated || cancelled) return;
+              // Her programme is ready: sign-in, number filled in; the SMS still proves it is her.
+              await AsyncStorage.setItem(LOGIN_PHONE_KEY, String(guestPhone)).catch(() => {});
+              await AsyncStorage.multiRemove([GUEST_KEY, GUEST_RECHECK_KEY]).catch(() => {});
+              setGuestMode(false);
+            });
+          } else AsyncStorage.removeItem(GUEST_KEY).catch(() => {});
           return;
         }
         const lab = parseLabJourney(journey, legacyLep);

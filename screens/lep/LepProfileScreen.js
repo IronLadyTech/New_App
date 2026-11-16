@@ -140,6 +140,9 @@ function useProgramGroups(profile, programIds) {
   return groups;
 }
 
+/** Learners whose welcome fields were re-sent to Zoho in this app run. */
+const WELCOME_RESYNCED = new Set();
+
 export default function LepProfileScreen({ route }) {
   const { profile, accountProfile, logout, user, patchProfile } = useAuth();
   // Opened from "Complete profile" or "Update your B-HAG": start at the top (B-HAG: open its editor).
@@ -173,9 +176,13 @@ export default function LepProfileScreen({ route }) {
 
   useEffect(() => {
     if (!user?.uid || user.uid === 'preview' || zohoWelcomeResyncRef.current) return;
+    // Once per app run, not per Profile screen: each new Profile screen used to call the server
+    // (a Zoho write), and the profile update it brought back redrew the whole app.
+    if (WELCOME_RESYNCED.has(user.uid)) return;
     const payload = welcomeFieldsPayloadFromProfile(source);
     if (!payload.city) return;
     zohoWelcomeResyncRef.current = true;
+    WELCOME_RESYNCED.add(user.uid);
     saveWelcomeProfileFields(payload)
       .then((result) => {
         if (result?.zohoLeadId) patchProfile({ zohoLeadId: result.zohoLeadId });

@@ -35,6 +35,8 @@ export default function HomeStack() {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        // Screens under the top one stop re-rendering on every data change.
+        freezeOnBlur: true,
         animation: 'slide_from_right',
         statusBarTranslucent: true,
         statusBarColor: 'transparent',

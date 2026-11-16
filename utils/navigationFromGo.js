@@ -30,11 +30,11 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'sessions') {
-    rootRef.navigate('MyProgram', { screen: 'LepProgram', params: { tab: 'Sessions' } });
+    rootRef.navigate('MyProgram', { pop: true, screen: 'LepProgram', params: { tab: 'Sessions' } });
     return true;
   }
   if (go.to === 'schedule') {
-    rootRef.navigate('MyProgram', { screen: 'LepProgram' });
+    rootRef.navigate('MyProgram', { pop: true, screen: 'LepProgram' });
     return true;
   }
   if (go.to === 'learn') {
@@ -59,7 +59,7 @@ export function navigateFromGo(go) {
   }
   // Her first unfinished practice of today (streak reminder → "Practise now"); Home opens it.
   if (go.to === 'practice') {
-    rootRef.navigate('Home', { screen: 'LepHome', params: { openPractice: Date.now() } });
+    rootRef.navigate('Home', { pop: true, screen: 'LepHome', params: { openPractice: Date.now() } });
     return true;
   }
   // Plain "home" (streak and guest reminders): today's practice lives on Home.

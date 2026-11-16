@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { videoLength } from '../../constants/videoDurations';
-import { useIsFocused } from '@react-navigation/native';
 import { Image, Linking, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import OneByOneRail from '../../components/il/OneByOneRail';
@@ -745,7 +744,6 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const slide = useSharedValue(lockerStep);
   const segW = useSharedValue(0);
   const indexRef = useRef(lockerStep);
-  const focused = useIsFocused();
   const gap = 6;
   const seg = trackW > 0 ? (trackW - gap * (count - 1)) / count : 0;
 
@@ -759,16 +757,14 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
     slide.value = lockerStep;
   }, [lockerStep, slide]);
 
-  useEffect(() => {
-    if (count < 2 || !focused) return undefined;
-    const timer = setInterval(() => {
-      const next = (indexRef.current + 1) % count;
-      indexRef.current = next;
-      setIndex(next); // labels + which button takes taps; the visible cross-fade does not wait for it
-      slide.value = withSpring(next, { damping: 18, stiffness: 120 });
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [count, slide, focused]);
+  // No auto-rotation: the card's height follows its slide, so rotating every 5 s moved the whole
+  // page below it up and down. It shows her current phase; tapping a phase name shows that one.
+  const show = (next) => {
+    if (next === indexRef.current) return;
+    indexRef.current = next;
+    setIndex(next); // labels + which button takes taps; the visible cross-fade does not wait for it
+    slide.value = withSpring(next, { damping: 18, stiffness: 120 });
+  };
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slide.value * (segW.value + gap) }],
   }));
@@ -862,7 +858,16 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         </View>
         <View style={{ flexDirection: 'row', gap, marginTop: 8 }}>
           {phases.map((p, i) => (
-            <View key={p.key} style={{ flex: 1 }}>
+            <Pressable
+              key={p.key}
+              onPress={() => show(i)}
+              pressFeedback={false}
+              hitSlop={{ top: 10, bottom: 10 }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: i === index }}
+              accessibilityLabel={`${p.label} phase`}
+              style={{ flex: 1 }}
+            >
               <ILText
                 role="label"
                 color={i === index ? '#FFFFFF' : p.done ? '#DCE6EA' : '#9FB3B9'}
@@ -870,7 +875,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
               >
                 {p.label}
               </ILText>
-            </View>
+            </Pressable>
           ))}
         </View>
       </View>

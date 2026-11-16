@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -15,12 +16,14 @@ function col(uid) {
   return collection(db, 'users', uid, USER_NOTIFICATIONS);
 }
 
-export function subscribeToParticipantNotifications(uid, onData, onError) {
+export function subscribeToParticipantNotifications(uid, onData, onError, max = 0) {
   if (!uid) {
     onData([]);
     return () => {};
   }
-  const q = query(col(uid), orderBy('createdAt', 'desc'));
+  const q = max
+    ? query(col(uid), orderBy('createdAt', 'desc'), limit(max))
+    : query(col(uid), orderBy('createdAt', 'desc'));
   return onSnapshot(
     q,
     (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),

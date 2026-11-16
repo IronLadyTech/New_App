@@ -9,15 +9,16 @@ import { bindRootNavigation, navigateFromGo } from '../utils/navigationFromGo';
 import { GUEST_PREVIEW } from '../utils/guestPreview';
 import { devToolsEnabled } from '../utils/devToolsEnabled';
 
-function AuthenticatedBranch() {
+// Memo: the whole app below must not re-render because the navigator above it did.
+const AuthenticatedBranch = React.memo(function AuthenticatedBranch() {
   const AuthenticatedApp = require('./AuthenticatedApp').default;
   return <AuthenticatedApp />;
-}
+});
 
-function GuestBranch() {
+const GuestBranch = React.memo(function GuestBranch() {
   const GuestNavigator = require('./GuestNavigator').default;
   return <GuestNavigator />;
-}
+});
 
 export default function AppNavigator() {
   const { isAuthenticated, isGuest, demo, journey, cmsPreview, initializing } = useAuth();
@@ -25,9 +26,19 @@ export default function AppNavigator() {
   const navRef = useNavigationContainerRef();
   const [route, setRoute] = useState(null);
   const openedPreviewGo = useRef(false);
+  // Demo: the flow bar sits on sign-in screens, every journey and the guest app.
+  const showBar =
+    devToolsEnabled() &&
+    !cmsPreview &&
+    !GUEST_PREVIEW &&
+    (!!journey || (demo && (isGuest || !isAuthenticated)));
+  const showBarRef = useRef(showBar);
+  showBarRef.current = showBar;
   const track = () => {
     bindRootNavigation(navRef);
-    setRoute(navRef.getCurrentRoute()?.name || null);
+    // Only the demo bar reads the route. Setting it on every navigation re-rendered this
+    // component — and so the whole app under it — on every tap that changed screen.
+    if (showBarRef.current) setRoute(navRef.getCurrentRoute()?.name || null);
   };
   // CMS preview: open once on the screen where the item CX just saved shows.
   const onReady = () => {
@@ -50,13 +61,6 @@ export default function AppNavigator() {
   ) : (
     <AuthNavigator />
   );
-
-  // Demo: the flow bar sits on sign-in screens, every journey and the guest app.
-  const showBar =
-    devToolsEnabled() &&
-    !cmsPreview &&
-    !GUEST_PREVIEW &&
-    (!!journey || (demo && (isGuest || !isAuthenticated)));
 
   return (
     <NavigationContainer ref={navRef} onReady={onReady} onStateChange={track}>

@@ -82,7 +82,7 @@ export default function ILTabBar({ state, descriptors, navigation }) {
           return;
         }
         const deep = (stack?.index ?? 0) > 0;
-        if (root && deep) navigation.navigate(item.name, { screen: root });
+        if (root && deep) navigation.navigate(item.name, { screen: root, pop: true });
         else navigation.navigate(item.name);
       }}
     />

@@ -44,7 +44,7 @@ export default function FeedScreen({ navigation }) {
       <ILHeader
         photoUrl={profile?.photoURL}
         insetTop={false}
-        onProfile={() => navigation.getParent()?.navigate('Profile', { screen: 'ProfileHome' })}
+        onProfile={() => navigation.getParent()?.navigate('Profile', { pop: true, screen: 'ProfileHome' })}
       />
       <View className="flex-row items-center justify-between px-4 pb-2 pt-2">
         <View>

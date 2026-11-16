@@ -15,7 +15,7 @@ const Stack = createNativeStackNavigator();
 
 export default function ProfileStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
       <Stack.Screen name="ProfileHome" component={LepProfileScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />

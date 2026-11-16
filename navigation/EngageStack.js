@@ -17,7 +17,7 @@ function EngageRoot(props) {
 
 export default function EngageStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
       <Stack.Screen name="LepEngage" component={EngageRoot} />
       <Stack.Screen name="EventDetail" component={LepEventDetailScreen} />
       <Stack.Screen name="EventTicket" component={LepEventTicketScreen} />

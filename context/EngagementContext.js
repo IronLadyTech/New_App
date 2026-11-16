@@ -24,8 +24,18 @@ export function EngagementProvider({ children }) {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Live only while a community screen is open (Feed, Post, Create post, Leaderboard). Running for
+  // everyone all the time, the top-20 listener re-sent learners' profiles to every phone each time
+  // one of them was active.
+  const [watchers, setWatchers] = useState(0);
+  const watch = useCallback(() => {
+    setWatchers((n) => n + 1);
+    return () => setWatchers((n) => Math.max(0, n - 1));
+  }, []);
+  const live = watchers > 0;
 
   useEffect(() => {
+    if (!live) return undefined;
     setLoading(true);
     const unsubPosts = subscribeToPosts(
       (data) => {
@@ -45,7 +55,7 @@ export function EngagementProvider({ children }) {
       unsubPosts();
       unsubBoard();
     };
-  }, []);
+  }, [live]);
 
   const publishPost = useCallback(
     async ({ title, content }) => {
@@ -91,8 +101,9 @@ export function EngagementProvider({ children }) {
       likePost,
       commentOnPost,
       setError,
+      watch,
     }),
-    [posts, leaderboard, loading, error, publishPost, likePost, commentOnPost]
+    [posts, leaderboard, loading, error, publishPost, likePost, commentOnPost, watch]
   );
 
   useChangeProbe('Engagement', value);
@@ -106,5 +117,7 @@ export function EngagementProvider({ children }) {
 export function useEngagement() {
   const ctx = useContext(EngagementContext);
   if (!ctx) throw new Error('useEngagement must be used within EngagementProvider');
+  const { watch } = ctx;
+  useEffect(() => watch(), [watch]);
   return ctx;
 }

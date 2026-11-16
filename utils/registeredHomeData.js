@@ -16,14 +16,17 @@ export const REG_STATUSES = ['enroll', 'batch', 'prework', 'ready'];
 
 export const ROLE_OPTIONS = ['Technology', 'Marketing', 'Finance', 'HR', 'Operations', 'Other'];
 
-/** City + field of work on profile — required before Day 1. */
+/** City, field of work and years of experience on her profile — required before Day 1. */
 export function isLepProfileInfoDone(profile) {
   const lead = learnerLeadDetails(profile);
   const city = String(profile?.city || lead.city || '').trim();
   const domain = String(
     profile?.domain || profile?.leadershipRole || lead.industry || ''
   ).trim();
-  return Boolean(city && domain);
+  // Same three as the Profile card (with the B-HAG, its 4th, that card shows 100%): Home said
+  // "profile done" with city + field only while Profile still showed 75%.
+  const experience = String(profile?.experience || lead.experience || '').trim();
+  return Boolean(city && domain && experience);
 }
 
 /**

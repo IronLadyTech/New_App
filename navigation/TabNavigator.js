@@ -4,25 +4,26 @@ import ILTabBar from '../components/il/ILTabBar';
 
 const Tab = createBottomTabNavigator();
 
+// Module constants: new ones on every render made the tab bar and every tab re-render too.
+const renderTabBar = (props) => <ILTabBar {...props} />;
+const SCREEN_OPTIONS = {
+  headerShown: false,
+  // Hidden tabs stop re-rendering on every data change, so the tab she opens gets the
+  // JS thread. (The old Android "dead tap" after a switch was fixed in react-native-screens 4.x.)
+  freezeOnBlur: true,
+  tabBarStyle: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  safeAreaInsets: { bottom: 0 },
+};
+
 export default function TabNavigator() {
   return (
-    <Tab.Navigator
-      tabBar={(props) => <ILTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        // Hidden tabs stop re-rendering on every data change, so the tab she opens gets the
-        // JS thread. (The old Android "dead tap" after a switch was fixed in react-native-screens 4.x.)
-        freezeOnBlur: true,
-        tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        safeAreaInsets: { bottom: 0 },
-      }}
-    >
+    <Tab.Navigator tabBar={renderTabBar} screenOptions={SCREEN_OPTIONS}>
       <Tab.Screen
         name="Home"
         getComponent={() => require('./HomeStack').default}

@@ -34,7 +34,7 @@ export function ProgramPage({ children }) {
       <LepHeader
         floating
         photoUrl={profile?.photoURL}
-        onProfile={() => navigation.navigate('Profile', { screen: 'ProfileHome' })}
+        onProfile={() => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome' })}
       />
       <ScrollView
         showsVerticalScrollIndicator={false}
