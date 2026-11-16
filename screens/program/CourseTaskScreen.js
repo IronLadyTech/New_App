@@ -164,7 +164,7 @@ function openTaskDocument(navigation, item) {
   const params = { url: item.url, label: item.title, pages: item.pages };
   const names = navigation.getState()?.routeNames || [];
   if (names.includes('TaskDocument')) navigation.navigate('TaskDocument', params);
-  else navigation.navigate('MyProgram', { screen: 'TaskDocument', params });
+  else navigation.navigate('MyProgram', { initial: false, screen: 'TaskDocument', params });
 }
 
 function TaskFiles({ task, skipReadingDocument = false }) {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { CommonActions, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import LiquidTabBar, { useLiquidItems } from './LiquidTabBar';
 import { markTabShown, markTabTap } from '../../utils/perfHud';
 
@@ -17,6 +17,7 @@ const ICONS = {
 
 /** Let the first screen settle (splash, data) before building the other tabs. */
 const PRELOAD_AFTER_MS = 2500;
+const PRELOAD_GAP_MS = 1500;
 
 /** Tab stacks keep nested screens (e.g. Week 2 phase) until we explicitly return to root. */
 const TAB_ROOT_SCREEN = {
@@ -44,12 +45,14 @@ export default function ILTabBar({ state, descriptors, navigation }) {
   useEffect(() => {
     if (preloaded.current) return undefined;
     preloaded.current = true;
-    const timer = setTimeout(() => {
-      items.forEach((item, i) => {
-        if (i !== activeIndex && typeof navigation.preload === 'function') navigation.preload(item.name);
-      });
-    }, PRELOAD_AFTER_MS);
-    return () => clearTimeout(timer);
+    // One tab at a time, a gap between each: building all of them in one go held the JS thread
+    // for close to a second on weak phones, and a tap or back press then did nothing.
+    if (typeof navigation.preload !== 'function') return undefined;
+    const queue = items.filter((_, i) => i !== activeIndex).map((item) => item.name);
+    const timers = queue.map((name, n) =>
+      setTimeout(() => navigation.preload(name), PRELOAD_AFTER_MS + n * PRELOAD_GAP_MS)
+    );
+    return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,7 +73,15 @@ export default function ILTabBar({ state, descriptors, navigation }) {
         // Back to the tab's first screen only if she had gone deeper; re-sending the root
         // screen when she is already on it just re-renders it for nothing.
         const root = TAB_ROOT_SCREEN[item.name];
-        const deep = (state.routes.find((r) => r.key === item.key)?.state?.index ?? 0) > 0;
+        const stack = state.routes.find((r) => r.key === item.key)?.state;
+        // A tab whose stack lost its first screen (an inner screen opened before the tab existed)
+        // would show that inner screen on every tap, with no way back: rebuild it from the root.
+        if (root && stack?.key && stack.routes?.[0]?.name && stack.routes[0].name !== root) {
+          navigation.dispatch({ ...CommonActions.reset({ index: 0, routes: [{ name: root }] }), target: stack.key });
+          navigation.navigate(item.name);
+          return;
+        }
+        const deep = (stack?.index ?? 0) > 0;
         if (root && deep) navigation.navigate(item.name, { screen: root });
         else navigation.navigate(item.name);
       }}

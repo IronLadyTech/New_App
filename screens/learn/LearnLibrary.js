@@ -525,6 +525,7 @@ export default function LearnLibrary({ navigation }) {
           <Pressable
             onPress={() =>
               navigation.getParent()?.navigate('Profile', {
+                initial: false,
                 screen: 'PaymentEnrollment',
                 params: { programId: filter },
               })

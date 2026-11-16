@@ -39,7 +39,7 @@ export function navigateWatch(navigation, params) {
     (names) => names.includes('MyProgram') && names.includes('Home'),
   );
   if (memberTab) {
-    memberTab.navigate('Engage', { screen: 'Watch', params: watchParams });
+    memberTab.navigate('Engage', { initial: false, screen: 'Watch', params: watchParams });
     return;
   }
 
@@ -64,9 +64,9 @@ export function navigateInMemberStack(navigation, stack, screen, params) {
     (names) => names.includes('MyProgram') && names.includes('Home'),
   );
   if (tab) {
-    tab.navigate(stack, { screen, params });
+    tab.navigate(stack, { initial: false, screen, params });
     return;
   }
 
-  navigation.navigate(stack, { screen, params });
+  navigation.navigate(stack, { initial: false, screen, params });
 }

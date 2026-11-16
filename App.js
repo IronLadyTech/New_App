@@ -15,7 +15,7 @@ import IronLadyAnimatedSplash from './components/il/IronLadyAnimatedSplash';
 import OfflineBanner from './components/OfflineBanner';
 import { DevLaunchSplashPreviewProvider } from './context/DevLaunchSplashPreviewContext';
 import { isAdminPath } from './utils/adminRoute';
-import { OTA_SKIP_INTRO_KEY, useOtaUpdates } from './hooks/useOtaUpdates';
+import { OTA_SKIP_INTRO_KEY, markSplashGone, useOtaUpdates } from './hooks/useOtaUpdates';
 import { markLaunchRevealed } from './utils/launchReveal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -52,7 +52,10 @@ function Root() {
   // first screen must be told to show itself. Only the splash used to send this, so after an
   // update restart the sign-in screen kept its header and phone card invisible: a bare photo.
   useEffect(() => {
-    if (splashDone) markLaunchRevealed();
+    if (splashDone) {
+      markLaunchRevealed();
+      markSplashGone(); // from here on an update waits; restarting would show her screen twice
+    }
   }, [splashDone]);
 
   // Android measures text once; drawing before the fonts load clips words ("Iron", "Continu").

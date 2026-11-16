@@ -36,7 +36,7 @@ export function useGuestActions() {
         navigation.navigate('ChallengeHub');
         return;
       }
-      navigation.navigate('Home', { screen: 'ChallengeHub' });
+      navigation.navigate('Home', { initial: false, screen: 'ChallengeHub' });
     },
   };
 }

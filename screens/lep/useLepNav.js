@@ -10,16 +10,16 @@ export function useLepNav() {
   const goProfileScreen = (screen, params) => {
     const names = navigation.getState()?.routeNames || [];
     if (names.includes(screen)) navigation.navigate(screen, params);
-    else navigation.navigate('Profile', { screen, params });
+    else navigation.navigate('Profile', { initial: false, screen, params });
   };
   const goIn = (stack, screen, params) => navigateInMemberStack(navigation, stack, screen, params);
   const goTab = (tabName, screen, params) => {
     const tabs = tabNav();
     if (tabs) {
-      tabs.navigate(tabName, screen ? { screen, params } : undefined);
+      tabs.navigate(tabName, screen ? { initial: false, screen, params } : undefined);
       return;
     }
-    if (screen) navigation.navigate(tabName, { screen, params });
+    if (screen) navigation.navigate(tabName, { initial: false, screen, params });
     else navigation.navigate(tabName);
   };
   return {
@@ -53,19 +53,19 @@ export function useLepNav() {
       const params = { kind: kind === 'podcast' ? 'podcast' : 'csuite' };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('EngageMediaList')) navigation.navigate('EngageMediaList', params);
-      else navigation.navigate('Engage', { screen: 'EngageMediaList', params });
+      else navigation.navigate('Engage', { initial: false, screen: 'EngageMediaList', params });
     },
     goPhase: (programId, phaseId) => {
       const params = { programId: programId || 'lep', phaseId: phaseId || 'pre-program' };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('CoursePhase')) navigation.navigate('CoursePhase', params);
-      else navigation.navigate('MyProgram', { screen: 'CoursePhase', params });
+      else navigation.navigate('MyProgram', { initial: false, screen: 'CoursePhase', params });
     },
     goCoursePhase: (programId, phaseId) => {
       const params = { programId, phaseId };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('CoursePhase')) navigation.navigate('CoursePhase', params);
-      else navigation.navigate('MyProgram', { screen: 'CoursePhase', params });
+      else navigation.navigate('MyProgram', { initial: false, screen: 'CoursePhase', params });
     },
     goCourseTask: (programId, taskId, extraParams) => {
       // The certificate opens through Graduation, which first checks every required step is done.
@@ -76,7 +76,7 @@ export function useLepNav() {
       const params = { programId, taskId, ...(extraParams || {}) };
       const names = navigation.getState()?.routeNames || [];
       if (names.includes('CourseTask')) navigation.navigate('CourseTask', params);
-      else navigation.navigate('MyProgram', { screen: 'CourseTask', params });
+      else navigation.navigate('MyProgram', { initial: false, screen: 'CourseTask', params });
     },
     goPractice: (programId, practiceId, extra = {}) =>
       practiceId === 'lep-bhag'
@@ -98,23 +98,25 @@ export function useLepNav() {
       }
     },
     goManager: (programId) => goIn('MyProgram', 'ManagerChat', { programId }),
-    goAssignment: () => navigation.navigate('MyProgram', { screen: 'Assignment' }),
-    goQuiz: () => navigation.navigate('MyProgram', { screen: 'Quiz' }),
+    goAssignment: () => navigation.navigate('MyProgram', { initial: false, screen: 'Assignment' }),
+    goQuiz: () => navigation.navigate('MyProgram', { initial: false, screen: 'Quiz' }),
     goTicket: (event) =>
       navigation.navigate('Engage', {
+        initial: false,
         screen: 'EventTicket',
         params: event?.id ? { eventId: event.id } : undefined,
       }),
     goEventDetail: (event) =>
       navigation.navigate('Engage', {
+        initial: false,
         screen: 'EventDetail',
         params: event?.id ? { eventId: event.id } : undefined,
       }),
-    goProgress: () => navigation.navigate('Profile', { screen: 'LepProgress' }),
-    goWeeklyBrief: () => navigation.navigate('Profile', { screen: 'WeeklyBrief' }),
-    goCertificate: () => navigation.navigate('Profile', { screen: 'LepCertificate' }),
+    goProgress: () => navigation.navigate('Profile', { initial: false, screen: 'LepProgress' }),
+    goWeeklyBrief: () => navigation.navigate('Profile', { initial: false, screen: 'WeeklyBrief' }),
+    goCertificate: () => navigation.navigate('Profile', { initial: false, screen: 'LepCertificate' }),
     goCertificates: () => goProfileScreen('Certificates'),
-    goNudges: () => navigation.navigate('Profile', { screen: 'NudgeSettings' }),
+    goNudges: () => navigation.navigate('Profile', { initial: false, screen: 'NudgeSettings' }),
     goFoundationGuides: () => goTab('Learn'),
     goHelp: () => goProfileScreen('HelpSupport'),
     goPrivacyCenter: () => goProfileScreen('PrivacyCenter'),

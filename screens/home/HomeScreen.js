@@ -108,6 +108,7 @@ function LegacyHome({ navigation }) {
             className="mb-4 -mt-2"
             onPress={() =>
               navigation.navigate('MyProgram', {
+                initial: false,
                 screen: 'CourseTask',
                 params: { programId: guideProgram, taskId: ilWhisper.taskId },
               })
@@ -159,6 +160,7 @@ function LegacyHome({ navigation }) {
                 disabled={!open}
                 onPress={() =>
                   navigation.navigate('Learn', {
+                    initial: false,
                     screen: 'ProgramTasks',
                     params: {
                       programId: program.id,

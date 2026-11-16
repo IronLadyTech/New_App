@@ -81,6 +81,7 @@ export default function ProgramsScreen({ navigation }) {
               onPress={() => {
                 if (needsBalance) {
                   navigation.getParent()?.navigate('Profile', {
+                    initial: false,
                     screen: 'PaymentEnrollment',
                     params: { programId: item.id },
                   });

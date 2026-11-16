@@ -15,6 +15,7 @@ export function navigateFromGo(go) {
 
   if (go.to === 'task' && go.programId && go.taskId) {
     rootRef.navigate('MyProgram', {
+      initial: false,
       screen: 'CourseTask',
       params: { programId: go.programId, taskId: go.taskId },
     });
@@ -22,6 +23,7 @@ export function navigateFromGo(go) {
   }
   if (go.to === 'payment') {
     rootRef.navigate('Profile', {
+      initial: false,
       screen: 'PaymentEnrollment',
       params: go.programId ? { programId: go.programId } : undefined,
     });
@@ -52,7 +54,7 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'home' && go.screen) {
-    rootRef.navigate('Home', { screen: go.screen });
+    rootRef.navigate('Home', { initial: go.screen === 'LepHome', screen: go.screen });
     return true;
   }
   // Her first unfinished practice of today (streak reminder → "Practise now"); Home opens it.
@@ -66,7 +68,7 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'profile' && go.screen) {
-    rootRef.navigate('Profile', { screen: go.screen });
+    rootRef.navigate('Profile', { initial: go.screen === 'ProfileHome', screen: go.screen });
     return true;
   }
   return false;

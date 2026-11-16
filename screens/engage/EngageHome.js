@@ -514,7 +514,7 @@ function RegisteredEngage({ navigation, onWatch }) {
         <RedButton
           label="Opens when your enrollment is complete"
           onPress={() =>
-            navigation.getParent()?.navigate('Profile', { screen: 'PaymentEnrollment' })
+            navigation.getParent()?.navigate('Profile', { initial: false, screen: 'PaymentEnrollment' })
           }
         />
       </SoftCard>

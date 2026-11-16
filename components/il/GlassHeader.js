@@ -33,7 +33,7 @@ function openNotifications(navigation) {
       return;
     }
     if (names.includes('MyProgram') && names.includes('Home')) {
-      nav.navigate('Home', { screen: 'Notifications' });
+      nav.navigate('Home', { initial: false, screen: 'Notifications' });
       return;
     }
     nav = nav.getParent?.();
@@ -50,7 +50,7 @@ export function openMemberSchedule(navigation) {
       return;
     }
     if (names.includes('Home')) {
-      nav.navigate('Home', { screen: 'Schedule' });
+      nav.navigate('Home', { initial: false, screen: 'Schedule' });
       return;
     }
     nav = nav.getParent?.();

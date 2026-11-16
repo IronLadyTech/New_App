@@ -65,7 +65,7 @@ export default function WatchScreen() {
       navigation.navigate('Practice', { programId: 'lep', practiceId: meta.practiceId });
       return;
     }
-    navigation.navigate('Home', { screen: 'Practice', params: { programId: 'lep', practiceId: meta.practiceId } });
+    navigation.navigate('Home', { initial: false, screen: 'Practice', params: { programId: 'lep', practiceId: meta.practiceId } });
   };
 
   return (

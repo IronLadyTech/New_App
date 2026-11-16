@@ -18,6 +18,18 @@ import { useProgramNav } from '../../context/ProgramNavContext';
 import { useAuth } from '../../context/AuthContext';
 import { updateUserProfile } from '../../services/firestore';
 
+/** Runs `onLeave` once after it mounts: state changes and writes never happen during a render. */
+function LeaveAfterRender({ onLeave }) {
+  const done = React.useRef(false);
+  React.useEffect(() => {
+    if (done.current) return;
+    done.current = true;
+    onLeave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
 export default function LandingGate({ profile, forcedClosed }) {
   const { completeOnboard } = useILGuideWhisper(IL_GUIDE_SURFACES.ONBOARD);
   const { logout, user, patchProfile } = useAuth();
@@ -149,10 +161,8 @@ export default function LandingGate({ profile, forcedClosed }) {
   }
 
   if (gateStep === 'batch') {
-    if (!needsLepBatchSelection(profile)) {
-      leave(primaryId || 'lep');
-      return null;
-    }
+    // Batch already in place (e.g. set from Zoho): close the gate after this render, not inside it.
+    if (!needsLepBatchSelection(profile)) return <LeaveAfterRender onLeave={() => leave(primaryId || 'lep')} />;
     // Back returns to welcome, like the on-screen arrow; with welcome done this is the first step.
     if (!profile.welcomeCompletedAt) backRef.current = () => setStep('welcome');
     return wrap(
