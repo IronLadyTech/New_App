@@ -681,6 +681,45 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
   );
 }
 
+/** Orientation and the intensive are live online sessions: four things to have ready. */
+const JOIN_CHECKS = [
+  { icon: 'videocam', text: 'Camera on' },
+  { icon: 'wifi', text: 'Good network' },
+  { icon: 'schedule', text: 'Join 5 min early' },
+  { icon: 'edit-note', text: 'Notebook ready' },
+];
+
+function JoinChecklist() {
+  return (
+    <View>
+      <ILText role="label" color="#C9D6DA" style={[af, { fontSize: 11 }]}>
+        BEFORE YOU JOIN
+      </ILText>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -4 }}>
+        {JOIN_CHECKS.map((c) => (
+          <View key={c.text} style={{ width: '50%', padding: 4 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderRadius: 12,
+                paddingHorizontal: 10,
+                paddingVertical: 9,
+              }}
+            >
+              <MaterialIcons name={c.icon} size={16} color="#F8D6D4" />
+              <ILText role="label" color="#FFFFFF" style={{ marginLeft: 8, fontSize: 13 }}>
+                {c.text}
+              </ILText>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function DateTile({ label, value }) {
   return (
     <View style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 }}>
@@ -854,6 +893,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
                   <DateTile label="SAT – SUN" value={p.day1When || ''} />
                 </View>
               ) : null}
+              {p.dated && p.orientation ? <JoinChecklist /> : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={p.cta}
@@ -887,20 +927,28 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
  * Height = the tallest layer; only the phase in front takes taps.
  */
 function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render }) {
-  // Each layer's own measured height; the stack is as tall as the tallest. A layer only
-  // reports when its size changes, so heights are kept per layer rather than reset —
-  // a reset would leave unchanged layers clipped to minHeight.
-  const heights = useRef({});
-  const [height, setHeight] = useState(minHeight);
+  // Each layer reports its own height; the card is exactly as tall as the slide on show and
+  // glides between heights as the slides change (UI thread) — no empty band under a short
+  // slide like Pre-work because a taller one (Orientation, with its dates) exists.
+  const heights = useSharedValue([]);
   const onLayerHeight = (i, h) => {
-    heights.current[i] = h;
-    const tallest = Object.entries(heights.current)
-      .filter(([k]) => Number(k) < count)
-      .reduce((m, [, v]) => Math.max(m, v), 0);
-    setHeight((prev) => (prev === tallest ? prev : tallest));
+    const next = heights.value.slice();
+    if (next[i] === h) return;
+    next[i] = h;
+    heights.value = next;
   };
+  const boxStyle = useAnimatedStyle(() => {
+    const hs = heights.value;
+    const s = Math.max(0, Math.min(count - 1, slide.value));
+    const lo = Math.floor(s);
+    const hi = Math.min(count - 1, lo + 1);
+    const t = s - lo;
+    const hLo = hs[lo] || minHeight;
+    const hHi = hs[hi] || hLo;
+    return { height: hLo + (hHi - hLo) * t };
+  });
   return (
-    <View style={{ height: Math.max(height, minHeight) }}>
+    <Reanimated.View style={[{ overflow: 'hidden' }, boxStyle]}>
       {Array.from({ length: count }, (_, i) => (
         <FadeLayer
           key={i}
@@ -912,7 +960,7 @@ function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render }) {
           {render(i)}
         </FadeLayer>
       ))}
-    </View>
+    </Reanimated.View>
   );
 }
 
