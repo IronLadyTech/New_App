@@ -44,6 +44,14 @@ function usePracticeDoneChecker() {
   }, [demo, getTaskSubmission, hasBhag]);
 }
 
+/**
+ * A one-off task row (VIA survey, NSDC registration, an assignment…) leaves today's practice once
+ * it is done / submitted — it is no longer due. Daily practice rows keep their tick for today.
+ */
+function dropSubmittedTasks(list) {
+  return list.filter((item) => !(item.taskId && item.done));
+}
+
 export function useEnrolledDailyPractice(group, cmsBatch) {
   const today = todayIsoIST();
   const anchor = orientationIsoFromGroup(group);
@@ -60,11 +68,13 @@ export function useEnrolledDailyPractice(group, cmsBatch) {
 
   return useMemo(
     () =>
-      dedupeLepHomePractice(
-        resolveWeekFocus(items, { lmsDone, today, day1Iso }).map((item) => ({
-          ...item,
-          done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
-        }))
+      dropSubmittedTasks(
+        dedupeLepHomePractice(
+          resolveWeekFocus(items, { lmsDone, today, day1Iso }).map((item) => ({
+            ...item,
+            done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
+          }))
+        )
       ),
     [items, today, day1Iso, isDone, isDoneOnDay, lmsDone, doneToken]
   );
@@ -85,10 +95,12 @@ export function useRegisteredDailyPractice(group, cmsBatch) {
 
   return useMemo(
     () =>
-      items.map((item) => ({
-        ...item,
-        done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
-      })),
+      dropSubmittedTasks(
+        items.map((item) => ({
+          ...item,
+          done: isPracticeItemDone(item, today, isDone, isDoneOnDay, lmsDone),
+        }))
+      ),
     [items, today, isDone, isDoneOnDay, lmsDone, doneToken]
   );
 }

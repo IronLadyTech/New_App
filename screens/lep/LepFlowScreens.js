@@ -15,6 +15,9 @@ import { useLepNav } from './useLepNav';
 import { PROGRAMS } from '../../constants/programs';
 import { isLepEnrolled, lepFirstName } from '../../utils/lepState';
 import { useAuth } from '../../context/AuthContext';
+import { useCourseDemo } from '../../context/CourseDemoContext';
+import { usePrograms } from '../../context/ProgramsContext';
+import { makeTaskDoneChecker } from '../../utils/taskDone';
 import { useProgramRoutes } from '../../context/ProgramNavContext';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
@@ -276,6 +279,13 @@ export function LepScheduleScreen() {
   const alumniArchive =
     enrolled && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
   const registeredCodes = useMemo(() => new Set(['S0', 'S1', 'S2']), []);
+  // A task she has done / submitted is no longer a deadline: it leaves the calendar.
+  const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+  const taskIsDone = useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, demo.done, getTaskSubmission]
+  );
 
   const weekDays = useMemo(() => {
     const strip = buildScheduleWeekStrip(new Date(), weekStartIso, 0).map((d) => ({
@@ -299,10 +309,14 @@ export function LepScheduleScreen() {
     return buildScheduleFullAgenda(batchAnchor, new Date(), day1Iso, selectedIso)
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => scheduleItemAllowed(item, enrolled, registeredCodes)),
+        items: section.items.filter(
+          (item) =>
+            scheduleItemAllowed(item, enrolled, registeredCodes) &&
+            !(item.taskId && taskIsDone(PROGRAMS.LEP, item.taskId))
+        ),
       }))
       .filter((section) => section.items.length > 0);
-  }, [batchAnchor, day1Iso, selectedIso, hasBatch, enrolled, registeredCodes]);
+  }, [batchAnchor, day1Iso, selectedIso, hasBatch, enrolled, registeredCodes, taskIsDone]);
 
   const shiftWeek = (delta) => {
     const nextStart = scheduleAddDaysIso(weekStartIso, delta * 7);

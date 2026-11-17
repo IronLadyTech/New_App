@@ -641,16 +641,12 @@ function EnrolledHome({ cmsBatch }) {
   ]);
   const dueItemsWithDone = useMemo(
     () =>
-      (dueWeek.items || []).map((item) => {
-        const lmsDone = item.taskId
-          ? isTaskDoneStatus(getTaskSubmission(PROGRAMS.LEP, item.taskId)?.status)
-          : false;
-        const done = item.taskId
-          ? demo.isDone(PROGRAMS.LEP, item.taskId) || lmsDone
-          : !!item.done;
-        return { ...item, done };
-      }),
-    [dueWeek.items, demo, getTaskSubmission]
+      // Same check as the task list: submitted counts as done; sent back for changes is due again.
+      (dueWeek.items || []).map((item) => ({
+        ...item,
+        done: item.taskId ? taskIsDone(PROGRAMS.LEP, item.taskId) : !!item.done,
+      })),
+    [dueWeek.items, taskIsDone]
   );
   const whisperFallback = useMemo(
     () =>
@@ -781,7 +777,8 @@ function EnrolledHome({ cmsBatch }) {
       <DueWeek
         sub={dueWeek.sub}
         onSchedule={nav.goSchedule}
-        items={dueItemsWithDone.map((item) => ({
+        // Done / submitted work is no longer due: it leaves the list (it used to stay, greyed out).
+        items={dueItemsWithDone.filter((item) => !item.done).map((item) => ({
           ...item,
           onPress: item.taskId
             ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)
