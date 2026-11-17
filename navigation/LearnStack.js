@@ -1,4 +1,5 @@
 import React from 'react';
+import { returnToOriginTab } from '../utils/tabReturn';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
 import { useRenderProbe } from '../utils/perfHud';
@@ -21,7 +22,7 @@ function LearnRoot(props) {
 
 export default function LearnStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+    <Stack.Navigator screenListeners={returnToOriginTab} screenOptions={{ headerShown: false, freezeOnBlur: true }}>
       <Stack.Screen name="LepLearn" component={LearnRoot} />
       <Stack.Screen
         name="Programs"

@@ -44,6 +44,7 @@ import {
   pickTaskVideo,
   uploadTaskSubmission,
 } from '../../services/taskUploads';
+import { openInTab } from '../../utils/tabReturn';
 import UploadProgressButton from '../../components/program/UploadProgressButton';
 import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { removeSubmissionFile } from '../../services/programs';
@@ -164,7 +165,7 @@ function openTaskDocument(navigation, item) {
   const params = { url: item.url, label: item.title, pages: item.pages };
   const names = navigation.getState()?.routeNames || [];
   if (names.includes('TaskDocument')) navigation.navigate('TaskDocument', params);
-  else navigation.navigate('MyProgram', { initial: false, screen: 'TaskDocument', params });
+  else openInTab(navigation, 'MyProgram', 'TaskDocument', params);
 }
 
 function TaskFiles({ task, skipReadingDocument = false }) {

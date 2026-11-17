@@ -14,6 +14,7 @@ import ILGuideWhisper from '../../components/ILGuideWhisper';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import { LEARN_PROGRAMS_EMPTY, LEARN_PROGRAMS_SUBTITLE } from '../../utils/learnerBatchDisplay';
+import { openInTab } from '../../utils/tabReturn';
 
 export default function ProgramsScreen({ navigation }) {
   const { profile } = useAuth();
@@ -80,11 +81,7 @@ export default function ProgramsScreen({ navigation }) {
               disabled={!open && !needsBalance}
               onPress={() => {
                 if (needsBalance) {
-                  navigation.getParent()?.navigate('Profile', {
-                    initial: false,
-                    screen: 'PaymentEnrollment',
-                    params: { programId: item.id },
-                  });
+                  openInTab(navigation, 'Profile', 'PaymentEnrollment', { programId: item.id });
                   return;
                 }
                 if (!open) return;

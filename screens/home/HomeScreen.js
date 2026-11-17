@@ -24,6 +24,7 @@ import {
   HOME_PROGRAMS_EMPTY,
   HOME_PROGRESS_FOOTNOTE,
 } from '../../utils/learnerBatchDisplay';
+import { openInTab } from '../../utils/tabReturn';
 
 export default function HomeScreen(props) {
   const { program, stage } = useProgramNav();
@@ -107,11 +108,7 @@ function LegacyHome({ navigation }) {
           <TouchableOpacity
             className="mb-4 -mt-2"
             onPress={() =>
-              navigation.navigate('MyProgram', {
-                initial: false,
-                screen: 'CourseTask',
-                params: { programId: guideProgram, taskId: ilWhisper.taskId },
-              })
+              openInTab(navigation, 'MyProgram', 'CourseTask', { programId: guideProgram, taskId: ilWhisper.taskId })
             }
           >
             <Text className="text-sm font-semibold text-brand-700">Open next task →</Text>
@@ -159,14 +156,7 @@ function LegacyHome({ navigation }) {
                 key={program.id}
                 disabled={!open}
                 onPress={() =>
-                  navigation.navigate('Learn', {
-                    initial: false,
-                    screen: 'ProgramTasks',
-                    params: {
-                      programId: program.id,
-                      title: program.title,
-                    },
-                  })
+                  openInTab(navigation, 'Learn', 'ProgramTasks', { programId: program.id, title: program.title })
                 }
                 className={`mb-3 rounded-2xl border border-ink-100 bg-white p-4 ${
                   open ? '' : 'opacity-55'

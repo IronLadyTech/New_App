@@ -1,4 +1,5 @@
 import React from 'react';
+import { returnToOriginTab } from '../utils/tabReturn';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
 import { useRenderProbe } from '../utils/perfHud';
@@ -33,6 +34,7 @@ function HomeRoot(props) {
 export default function HomeStack() {
   return (
     <Stack.Navigator
+      screenListeners={returnToOriginTab}
       screenOptions={{
         headerShown: false,
         // Screens under the top one stop re-rendering on every data change.

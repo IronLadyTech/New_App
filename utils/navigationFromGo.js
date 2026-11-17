@@ -1,9 +1,13 @@
+import { focusedTabInState, withFromTab } from './tabReturn';
+
 /** Bound from AppNavigator — shared by push taps and in-app notification rows. */
 let rootRef = null;
 
 export function bindRootNavigation(navigationRef) {
   rootRef = navigationRef;
 }
+
+const fromTab = () => focusedTabInState(rootRef?.getRootState?.());
 
 export function navigateFromGo(go) {
   if (!go || !rootRef?.isReady?.()) return false;
@@ -17,7 +21,7 @@ export function navigateFromGo(go) {
     rootRef.navigate('MyProgram', {
       initial: false,
       screen: 'CourseTask',
-      params: { programId: go.programId, taskId: go.taskId },
+      params: withFromTab(fromTab(), 'MyProgram', { programId: go.programId, taskId: go.taskId }),
     });
     return true;
   }
@@ -25,7 +29,7 @@ export function navigateFromGo(go) {
     rootRef.navigate('Profile', {
       initial: false,
       screen: 'PaymentEnrollment',
-      params: go.programId ? { programId: go.programId } : undefined,
+      params: withFromTab(fromTab(), 'Profile', go.programId ? { programId: go.programId } : undefined),
     });
     return true;
   }
@@ -54,7 +58,12 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'home' && go.screen) {
-    rootRef.navigate('Home', { initial: go.screen === 'LepHome', screen: go.screen });
+    const atRoot = go.screen === 'LepHome';
+    rootRef.navigate('Home', {
+      initial: atRoot,
+      ...(atRoot ? { pop: true } : { params: withFromTab(fromTab(), 'Home') }),
+      screen: go.screen,
+    });
     return true;
   }
   // Her first unfinished practice of today (streak reminder → "Practise now"); Home opens it.
@@ -68,7 +77,12 @@ export function navigateFromGo(go) {
     return true;
   }
   if (go.to === 'profile' && go.screen) {
-    rootRef.navigate('Profile', { initial: go.screen === 'ProfileHome', screen: go.screen });
+    const atRoot = go.screen === 'ProfileHome';
+    rootRef.navigate('Profile', {
+      initial: atRoot,
+      ...(atRoot ? { pop: true } : { params: withFromTab(fromTab(), 'Profile') }),
+      screen: go.screen,
+    });
     return true;
   }
   return false;

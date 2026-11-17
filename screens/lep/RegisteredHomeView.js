@@ -4,9 +4,10 @@ import { Image, Linking, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import OneByOneRail from '../../components/il/OneByOneRail';
 import Reanimated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { MaterialIcons } from '@expo/vector-icons';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
@@ -553,6 +554,8 @@ export default function RegisteredHomeView({
         )}
       />
 
+      {upcomingSession ? <JoinChecklist /> : null}
+
       {upcomingSession ? (
         <RegisteredNextSessionCard
           upcoming={upcomingSession}
@@ -680,7 +683,10 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
   );
 }
 
-/** Orientation and the intensive are live online sessions: four things to have ready. */
+/**
+ * Orientation and the intensive are live online sessions: four things to have ready.
+ * Its own card right above the session card (as on the enrolled Home), not inside the phase card.
+ */
 const JOIN_CHECKS = [
   { icon: 'videocam', text: 'Camera on' },
   { icon: 'wifi', text: 'Good network' },
@@ -690,25 +696,28 @@ const JOIN_CHECKS = [
 
 function JoinChecklist() {
   return (
-    <View>
-      <ILText role="label" color="#C9D6DA" style={[af, { fontSize: 11 }]}>
-        BEFORE YOU JOIN
+    <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
+      <ILText role="title" color={T.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
+        Before you join
       </ILText>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, marginHorizontal: -4 }}>
+      <ILText role="bodySm" color={T.muted} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
+        Sessions are live on Zoom. Have these ready.
+      </ILText>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginHorizontal: -4 }}>
         {JOIN_CHECKS.map((c) => (
           <View key={c.text} style={{ width: '50%', padding: 4 }}>
             <View
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                borderRadius: 12,
-                paddingHorizontal: 10,
-                paddingVertical: 9,
+                backgroundColor: T.redSoft,
+                borderRadius: 14,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
               }}
             >
-              <MaterialIcons name={c.icon} size={16} color="#F8D6D4" />
-              <ILText role="label" color="#FFFFFF" style={{ marginLeft: 8, fontSize: 13 }}>
+              <MaterialIcons name={c.icon} size={18} color={T.redText} />
+              <ILText role="label" color={T.ink} style={{ marginLeft: 8, fontSize: 13.5 }}>
                 {c.text}
               </ILText>
             </View>
@@ -736,6 +745,10 @@ function DateTile({ label, value }) {
  * Bars / caption / CTA still slide Registered → Pre-work → Day 1.
  * The chip above “Good morning” stays fixed on Registered.
  */
+/** Phase card: how fast a tapped phase slides in, and how long it stays before returning. */
+const PHASE_SLIDE_MS = 220;
+const PHASE_HOLD_MS = 90 * 1000;
+
 function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const count = Math.max(phases.length, 1);
   const [index, setIndex] = useState(lockerStep);
@@ -751,7 +764,17 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
     segW.value = seg;
   }, [seg, segW]);
 
+  // A phase she taps stays on screen long enough to read and act on, then the card returns to
+  // her current phase. Each tap restarts the wait.
+  const holdTimer = useRef(null);
+  const clearHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
+  useEffect(() => clearHold, []);
+
   useEffect(() => {
+    clearHold();
     indexRef.current = lockerStep;
     setIndex(lockerStep);
     slide.value = lockerStep;
@@ -760,10 +783,13 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   // No auto-rotation: the card's height follows its slide, so rotating every 5 s moved the whole
   // page below it up and down. It shows her current phase; tapping a phase name shows that one.
   const show = (next) => {
+    clearHold();
+    if (next !== lockerStep) holdTimer.current = setTimeout(() => show(lockerStep), PHASE_HOLD_MS);
     if (next === indexRef.current) return;
     indexRef.current = next;
     setIndex(next); // labels + which button takes taps; the visible cross-fade does not wait for it
-    slide.value = withSpring(next, { damping: 18, stiffness: 120 });
+    // Quick and settled (the old spring took ~0.8 s to come to rest and felt slow).
+    slide.value = withTiming(next, { duration: PHASE_SLIDE_MS, easing: Easing.out(Easing.cubic) });
   };
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slide.value * (segW.value + gap) }],
@@ -898,7 +924,6 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
                   <DateTile label="SAT – SUN" value={p.day1When || ''} />
                 </View>
               ) : null}
-              {p.dated && p.orientation ? <JoinChecklist /> : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={p.cta}

@@ -10,6 +10,7 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILLogoMark from './ILLogoMark';
 import ILText from './ILText';
 import { useNotificationBellBadge } from '../../hooks/useNotificationBellBadge';
+import { openInTab } from '../../utils/tabReturn';
 
 // Same glass as the liquid tab bar, so the top and bottom of the app read as one set.
 const GLASS = 'rgba(17,55,68,0.86)';
@@ -33,7 +34,7 @@ function openNotifications(navigation) {
       return;
     }
     if (names.includes('MyProgram') && names.includes('Home')) {
-      nav.navigate('Home', { initial: false, screen: 'Notifications' });
+      openInTab(nav, 'Home', 'Notifications');
       return;
     }
     nav = nav.getParent?.();
@@ -50,7 +51,7 @@ export function openMemberSchedule(navigation) {
       return;
     }
     if (names.includes('Home')) {
-      nav.navigate('Home', { initial: false, screen: 'Schedule' });
+      openInTab(nav, 'Home', 'Schedule');
       return;
     }
     nav = nav.getParent?.();

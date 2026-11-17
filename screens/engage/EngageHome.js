@@ -14,6 +14,7 @@ import { useLepNav } from '../lep/useLepNav';
 import { LEP_COHORT_SOCIAL } from '../../constants/lepCohortCopy';
 import { useArmyEventCalendar } from '../../hooks/useArmyEventCalendar';
 import { armyEventCalendarUrl, armyEventModeLabel } from '../../utils/armyEventCalendar';
+import { openInTab } from '../../utils/tabReturn';
 
 const CIRCLES = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 const INDUSTRIES = ['Finance', 'Technology', 'Marketing'];
@@ -514,7 +515,7 @@ function RegisteredEngage({ navigation, onWatch }) {
         <RedButton
           label="Opens when your enrollment is complete"
           onPress={() =>
-            navigation.getParent()?.navigate('Profile', { initial: false, screen: 'PaymentEnrollment' })
+            openInTab(navigation, 'Profile', 'PaymentEnrollment')
           }
         />
       </SoftCard>

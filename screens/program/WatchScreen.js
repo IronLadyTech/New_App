@@ -19,6 +19,7 @@ import { getAssetVideoUrl } from '../../utils/resolveVideoUrl';
 import { navigateWatch } from '../../utils/watchNav';
 import { CSUITE_HOME } from '../guest/guestData';
 import { PODCASTS } from '../lep/lepData';
+import { openInTab } from '../../utils/tabReturn';
 
 function lookupCard(assetKey) {
   const podcast = PODCASTS.find((p) => p.assetKey === assetKey);
@@ -65,7 +66,7 @@ export default function WatchScreen() {
       navigation.navigate('Practice', { programId: 'lep', practiceId: meta.practiceId });
       return;
     }
-    navigation.navigate('Home', { initial: false, screen: 'Practice', params: { programId: 'lep', practiceId: meta.practiceId } });
+    openInTab(navigation, 'Home', 'Practice', { programId: 'lep', practiceId: meta.practiceId });
   };
 
   return (

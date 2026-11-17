@@ -104,8 +104,13 @@ function createFirestore() {
     return getFirestore(app);
   }
   try {
+    // Forced long polling, not auto-detect. Auto-detect chose a streaming connection, and React
+    // Native's XMLHttpRequest re-copies the whole growing response on every chunk: garbage
+    // collection 7-9x a second on the JS thread, pauses growing from 0.2 s to 1.6 s within minutes
+    // (measured on an iQOO Z3), so taps waited. Each long poll ends after its reply, so nothing grows.
     return initializeFirestore(app, {
-      experimentalAutoDetectLongPolling: true,
+      experimentalForceLongPolling: true,
+      experimentalLongPollingOptions: { timeoutSeconds: 25 },
     });
   } catch (err) {
     const msg = String(err?.message || '');

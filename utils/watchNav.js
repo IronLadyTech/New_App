@@ -1,4 +1,5 @@
 import { getVideoPoster } from '../constants/preworkThumbs';
+import { openInTab } from './tabReturn';
 
 function findNavigator(navigation, predicate) {
   let nav = navigation;
@@ -39,7 +40,7 @@ export function navigateWatch(navigation, params) {
     (names) => names.includes('MyProgram') && names.includes('Home'),
   );
   if (memberTab) {
-    memberTab.navigate('Engage', { initial: false, screen: 'Watch', params: watchParams });
+    openInTab(memberTab, 'Engage', 'Watch', watchParams);
     return;
   }
 
@@ -64,7 +65,7 @@ export function navigateInMemberStack(navigation, stack, screen, params) {
     (names) => names.includes('MyProgram') && names.includes('Home'),
   );
   if (tab) {
-    tab.navigate(stack, { initial: false, screen, params });
+    openInTab(tab, stack, screen, params);
     return;
   }
 

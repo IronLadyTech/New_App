@@ -23,7 +23,9 @@ const SCREEN_OPTIONS = {
 
 export default function TabNavigator() {
   return (
-    <Tab.Navigator tabBar={renderTabBar} screenOptions={SCREEN_OPTIONS}>
+    // Back returns to the tab she came from (e.g. Profile opened from "Complete your profile"
+    // goes back to that task list), not always to Home.
+    <Tab.Navigator tabBar={renderTabBar} screenOptions={SCREEN_OPTIONS} backBehavior="history">
       <Tab.Screen
         name="Home"
         getComponent={() => require('./HomeStack').default}

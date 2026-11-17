@@ -14,6 +14,7 @@ import {
   zohoPaymentDetail,
 } from '../../utils/programAccess';
 import { buildProgramBatchCard } from '../../utils/lepBatchHero';
+import { buildPaymentEnrollmentView } from '../../utils/paymentEnrollment';
 import { formatLepDay } from '../../utils/registeredHomeData';
 import { resolveLepBatchDateLine } from '../../utils/lepDeskBatchDate';
 import { saveWelcomeProfileFields } from '../../services/functions';
@@ -487,6 +488,46 @@ export function EnrollmentStatusCard({ program, source, group, cmsBatch, onEnrol
   );
 }
 
+const inr = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+function formatInr(n) {
+  return Number.isFinite(n) ? `₹ ${inr.format(n)}` : '—'; // same spacing as the payment page
+}
+
+/** One bill line: name + note on the left; amount + PAID / DUE on the right (sans, figures aligned). */
+function BillRow({ label, detail, amount, status }) {
+  const paid = status === 'PAID';
+  return (
+    <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
+      <View style={{ flex: 1, paddingRight: 10 }}>
+        <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold, fontSize: 15, lineHeight: 21 }}>
+          {label}
+        </ILText>
+        {detail ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12, lineHeight: 17 }}>
+            {detail}
+          </ILText>
+        ) : null}
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <ILText
+          role="label"
+          color={G.ink}
+          style={{ fontFamily: IL_FONTS.bold, fontSize: 17, lineHeight: 22, fontVariant: ['tabular-nums'] }}
+        >
+          {amount}
+        </ILText>
+        <ILText
+          role="eyebrow"
+          color={paid ? '#1B7A4A' : G.cta}
+          style={{ marginTop: 3, fontFamily: IL_FONTS.bold, fontSize: 10, letterSpacing: 0.8 }}
+        >
+          {status}
+        </ILText>
+      </View>
+    </View>
+  );
+}
+
 export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }) {
   const pay = zohoPaymentDetail(source, program.id);
   const status = programPaymentStatus(source, program.id);
@@ -498,6 +539,8 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
   const regPaid = status === PAYMENT_STATUS.REGISTER || status === PAYMENT_STATUS.PAID;
   const fullyPaid = status === PAYMENT_STATUS.PAID;
   const balanceLabel = fullyPaid ? 'PAID' : 'BALANCE DUE';
+  // Same numbers as the Payment & enrolment page (it showed ₹1 due while this card showed "—").
+  const view = buildPaymentEnrollmentView(source, null, { programId: program.id });
 
   return (
     <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
@@ -530,38 +573,25 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
             </ILText>
           </View>
         </View>
-        <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              Registration fee
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {regPaid ? `Paid${pay.paidOn ? ` ${pay.paidOn}` : ''}` : 'Due'}
-            </ILText>
-          </View>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-            {`₹${Number(regAmount).toLocaleString('en-IN')}`}
-          </ILText>
-        </View>
-        <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-              Programme balance
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {fullyPaid ? 'Paid' : 'Due after registration'}
-            </ILText>
-          </View>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 18 }}>
-            {fullyPaid ? '₹0' : '—'}
-          </ILText>
-        </View>
-        <View style={{ marginTop: 12, height: 6, borderRadius: 3, backgroundColor: G.line, overflow: 'hidden' }}>
+        <BillRow
+          label="Registration fee"
+          detail={regPaid ? `Received${pay.paidOn ? ` · ${pay.paidOn}` : ''}` : 'Due'}
+          amount={formatInr(Number(regAmount))}
+          status={regPaid ? 'PAID' : 'DUE'}
+        />
+        <View style={{ height: 1, backgroundColor: G.line, marginTop: 12 }} />
+        <BillRow
+          label="Programme balance"
+          detail={fullyPaid ? 'Paid via Razorpay' : view.balanceNote}
+          amount={fullyPaid ? formatInr(Number(view.programBalance) || 0) : view.programBalanceLabel}
+          status={fullyPaid ? 'PAID' : 'DUE'}
+        />
+        <View style={{ marginTop: 14, height: 6, borderRadius: 3, backgroundColor: G.line, overflow: 'hidden' }}>
           <View
             style={{
-              width: fullyPaid ? '100%' : regPaid ? '35%' : '10%',
+              width: `${fullyPaid ? 100 : regPaid ? view.progressPercent : 0}%`,
               height: '100%',
-              backgroundColor: G.cta,
+              backgroundColor: fullyPaid ? '#1B7A4A' : G.cta,
             }}
           />
         </View>

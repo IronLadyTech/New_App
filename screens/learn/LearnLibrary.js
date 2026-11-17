@@ -14,6 +14,7 @@ import {
   ProgramPage,
   SoftCard,
 } from '../program/ProgramKit';
+import { openInTab } from '../../utils/tabReturn';
 
 const CHIPS = ['For you', 'Principles', 'Case studies', 'Practice drills', 'C-suite & podcasts'];
 
@@ -524,11 +525,7 @@ export default function LearnLibrary({ navigation }) {
           </ILText>
           <Pressable
             onPress={() =>
-              navigation.getParent()?.navigate('Profile', {
-                initial: false,
-                screen: 'PaymentEnrollment',
-                params: { programId: filter },
-              })
+              openInTab(navigation, 'Profile', 'PaymentEnrollment', { programId: filter })
             }
             accessibilityRole="button"
             style={{

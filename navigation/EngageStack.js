@@ -1,4 +1,5 @@
 import React from 'react';
+import { returnToOriginTab } from '../utils/tabReturn';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useProgramNav } from '../context/ProgramNavContext';
 import { useRenderProbe } from '../utils/perfHud';
@@ -17,7 +18,7 @@ function EngageRoot(props) {
 
 export default function EngageStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+    <Stack.Navigator screenListeners={returnToOriginTab} screenOptions={{ headerShown: false, freezeOnBlur: true }}>
       <Stack.Screen name="LepEngage" component={EngageRoot} />
       <Stack.Screen name="EventDetail" component={LepEventDetailScreen} />
       <Stack.Screen name="EventTicket" component={LepEventTicketScreen} />

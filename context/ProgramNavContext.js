@@ -9,6 +9,7 @@ import {
 } from '../utils/programAccess';
 import { programIdNeedingBalancePayment } from '../utils/paymentEnrollment';
 import { useChangeProbe } from '../utils/perfHud';
+import { openInTab } from '../utils/tabReturn';
 
 const ProgramNavContext = createContext(null);
 
@@ -127,14 +128,11 @@ export function useProgramRoutes() {
       nav.program && nav.program !== 'all'
         ? nav.program
         : programIdNeedingBalancePayment(profile);
-    navigation.navigate('Profile', {
-      screen: 'PaymentEnrollment',
-      params: { programId },
-    });
+    openInTab(navigation, 'Profile', 'PaymentEnrollment', { programId });
   }, [navigation, nav.program, profile]);
 
   const openCertificates = useCallback(() => {
-    navigation.navigate('Profile', { screen: 'Certificates' });
+    openInTab(navigation, 'Profile', 'Certificates');
   }, [navigation]);
 
   const openEngage = useCallback(() => {
@@ -161,7 +159,7 @@ export function useProgramRoutes() {
     }
     const tab = navigation.getParent?.();
     if (tab) {
-      tab.navigate('Home', { screen: 'ProgramDetail', params: detailParams });
+      openInTab(tab, 'Home', 'ProgramDetail', detailParams);
     } else {
       navigation.navigate('ProgramDetail', detailParams);
     }
