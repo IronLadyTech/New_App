@@ -1,4 +1,5 @@
 import React from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BackHandler, Platform, View } from 'react-native';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
@@ -32,7 +33,20 @@ function LeaveAfterRender({ onLeave }) {
 
 export default function LandingGate({ profile, forcedClosed }) {
   const { completeOnboard } = useILGuideWhisper(IL_GUIDE_SURFACES.ONBOARD);
-  const { logout, user, patchProfile } = useAuth();
+  const { logout, user, patchProfile, profileFresh } = useAuth();
+  // Finished on this phone for this account: never shown again, even if the server write of
+  // welcomeCompletedAt was slow or failed.
+  const doneKey = user?.uid ? `il_welcome_done_${user.uid}` : null;
+  const [doneHere, setDoneHere] = React.useState(null); // null = still reading
+  React.useEffect(() => {
+    if (!doneKey) {
+      setDoneHere(false);
+      return;
+    }
+    AsyncStorage.getItem(doneKey)
+      .then((v) => setDoneHere(v === '1'))
+      .catch(() => setDoneHere(false));
+  }, [doneKey]);
   const { setProgram } = useProgramNav();
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
@@ -55,6 +69,7 @@ export default function LandingGate({ profile, forcedClosed }) {
   const leave = (programId) => {
     if (typeof programId === 'string') setProgram(programId);
     const stamp = new Date().toISOString();
+    if (doneKey) AsyncStorage.setItem(doneKey, '1').catch(() => {});
     patchProfile({ welcomeCompletedAt: stamp });
     if (user?.uid && user.uid !== 'preview') {
       updateUserProfile(user.uid, { welcomeCompletedAt: stamp }).catch(() => {});
@@ -63,6 +78,9 @@ export default function LandingGate({ profile, forcedClosed }) {
     completeOnboard();
   };
   if (forcedClosed || closed || !profile) return null;
+  // Decide from the server's copy only — the phone's saved copy can be older than her last
+  // welcome/batch steps, and opened them again on every launch.
+  if (!profileFresh || doneHere === null) return null;
 
   const programs = programsOnProfile(profile)
     .map((program) => ({
@@ -100,7 +118,8 @@ export default function LandingGate({ profile, forcedClosed }) {
 
   // First login: welcome (+ batch if needed). Stay on batch until one is locked.
   if (!programs.length) return null;
-  if (profile.welcomeCompletedAt && !needsBatch) return null;
+  const welcomeDone = Boolean(profile.welcomeCompletedAt) || doneHere;
+  if (welcomeDone && !needsBatch) return null;
 
   const wrap = (node) => (
     <View
@@ -126,7 +145,7 @@ export default function LandingGate({ profile, forcedClosed }) {
 
   // Welcome already done but batch still missing → batch picker only.
   const gateStep =
-    profile.welcomeCompletedAt && needsBatch && step === 'welcome' ? 'batch' : step;
+    welcomeDone && needsBatch && step === 'welcome' ? 'batch' : step;
 
   const renderAccountFound = () =>
     wrap(
@@ -164,11 +183,11 @@ export default function LandingGate({ profile, forcedClosed }) {
     // Batch already in place (e.g. set from Zoho): close the gate after this render, not inside it.
     if (!needsLepBatchSelection(profile)) return <LeaveAfterRender onLeave={() => leave(primaryId || 'lep')} />;
     // Back returns to welcome, like the on-screen arrow; with welcome done this is the first step.
-    if (!profile.welcomeCompletedAt) backRef.current = () => setStep('welcome');
+    if (!welcomeDone) backRef.current = () => setStep('welcome');
     return wrap(
       <ChooseBatchDateScreen
         onBack={() => {
-          if (profile.welcomeCompletedAt) return;
+          if (welcomeDone) return;
           setStep('welcome');
         }}
         onLock={(picked) => {

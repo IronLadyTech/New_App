@@ -235,6 +235,9 @@ export function AuthProvider({ children }) {
   const previewRef = useRef(false);
   const onboardedRef = useRef(false);
   const [initializing, setInitializing] = useState(true);
+  // The server's copy of her profile has arrived (not only the copy kept on the phone). Steps that
+  // decide from what is missing (welcome, batch) wait for it: a stale phone copy opened them again.
+  const [profileFresh, setProfileFresh] = useState(false);
   const [error, setError] = useState(null);
 
   // Read at once on launch, while Firebase restores her sign-in.
@@ -318,6 +321,7 @@ export function AuthProvider({ children }) {
           ...p,
           ilGuideOnboarded: p?.ilGuideOnboarded === true || onboardedRef.current,
         });
+        if (!cancelled) setProfileFresh(true);
       } catch (e) {
         setError(e.message);
       } finally {
@@ -332,10 +336,14 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!firebaseUser?.uid) return undefined;
+    if (!firebaseUser?.uid) {
+      setProfileFresh(false);
+      return undefined;
+    }
     const unsub = subscribeToUser(
       firebaseUser.uid,
-      (data) =>
+      (data) => {
+        setProfileFresh(true);
         setProfile((prev) => {
           const programAccess = mergeProgramAccessPreservingPayment(
             prev?.programAccess,
@@ -360,7 +368,8 @@ export function AuthProvider({ children }) {
           // nothing she can see changed. Keeping the same object then spares a redraw of every
           // screen and provider that reads the profile — the main lag on weaker phones.
           return sameVisibleProfile(prev, next) ? prev : next;
-        }),
+        });
+      },
       (err) => setError(err.message)
     );
     return unsub;
@@ -539,6 +548,7 @@ export function AuthProvider({ children }) {
         resolvedProfile?.role
       ),
       initializing,
+      profileFresh: profileFresh || preview || Boolean(labJourney),
       error,
       logout,
       enterGuest,
@@ -561,6 +571,7 @@ export function AuthProvider({ children }) {
       demo,
       authEntry,
       initializing,
+      profileFresh,
       error,
       logout,
       enterGuest,

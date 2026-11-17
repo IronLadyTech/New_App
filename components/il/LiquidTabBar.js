@@ -292,7 +292,7 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
     const item = itemsRef.current[index];
     if (!item) return;
     // aim first: the focus change this causes must not restart the bead's spring.
-    aim.current = { index, slot };
+    aim.current = { index, slot, tapAt: Date.now() };
     onPressRef.current(item, index, tapAt);
   };
 
@@ -341,7 +341,13 @@ export default function LiquidTabBar({ items, activeIndex, onPress }) {
       aim.current = { index: safeIndex, slot };
       return;
     }
-    if (aim.current.index === safeIndex && aim.current.slot === slot) return;
+    if (aim.current.index === safeIndex && aim.current.slot === slot) {
+      aim.current.tapAt = 0; // her last tap has arrived
+      return;
+    }
+    // Quick taps (Learn, then Engage at once): Learn's screen arriving must not pull the bead back
+    // from Engage. While her latest tap is on its way, in-between focus changes are ignored.
+    if (aim.current.tapAt && Date.now() - aim.current.tapAt < 1500 && aim.current.slot === slot) return;
     aim.current = { index: safeIndex, slot };
     springTo(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
