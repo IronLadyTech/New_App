@@ -131,20 +131,37 @@ export async function registerPushTokenForUser(uid) {
   if ((await AsyncStorage.getItem(SAVED_FOR_KEY).catch(() => null)) === savedKey) {
     return { ok: true, token, skipped: true };
   }
+  // At most one device-row attempt per app run. A refused write (the security rules had no
+  // users/{uid}/devices rule) used to be retried in a loop: every refused write stays queued in
+  // the Firestore SDK and is resent, so memory and garbage collection grew until taps froze.
+  if (deviceTriedThisRun === savedKey) return { ok: false, token, reason: 'already_tried' };
+  deviceTriedThisRun = savedKey;
   const [installId, expoToken] = await Promise.all([getInstallId(), getExpoToken()]);
-  await savePushDevice(uid, installId, {
-    platform: Platform.OS,
-    nativeToken: token,
-    expoToken,
-    appVersion: Constants.expoConfig?.version || '',
-    ...(Platform.OS === 'android' ? { channels: PUSH_CHANNELS } : {}),
-  });
+  // Her main push token (users.fcmToken) is allowed by the rules: save it on its own, so a
+  // refused device row never stops her getting pushes.
   // An iPhone's native token is an APNs token, which FCM cannot use — Android only.
-  if (Platform.OS === 'android') await saveFcmToken(uid, token);
+  if (Platform.OS === 'android') await saveFcmToken(uid, token).catch(() => {});
+  let deviceSaved = true;
+  try {
+    await savePushDevice(uid, installId, {
+      platform: Platform.OS,
+      nativeToken: token,
+      expoToken,
+      appVersion: Constants.expoConfig?.version || '',
+      ...(Platform.OS === 'android' ? { channels: PUSH_CHANNELS } : {}),
+    });
+  } catch (e) {
+    deviceSaved = false;
+    console.warn('[push] device row not saved:', e?.code || e?.message || e);
+  }
   await AsyncStorage.setItem(NATIVE_TOKEN_KEY, token).catch(() => {});
-  await AsyncStorage.setItem(SAVED_FOR_KEY, savedKey).catch(() => {});
-  return { ok: true, token, expoToken };
+  // Only a saved row is remembered; a refused one is tried again on the next app open (once).
+  if (deviceSaved) await AsyncStorage.setItem(SAVED_FOR_KEY, savedKey).catch(() => {});
+  return { ok: true, token, expoToken, deviceSaved };
 }
+
+/** savedKey of the device-row write already attempted in this app run. */
+let deviceTriedThisRun = '';
 
 /** Signing out: this phone stops getting her pushes; her other phones keep theirs. */
 export async function unregisterPushForUser(uid) {

@@ -26,6 +26,10 @@ export function usePushNotifications() {
     if (Platform.OS === 'web' || isExpoGo()) return undefined;
 
     let cancelled = false;
+    // Asking for the token fires the token listener below. While registering, and for the token
+    // we already know, the listener must do nothing — otherwise a failed save re-registered
+    // forever (a refused Firestore write about once a second; memory grew until taps froze).
+    let registering = true;
     (async () => {
       try {
         const result = await registerPushTokenForUser(user.uid);
@@ -39,6 +43,8 @@ export function usePushNotifications() {
         }
       } catch (e) {
         console.warn('[push] registration failed:', e?.message || e);
+      } finally {
+        registering = false;
       }
     })();
 
@@ -47,7 +53,8 @@ export function usePushNotifications() {
     // users/{uid} every few seconds, and every screen redrew on each one.
     const sub = addPushTokenListener(async (event) => {
       const next = event?.data;
-      if (!next || next === lastToken.current) return;
+      if (!next || registering || next === lastToken.current) return;
+      lastToken.current = next;
       try {
         await registerPushTokenForUser(user.uid);
       } catch {
