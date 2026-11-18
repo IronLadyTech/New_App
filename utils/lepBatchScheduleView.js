@@ -34,8 +34,15 @@ function formatTime12(hhmm) {
 }
 
 /** Sessions for schedule UI — template times + batch Day 1; CMS Zoom when set. */
+/**
+ * Not listed on the Schedule screen (programme team, 18 Nov 2026): of the optional weekly
+ * "Prepare to Win" sessions only Week 2 (PTW2) is shown. The sessions stay on the batch, so
+ * reminders and Home are unchanged.
+ */
+const HIDDEN_ON_SCHEDULE = new Set(['PTW', 'PTW3', 'PTW4']);
+
 function liveSessions(batch, day1Iso = '') {
-  return resolveCmsBatchSessions(batch, { day1Iso });
+  return resolveCmsBatchSessions(batch, { day1Iso }).filter((s) => !HIDDEN_ON_SCHEDULE.has(s?.code));
 }
 
 function sessionLiveWindow(session, now = new Date()) {

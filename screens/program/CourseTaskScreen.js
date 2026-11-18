@@ -651,8 +651,16 @@ export default function CourseTaskScreen({ route, navigation }) {
     if (submission.textValue) setText(submission.textValue);
     if (submission.linkValue) setLink(submission.linkValue);
     if (Array.isArray(submission.checkedItems)) setChecked(submission.checkedItems);
-    const savedForm = submission.form || submission.templateData;
-    if (savedForm && typeof savedForm === 'object') setForm(savedForm);
+    // The app saves `form`; the web LMS saves `templateData.fields`. Laid over the blank form,
+    // so a field an older submission lacks still shows (a bare web copy drew no rows at all).
+    const td = submission.templateData;
+    const savedForm =
+      submission.form ||
+      (td && typeof td.fields === 'object' ? td.fields : null) ||
+      (td && typeof td === 'object' && !td.fields ? td : null);
+    if (savedForm && typeof savedForm === 'object') {
+      setForm({ ...(initialFormForTemplate(task?.templateId) || {}), ...savedForm });
+    }
   }, [prefillKey]);
 
   // Some players (an old YouTube embed) report no progress — never leave the learner stuck.
