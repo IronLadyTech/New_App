@@ -640,10 +640,14 @@ export default function CourseTaskScreen({ route, navigation }) {
     );
   }, [programId, taskId, demo.isDone, demo.done, getTaskSubmission]);
 
-  // Sent back, or editing before review: start from what she handed in, not a blank form.
-  const prefillKey = `${taskId}|${review}|${editing}`;
+  // Whenever she has handed it in, the screen shows what she sent: after submitting, when she
+  // opens it again, when it is sent back, and when she edits it. (It loaded only when sent back
+  // or editing, so a submitted form opened blank — "I Respond: 0 · I React: 0".)
+  // Her submission can arrive after the screen opens, so its arrival reloads it once.
+  const hasSubmission = Boolean(submission && (hasSubmissionContent(submission) || submission.form || submission.templateData));
+  const prefillKey = `${taskId}|${review}|${editing}|${hasSubmission}`;
   useEffect(() => {
-    if (!submission || (review !== 'sentBack' && !editing)) return;
+    if (!submission || !hasSubmission) return;
     if (submission.textValue) setText(submission.textValue);
     if (submission.linkValue) setLink(submission.linkValue);
     if (Array.isArray(submission.checkedItems)) setChecked(submission.checkedItems);

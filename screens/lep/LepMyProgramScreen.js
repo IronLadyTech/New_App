@@ -47,6 +47,9 @@ import {
 } from './lepData';
 import { useGlassHeaderPad } from '../../components/il/GlassHeader';
 import { PROGRAMS } from '../../constants/programs';
+import { useCourseDemo } from '../../context/CourseDemoContext';
+import { usePrograms } from '../../context/ProgramsContext';
+import { makeTaskDoneChecker } from '../../utils/taskDone';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import CourseCurriculum from './CourseCurriculum';
@@ -517,7 +520,17 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
   const batchShort = cohort?.batchTitle || 'Your cohort';
   const subline = cohort?.subline || COHORT_SUBLINE_FALLBACK;
   const circles = cohort?.communityCircles?.length ? cohort.communityCircles : CIRCLE;
-  const weekRows = cohort?.weekRows || [];
+  const demo = useCourseDemo();
+  const { getTaskSubmission } = usePrograms();
+  const taskIsDone = useMemo(
+    () => makeTaskDoneChecker({ isDone: demo.isDone, getTaskSubmission }),
+    [demo.isDone, demo.done, getTaskSubmission]
+  );
+  // Submitted work is no longer "this week": it leaves the list, as on Home and Practice.
+  const openRows = (cohort?.weekRows || []).filter((row) => !(row.taskId && taskIsDone(PROGRAMS.LEP, row.taskId)));
+  const weekRows = openRows.length
+    ? openRows
+    : [{ id: 'all-done', icon: 'check-circle', title: 'All caught up this week', meta: 'See what is next on your batch calendar', opens: 'schedule' }];
   const extraLabel = cohort?.extraMemberLabel;
   const waUrl = cohort?.whatsappUrl;
 
