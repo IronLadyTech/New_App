@@ -13,6 +13,7 @@ import {
 } from '../utils/ilGuideJourney';
 import { useLearnerCmsBatch } from './useLearnerCmsBatch';
 import { phaseFlowFromBatch } from '../utils/phaseUnlock';
+import { resolveLepDay1Iso } from '../utils/lepEnrolledCohortPhase';
 import { todayIsoIST } from '../utils/lepDailyPractice';
 import { makeTaskDoneChecker } from '../utils/taskDone';
 import { fetchILGuideWhisper } from '../services/ilGuide';
@@ -53,10 +54,13 @@ export function useILGuideWhisper(surface, extraContext = null) {
   // to a locked task and can say when the next ones open.
   const { batch: guideBatch } = useLearnerCmsBatch(guideProgramId);
   const today = todayIsoIST();
-  const phaseFlow = useMemo(
-    () => phaseFlowFromBatch(guideProgramId, guideBatch, today),
-    [guideProgramId, guideBatch, today]
-  );
+  // LEP: her own Day 1 until the batch list arrives, so the guide does not speak from "Day 1"
+  // for a moment after the app opens and then change its message.
+  const ownDay1 = guideProgramId === 'lep' ? resolveLepDay1Iso(profile, guideBatch) : null;
+  const phaseFlow = useMemo(() => {
+    const flow = phaseFlowFromBatch(guideProgramId, guideBatch, today);
+    return guideProgramId === 'lep' ? { ...flow, day1Iso: flow.day1Iso || ownDay1 || null } : flow;
+  }, [guideProgramId, guideBatch, today, ownDay1]);
   const journeyProgress = useMemo(
     () => journeyProgressForProgram(guideProgramId, profile, taskIsDone, phaseFlow),
     [guideProgramId, profile, taskIsDone, phaseFlow]

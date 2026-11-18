@@ -686,8 +686,17 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>
         {weekRows.map((row, i) => (
-          <View
+          <Pressable
             key={row.id || row.title}
+            disabled={preview}
+            accessibilityRole="button"
+            onPress={() => {
+              // Every row opens what it names (they were plain text, so taps did nothing).
+              if (row.opens === 'task' && row.taskId) nav.goCourseTask(PROGRAMS.LEP, row.taskId);
+              else if (row.opens === 'journey') nav.goMyProgram('Journey');
+              else if (row.opens === 'engage') nav.goEngage();
+              else nav.goSchedule();
+            }}
             style={{
               paddingHorizontal: 16,
               paddingVertical: 14,
@@ -706,8 +715,12 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
                 {row.meta}
               </ILText>
             </View>
-            {preview ? <MaterialIcons name="lock-outline" size={16} color={G.meta} /> : null}
-          </View>
+            {preview ? (
+              <MaterialIcons name="lock-outline" size={16} color={G.meta} />
+            ) : (
+              <MaterialIcons name="chevron-right" size={20} color={G.meta} />
+            )}
+          </Pressable>
         ))}
       </WhiteCard>
       {preview ? <UnlockRest onEnroll={onEnroll} /> : null}

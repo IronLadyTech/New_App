@@ -542,9 +542,15 @@ function EnrolledHome({ cmsBatch }) {
   );
   // The guide only nudges what she can open today — a locked phase's task (e.g. Program
   // Access Essentials before Orientation opens) must not be "still open this week".
+  // Her own Day 1 as well as the CMS batch: the batch list arrives a moment after the app
+  // opens, and without a Day 1 the strip showed Orientation · Day 1 · Day 2 for that moment,
+  // then jumped to her real weeks.
   const guideFlow = useMemo(
-    () => phaseFlowFromBatch(PROGRAMS.LEP, cmsBatch, practiceTodayIso()),
-    [cmsBatch]
+    () => {
+      const flow = phaseFlowFromBatch(PROGRAMS.LEP, cmsBatch, practiceTodayIso());
+      return { ...flow, day1Iso: flow.day1Iso || day1Iso || null };
+    },
+    [cmsBatch, day1Iso]
   );
   const journeyNext = useMemo(
     () => nextJourneyTask(PROGRAMS.LEP, profile, taskIsDone, guideFlow),

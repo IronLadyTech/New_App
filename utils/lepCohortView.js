@@ -81,15 +81,21 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
       icon: item.icon || 'flag',
       title: item.title,
       meta: [item.kind || item.tag, item.due].filter(Boolean).join(' · '),
+      // Where a tap goes: the task, the batch schedule, or her journey.
+      taskId: item.taskId || null,
+      opens: item.taskId ? 'task' : item.sessionCode ? 'schedule' : item.opens || 'schedule',
     });
   });
 
-  if (nextLive?.title && weekRows.length < 4) {
+  // The next live session is often already in the due list (same session): list it once.
+  const alreadyListed = weekRows.some((r) => r.title === nextLive?.title);
+  if (nextLive?.title && !alreadyListed && weekRows.length < 4) {
     weekRows.push({
       id: `live-${nextLive.code || nextLive.title}`,
       icon: 'videocam',
       title: nextLive.title,
       meta: nextLive.meta || nextLive.doneMeta || 'Upcoming live session',
+      opens: 'schedule',
     });
   }
 
@@ -102,6 +108,7 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
         icon: 'campaign',
         title: p.title,
         meta: String(p.body || p.place || '').trim().slice(0, 100) || 'From your Iron Lady team',
+        opens: 'engage',
       });
     });
 
@@ -111,6 +118,7 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
       icon: 'forum',
       title: 'Batch updates',
       meta: COHORT_WEEK_EMPTY_META,
+      opens: 'engage',
     });
   }
 
