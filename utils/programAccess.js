@@ -605,11 +605,16 @@ function toIsoDate(value) {
  * 100BM → BM_Reg_Date1 + BM_End_Date
  */
 export function learnerProgramDates(profile, programId) {
-  const spec = ZOHO_LEAD_FIELDS[normalizeProgramId(programId)];
+  const pid = normalizeProgramId(programId);
+  const spec = ZOHO_LEAD_FIELDS[pid];
   if (!spec) return { start: '', end: '' };
+  // LEP: her own copy (programAccess.lep) is written by both her batch pick in the app and the
+  // Zoho sync, so it is the newest. Older copies of the lead on her profile kept a past start
+  // after a batch change, and Home counted from it ("Day 470", graduation "passed").
+  const own = pid === 'lep' ? profile?.programAccess?.lep || {} : {};
   return {
-    start: toIsoDate(readLeadField(profile, spec.start)),
-    end: toIsoDate(readLeadField(profile, spec.end)),
+    start: toIsoDate(own.day1Date) || toIsoDate(readLeadField(profile, spec.start)),
+    end: toIsoDate(own.endDate) || toIsoDate(readLeadField(profile, spec.end)),
   };
 }
 
@@ -709,11 +714,15 @@ function looksLikeRecordId(value) {
 function namedBatch(profile, pid, access) {
   // Prefer live Zoho Lead batch field. When Zoho was synced and batch is empty,
   // never fall back to a stale Firestore/CMS date range.
+  const fromZohoCopy =
+    cleanBatchLabel(access?.zohoRawBatch) || cleanBatchLabel(access?.zohoBatchKey);
+  // LEP: her batch pick and the Zoho sync both write programAccess.lep.zohoRawBatch, so after a
+  // batch change it is newer than other lead copies on her profile.
+  if (pid === 'lep' && fromZohoCopy && isZohoBatchDateRange(fromZohoCopy)) return fromZohoCopy;
+
   const fromLead = zohoBatchRange(profile, pid);
   if (fromLead) return fromLead;
 
-  const fromZohoCopy =
-    cleanBatchLabel(access?.zohoRawBatch) || cleanBatchLabel(access?.zohoBatchKey);
   if (fromZohoCopy && isZohoBatchDateRange(fromZohoCopy)) return fromZohoCopy;
   if (hasZohoLeadSnapshot(profile)) return null;
 

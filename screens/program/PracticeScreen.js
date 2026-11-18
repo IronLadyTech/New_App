@@ -26,6 +26,8 @@ import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { isLepEnrolled } from '../../utils/lepState';
 import { isLepRitualsPracticeId } from '../../utils/lepRitualsUnlock';
+import { LEP_FIVE_RITUALS } from '../../constants/lepFiveRituals';
+import { lepRitualMarkKey } from '../../utils/lepRitualsTracker';
 import { getPracticeVideoUrl } from '../../utils/resolveVideoUrl';
 import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
 import { cmsPracticeItem } from '../../hooks/useCmsLearnerItems';
@@ -139,6 +141,14 @@ export default function PracticeScreen() {
     // Always stamp done so home practice / dues / IL Guide update immediately.
     if (dailyKey) demo.markDoneOnDay(programId, dailyKey);
     demo.markDone(programId, pKey);
+    // The 5 Rituals: finishing here ticks the same five boxes as Home's tracker (it only marked
+    // the practice, so Home asked her to tick all five again).
+    if (isLepRitualsPracticeId(practiceId)) {
+      LEP_FIVE_RITUALS.forEach((r) => {
+        const key = lepRitualMarkKey(r.id, today);
+        if (!demo.isDoneOnDay('lep', key)) demo.markDoneOnDay('lep', key);
+      });
+    }
     if (programId === 'lep') demo.recordLepActiveDay(today);
   };
 

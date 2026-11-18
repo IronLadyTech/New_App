@@ -6,8 +6,11 @@ import { daysFromDay1, todayIsoIST } from './lepDailyPractice';
 export function resolveLepDay1Iso(profile, cmsBatch) {
   return (
     (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
-    learnerProgramDates(profile, PROGRAMS.LEP).start ||
+    // Her own Day 1 is written by both her batch pick and the Zoho sync, so it is the newest.
+    // Older copies of the Zoho lead on her profile kept a past start date after she changed
+    // batch (Home counted "Day 470" and said graduation had passed).
     String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10) ||
+    learnerProgramDates(profile, PROGRAMS.LEP).start ||
     ''
   );
 }

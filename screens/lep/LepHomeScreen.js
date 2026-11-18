@@ -91,7 +91,7 @@ import PracticeDeck from '../../components/lep/PracticeDeck';
 import LepHomeTakeAMoment from '../../components/lep/LepHomeTakeAMoment';
 import GetReadyChecklistCard from '../../components/lep/GetReadyChecklistCard';
 import PreworkBeforeDay1 from '../../components/lep/PreworkBeforeDay1';
-import LepRitualsTrackerPanel from '../../components/lep/LepRitualsTrackerPanel';
+import LepRitualsTodayCard from '../../components/lep/LepRitualsTodayCard';
 import { useLepFiveRitualsTracker } from '../../hooks/useLepFiveRitualsTracker';
 import { mergeGetReadyItems, toggleGetReadyItem } from '../../utils/lepGetReadyChecklist';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
@@ -391,7 +391,7 @@ function GraduationNudge({ day1Iso, onOpen, onAll }) {
     daysLeft > 1 ? `Graduation in ${daysLeft} days` : daysLeft === 1 ? 'Graduation tomorrow' : daysLeft === 0 ? 'Graduation today' : 'Graduation day has passed';
   const left = checklist.missing.length;
   return (
-    <WhiteCard style={{ borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
+    <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, borderLeftWidth: 3, borderLeftColor: G.cta }}>
       <ILText role="eyebrow" color={G.cta} style={{ fontSize: 10 }}>
         {`${when} · ${left} step${left === 1 ? '' : 's'} left`}
       </ILText>
@@ -482,14 +482,7 @@ function EnrolledHome({ cmsBatch }) {
     const next = practice.find((p) => !p.done);
     if (next) nav.goPracticeItem(next);
   }, [openPractice, practice]);
-  const day1Iso = useMemo(
-    () =>
-      (cmsBatch?.day1Date && String(cmsBatch.day1Date).slice(0, 10)) ||
-      learnerProgramDates(profile, 'lep').start ||
-      String(profile?.programAccess?.lep?.day1Date || '').slice(0, 10) ||
-      '',
-    [cmsBatch?.day1Date, profile]
-  );
+  const day1Iso = useMemo(() => resolveLepDay1Iso(profile, cmsBatch), [cmsBatch, profile]);
   const { today: ritualsToday, model: ritualsModel, toggleRitual, unmarkRitual } =
     useLepFiveRitualsTracker(day1Iso);
   // Batches with automatic reminders get the morning nudge from the scheduler instead.
@@ -784,7 +777,9 @@ function EnrolledHome({ cmsBatch }) {
             ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)
             : item.sessionCode
               ? nav.goSchedule
-              : undefined,
+              : item.opens === 'journey'
+                ? () => nav.goMyProgram()
+                : undefined,
         }))}
       />
 
@@ -837,36 +832,21 @@ function EnrolledHome({ cmsBatch }) {
 
       {showRitualsWatch ? (
         <PreworkBeforeDay1
-          heading="Watch this before your 5 Rituals"
-          description="Same format as your Day 1 pre-work — watch once, then tick your five rituals each morning."
+          heading="Start your 5 Daily Rituals"
+          description="Watch this once to learn the five rituals. From then on, tick them here each morning."
           items={[ritualsWatch]}
           onOpenItem={(item) => item.practiceId && nav.goPractice('lep', item.practiceId)}
         />
       ) : null}
 
       {showRitualsTracker ? (
-        <View style={{ marginTop: 8 }}>
-          <View style={{ marginTop: 18, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-              Your 5 Daily Rituals
-            </ILText>
-            <Pressable onPress={nav.goRitualsDashboard} accessibilityRole="button">
-              <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                Full tracker
-              </ILText>
-            </Pressable>
-          </View>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12, lineHeight: 18 }}>
-            Tick each ritual you did today — marks count toward your weekly score.
-          </ILText>
-          <LepRitualsTrackerPanel
-            today={ritualsToday}
-            model={ritualsModel}
-            toggleRitual={toggleRitual}
-            unmarkRitual={unmarkRitual}
-            showVideoLink={false}
-          />
-        </View>
+        <LepRitualsTodayCard
+          today={ritualsToday}
+          model={ritualsModel}
+          toggleRitual={toggleRitual}
+          unmarkRitual={unmarkRitual}
+          onOpenTracker={nav.goRitualsDashboard}
+        />
       ) : null}
 
       {showPrelaunchBlocks ? (

@@ -148,6 +148,8 @@ export function buildLepDueWeek(batch, now = new Date()) {
                 kind: 'Journey · this week',
                 icon: 'flag',
                 taskId: null,
+                // Opens her journey (it had no destination, so tapping it did nothing).
+                opens: 'journey',
                 due: 'This week',
                 urgent: false,
               },

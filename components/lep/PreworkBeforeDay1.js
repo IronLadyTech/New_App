@@ -226,7 +226,7 @@ function PreworkNextCard({ item, onPress }) {
           {item.n}
         </ILText>
         <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 11, marginLeft: 8 }]}>
-          Crucial pre-requisite
+          Watch first
         </ILText>
       </View>
       <ILText

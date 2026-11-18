@@ -4,7 +4,8 @@ import { LEP_PRINCIPLE_TITLES } from '../constants/lepPrincipleWatch';
 import { PODCASTS } from '../screens/lep/lepData';
 
 const CMS_FRESH_DAYS = 7;
-const ARMY_SOON_DAYS = 14;
+// An Army event takes the card only in its last 3 days; at 14 it sat on Home for two weeks.
+const ARMY_SOON_DAYS = 3;
 
 const PRINCIPLE_MOMENT_BODY =
   'Leadership is practised step by step. Sit with this idea for a minute — pick one small action today if it speaks to you.';
@@ -94,7 +95,8 @@ function pickPrincipleMoment(todayIso, day1Iso) {
 
 /**
  * One optional “moment” between Today’s practice and Due this week — not a checklist item.
- * Priority: fresh CMS post → Army event soon → rotating podcast → principle spotlight.
+ * Priority: fresh CMS post → Army event in the next 3 days → otherwise a new card each day,
+ * alternating a podcast episode and a leadership principle.
  */
 export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOffline, featured }) {
   const cms = pickFreshCmsPost(cmsPosts, todayIso);
@@ -123,7 +125,10 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
     };
   }
 
-  const listen = pickEngageListen(todayIso);
+  // Otherwise the card changes every day: a podcast one day, a leadership principle the next.
+  const t = parseLocalIso(todayIso);
+  const podcastDay = !t || Math.floor(t.getTime() / 86400000) % 2 === 0;
+  const listen = podcastDay ? pickEngageListen(todayIso) : null;
   if (listen) {
     return {
       kind: 'listen',
