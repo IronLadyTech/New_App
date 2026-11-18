@@ -4,6 +4,7 @@ import { BackHandler, Platform, View } from 'react-native';
 import { useILGuideWhisper } from '../../hooks/useILGuideWhisper';
 import { IL_GUIDE_SURFACES } from '../../constants/ilGuide';
 import {
+  lepBatchIsAssigned,
   learnerBatchLabel,
   learnerEnrollmentLabel,
   needsLepBatchSelection,
@@ -47,6 +48,29 @@ export default function LandingGate({ profile, forcedClosed }) {
       .then((v) => setDoneHere(v === '1'))
       .catch(() => setDoneHere(false));
   }, [doneKey]);
+  // Her batch, once seen or chosen on this phone, is remembered for this account: a server copy
+  // that arrives for a moment without the batch fields must not ask her to choose again.
+  const batchKey = user?.uid ? `il_lep_batch_known_${user.uid}` : null;
+  const [batchKnown, setBatchKnown] = React.useState(null); // null = still reading
+  React.useEffect(() => {
+    if (!batchKey) {
+      setBatchKnown(false);
+      return;
+    }
+    AsyncStorage.getItem(batchKey)
+      .then((v) => setBatchKnown(v === '1'))
+      .catch(() => setBatchKnown(false));
+  }, [batchKey]);
+  const hasBatchNow = Boolean(profile) && lepBatchIsAssigned(profile);
+  React.useEffect(() => {
+    if (!batchKey || !hasBatchNow || !profileFresh) return;
+    AsyncStorage.setItem(batchKey, '1').catch(() => {});
+    setBatchKnown(true);
+  }, [batchKey, hasBatchNow, profileFresh]);
+  const rememberBatch = () => {
+    if (batchKey) AsyncStorage.setItem(batchKey, '1').catch(() => {});
+    setBatchKnown(true);
+  };
   const { setProgram } = useProgramNav();
   const [step, setStep] = React.useState('welcome');
   const [batch, setBatch] = React.useState(null);
@@ -80,7 +104,9 @@ export default function LandingGate({ profile, forcedClosed }) {
   if (forcedClosed || closed || !profile) return null;
   // Decide from the server's copy only — the phone's saved copy can be older than her last
   // welcome/batch steps, and opened them again on every launch.
-  if (!profileFresh || doneHere === null) return null;
+  if (!profileFresh || doneHere === null || batchKnown === null) return null;
+  // Needs a batch only if neither her profile nor this phone has ever known one.
+  const needsBatchNow = (p) => !batchKnown && needsLepBatchSelection(p);
 
   const programs = programsOnProfile(profile)
     .map((program) => ({
@@ -114,7 +140,7 @@ export default function LandingGate({ profile, forcedClosed }) {
       };
     }),
   });
-  const needsBatch = needsLepBatchSelection(profile);
+  const needsBatch = needsBatchNow(profile);
 
   // First login: welcome (+ batch if needed). Stay on batch until one is locked.
   if (!programs.length) return null;
@@ -139,7 +165,7 @@ export default function LandingGate({ profile, forcedClosed }) {
   );
 
   const openBatchOrContinue = () => {
-    if (needsLepBatchSelection(profile)) setStep('batch');
+    if (needsBatchNow(profile)) setStep('batch');
     else leave(primaryId || 'lep');
   };
 
@@ -153,7 +179,7 @@ export default function LandingGate({ profile, forcedClosed }) {
         onDone={(programId) => {
           const id = programId || primaryId;
           setEntryProgram(id);
-          if (needsLepBatchSelection(profile)) setStep('batch');
+          if (needsBatchNow(profile)) setStep('batch');
           else leave(id);
         }}
         onBack={() => logout()}
@@ -181,7 +207,7 @@ export default function LandingGate({ profile, forcedClosed }) {
 
   if (gateStep === 'batch') {
     // Batch already in place (e.g. set from Zoho): close the gate after this render, not inside it.
-    if (!needsLepBatchSelection(profile)) return <LeaveAfterRender onLeave={() => leave(primaryId || 'lep')} />;
+    if (!needsBatchNow(profile)) return <LeaveAfterRender onLeave={() => leave(primaryId || 'lep')} />;
     // Back returns to welcome, like the on-screen arrow; with welcome done this is the first step.
     if (!welcomeDone) backRef.current = () => setStep('welcome');
     return wrap(
@@ -191,6 +217,7 @@ export default function LandingGate({ profile, forcedClosed }) {
           setStep('welcome');
         }}
         onLock={(picked) => {
+          rememberBatch();
           setBatch(picked);
           setStep('held');
         }}
@@ -202,7 +229,7 @@ export default function LandingGate({ profile, forcedClosed }) {
     <FirstLoginWelcomeScreen
       onGoBatch={openBatchOrContinue}
       onDone={() => {
-        if (needsLepBatchSelection(profile)) {
+        if (needsBatchNow(profile)) {
           setStep('batch');
           return;
         }

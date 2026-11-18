@@ -344,7 +344,7 @@ export function parseArmyEventsCsv(csvText, now = new Date(), options = {}) {
           };
           return map[m[1].toLowerCase()] || null;
         })();
-        const whenLabel = `${dowFromSheet || DOW[d.getDay()]} ${day} ${MON[monthIndex]} · ${timeLabel}`;
+        const whenLabel = `${dowFromSheet || DOW[d.getDay()]} ${day} ${MON[monthIndex]} ${year} · ${timeLabel}`;
         const placeBit =
           mode === 'offline'
             ? city
@@ -516,7 +516,7 @@ export function armyEventLongDateLine(event) {
   const monthName = new Intl.DateTimeFormat('en-IN', { month: 'long', timeZone: 'UTC' }).format(
     new Date(Date.UTC(y, m, d))
   );
-  const weekdayDate = `${DOW_LONG[date.getDay()]}, ${d} ${monthName}`;
+  const weekdayDate = `${DOW_LONG[date.getDay()]}, ${d} ${monthName} ${y}`;
   const time = event.timeLabel || '10:00 AM';
   return { weekdayDate, timeRange: `${time} – ${endTimeLabel(event)}` };
 }

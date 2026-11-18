@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { Linking, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import OneByOneRail from '../../components/il/OneByOneRail';
@@ -132,7 +133,8 @@ function EnrolledEngage({ navigation, onWatch }) {
   const [industry, setIndustry] = useState(null);
   const { featured, nextOffline, highlights } = useArmyEventCalendar();
   const chapter = nextOffline;
-  const spotlight = highlights.slice(0, 2);
+  // The featured card is often the next spotlight itself: never show the same event twice.
+  const spotlight = highlights.filter((ev) => ev.id !== featured?.id).slice(0, 2);
 
   const addCal = (event) => {
     const url = armyEventCalendarUrl(event);
@@ -269,11 +271,7 @@ function EnrolledEngage({ navigation, onWatch }) {
                 {chapter.title} · {chapter.whenLabel}
               </ILText>
             </View>
-            <Pressable accessibilityRole="button" onPress={() => addCal(chapter)}>
-              <ILText role="label" color={IL_BRAND.red}>
-                RSVP
-              </ILText>
-            </Pressable>
+            <CalendarIconButton event={chapter} color={IL_BRAND.red} />
           </View>
         </SoftCard>
       ) : null}
@@ -426,9 +424,7 @@ function RegisteredEventsList() {
                   {ev.meta}
                 </ILText>
               </View>
-              <ILText role="label" color={IL_BRAND.red}>
-                RSVP
-              </ILText>
+              <CalendarIconButton event={ev} color={IL_BRAND.red} />
             </Pressable>
           </View>
         );

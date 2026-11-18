@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, Linking, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
@@ -709,11 +710,17 @@ function cityMatches(eventCity, filterCity) {
 
 function filterArmyEventsForCity(upcoming, city) {
   return (upcoming || []).filter((ev) => {
-    // Online Army events are national — always listed; city chips filter offline only.
-    if (ev.mode === 'online') return true;
     if (!city || city === 'All') return true;
-    return cityMatches(ev.city, city);
+    // A city chip lists that city's in-person meetups only. (Online sessions stayed in the list
+    // under every city, so tapping a city looked like it did nothing.)
+    return ev.mode !== 'online' && cityMatches(ev.city, city);
   });
+}
+
+function cityEmptyLabel(city) {
+  return city && city !== 'All'
+    ? `No ${city} meetups on the calendar yet. Online sessions are under All.`
+    : 'Upcoming Army events load from the Iron Lady calendar.';
 }
 
 function openArmyEventCal(event) {
@@ -785,19 +792,7 @@ function ArmyEventRows({ events, onOpenEvent, emptyLabel = 'Upcoming Army events
             {e.meta}
           </ILText>
         </View>
-        <View
-          style={{
-            borderWidth: 1.5,
-            borderColor: G.cta,
-            borderRadius: 999,
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-          }}
-        >
-          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-            RSVP
-          </ILText>
-        </View>
+        <CalendarIconButton event={e} color={G.cta} />
       </WhiteCard>
     );
   });
@@ -837,7 +832,7 @@ function EventsPane({ onEnroll, onTicket }) {
       <View style={{ marginTop: 22 }}>
         <SectionHead title="Open to every member" accent={`${openEvents.length} upcoming`} />
       </View>
-      <ArmyEventRows events={openEvents} onOpenEvent={onTicket} />
+      <ArmyEventRows events={openEvents} onOpenEvent={onTicket} emptyLabel={cityEmptyLabel(city)} />
 
       <View style={{ marginTop: 26 }}>
         <SectionHead title="Cohort rooms" accent="After enrollment" />
@@ -1450,7 +1445,8 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
   const [city, setCity] = useState('All');
   const { upcoming, featured, highlights } = useArmyEventCalendar();
   const armyEvents = useMemo(() => filterArmyEventsForCity(upcoming, city).slice(0, 20), [upcoming, city]);
-  const spotlight = highlights.slice(0, 2);
+  // The featured card is often the next spotlight itself: never show the same event twice.
+  const spotlight = highlights.filter((ev) => ev.id !== featured?.id).slice(0, 2);
 
   return (
     <>
@@ -1523,19 +1519,24 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
           }}
           onPress={() => openArmyEventCal(ev)}
         >
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            SPOTLIGHT
-          </ILText>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
-          >
-            {ev.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            {ev.whenLabel}
-          </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+                SPOTLIGHT
+              </ILText>
+              <ILText
+                role="title"
+                color={G.ink}
+                style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
+              >
+                {ev.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
+                {ev.whenLabel}
+              </ILText>
+            </View>
+            <CalendarIconButton event={ev} color={G.cta} />
+          </View>
         </WhiteCard>
       ))}
 
@@ -1625,7 +1626,7 @@ function EventsEnrolled({ onCal, onTriad, onTicket }) {
           ))}
         </View>
       </ScrollView>
-      <ArmyEventRows events={armyEvents} onOpenEvent={onTicket} />
+      <ArmyEventRows events={armyEvents} onOpenEvent={onTicket} emptyLabel={cityEmptyLabel(city)} />
 
       <NextCard
         kicker="AFTER DAY 2"

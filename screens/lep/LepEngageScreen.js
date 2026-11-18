@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import {
   Image,
@@ -264,7 +265,8 @@ function EnrolledEngage({ nav, topPad }) {
   );
   const { featured, nextOffline, highlights, loading: calendarLoading } = useArmyEventCalendar();
   const chapter = nextOffline;
-  const spotlight = highlights.slice(0, 2);
+  // The featured card is often the next spotlight itself: never show the same event twice.
+  const spotlight = highlights.filter((ev) => ev.id !== featured?.id).slice(0, 2);
 
   return (
     <>
@@ -378,19 +380,24 @@ function EnrolledEngage({ nav, topPad }) {
           }}
           onPress={() => openArmyCalendar(ev)}
         >
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            SPOTLIGHT
-          </ILText>
-          <ILText
-            role="title"
-            color={G.ink}
-            style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
-          >
-            {ev.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            {ev.whenLabel}
-          </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+                SPOTLIGHT
+              </ILText>
+              <ILText
+                role="title"
+                color={G.ink}
+                style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 20, lineHeight: 26 }}
+              >
+                {ev.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
+                {ev.whenLabel}
+              </ILText>
+            </View>
+            <CalendarIconButton event={ev} color={G.cta} />
+          </View>
         </WhiteCard>
       ))}
 
@@ -408,19 +415,7 @@ function EnrolledEngage({ nav, topPad }) {
               {chapter.title} · {chapter.whenLabel}
             </ILText>
           </View>
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: G.cta,
-              borderRadius: 999,
-              paddingHorizontal: 12,
-              paddingVertical: 8,
-            }}
-          >
-            <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-              RSVP
-            </ILText>
-          </View>
+          <CalendarIconButton event={chapter} color={G.cta} />
         </WhiteCard>
       ) : null}
 
@@ -535,19 +530,7 @@ function RegisteredEngage({ nav, topPad }) {
                   {ev.meta}
                 </ILText>
               </View>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: G.cta,
-                  borderRadius: 999,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                }}
-              >
-                <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                  RSVP
-                </ILText>
-              </View>
+              <CalendarIconButton event={ev} color={G.cta} />
             </WhiteCard>
           );
         })

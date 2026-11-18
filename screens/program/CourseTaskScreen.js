@@ -14,7 +14,10 @@ import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import Pressable from '../../components/il/Press';
 import { GuestBackBar } from '../guest/GuestBits';
 import { Page, RedCta, WhiteCard } from '../lep/LepBits';
-import { COURSE_LABEL, courseTask, nextCourseTask } from '../../constants/programCourseSlice';
+import { COURSE_LABEL, coursePhase, courseTask, nextCourseTask } from '../../constants/programCourseSlice';
+import { phaseLockLabel } from '../../utils/phaseUnlock';
+import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
+import { isLepEnrolled } from '../../utils/lepState';
 import { PROGRAMS, TASK_TYPES } from '../../constants/programs';
 import { useAuth } from '../../context/AuthContext';
 import { useCourseDemo } from '../../context/CourseDemoContext';
@@ -486,6 +489,15 @@ export default function CourseTaskScreen({ route, navigation }) {
     isLepRitualsCourseTask(taskId) &&
     !ritualsUnlocked &&
     !alumniPractice;
+  // Same rule as My Program's phase list: a task in a phase that has not opened yet stays
+  // closed wherever it is opened from (calendar, Home, guide). Work she already sent stays
+  // viewable; alumni practice is never date-gated.
+  const enrolled = isLepEnrolled(profile);
+  const phaseLock = useMemo(() => {
+    if (programId !== PROGRAMS.LEP || !task?.phase || alumniPractice) return null;
+    const flow = { ...lepFlowContextFromBatch({ cmsBatch, day1Iso }), todayIso: todayIsoIST() };
+    return phaseLockLabel(coursePhase(programId, task.phase), { enrolled, flow });
+  }, [programId, task?.phase, alumniPractice, cmsBatch, day1Iso, enrolled]);
   const next = nextCourseTask(programId, taskId);
 
   const [text, setText] = useState('');
@@ -805,14 +817,15 @@ export default function CourseTaskScreen({ route, navigation }) {
     }
   };
 
-  if (!task || ritualsTaskLocked) {
+  const dateLocked = Boolean(phaseLock) && !hasSubmissionContent(submission) && !done;
+  if (!task || ritualsTaskLocked || dateLocked) {
     return (
       <Page>
         <StatusBar style="dark" />
         <View style={{ paddingTop: Math.max(insets.top, 8) }}>
           <GuestBackBar
             title="Task"
-            sub={ritualsTaskLocked ? 'Locked' : 'Not found'}
+            sub={ritualsTaskLocked || dateLocked ? 'Locked' : 'Not found'}
             onBack={() => navigation.goBack()}
           />
         </View>
@@ -820,6 +833,20 @@ export default function CourseTaskScreen({ route, navigation }) {
           <ILText role="body" color={G.meta} align="center" style={{ marginTop: 40, paddingHorizontal: 24 }}>
             The 5 Daily Rituals unlock after your Day 1 and Day 2 sessions (from Monday of Week 1).
           </ILText>
+        ) : dateLocked ? (
+          <View style={{ marginTop: 40, paddingHorizontal: 24, alignItems: 'center' }}>
+            <ILText role="title" color={G.ink} align="center">
+              {task.title}
+            </ILText>
+            <ILText role="body" color={G.meta} align="center" style={{ marginTop: 10 }}>
+              {`${phaseLock.text}. You can open it from that day.`}
+            </ILText>
+            {phaseLock.enroll ? (
+              <View style={{ marginTop: 20, alignSelf: 'stretch' }}>
+                <RedCta label="Complete enrollment" icon="lock-open" onPress={nav.goEnroll} />
+              </View>
+            ) : null}
+          </View>
         ) : null}
       </Page>
     );
