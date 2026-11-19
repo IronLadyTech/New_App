@@ -303,6 +303,9 @@ function EnrolledEngage({ nav, topPad }) {
 
       <View style={{ paddingHorizontal: 20 }}>
       <CmsEngageFeed programId="lep" cmsBatch={cmsBatch} navigation={navigation} />
+      {/* Order (programme team): Executive stories & innovations, Iron Lady Speaks, then events. */}
+      <CsuiteVideos nav={nav} />
+      <PodcastLibrary nav={nav} />
       {calendarLoading && !featured && spotlight.length === 0 ? (
         <View style={{ marginTop: 14, minHeight: 8 }} />
       ) : null}
@@ -419,10 +422,6 @@ function EnrolledEngage({ nav, topPad }) {
         </WhiteCard>
       ) : null}
 
-      <CsuiteVideos nav={nav} />
-
-      <PodcastLibrary nav={nav} />
-
       <ILGuideWhisperLep
         surface={IL_GUIDE_SURFACES.COMMUNITY}
         fallbackQuote={engageWhisper.quote}
@@ -477,6 +476,8 @@ function RegisteredEngage({ nav, topPad }) {
 
       <View style={{ paddingHorizontal: 20 }}>
       <CmsEngageFeed programId="lep" cmsBatch={cmsBatch} navigation={navigation} />
+      {/* Order (programme team): Executive stories & innovations, Iron Lady Speaks, then events. */}
+      <CsuiteVideos nav={nav} />
       <PodcastLibrary nav={nav} />
 
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'flex-end' }}>
@@ -567,8 +568,6 @@ function RegisteredEngage({ nav, topPad }) {
           <MaterialIcons name="chevron-right" size={20} color={G.meta} style={{ marginRight: 10 }} />
         </WhiteCard>
       ))}
-
-      <CsuiteVideos nav={nav} />
 
       <View style={{ marginTop: 26, flexDirection: 'row', alignItems: 'center' }}>
         <ILText role="eyebrow" color={G.meta} style={[af, { flex: 1, fontSize: 10, letterSpacing: 1 }]}>

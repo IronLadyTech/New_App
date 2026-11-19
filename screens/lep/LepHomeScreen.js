@@ -778,24 +778,24 @@ function EnrolledHome({ cmsBatch }) {
         navigation={navigation}
       />
 
-      <DueWeek
-        sub={dueWeek.sub}
-        onSchedule={nav.goSchedule}
-        // Done / submitted work is no longer due: it leaves the list (it used to stay, greyed out).
-        items={(dueItemsWithDone.some((item) => !item.done)
-          ? dueItemsWithDone
-          : [{ title: 'Nothing due right now', tag: 'LEP', kind: 'See what is next on your batch calendar', icon: 'event', due: '', sessionCode: 'next' }]
-        ).filter((item) => !item.done).map((item) => ({
-          ...item,
-          onPress: item.taskId
-            ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)
-            : item.sessionCode
-              ? nav.goSchedule
-              : item.opens === 'journey'
-                ? () => nav.goMyProgram()
-                : undefined,
-        }))}
-      />
+      {/* Nothing due: the section is left out rather than shown empty. */}
+      {dueItemsWithDone.some((item) => !item.done) ? (
+        <DueWeek
+          sub={dueWeek.sub}
+          onSchedule={nav.goSchedule}
+          // Done / submitted work is no longer due: it leaves the list (it used to stay, greyed out).
+          items={dueItemsWithDone.filter((item) => !item.done).map((item) => ({
+            ...item,
+            onPress: item.taskId
+              ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)
+              : item.sessionCode
+                ? nav.goSchedule
+                : item.opens === 'journey'
+                  ? () => nav.goMyProgram()
+                  : undefined,
+          }))}
+        />
+      ) : null}
 
       <Pressable onPress={nav.goProgress}>
         <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>

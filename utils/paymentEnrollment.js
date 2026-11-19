@@ -1,4 +1,4 @@
-import { PAYMENT_STATUS, getProgramEntry, REGISTRATION_FEE } from '../constants/programs';
+import { PAYMENT_STATUS, getProgramEntry } from '../constants/programs';
 import { resolveCmsBatchSessions } from './cmsBatchSessions';
 import { lepFirstName, lepFullName } from './lepState';
 import { buildLepBatchSessions } from './lepBatchSchedule';
@@ -7,6 +7,7 @@ import {
   getEnrolledPrograms,
   learnerProgramDates,
   programPaymentStatus,
+  zohoRegistrationAmount,
   zohoRegistrationTxn,
 } from './programAccess';
 
@@ -174,18 +175,21 @@ export function buildPaymentEnrollmentView(
   const access = accessRow(profile, pid);
   const payStatus = programPaymentStatus(profile, pid);
 
-  const registrationFee =
+  // Money: only amounts that are on record — never a placeholder. A made-up "₹ 1" balance was
+  // shown (and charged by the server's fallback) to learners whose real balance was not set.
+  const recordedFee =
     access.registrationFee ??
     access.registrationAmount ??
     profile?.registrationFee ??
-    REGISTRATION_FEE[pid] ??
-    REGISTRATION_FEE.lep;
-  // Until Zoho writes real balance, show ₹1 test amount (matches server default).
-  const programBalance =
+    zohoRegistrationAmount(profile, pid) ??
+    null;
+  const registrationFee = Number(recordedFee) > 0 ? Number(recordedFee) : null;
+  const recordedBalance =
     access.programBalance ??
     access.balanceDue ??
     access.balanceAmount ??
-    1;
+    null;
+  const programBalance = Number(recordedBalance) > 0 ? Number(recordedBalance) : null;
   const registrationPaidAt =
     access.registrationPaidAt ?? access.paidAt ?? profile?.registrationPaidAt ?? null;
   const balanceDueDate =
@@ -200,11 +204,13 @@ export function buildPaymentEnrollmentView(
     formatShortDate(balanceDueDate) ||
     (registrationPaidAt ? formatShortDate(addDays(registrationPaidAt, 7)) : null);
 
-  const paidPortion = registrationFee || 0;
-  const totalKnown =
-    programBalance != null ? paidPortion + Number(programBalance) : paidPortion * 4;
+  // Progress only when both real amounts are known (it was drawn from guesses).
   const progressPercent =
-    totalKnown > 0 ? Math.min(100, Math.round((paidPortion / totalKnown) * 100)) : 25;
+    payStatus === PAYMENT_STATUS.PAID
+      ? 100
+      : registrationFee != null && programBalance != null
+        ? Math.min(100, Math.round((registrationFee / (registrationFee + programBalance)) * 100))
+        : null;
 
   const statusLine =
     payStatus === PAYMENT_STATUS.PAID
@@ -231,9 +237,12 @@ export function buildPaymentEnrollmentView(
   const paymentUrl =
     access.paymentUrl ?? profile?.paymentUrl ?? profile?.paymentLink ?? null;
 
-  const balanceDetailNote = dueLabel
-    ? `Due by ${dueLabel} · pay via Razorpay`
-    : 'Pay via Razorpay';
+  const balanceDetailNote =
+    programBalance == null
+      ? 'The Iron Lady team will confirm your balance amount'
+      : dueLabel
+        ? `Due by ${dueLabel} · pay via Razorpay`
+        : 'Pay via Razorpay';
 
   return {
     programId: pid,
@@ -244,9 +253,11 @@ export function buildPaymentEnrollmentView(
     headline,
     subline,
     registrationFee,
-    registrationFeeLabel: formatInr(registrationFee) || formatInr(REGISTRATION_FEE.lep),
+    registrationFeeLabel: registrationFee != null ? formatInr(registrationFee) : '—',
     programBalance,
-    programBalanceLabel: formatInr(programBalance) || '₹ 1',
+    programBalanceLabel: programBalance != null ? formatInr(programBalance) : '—',
+    // Pay online only with a real balance on record; otherwise she talks to the team.
+    canPayOnline: payStatus !== PAYMENT_STATUS.PAID && programBalance != null,
     registrationPaidLabel: regPaidLabel || '—',
     balanceDueLabel: dueLabel || '—',
     txnLast4: txnLast4 ? String(txnLast4).slice(-4) : null,
@@ -277,7 +288,7 @@ export function registrationFeeOrder(profile, user) {
   const vm = buildPaymentEnrollmentView(profile, user);
   const paidAt = profile?.programAccess?.[vm.programId]?.registrationPaidAt
     || profile?.registrationPaidAt
-    || new Date('2026-09-12T10:00:00+05:30');
+    || null; // no made-up date
   return {
     id: 'registration-fee',
     amountRupees: vm.registrationFee,
@@ -292,32 +303,6 @@ export function registrationFeeOrder(profile, user) {
     payerEmail: profile?.email || user?.email || '',
     payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
     currency: 'INR',
-    uid: user?.uid || 'preview',
-  };
-}
-
-/** The ₹1 Razorpay test charge the learner already paid. */
-export function razorpayOneRupeeOrder(profile, user) {
-  const access = profile?.programAccess?.lep || {};
-  const paymentId = access.razorpayPaymentId || profile?.razorpayPaymentId || null;
-  const orderId = access.razorpayOrderId || profile?.razorpayOrderId || null;
-  const paidAt = access.fullPaidAt || access.paidAt || profile?.fullPaidAt || new Date();
-  return {
-    id: paymentId || 'razorpay-1-rupee',
-    amountRupees: 1,
-    amountPaise: 100,
-    programTitle: 'Leadership Essentials Program',
-    programId: 'lep',
-    description: 'Leadership Essentials Program — programme balance',
-    transactionId: paymentId || 'Razorpay ₹1',
-    razorpayOrderId: orderId,
-    receiptNumber: paymentId || 'IL-RZP-1',
-    paidAt,
-    gateway: 'razorpay',
-    currency: 'INR',
-    payerName: lepFullName(profile) || user?.displayName || '',
-    payerEmail: profile?.email || user?.email || '',
-    payerPhone: profile?.phoneNumber || profile?.phone || user?.phoneNumber || '',
     uid: user?.uid || 'preview',
   };
 }

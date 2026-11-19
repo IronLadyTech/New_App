@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { VIDEO_SECONDS } from '../../constants/videoDurations';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -87,6 +89,29 @@ export default function PracticeScreen() {
   const [ticks, setTicks] = useState({});
   const [note, setNote] = useState(saved?.data?.note || '');
   const [recordingUri, setRecordingUri] = useState(saved?.data?.audioUri || null);
+  // Watch time for practices that ask for some (27 Principles: 10 minutes). Kept on the phone,
+  // so watching in two sittings still counts.
+  const minWatch = p?.minWatchSeconds || 0;
+  const watchStoreKey = minWatch ? `il_watch_sec_${practiceId}` : null;
+  const [watchedSec, setWatchedSec] = useState(0);
+  useEffect(() => {
+    if (!watchStoreKey) return;
+    AsyncStorage.getItem(watchStoreKey)
+      .then((v) => setWatchedSec((prev) => Math.max(prev, Number(v) || 0)))
+      .catch(() => {});
+  }, [watchStoreKey]);
+  const lastSavedSec = useRef(0);
+  const onVideoProgress = (fraction) => {
+    if (!minWatch) return;
+    const total = VIDEO_SECONDS[practiceId] || 0;
+    if (!total || !(fraction > 0)) return;
+    const sec = Math.round(fraction * total);
+    setWatchedSec((prev) => (sec > prev ? sec : prev));
+    if (sec - lastSavedSec.current >= 15) {
+      lastSavedSec.current = sec;
+      AsyncStorage.setItem(watchStoreKey, String(sec)).catch(() => {});
+    }
+  };
 
   const lepRitualsLocked =
     isLepRitualsPracticeId(practiceId) &&
@@ -129,7 +154,9 @@ export default function PracticeScreen() {
 
   const stepsDone = displaySteps.filter((_, i) => ticks[i] || done).length;
   const audioUri = recordingUri || saved?.data?.audioUri || null;
-  const canFinish = (p.noteRequired ? !!note.trim() : true) && (!p.audioRecord || !!audioUri);
+  const watchedEnough = !minWatch || watchedSec >= minWatch;
+  const canFinish =
+    (p.noteRequired ? !!note.trim() : true) && (!p.audioRecord || !!audioUri) && watchedEnough;
   const finish = () => {
     if (!canFinish) return;
     const data = {};
@@ -217,6 +244,7 @@ export default function PracticeScreen() {
                 poster={videoPoster}
                 height={210}
                 trackKey={`${programId}:${practiceId}:${principleN || ''}`}
+                onProgress={minWatch ? onVideoProgress : undefined}
               />
             </View>
           ) : null}
@@ -284,7 +312,7 @@ export default function PracticeScreen() {
               <TextInput
                 value={note}
                 onChangeText={setNote}
-                placeholder={p.noteRequired ? 'One sentence — make it scary' : 'Optional · one line'}
+                placeholder={p.notePlaceholder || (p.noteRequired ? 'One sentence — make it scary' : 'Optional · one line')}
                 placeholderTextColor={G.meta}
                 multiline
                 style={{
@@ -363,6 +391,17 @@ export default function PracticeScreen() {
               </ILText>
             </Pressable>
           )}
+          {!done && minWatch && !canFinish ? (
+            <ILText role="bodySm" color={G.meta} align="center" style={{ marginTop: 10, fontSize: 12 }}>
+              {[
+                watchedEnough ? null : `Watch at least ${Math.round(minWatch / 60)} minutes (${Math.floor(watchedSec / 60)} so far)`,
+                p.noteRequired && !note.trim() ? 'write about one principle' : null,
+              ]
+                .filter(Boolean)
+                .join(' and ')
+                .replace(/^w/, 'W')}
+            </ILText>
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </Page>

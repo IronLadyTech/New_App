@@ -6,7 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
-import { PAYMENT_STATUS, REGISTRATION_FEE } from '../../constants/programs';
+import { PAYMENT_STATUS } from '../../constants/programs';
 import {
   learnerEnrollmentLabel,
   programPaymentStatus,
@@ -531,16 +531,18 @@ function BillRow({ label, detail, amount, status }) {
 export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }) {
   const pay = zohoPaymentDetail(source, program.id);
   const status = programPaymentStatus(source, program.id);
-  const regAmount =
-    pay.amount ||
-    Number(source?.programAccess?.[program.id]?.registrationAmount) ||
-    REGISTRATION_FEE[program.id] ||
-    REGISTRATION_FEE.lep;
   const regPaid = status === PAYMENT_STATUS.REGISTER || status === PAYMENT_STATUS.PAID;
   const fullyPaid = status === PAYMENT_STATUS.PAID;
   const balanceLabel = fullyPaid ? 'PAID' : 'BALANCE DUE';
   // Same numbers as the Payment & enrolment page (it showed ₹1 due while this card showed "—").
   const view = buildPaymentEnrollmentView(source, null, { programId: program.id });
+  // "Paid via Razorpay" only when the app actually took the payment (there is a Razorpay id);
+  // payments recorded by the team (Zoho, bank transfer) just say Paid. And no made-up amount:
+  // with no balance on record the card showed the ₹ 1 placeholder as the amount paid.
+  const access = source?.programAccess?.[program.id] || {};
+  const paidHow = access.razorpayPaymentId ? 'Paid via Razorpay' : 'Paid';
+  const recordedBalance = access.programBalance ?? access.balanceDue ?? access.balanceAmount;
+  const paidBalanceLabel = recordedBalance != null && Number(recordedBalance) > 1 ? formatInr(Number(recordedBalance)) : '—';
 
   return (
     <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
@@ -576,20 +578,20 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
         <BillRow
           label="Registration fee"
           detail={regPaid ? `Received${pay.paidOn ? ` · ${pay.paidOn}` : ''}` : 'Due'}
-          amount={formatInr(Number(regAmount))}
+          amount={view.registrationFeeLabel}
           status={regPaid ? 'PAID' : 'DUE'}
         />
         <View style={{ height: 1, backgroundColor: G.line, marginTop: 12 }} />
         <BillRow
           label="Programme balance"
-          detail={fullyPaid ? 'Paid via Razorpay' : view.balanceNote}
-          amount={fullyPaid ? formatInr(Number(view.programBalance) || 0) : view.programBalanceLabel}
+          detail={fullyPaid ? paidHow : view.balanceNote}
+          amount={fullyPaid ? paidBalanceLabel : view.programBalanceLabel}
           status={fullyPaid ? 'PAID' : 'DUE'}
         />
         <View style={{ marginTop: 14, height: 6, borderRadius: 3, backgroundColor: G.line, overflow: 'hidden' }}>
           <View
             style={{
-              width: `${fullyPaid ? 100 : regPaid ? view.progressPercent : 0}%`,
+              width: `${fullyPaid ? 100 : regPaid ? view.progressPercent ?? 0 : 0}%`,
               height: '100%',
               backgroundColor: fullyPaid ? '#1B7A4A' : G.cta,
             }}

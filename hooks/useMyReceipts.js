@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { subscribeToMyOrders, subscribeToMyRazorpayPayments } from '../services/firestore';
 import { PAYMENT_STATUS } from '../constants/programs';
 import { programPaymentStatus } from '../utils/programAccess';
-import { razorpayOneRupeeOrder } from '../utils/paymentEnrollment';
 import {
   cacheReceipts,
   loadCachedReceipts,
@@ -18,12 +17,7 @@ function mergeRows(...lists) {
     if (!item?.id && !item?.transactionId) return;
     map.set(String(item.transactionId || item.id), item);
   });
-  return [...map.values()].sort((a, b) => {
-    const aOne = Number(a.amountRupees) === 1 ? 1 : 0;
-    const bOne = Number(b.amountRupees) === 1 ? 1 : 0;
-    if (aOne !== bOne) return bOne - aOne;
-    return (b.paidAtMs || 0) - (a.paidAtMs || 0);
-  });
+  return [...map.values()].sort((a, b) => (b.paidAtMs || 0) - (a.paidAtMs || 0));
 }
 
 export function useMyReceipts() {
@@ -34,13 +28,8 @@ export function useMyReceipts() {
   const [loading, setLoading] = useState(true);
   const liveProfile = accountProfile || profile;
   const fromProfile = useMemo(() => receiptsFromAccount(liveProfile), [liveProfile]);
-  const oneRupee = useMemo(() => {
-    const access = liveProfile?.programAccess?.lep || {};
-    const paymentId = access.razorpayPaymentId || liveProfile?.razorpayPaymentId;
-    if (!paymentId) return null;
-    if (programPaymentStatus(liveProfile, 'lep') !== PAYMENT_STATUS.PAID) return null;
-    return serializeReceipt(razorpayOneRupeeOrder(liveProfile, user));
-  }, [liveProfile, user]);
+  // Money: receipts come only from real payment records (payment_orders / razorpay_payments).
+  // A receipt built on the phone always said ₹ 1, whatever she had actually paid.
 
   useEffect(() => {
     let active = true;
@@ -81,7 +70,7 @@ export function useMyReceipts() {
     };
   }, [user?.uid]);
 
-  const orders = mergeRows(oneRupee ? [oneRupee] : [], cached, remote, fromProfile);
+  const orders = mergeRows(cached, remote, fromProfile);
   const latest =
     orders.find((row) => {
       const programId = row.programId || 'lep';
@@ -92,11 +81,6 @@ export function useMyReceipts() {
           ? row.transactionId
           : null);
       if (!payId || payId === 'registration-fee') return false;
-      const synthetic =
-        Number(row.amountRupees) === 1 &&
-        !payId &&
-        String(row.id || '').includes('razorpay-1-rupee');
-      if (synthetic) return false;
       if (row.status === 'failed' || row.status === 'refunded') return false;
       return true;
     }) || null;

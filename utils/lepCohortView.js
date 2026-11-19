@@ -135,7 +135,9 @@ export function buildLepCohortView({ profile, cmsBatch, group, engagePosts = [] 
         : members != null && members > 0
           ? `${members} on the app`
           : null,
-    weekSectionTitle: batchTitle ? `This week · ${batchTitle}` : 'This week in your cohort',
+    // Plain heading; the batch name is already the card above. ("This week · 28th Nov batch"
+    // read like a different week.)
+    weekSectionTitle: 'This week in your batch',
     weekRows,
     whatsappUrl: resolveWhatsappUrl({ group, cmsBatch, profile }),
     communityCircles: Array.isArray(cmsBatch?.communityCircles)

@@ -19,7 +19,6 @@ import { PAYMENT_STATUS } from '../../constants/programs';
 import {
   buildPaymentEnrollmentView,
   programmeBalancePaid,
-  razorpayOneRupeeOrder,
   registrationFeeOrder,
 } from '../../utils/paymentEnrollment';
 import { navigateInMemberStack } from '../../utils/watchNav';
@@ -165,10 +164,8 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
             disabled={!programmeBalancePaid(profile, vm.programId)}
             onPress={() => {
               if (!programmeBalancePaid(profile, vm.programId)) return;
-              navigation.navigate('OrderReceipt', {
-                orderId: razorpayOneRupeeOrder(profile, user).id,
-                order: razorpayOneRupeeOrder(profile, user),
-              });
+              // Her real receipts (from the payment records), not one made up on the phone.
+              navigation.navigate('Orders');
             }}
           >
             <PaymentRow
@@ -184,14 +181,16 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
             />
           </TouchableOpacity>
 
-          <View style={styles.progressTrack}>
-            <View
-              style={[styles.progressFill, { width: `${vm.progressPercent}%` }]}
-            />
-          </View>
+          {vm.progressPercent != null ? (
+            <View style={styles.progressTrack}>
+              <View
+                style={[styles.progressFill, { width: `${vm.progressPercent}%` }]}
+              />
+            </View>
+          ) : null}
 
           <View style={styles.payButtonSlot}>
-            {vm.showPayButton ? (
+            {vm.canPayOnline ? (
               <TouchableOpacity
                 style={[styles.payButton, paying && styles.payButtonDisabled]}
                 onPress={onPayBalance}
@@ -206,6 +205,11 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
                   </Text>
                 )}
               </TouchableOpacity>
+            ) : vm.showPayButton ? (
+              // Not paid, but no balance amount on record: no Pay button with a guessed amount.
+              <Text style={styles.supportText}>
+                Your balance amount will appear here once the Iron Lady team confirms it.
+              </Text>
             ) : (
               <View style={styles.payButtonPlaceholder} />
             )}

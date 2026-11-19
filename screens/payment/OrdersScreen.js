@@ -72,7 +72,7 @@ export default function OrdersScreen({ navigation }) {
                 PAID
               </Text>
               <Text style={{ fontSize: 18, fontWeight: '700', color: IL_BRAND.forest }}>
-                ₹ {Number(item.amountRupees || 0).toLocaleString('en-IN')}
+                {Number(item.amountRupees) > 0 ? `₹ ${Number(item.amountRupees).toLocaleString('en-IN')}` : '—'}
               </Text>
             </View>
             <Text style={{ marginTop: 8, fontSize: 16, fontWeight: '600', color: IL_BRAND.forest }}>

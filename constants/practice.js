@@ -173,8 +173,12 @@ export const PRACTICE = {
     videoUrlPreview: PRINCIPLES_PREVIEW_YT,
     videoLabel: 'Watch the 27 Principles',
     thumb: PREWORK_THUMBS['lep-principles-video'],
-    steps: ['Find 14 quiet minutes.', 'Watch the 27 Principles video.', 'Note the one principle that hit hardest.'],
-    note: 'The principle that hit hardest',
+    steps: ['Watch at least 10 minutes of the 27 Principles video.', 'Write about one principle that hit hardest.'],
+    note: 'Write about one principle',
+    notePlaceholder: 'Which principle, and what it means for you',
+    noteRequired: true,
+    // Done only when both are true: 10 minutes watched and one principle written about.
+    minWatchSeconds: 600,
   },
   'lep-shameless': {
     programId: 'lep',
@@ -185,7 +189,7 @@ export const PRACTICE = {
     videoUrl: SHAMELESS_KEY_YT,
     videoLabel: 'Watch The Shameless Pitch',
     thumb: PREWORK_THUMBS['lep-shameless'],
-    steps: ['Find 22 quiet minutes.', 'Watch The Shameless Pitch.', 'Write one line you will steal for your own pitch.'],
+    steps: ['Watch The Shameless Pitch.', 'Write one line you will steal for your own pitch.'],
     note: 'The line you will steal',
   },
   'lep-get-ready': {

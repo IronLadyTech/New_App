@@ -688,15 +688,14 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
             {cohort?.weekSectionTitle || 'This week in your cohort'}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4 }}>
-            From your batch calendar and Engage
+            Sessions and tasks due in the next 7 days
           </ILText>
         </View>
         {preview ? (
           <MaterialIcons name="lock-outline" size={16} color={G.meta} />
-        ) : waUrl ? (
-          <LinkRow label="Open group" onPress={openWa} />
         ) : (
-          <LinkRow label="Engage" onPress={nav.goEngage} />
+          // The batch calendar, which is what this list comes from ("Engage" here was unclear).
+          <LinkRow label="Calendar" onPress={nav.goSchedule} />
         )}
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden', opacity: preview ? 0.62 : 1 }}>

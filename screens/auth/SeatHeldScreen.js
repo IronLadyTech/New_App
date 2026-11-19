@@ -304,6 +304,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             />
           </View>
 
+          {vm.progressPercent != null ? (
           <View
             style={{
               marginTop: 16,
@@ -322,7 +323,13 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               }}
             />
           </View>
+          ) : null}
 
+          {!vm.canPayOnline ? (
+            <ILText role="bodySm" color={META} align="center" style={[androidFix, { marginTop: 16, fontSize: 13, lineHeight: 19 }]}>
+              Your balance amount will appear here once the Iron Lady team confirms it.
+            </ILText>
+          ) : (
           <Pressable
             onPress={canPay ? startPayment : () => showAlert('Pay balance', 'Sign in to pay — this is a demo journey.')}
             disabled={paying}
@@ -352,6 +359,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               </ILText>
             )}
           </Pressable>
+          )}
 
           <Pressable
             onPress={() =>

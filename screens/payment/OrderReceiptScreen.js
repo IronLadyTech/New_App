@@ -126,7 +126,7 @@ export default function OrderReceiptScreen({ navigation, route }) {
           </View>
 
           <Text style={{ marginTop: 22, fontSize: 36, fontWeight: '700', color: IL_BRAND.forest }}>
-            ₹ {Number(order.amountRupees || 0).toLocaleString('en-IN')}
+            {Number(order.amountRupees) > 0 ? `₹ ${Number(order.amountRupees).toLocaleString('en-IN')}` : '—'}
           </Text>
           <Text style={{ marginTop: 4, fontSize: 14, color: IL_BRAND.forestMuted }}>
             {order.description || 'Programme balance'}
@@ -153,7 +153,7 @@ export default function OrderReceiptScreen({ navigation, route }) {
               label="Programme code"
               value={getProgramEntry(order.programId)?.code || order.programId}
             />
-            <Row label="Amount" value={`₹ ${Number(order.amountRupees || 0).toLocaleString('en-IN')}`} />
+            <Row label="Amount" value={(Number(order.amountRupees) > 0 ? `₹ ${Number(order.amountRupees).toLocaleString('en-IN')}` : '—')} />
             <Row label="Currency" value={order.currency || 'INR'} />
           </View>
 

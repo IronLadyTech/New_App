@@ -1,10 +1,9 @@
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import RazorpayCheckoutModal from '../components/RazorpayCheckoutModal';
 import PaymentSuccessView from '../components/payment/PaymentSuccessView';
 import { IL_BRAND, IL_FONTS } from '../constants/ironLadyBrand';
-import { RAZORPAY_TEST_AMOUNT_PAISE } from '../constants/razorpay';
 import { savePaymentOrder } from '../services/firestore';
 import { refreshMyAccess } from '../services/functions';
 import {
@@ -36,7 +35,7 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
   const [checkout, setCheckout] = useState(null);
   const [enrolled, setEnrolled] = useState(null);
   // What she is actually charged (the server's order), for the tick page and the receipt.
-  const amountRef = useRef(RAZORPAY_TEST_AMOUNT_PAISE);
+  const amountRef = useRef(0);
 
   const checkoutSession = (cloudOrder) => {
     const payer = vm.payer || {};
@@ -113,10 +112,20 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
 
   const startPayment = async () => {
     if (paying) return;
+    // Money: never open a payment without a real balance amount on record. The server used to
+    // fall back to a ₹ 1 charge, and paying it marked the learner fully enrolled.
+    if (vm && vm.canPayOnline === false) {
+      Alert.alert(
+        'Balance not confirmed yet',
+        'Your programme balance amount is not on your account yet. The Iron Lady team will confirm it, then you can pay here.'
+      );
+      return;
+    }
     setPaying(true);
     try {
       const session = checkoutSession(await createRazorpayOrder(vm.programId));
-      amountRef.current = Number(session.amount) || RAZORPAY_TEST_AMOUNT_PAISE;
+      // The amount Razorpay was actually asked for — no fallback figure.
+      amountRef.current = Number(session.amount) || 0;
       if (isWebCheckout) {
         await onPaymentSuccess(await openRazorpayInBrowser(session));
         return;
@@ -158,7 +167,7 @@ export function useBalancePayment(vm, { onDone, onReceipt } = {}) {
       <Modal visible={Boolean(enrolled)} animationType="fade" onRequestClose={finish}>
         {enrolled ? (
           <PaymentSuccessView
-            amountLabel={`₹ ${Number(enrolled.amountRupees || 0).toLocaleString('en-IN')}`}
+            amountLabel={(Number(enrolled.amountRupees) > 0 ? `₹ ${Number(enrolled.amountRupees).toLocaleString('en-IN')}` : '—')}
             programTitle={enrolled.title}
             reference={enrolled.reference}
             statusChip="Enrolled · full access unlocked"

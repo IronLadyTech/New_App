@@ -146,47 +146,9 @@ export function FieldOfWorkPicker({ value, onPick }) {
   const otherReady = otherText.trim().length > 1;
   return (
     <View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
-        {FIELDS_OF_WORK.map((f) => {
-          const isOther = f.value === 'Other';
-          const active = isOther ? otherOpen || f.value === value || Boolean(typedBefore) : f.value === value;
-          return (
-            <View key={f.value} style={{ width: '50%', padding: 4 }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  if (isOther) {
-                    setOtherOpen(true);
-                    return;
-                  }
-                  setOtherOpen(false);
-                  onPick(f.value);
-                }}
-                style={{
-                  minHeight: 64,
-                  borderRadius: 14,
-                  padding: 10,
-                  backgroundColor: active ? 'rgba(237,29,36,0.08)' : IL_BRAND.white,
-                  borderWidth: active ? 1.5 : 1,
-                  borderColor: active ? CTA : LINE,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                }}
-              >
-                <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: active ? CTA : SOFT, alignItems: 'center', justifyContent: 'center' }}>
-                  <MaterialIcons name={f.icon} size={17} color={active ? '#fff' : IL_BRAND.forest} />
-                </View>
-                <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginLeft: 8, flex: 1, fontSize: 13, lineHeight: 17, fontFamily: active ? IL_FONTS.semibold : IL_FONTS.regular }} numberOfLines={2}>
-                  {isOther && typedBefore ? typedBefore : f.value}
-                </ILText>
-              </Pressable>
-            </View>
-          );
-        })}
-      </View>
+      {/* The box sits above the tiles: below them the keyboard covered it and her typing was hidden. */}
       {otherOpen ? (
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginBottom: 12 }}>
           <ILText role="bodySm" color={IL_BRAND.ink} style={{ fontSize: 13, fontFamily: IL_FONTS.semibold, marginBottom: 6 }}>
             What is your field of work?
           </ILText>
@@ -231,6 +193,53 @@ export function FieldOfWorkPicker({ value, onPick }) {
           </View>
         </View>
       ) : null}
+      {otherOpen ? (
+        <Pressable onPress={() => setOtherOpen(false)} accessibilityRole="button" hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+          <ILText role="bodySm" color={CTA} style={{ fontSize: 13, fontFamily: IL_FONTS.semibold }}>
+            Choose from the list instead
+          </ILText>
+        </Pressable>
+      ) : (
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+        {FIELDS_OF_WORK.map((f) => {
+          const isOther = f.value === 'Other';
+          const active = isOther ? otherOpen || f.value === value || Boolean(typedBefore) : f.value === value;
+          return (
+            <View key={f.value} style={{ width: '50%', padding: 4 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  if (isOther) {
+                    setOtherOpen(true);
+                    return;
+                  }
+                  setOtherOpen(false);
+                  onPick(f.value);
+                }}
+                style={{
+                  minHeight: 64,
+                  borderRadius: 14,
+                  padding: 10,
+                  backgroundColor: active ? 'rgba(237,29,36,0.08)' : IL_BRAND.white,
+                  borderWidth: active ? 1.5 : 1,
+                  borderColor: active ? CTA : LINE,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: active ? CTA : SOFT, alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name={f.icon} size={17} color={active ? '#fff' : IL_BRAND.forest} />
+                </View>
+                <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginLeft: 8, flex: 1, fontSize: 13, lineHeight: 17, fontFamily: active ? IL_FONTS.semibold : IL_FONTS.regular }} numberOfLines={2}>
+                  {isOther && typedBefore ? typedBefore : f.value}
+                </ILText>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
+      )}
     </View>
   );
 }

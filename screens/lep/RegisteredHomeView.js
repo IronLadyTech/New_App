@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { videoLength } from '../../constants/videoDurations';
 import { Image, Linking, View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import Pressable from '../../components/il/Press';
 import OneByOneRail from '../../components/il/OneByOneRail';
 import Reanimated, {
@@ -748,6 +749,8 @@ function DateTile({ label, value }) {
 /** Phase card: how fast a tapped phase slides in, and how long it stays before returning. */
 const PHASE_SLIDE_MS = 220;
 const PHASE_HOLD_MS = 90 * 1000;
+/** The card moves on to the next phase by itself this often (paused while a tapped one is held). */
+const PHASE_AUTO_MS = 6000;
 
 function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const count = Math.max(phases.length, 1);
@@ -780,17 +783,33 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
     slide.value = lockerStep;
   }, [lockerStep, slide]);
 
-  // No auto-rotation: the card's height follows its slide, so rotating every 5 s moved the whole
-  // page below it up and down. It shows her current phase; tapping a phase name shows that one.
-  const show = (next) => {
-    clearHold();
-    if (next !== lockerStep) holdTimer.current = setTimeout(() => show(lockerStep), PHASE_HOLD_MS);
+  // Moves to `next`. A phase she taps (held) stays for PHASE_HOLD_MS, then her own phase returns.
+  const goTo = (next) => {
     if (next === indexRef.current) return;
     indexRef.current = next;
     setIndex(next); // labels + which button takes taps; the visible cross-fade does not wait for it
     // Quick and settled (the old spring took ~0.8 s to come to rest and felt slow).
     slide.value = withTiming(next, { duration: PHASE_SLIDE_MS, easing: Easing.out(Easing.cubic) });
   };
+  const show = (next) => {
+    clearHold();
+    if (next !== lockerStep) holdTimer.current = setTimeout(() => show(lockerStep), PHASE_HOLD_MS);
+    goTo(next);
+  };
+
+  // Slides on by itself again. The card now keeps the height of its tallest slide (CrossFadeStack
+  // `steady`), so moving on no longer pushes the page below up and down — the reason it was
+  // stopped. Paused while she holds a tapped phase, and while Home is not on screen.
+  const focused = useIsFocused();
+  useEffect(() => {
+    if (!focused || count < 2) return undefined;
+    const timer = setInterval(() => {
+      if (holdTimer.current) return;
+      goTo((indexRef.current + 1) % count);
+    }, PHASE_AUTO_MS);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused, count]);
   const thumbStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: slide.value * (segW.value + gap) }],
   }));
@@ -839,6 +858,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         index={index}
         minHeight={40}
         layoutKey={lockerStep}
+        steady
         render={(i) => (
           <ILText role="body" color="#DCE6EA" style={{ fontSize: 14, lineHeight: 20 }}>
             {phases[i]?.body}
@@ -912,6 +932,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         index={index}
         minHeight={50}
         layoutKey={lockerStep}
+        steady
         render={(i) => {
           const p = phases[i];
           if (!p) return null;
@@ -956,7 +977,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
  * (UI thread). The rotation never waits on JS to swap text in, so there is no blank frame.
  * Height = the tallest layer; only the phase in front takes taps.
  */
-function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render }) {
+function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render, steady = false }) {
   // Each layer reports its own height; the card is exactly as tall as the slide on show and
   // glides between heights as the slides change (UI thread) — no empty band under a short
   // slide like Pre-work because a taller one (Orientation, with its dates) exists.
@@ -969,6 +990,12 @@ function CrossFadeStack({ count, slide, index, minHeight, layoutKey, render }) {
   };
   const boxStyle = useAnimatedStyle(() => {
     const hs = heights.value;
+    // steady: as tall as the tallest slide, so the page below never moves while it slides.
+    if (steady) {
+      let tallest = minHeight;
+      for (let k = 0; k < count; k += 1) if ((hs[k] || 0) > tallest) tallest = hs[k];
+      return { height: tallest };
+    }
     const s = Math.max(0, Math.min(count - 1, slide.value));
     const lo = Math.floor(s);
     const hi = Math.min(count - 1, lo + 1);
