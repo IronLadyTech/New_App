@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Image, Modal, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEventListener } from 'expo';
@@ -54,16 +54,20 @@ function NativeVideo({ source, width, height, trackKey, onStart, onProgress, all
 
 function YoutubeEmbed({ uri, width, height, onProgress, allowsFullscreenVideo = false }) {
   const id = youtubeIdFromUri(uri);
-  const html = useMemo(
-    () => (id && width > 0 && height > 0 ? youtubeEmbedHtml(id, { width, height }) : null),
-    [id, width, height],
-  );
-  if (!html) return null;
+  // The page fills the WebView (100%), so it depends on the video only: a size change (rotate,
+  // layout settling) no longer reloads the player from the start.
+  const html = useMemo(() => (id ? youtubeEmbedHtml(id) : null), [id]);
+  if (!html || !(width > 0 && height > 0)) return null;
 
   return (
     <WebView
-      key={`${width}x${height}`}
       source={{ html, baseUrl: YOUTUBE_EMBED_ORIGIN }}
+      startInLoadingState
+      renderLoading={() => (
+        <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000' }}>
+          <ActivityIndicator color="#FFFFFF" />
+        </View>
+      )}
       style={{ width, height, backgroundColor: '#000' }}
       allowsFullscreenVideo={allowsFullscreenVideo}
       allowsInlineMediaPlayback

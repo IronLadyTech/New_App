@@ -109,6 +109,8 @@ export default function LepLearnScreen() {
             ) : chip === 'Case studies' ? (
               <CasesEnrolled
                 onShareReflection={() => nav.goCourseTask('lep', LEARN_CASE_INSPIRATION_TASK_ID)}
+                onWatch={nav.goWatch}
+                onSeeAll={() => nav.goEngageMediaList('csuite')}
               />
             ) : chip === 'Events' ? (
               <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goEventDetail} />
@@ -119,7 +121,12 @@ export default function LepLearnScreen() {
                 onWatch={nav.goWatch}
               />
             ) : (
-              <EnrolledForYou onTicket={nav.goEventDetail} onWatch={nav.goWatch} />
+              <EnrolledForYou
+                onTicket={nav.goEventDetail}
+                onWatch={nav.goWatch}
+                onSeeAll={() => nav.goEngageMediaList('csuite')}
+                onChapterHub={() => setChip('Events')}
+              />
             )}
           </>
         ) : (
@@ -914,7 +921,7 @@ function UnlockCard({ onEnroll }) {
   );
 }
 
-function EnrolledForYou({ onTicket, onWatch }) {
+function EnrolledForYou({ onTicket, onWatch, onSeeAll, onChapterHub }) {
   const { profile, user } = useAuth();
   const { upcoming, loading: calLoading } = useArmyEventCalendar();
   const regional = useMemo(
@@ -1008,12 +1015,14 @@ function EnrolledForYou({ onTicket, onWatch }) {
       />
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Fresh this month" accent="View all" />
+        <SectionHead title="Fresh this month" accent="View all" onAccent={onSeeAll} />
       </View>
       <WhiteCard style={{ marginTop: 12, borderRadius: 22, overflow: 'hidden' }}>
         {LEARN_FRESH_ENR.map((item, i) => (
-          <View
+          <Pressable
             key={item.title}
+            accessibilityRole="button"
+            onPress={() => item.assetKey && onWatch?.({ assetKey: item.assetKey, title: item.title, sub: item.meta })}
             style={{
               paddingHorizontal: 14,
               paddingVertical: 14,
@@ -1051,8 +1060,8 @@ function EnrolledForYou({ onTicket, onWatch }) {
                 </ILText>
               ) : null}
             </View>
-            <MaterialIcons name="bookmark-border" size={16} color={G.meta} />
-          </View>
+            <MaterialIcons name="play-circle-outline" size={20} color={G.cta} />
+          </Pressable>
         ))}
       </WhiteCard>
 
@@ -1065,9 +1074,12 @@ function EnrolledForYou({ onTicket, onWatch }) {
             Upcoming events near you
           </ILText>
         </View>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          Chapter Hub
-        </ILText>
+        {/* Chapter meetups and the city filter live on the Events chip. */}
+        <Pressable onPress={onChapterHub} accessibilityRole="button" hitSlop={10}>
+          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+            Chapter Hub
+          </ILText>
+        </Pressable>
       </View>
       {regional ? (
         <ArmyRegionalEventCard event={regional} onPress={() => onTicket?.(regional)} />
@@ -1103,7 +1115,7 @@ function EnrolledHead({ chip }) {
       sub: 'Three tracks, nine principles each. Foundation is behind you — Influence runs alongside Day 1.',
     },
     'Case studies': {
-      kicker: '9 OPEN TO YOU',
+      kicker: `${CASES_ENR.length} OPEN TO YOU`,
       title: 'Case studies',
       sub: 'Named companies, real numbers, the conversation that turned it. Confidential to your cohort.',
     },
@@ -1341,7 +1353,9 @@ function PrinciplesEnrolled({ onPrinciple }) {
   );
 }
 
-function CasesEnrolled({ onShareReflection }) {
+function CasesEnrolled({ onShareReflection, onWatch, onSeeAll }) {
+  // Every case card plays its own C-suite video (the cards had no tap at all).
+  const play = (c) => c?.assetKey && onWatch?.({ assetKey: c.assetKey, title: c.title, sub: c.who });
   const [fn, setFn] = useState('Technology');
   const { getTaskSubmission } = usePrograms();
   const inspirationSaved = getTaskSubmission(PROGRAMS.LEP, LEARN_CASE_INSPIRATION_TASK_ID);
@@ -1382,11 +1396,13 @@ function CasesEnrolled({ onShareReflection }) {
         </ILText>
       </View>
       {feat ? (
-        <View style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
-          <View style={{ aspectRatio: 16 / 9 }}>
-            <CoverThumb source={feat.img} play time={feat.time} />
+        <Pressable onPress={() => play(feat)} accessibilityRole="button" accessibilityLabel={`Play ${feat.title}`}>
+          <View style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
+            <View style={{ aspectRatio: 16 / 9 }}>
+              <CoverThumb source={feat.img} play time={feat.time} />
+            </View>
           </View>
-        </View>
+        </Pressable>
       ) : null}
       {feat ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
@@ -1397,9 +1413,11 @@ function CasesEnrolled({ onShareReflection }) {
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           More in your track
         </ILText>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          See all
-        </ILText>
+        <Pressable onPress={onSeeAll} accessibilityRole="button" hitSlop={10}>
+          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
+            See all
+          </ILText>
+        </Pressable>
       </View>
       <OneByOneRail
         items={more}
@@ -1407,7 +1425,7 @@ function CasesEnrolled({ onShareReflection }) {
         inset={20}
         style={{ marginTop: 12 }}
         renderItem={(item) => (
-            <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }}>
+            <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }} onPress={() => play(item)}>
               <View style={{ aspectRatio: 16 / 9 }}>
                 <CoverThumb source={item.img} play time={item.time} />
               </View>
@@ -1657,9 +1675,6 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
           This week
         </ILText>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          New
-        </ILText>
       </View>
       <Pressable
         onPress={() => play(STORY_FEATURED_ENR)}
@@ -1734,43 +1749,8 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
         )}
       />
 
-      <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
-        <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
-          From your own batch
-        </ILText>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          Your cohort
-        </ILText>
-      </View>
-      <WhiteCard style={{ marginTop: 12, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row' }}>
-          {[0, 1, 2].map((i) => (
-            <Image
-              key={i}
-              source={FACE}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                marginLeft: i ? -8 : 0,
-                borderWidth: 2,
-                borderColor: G.white,
-              }}
-            />
-          ))}
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <ILText role="label" color={G.ink}>
-            3 stories from your cohort
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }}>
-            Recorded in week one
-          </ILText>
-        </View>
-        <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-          Watch
-        </ILText>
-      </WhiteCard>
+      {/* "From your own batch" was a placeholder (fixed "3 stories", nothing to open). It returns
+          when cohort stories are recorded and stored. */}
 
       <NextCard
         kicker="YOUR TURN, EVENTUALLY"

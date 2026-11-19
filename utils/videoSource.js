@@ -53,7 +53,9 @@ export function youtubeEmbedUri(id) {
   const origin = encodeURIComponent(YOUTUBE_EMBED_ORIGIN);
   // rel=0 keeps suggestions to the same channel; iv_load_policy=3 hides annotation links.
   // enablejsapi=1 lets the wrapper page hear playback progress (youtubeEmbedHtml).
-  return `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`;
+  // autoplay=1: the player only loads after she taps Play in the app, so it starts at once
+  // (she had to tap a second time inside YouTube's own player).
+  return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`;
 }
 
 /** HTML wrapper so WebView has a valid baseUrl (fixes YouTube Error 153). */

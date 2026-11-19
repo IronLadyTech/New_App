@@ -271,7 +271,7 @@ function RegisteredHome({ cmsBatch, preview }) {
     else if (task.id === 'via') nav.goCourseTask(PROGRAMS.LEP, 'lep-via-survey');
     else if (task.id === 'bhag') nav.goPractice('lep', 'lep-bhag');
     else if (task.id === 'nsdc') nav.goCourseTask(PROGRAMS.LEP, 'lep-prep-nsdc');
-    else if (task.id === 'profile') nav.goProfile();
+    else if (task.id === 'profile') nav.goCompleteProfile();
   };
 
   const onPhaseCta = (phase) => {
@@ -641,11 +641,16 @@ function EnrolledHome({ cmsBatch }) {
   const dueItemsWithDone = useMemo(
     () =>
       // Same check as the task list: submitted counts as done; sent back for changes is due again.
-      (dueWeek.items || []).map((item) => ({
-        ...item,
-        done: item.taskId ? taskIsDone(PROGRAMS.LEP, item.taskId) : !!item.done,
-      })),
-    [dueWeek.items, taskIsDone]
+      (dueWeek.items || [])
+        // A task whose phase has not opened yet is not due (it cannot be opened): it left the
+        // guide's own list but stayed here, and the guide's fallback line read it from here —
+        // "Program Access Essentials is still open this week" before Orientation had opened.
+        .filter((item) => !item.taskId || isGuideTaskOpen(PROGRAMS.LEP, profile, guideFlow, item.taskId))
+        .map((item) => ({
+          ...item,
+          done: item.taskId ? taskIsDone(PROGRAMS.LEP, item.taskId) : !!item.done,
+        })),
+    [dueWeek.items, taskIsDone, profile, guideFlow]
   );
   const whisperFallback = useMemo(
     () =>
@@ -777,7 +782,10 @@ function EnrolledHome({ cmsBatch }) {
         sub={dueWeek.sub}
         onSchedule={nav.goSchedule}
         // Done / submitted work is no longer due: it leaves the list (it used to stay, greyed out).
-        items={dueItemsWithDone.filter((item) => !item.done).map((item) => ({
+        items={(dueItemsWithDone.some((item) => !item.done)
+          ? dueItemsWithDone
+          : [{ title: 'Nothing due right now', tag: 'LEP', kind: 'See what is next on your batch calendar', icon: 'event', due: '', sessionCode: 'next' }]
+        ).filter((item) => !item.done).map((item) => ({
           ...item,
           onPress: item.taskId
             ? () => nav.goCourseTask(PROGRAMS.LEP, item.taskId)

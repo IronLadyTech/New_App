@@ -134,39 +134,103 @@ export function CityPicker({ value, onPick, autoFocus = true }) {
   );
 }
 
-/** 20 tiles with icons — exactly the Zoho list. One tap chooses. */
+/**
+ * 20 tiles with icons — exactly the Zoho list. One tap chooses.
+ * "Other" asks her to type her field (it saved just "Other", which told the team nothing).
+ */
 export function FieldOfWorkPicker({ value, onPick }) {
+  const listed = FIELDS_OF_WORK.some((f) => f.value === value);
+  const typedBefore = value && !listed ? String(value) : '';
+  const [otherOpen, setOtherOpen] = useState(Boolean(typedBefore));
+  const [otherText, setOtherText] = useState(typedBefore);
+  const otherReady = otherText.trim().length > 1;
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
-      {FIELDS_OF_WORK.map((f) => {
-        const active = f.value === value;
-        return (
-          <View key={f.value} style={{ width: '50%', padding: 4 }}>
+    <View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -4 }}>
+        {FIELDS_OF_WORK.map((f) => {
+          const isOther = f.value === 'Other';
+          const active = isOther ? otherOpen || f.value === value || Boolean(typedBefore) : f.value === value;
+          return (
+            <View key={f.value} style={{ width: '50%', padding: 4 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => {
+                  if (isOther) {
+                    setOtherOpen(true);
+                    return;
+                  }
+                  setOtherOpen(false);
+                  onPick(f.value);
+                }}
+                style={{
+                  minHeight: 64,
+                  borderRadius: 14,
+                  padding: 10,
+                  backgroundColor: active ? 'rgba(237,29,36,0.08)' : IL_BRAND.white,
+                  borderWidth: active ? 1.5 : 1,
+                  borderColor: active ? CTA : LINE,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: active ? CTA : SOFT, alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name={f.icon} size={17} color={active ? '#fff' : IL_BRAND.forest} />
+                </View>
+                <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginLeft: 8, flex: 1, fontSize: 13, lineHeight: 17, fontFamily: active ? IL_FONTS.semibold : IL_FONTS.regular }} numberOfLines={2}>
+                  {isOther && typedBefore ? typedBefore : f.value}
+                </ILText>
+              </Pressable>
+            </View>
+          );
+        })}
+      </View>
+      {otherOpen ? (
+        <View style={{ marginTop: 10 }}>
+          <ILText role="bodySm" color={IL_BRAND.ink} style={{ fontSize: 13, fontFamily: IL_FONTS.semibold, marginBottom: 6 }}>
+            What is your field of work?
+          </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TextInput
+              value={otherText}
+              onChangeText={setOtherText}
+              placeholder="e.g. Aviation, Public policy"
+              placeholderTextColor="rgba(16,44,50,0.45)"
+              autoFocus={!typedBefore}
+              maxLength={60}
+              returnKeyType="done"
+              onSubmitEditing={() => otherReady && onPick(otherText.trim())}
+              style={{
+                flex: 1,
+                backgroundColor: IL_BRAND.white,
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: LINE,
+                paddingVertical: 12,
+                paddingHorizontal: 12,
+                fontSize: 16,
+                color: IL_BRAND.ink,
+              }}
+            />
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => onPick(f.value)}
+              disabled={!otherReady}
+              onPress={() => onPick(otherText.trim())}
               style={{
-                minHeight: 64,
+                marginLeft: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 13,
                 borderRadius: 14,
-                padding: 10,
-                backgroundColor: active ? 'rgba(237,29,36,0.08)' : IL_BRAND.white,
-                borderWidth: active ? 1.5 : 1,
-                borderColor: active ? CTA : LINE,
-                flexDirection: 'row',
-                alignItems: 'center',
+                backgroundColor: otherReady ? CTA : 'rgba(237,29,36,0.35)',
               }}
             >
-              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: active ? CTA : SOFT, alignItems: 'center', justifyContent: 'center' }}>
-                <MaterialIcons name={f.icon} size={17} color={active ? '#fff' : IL_BRAND.forest} />
-              </View>
-              <ILText role="bodySm" color={IL_BRAND.ink} style={{ marginLeft: 8, flex: 1, fontSize: 13, lineHeight: 17, fontFamily: active ? IL_FONTS.semibold : IL_FONTS.regular }} numberOfLines={2}>
-                {f.value}
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 14 }}>
+                Save
               </ILText>
             </Pressable>
           </View>
-        );
-      })}
+        </View>
+      ) : null}
     </View>
   );
 }

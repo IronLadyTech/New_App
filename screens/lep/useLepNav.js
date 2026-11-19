@@ -2,7 +2,7 @@ import { Linking, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { navigateInMemberStack, navigateWatch } from '../../utils/watchNav';
-import { openInTab } from '../../utils/tabReturn';
+import { findTabNavigator, openInTab } from '../../utils/tabReturn';
 import { LMS_HOST } from '../../constants/lmsHost';
 
 export function useLepNav() {
@@ -26,6 +26,20 @@ export function useLepNav() {
   return {
     // Profile at the top (it used to open wherever it was last scrolled to).
     goProfile: () => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { scrollTop: Date.now() } }),
+    /**
+     * "Complete your profile" task: Profile, remembering the tab she came from. Once her profile
+     * is complete there, Profile takes her straight back (LepProfileScreen).
+     */
+    goCompleteProfile: () => {
+      const tabs = findTabNavigator(navigation);
+      const s = tabs?.getState?.();
+      const returnTo = s?.routes?.[s.index]?.name;
+      navigation.navigate('Profile', {
+        pop: true,
+        screen: 'ProfileHome',
+        params: { scrollTop: Date.now(), returnTo: returnTo && returnTo !== 'Profile' ? returnTo : null },
+      });
+    },
     /** Her B-HAG has one home: the Profile B-HAG card (saved to her profile and Zoho). */
     goBhag: () => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome', params: { openBhag: Date.now() } }),
     goNotifications: () => goProfileScreen('Notifications'),

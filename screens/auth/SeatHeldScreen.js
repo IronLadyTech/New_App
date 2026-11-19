@@ -213,6 +213,31 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
           </ILText>
         </View>
 
+        {/* Paid in full: no balance, no Pay button (a paid learner was shown "₹ 1 due"). */}
+        {!vm.showPayButton ? (
+          <View
+            style={{
+              marginTop: 24,
+              borderRadius: 20,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 1,
+              borderColor: LINE,
+              padding: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <MaterialIcons name="verified" size={26} color={PAID} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <ILText role="label" color={INK} style={[androidFix, { fontSize: 15 }]}>
+                {`${vm.programLabel} · Paid in full`}
+              </ILText>
+              <ILText role="bodySm" color={META} style={[androidFix, { marginTop: 2, fontSize: 12 }]}>
+                Nothing more to pay. Your seat is confirmed.
+              </ILText>
+            </View>
+          </View>
+        ) : (
         <View
           style={{
             marginTop: 24,
@@ -354,6 +379,7 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
             </ILText>
           </Pressable>
         </View>
+        )}
 
         <View
           style={{

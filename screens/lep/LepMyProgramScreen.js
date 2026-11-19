@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { listedSession } from '../../utils/lepBatchScheduleView';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
@@ -297,7 +298,8 @@ function SessionsBody({ cmsBatch, enrolled = false, alumniGraduate = false, onEn
         done: filterRegisteredSessions(split.done),
       };
     }
-    return split;
+    // Same list as the Schedule: Prepare to Win Week 1, 3 and 4 are not listed (Week 2 is).
+    return { upcoming: split.upcoming.filter(listedSession), done: split.done.filter(listedSession) };
   }, [cmsBatch, day1Iso, events, batchId, batchLabel, enrolled]);
 
   const sessionBatchLabel = formatLearnerFacingBatchTitle(cmsBatch?.name || batchLabel) || batchLabel;

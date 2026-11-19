@@ -343,11 +343,14 @@ export function LepScheduleScreen() {
         <Pressable
           onPress={() => shiftWeek(-1)}
           accessibilityLabel="Previous week"
-          style={{ padding: 8, marginRight: 2 }}
+          hitSlop={8}
+          style={{ width: 28, height: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <MaterialIcons name="chevron-left" size={22} color={G.ink} />
         </Pressable>
-        <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'space-between' }}>
+        {/* Seven equal pills that share the width between the arrows (fixed 40-wide pills
+            overflowed on 360dp phones and pushed the right arrow off-centre). */}
+        <View style={{ flex: 1, flexDirection: 'row' }}>
           {weekDays.map((d) => {
             const on = d.iso === selectedIso;
             return (
@@ -355,7 +358,8 @@ export function LepScheduleScreen() {
                 key={d.iso}
                 onPress={() => d.iso && setSelectedIso(d.iso)}
                 style={{
-                  width: 40,
+                  flex: 1,
+                  marginHorizontal: 1,
                   alignItems: 'center',
                   paddingVertical: 10,
                   borderRadius: 16,
@@ -372,17 +376,16 @@ export function LepScheduleScreen() {
                 >
                   {d.d}
                 </ILText>
-                {d.hasSession ? (
-                  <View
-                    style={{
-                      width: 4,
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor: on ? '#FFFFFF' : G.cta,
-                      marginTop: 4,
-                    }}
-                  />
-                ) : null}
+                {/* The dot's space is always kept, so every pill has the same height. */}
+                <View
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: 2,
+                    backgroundColor: d.hasSession ? (on ? '#FFFFFF' : G.cta) : 'transparent',
+                    marginTop: 4,
+                  }}
+                />
               </Pressable>
             );
           })}
@@ -390,7 +393,8 @@ export function LepScheduleScreen() {
         <Pressable
           onPress={() => shiftWeek(1)}
           accessibilityLabel="Next week"
-          style={{ padding: 8, marginLeft: 2 }}
+          hitSlop={8}
+          style={{ width: 28, height: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <MaterialIcons name="chevron-right" size={22} color={G.ink} />
         </Pressable>

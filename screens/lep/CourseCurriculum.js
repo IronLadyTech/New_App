@@ -82,7 +82,7 @@ export default function CourseCurriculum({
     programId === PROGRAMS.LEP && phase.id === 'pre-program' ? LEP_PREP_ROWS : courseTasks(programId, phase.id);
   const openTask = (taskId) => {
     if (taskId === '__lep-bhag') nav.goPractice('lep', 'lep-bhag');
-    else if (taskId === '__lep-profile') nav.goProfile();
+    else if (taskId === '__lep-profile') nav.goCompleteProfile();
     else nav.goCourseTask(programId, taskId);
   };
   const phases = coursePhases(programId);

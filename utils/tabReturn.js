@@ -14,7 +14,7 @@ import { StackActions } from '@react-navigation/native';
 
 const isTabNavigator = (names) => names.includes('MyProgram') && names.includes('Home');
 
-function findTabNavigator(navigation) {
+export function findTabNavigator(navigation) {
   let nav = navigation;
   while (nav) {
     if (isTabNavigator(nav.getState?.()?.routeNames || [])) return nav;

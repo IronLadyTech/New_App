@@ -32,6 +32,7 @@ function emptyDraft() {
     automationEnabled: false,
     zohoBatchKey: '',
     lmsGroupId: '',
+    whatsappGroupUrl: '',
   };
 }
 
@@ -90,6 +91,7 @@ export default function BatchCalendarAdmin({ canEdit, canDelete = canEdit, embed
       automationEnabled: b.automationEnabled === true,
       zohoBatchKey: b.zohoBatchKey || '',
       lmsGroupId: b.lmsGroupId || '',
+      whatsappGroupUrl: b.whatsappGroupUrl || '',
     });
   };
 
@@ -180,6 +182,8 @@ export default function BatchCalendarAdmin({ canEdit, canDelete = canEdit, embed
         automationEnabled: synced.automationEnabled,
         zohoBatchKey: synced.zohoBatchKey?.trim() || '',
         lmsGroupId: synced.lmsGroupId?.trim() || '',
+        // Learners' My Program → Cohort → "WA group" opens this link (utils/lepCohortView.js).
+        whatsappGroupUrl: synced.whatsappGroupUrl?.trim() || '',
       });
       setDraft((d) => ({ ...d, id, sessions, ...synced }));
       onHubBatchChange?.(id);
@@ -264,6 +268,16 @@ export default function BatchCalendarAdmin({ canEdit, canDelete = canEdit, embed
             onChangeText={(v) => setDraft((d) => ({ ...d, name: v }))}
             placeholder="e.g. LEP · Orientation Thu 29 Oct"
             editable={canEdit}
+          />
+        </Field>
+        <Field label="WhatsApp group link">
+          <Input
+            value={draft.whatsappGroupUrl || ''}
+            onChangeText={(v) => setDraft((d) => ({ ...d, whatsappGroupUrl: v }))}
+            placeholder="https://chat.whatsapp.com/…  (learners open it from My Program → Cohort)"
+            editable={canEdit}
+            autoCapitalize="none"
+            keyboardType="url"
           />
         </Field>
         {draft.lmsGroupId ? (

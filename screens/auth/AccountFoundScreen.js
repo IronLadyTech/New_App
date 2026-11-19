@@ -1,5 +1,6 @@
+import { IRON_LADY_SUPPORT_EMAIL } from '../../constants/profileSupport';
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -36,6 +37,21 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
     else if (navigation?.canGoBack?.()) navigation.goBack();
   };
 
+  // "Something missing or not yours?" asks the team for help. It used to run finish(), the
+  // same as "Go to my home", so it opened the batch picker instead of support.
+  const contactSupport = () => {
+    const subject = encodeURIComponent('My Iron Lady account: something is missing or not mine');
+    const body = encodeURIComponent(
+      `Hello Iron Lady team,
+
+My registered mobile: ${phone || '(my number)'}
+What is missing or not mine:
+
+`
+    );
+    Linking.openURL(`mailto:${IRON_LADY_SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() => {});
+  };
+
   const goBack = () => {
     if (typeof onBack === 'function') {
       onBack();
@@ -48,7 +64,7 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
     <View style={{ flex: 1, backgroundColor: IL_BRAND.cream }}>
       <StatusBar style="dark" />
       <ILHeader
-        onProfile={() => navigation.navigate('Profile', { pop: true, screen: 'ProfileHome' })}
+        onProfile={() => navigation?.navigate?.('Profile', { pop: true, screen: 'ProfileHome' })}
         showCalendar={false}
       />
       <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
@@ -146,7 +162,8 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
           </ILText>
 
           <Pressable
-            onPress={() => finish()}
+            onPress={contactSupport}
+            accessibilityRole="button"
             style={{
               marginTop: 18,
               backgroundColor: IL_BRAND.white,
@@ -160,7 +177,7 @@ export default function AccountFoundScreen({ navigation, route, onDone: onDonePr
             <View style={{ flex: 1, marginLeft: 12 }}>
               <ILText role="label">Something missing or not yours?</ILText>
               <ILText role="bodySm" color={IL_BRAND.muted}>
-                Our team will fix it — we’ll call you back within a day
+                Email our team. We’ll fix it and reply within a day.
               </ILText>
             </View>
             <MaterialIcons name="chevron-right" size={22} color={IL_BRAND.muted} />

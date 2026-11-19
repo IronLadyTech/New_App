@@ -286,11 +286,12 @@ export const LEARN_CONTINUE_ENR = [
   },
 ];
 
+// Each row plays its C-suite video (they had no video, so tapping did nothing).
 export const LEARN_FRESH_ENR = [
-  { title: 'What is your 20-mile march?', meta: 'Suma Bhat · Product leader', time: '16 mins', neu: true, img: COVER.suma },
-  { title: 'Clarity is a business strategy', meta: 'Varsha Fulzele · Delivery lead', time: '21 mins', neu: true, img: COVER.varsha },
-  { title: 'Turn people insight into impact', meta: 'Meghna Makkar · HR & analytics', time: '12 mins', neu: false, img: COVER.meghna },
-];
+  { title: 'What is your 20-mile march?', meta: 'Suma Bhat · Product leader', neu: true, img: COVER.suma, assetKey: 'csuite:suma' },
+  { title: 'Clarity is a business strategy', meta: 'Varsha Fulzele · Delivery lead', neu: true, img: COVER.varsha, assetKey: 'csuite:varsha' },
+  { title: 'Turn people insight into impact', meta: 'Meghna Makkar · HR & analytics', neu: false, img: COVER.meghna, assetKey: 'csuite:meghna' },
+].map((r) => ({ ...r, time: videoLength(r.assetKey) }));
 
 export const LEARN_EVENT_ENR = {
   mon: 'OCT',
@@ -419,7 +420,7 @@ export const CASES_ENR = [
     img: COVER.divya,
     assetKey: 'csuite:divya',
   },
-];
+].map((c) => ({ ...c, time: videoLength(c.assetKey, c.time) })); // real lengths: the typed ones were wrong
 
 export const CASES_MORE_ENR = CASES_ENR.filter((c) => !c.featured);
 

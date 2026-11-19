@@ -39,7 +39,11 @@ function formatTime12(hhmm) {
  * "Prepare to Win" sessions only Week 2 (PTW2) is shown. The sessions stay on the batch, so
  * reminders and Home are unchanged.
  */
-const HIDDEN_ON_SCHEDULE = new Set(['PTW', 'PTW3', 'PTW4']);
+export const HIDDEN_ON_SCHEDULE = new Set(['PTW', 'PTW3', 'PTW4']);
+/** Sessions shown on the Schedule and My Program → Sessions lists. */
+export function listedSession(s) {
+  return !HIDDEN_ON_SCHEDULE.has(s?.code);
+}
 
 function liveSessions(batch, day1Iso = '') {
   return resolveCmsBatchSessions(batch, { day1Iso }).filter((s) => !HIDDEN_ON_SCHEDULE.has(s?.code));

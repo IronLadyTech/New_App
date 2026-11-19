@@ -80,7 +80,7 @@ export function Kicker({ children, onDark }) {
   );
 }
 
-export function SectionHead({ title, accent }) {
+export function SectionHead({ title, accent, onAccent }) {
   return (
     <View
       style={{
@@ -96,7 +96,13 @@ export function SectionHead({ title, accent }) {
       >
         {title}
       </ILText>
-      {accent ? (
+      {accent && onAccent ? (
+        <Pressable onPress={onAccent} accessibilityRole="button" hitSlop={10}>
+          <ILText role="label" color={G.cta} style={[af, { fontSize: 11, lineHeight: 14, marginLeft: 8 }]}>
+            {accent}
+          </ILText>
+        </Pressable>
+      ) : accent ? (
         <ILText role="label" color={G.cta} style={[af, { fontSize: 11, lineHeight: 14, marginLeft: 8 }]}>
           {accent}
         </ILText>

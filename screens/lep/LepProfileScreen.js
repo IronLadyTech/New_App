@@ -143,7 +143,7 @@ function useProgramGroups(profile, programIds) {
 /** Learners whose welcome fields were re-sent to Zoho in this app run. */
 const WELCOME_RESYNCED = new Set();
 
-export default function LepProfileScreen({ route }) {
+export default function LepProfileScreen({ route, navigation }) {
   const { profile, accountProfile, logout, user, patchProfile } = useAuth();
   // Opened from "Complete profile" or "Update your B-HAG": start at the top (B-HAG: open its editor).
   const scrollRef = useRef(null);
@@ -203,6 +203,21 @@ export default function LepProfileScreen({ route }) {
   const groups = useProgramGroups(source, programs.map((p) => p.id));
   const practiceBhag = String(demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || '').trim();
   const bhag = localFacts.bhag || learnerBhagText(source) || practiceBhag || '';
+
+  // Came here from the "Complete your profile" task: as soon as her profile reaches 100% (the
+  // same four fields as the ring: city, field of work, experience, B-HAG), take her back to the
+  // tab she came from. Only on the change to complete, never if it was complete already.
+  const returnTo = route?.params?.returnTo;
+  const profileComplete = Boolean(facts.city && (facts.domain || facts.industry) && facts.experience && bhag);
+  const wasComplete = useRef(profileComplete);
+  useEffect(() => {
+    const before = wasComplete.current;
+    wasComplete.current = profileComplete;
+    if (!returnTo || before || !profileComplete) return;
+    navigation.setParams({ returnTo: null });
+    const t = setTimeout(() => navigation.getParent?.()?.navigate(returnTo), 700);
+    return () => clearTimeout(t);
+  }, [profileComplete, returnTo]);
   const lepProgram = programs.find((p) => p.id === PROGRAMS.LEP) || programs[0] || { id: 'lep', title: 'Leadership Essentials' };
   const hasMasterclass = hasMasterclassOnProfile(source);
   const menuRows = profileMenuRows({ anyEnrolled, hasMasterclass });

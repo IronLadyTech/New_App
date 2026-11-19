@@ -797,8 +797,11 @@ export function isLepEnrolledPayment(profile) {
 /** Onboarding batch picker — only when LEP is active and Zoho has no batch yet. */
 export function needsLepBatchSelection(profile) {
   if (!profile || lepBatchIsAssigned(profile)) return false;
-  const pay = programPaymentStatus(profile, 'lep');
-  return pay === PAYMENT_STATUS.REGISTER || pay === PAYMENT_STATUS.PAID;
+  // Only a registered (part-paid) learner picks her batch on first open. A fully paid learner
+  // never sees the picker or a payment step there: her batch comes from the team (Zoho / CMS),
+  // and she can still choose or change it in Profile. (A paid learner whose batch fields had not
+  // synced yet was sent to the picker and then shown "₹ 1 due".)
+  return programPaymentStatus(profile, 'lep') === PAYMENT_STATUS.REGISTER;
 }
 
 export function bmCohortIsAssigned(profile) {
