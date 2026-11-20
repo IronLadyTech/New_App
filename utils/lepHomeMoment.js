@@ -2,6 +2,7 @@ import { addCalendarDays } from './lepBatchSchedule';
 import { principleNumberForDay } from './lepDailyPractice';
 import { LEP_PRINCIPLE_TITLES } from '../constants/lepPrincipleWatch';
 import { PODCASTS } from '../screens/lep/lepData';
+import { videoLength } from '../constants/videoDurations';
 
 const CMS_FRESH_DAYS = 7;
 // An Army event takes the card only in its last 3 days; at 14 it sat on Home for two weeks.
@@ -74,6 +75,10 @@ function pickEngageListen(todayIso) {
         title: ep.title,
         who: ep.who,
         meta: ep.meta,
+        tagline: ep.tagline || '',
+        episode: (String(ep.meta || '').match(/Ep\s*\d+/i) || [''])[0],
+        // The real length of the recording (the typed "Ep 2 · 22 min" was wrong).
+        length: videoLength(ep.assetKey, ''),
         img: ep.img,
         assetKey: ep.assetKey,
       }
@@ -134,7 +139,11 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
       kind: 'listen',
       eyebrow: 'Iron Lady Speaks',
       title: listen.title,
-      body: `${listen.who} · ${listen.meta}`,
+      tagline: listen.tagline,
+      who: listen.who,
+      episode: listen.episode,
+      length: listen.length,
+      body: [listen.who, listen.episode, listen.length].filter(Boolean).join(' · '),
       img: listen.img,
       assetKey: listen.assetKey,
       cta: 'Play episode',

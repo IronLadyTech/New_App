@@ -493,6 +493,8 @@ export const PODCASTS = [
     img: COVER.speaks06,
     featured: true,
     assetKey: 'podcast:simon',
+    // Subtitle from the episode's cover art.
+    tagline: "A Global CEO's Blueprint for Leadership",
   },
   {
     title: 'From Factory Floors to the Boardroom',
@@ -500,6 +502,8 @@ export const PODCASTS = [
     meta: 'Ep 5 · 28 min',
     img: COVER.speaks05,
     assetKey: 'podcast:priyanka',
+    // Subtitle from the episode's cover art.
+    tagline: '20 Years of Building Businesses',
   },
   {
     title: 'From Invisible to Unstoppable',
@@ -507,6 +511,8 @@ export const PODCASTS = [
     meta: 'Ep 4 · 22 min',
     img: COVER.speaks04c,
     assetKey: 'podcast:charu',
+    // Subtitle from the episode's cover art.
+    tagline: 'Inside the Mind of a Global Technology Leader',
   },
   {
     title: 'The Strategic Side of Quality',
@@ -514,6 +520,8 @@ export const PODCASTS = [
     meta: 'Ep 4 · 36 min',
     img: COVER.speaks04m,
     assetKey: 'podcast:mohini',
+    // Subtitle from the episode's cover art.
+    tagline: 'Why Support Roles Stay Stuck',
   },
   {
     title: 'Two Caps, One Woman',
@@ -521,6 +529,8 @@ export const PODCASTS = [
     meta: 'Ep 2 · 22 min',
     img: COVER.speaks02,
     assetKey: 'podcast:lakshmi',
+    // Subtitle from the episode's cover art.
+    tagline: 'The Legal Mind Behind Every Boardroom',
   },
   {
     title: 'The 11×11 Mission',
@@ -528,6 +538,8 @@ export const PODCASTS = [
     meta: 'Ep 1 · 31 min',
     img: COVER.speaks01,
     assetKey: 'podcast:pushpa',
+    // Subtitle from the episode's cover art.
+    tagline: '11 Organisations in 11 Years',
   },
 ];
 

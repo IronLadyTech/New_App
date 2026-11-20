@@ -13,6 +13,117 @@ import { openLink } from '../../utils/openLink';
 import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
 import { Linking } from 'react-native';
 
+const RED = '#E52A2A';
+const TEAL = '#0E3A44';
+
+/** Small sound-wave mark: five red bars of different heights. */
+function WaveMark({ color = RED, heights = [8, 16, 24, 14, 20], width = 3, gap = 3 }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', height: 26 }}>
+      {heights.map((h, i) => (
+        <View key={i} style={{ width, height: h, borderRadius: width, backgroundColor: color, marginRight: i < heights.length - 1 ? gap : 0 }} />
+      ))}
+    </View>
+  );
+}
+
+/** "Take a moment" with the red italic "moment", its underline and three accent strokes. */
+function MomentHeader() {
+  return (
+    <View style={{ paddingRight: 28 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <WaveMark />
+        <ILText role="title" color={G.ink} style={{ marginLeft: 10, fontFamily: IL_FONTS.display, fontSize: 30, lineHeight: 38 }}>
+          {'Take a '}
+        </ILText>
+        <View>
+          <ILText role="title" color={RED} style={{ fontFamily: IL_FONTS.displayItalic, fontSize: 30, lineHeight: 38 }}>
+            moment
+          </ILText>
+          <View style={{ height: 3, borderRadius: 2, backgroundColor: RED, marginTop: -4, marginLeft: 6, marginRight: -4, transform: [{ rotate: '-2deg' }] }} />
+        </View>
+        {/* Three accent strokes, top right of "moment". */}
+        <View style={{ marginLeft: 8, marginTop: -26 }}>
+          <View style={{ width: 2, height: 10, backgroundColor: G.ink, borderRadius: 1, transform: [{ rotate: '25deg' }] }} />
+          <View style={{ width: 10, height: 2, backgroundColor: G.ink, borderRadius: 1, marginTop: 3, marginLeft: 6, transform: [{ rotate: '-20deg' }] }} />
+          <View style={{ width: 9, height: 2, backgroundColor: G.ink, borderRadius: 1, marginTop: 5, marginLeft: 6, transform: [{ rotate: '10deg' }] }} />
+        </View>
+      </View>
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, marginLeft: 34, fontSize: 14 }}>
+        {'Listen  ·  Learn  ·  Be Inspired'}
+      </ILText>
+    </View>
+  );
+}
+
+/**
+ * Iron Lady Speaks episode: photo on the left, a dark panel on the right with the badge, title,
+ * the cover's subtitle, a red play button and speaker · episode · length; "Listen Now" below.
+ */
+function PodcastMomentCard({ moment, width, onPress }) {
+  const cardW = Math.max(280, width - 40);
+  const panelH = Math.round(cardW * 0.5);
+  const photoW = Math.round(cardW * 0.44);
+  // The cover is 16:9 with the guest on the right half: draw it at full width for this height
+  // and show its right side (the speaker this episode is about).
+  const coverW = Math.round(panelH * (16 / 9));
+  const meta = [moment.who, moment.episode, moment.length].filter(Boolean).join('  ·  ');
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Play ${moment.title}`} style={{ marginTop: 14 }}>
+      {/* Red shape peeking out behind the top-right corner. */}
+      <View style={{ position: 'absolute', right: -6, top: -14, width: 120, height: 90, borderTopRightRadius: 40, borderTopLeftRadius: 90, borderBottomRightRadius: 30, backgroundColor: RED, opacity: 0.9, transform: [{ rotate: '8deg' }] }} />
+      <View style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: G.white, shadowColor: '#0F1B3D', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 5 }}>
+        <View style={{ flexDirection: 'row', height: panelH }}>
+          <View style={{ width: photoW, height: panelH, overflow: 'hidden', backgroundColor: TEAL }}>
+            {moment.img ? (
+              <Image source={moment.img} style={{ position: 'absolute', top: 0, right: 0, width: coverW, height: panelH }} resizeMode="cover" />
+            ) : null}
+          </View>
+          <View style={{ flex: 1, backgroundColor: TEAL, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12 }}>
+            {/* Faint sound wave, top right. */}
+            <View style={{ position: 'absolute', right: 12, top: 14, opacity: 0.18 }}>
+              <WaveMark color="#FFFFFF" width={2} gap={3} heights={[10, 22, 14, 30, 18, 26, 12, 20]} />
+            </View>
+            <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: RED, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+              <MaterialIcons name="headphones" size={13} color="#FFFFFF" />
+              <ILText role="label" color="#FFFFFF" style={{ marginLeft: 5, fontSize: 10, letterSpacing: 0.4 }}>
+                IRON LADY SPEAKS
+              </ILText>
+            </View>
+            <ILText role="title" color="#FFFFFF" numberOfLines={2} style={{ marginTop: 10, fontFamily: IL_FONTS.displayBold, fontSize: 21, lineHeight: 25, paddingRight: 54 }}>
+              {moment.title}
+            </ILText>
+            {moment.tagline ? (
+              <ILText role="bodySm" color="rgba(255,255,255,0.85)" numberOfLines={2} style={{ marginTop: 6, fontSize: 12, lineHeight: 17, paddingRight: 54 }}>
+                {moment.tagline}
+              </ILText>
+            ) : null}
+            <View style={{ flex: 1 }} />
+            <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginBottom: 8 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <MaterialIcons name="mic-none" size={13} color="rgba(255,255,255,0.8)" />
+              <ILText role="bodySm" color="rgba(255,255,255,0.85)" numberOfLines={1} style={{ marginLeft: 5, fontSize: 11, flex: 1 }}>
+                {meta}
+              </ILText>
+            </View>
+            {/* Red play button, right middle. */}
+            <View style={{ position: 'absolute', right: 12, top: panelH / 2 - 26, width: 52, height: 52, borderRadius: 26, backgroundColor: RED, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.18)' }}>
+              <MaterialIcons name="play-arrow" size={30} color="#FFFFFF" />
+            </View>
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#FCEEEE' }}>
+          <WaveMark width={3} gap={2} heights={[8, 14, 10]} />
+          <ILText role="label" color={RED} style={{ marginLeft: 10, fontSize: 15, flex: 1 }}>
+            Listen Now
+          </ILText>
+          <MaterialIcons name="arrow-forward" size={20} color={RED} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
 /**
  * Optional engagement between Today’s practice and Due this week — not tracked as a task.
  */
@@ -70,9 +181,10 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
   // principle of the day gets a dark quote card instead.
   return (
     <View style={{ marginTop: 18 }}>
-      <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
-        Take a moment
-      </ILText>
+      <MomentHeader />
+      {moment.kind === 'listen' ? (
+        <PodcastMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
+      ) : (
 
       <Pressable onPress={onPrimary} accessibilityRole="button" accessibilityLabel={`${moment.eyebrow}: ${moment.title}`} style={{ marginTop: 10 }}>
         <View style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: picture ? G.white : G.dark, borderWidth: picture ? 1 : 0, borderColor: G.line }}>
@@ -128,6 +240,7 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
           </View>
         </View>
       </Pressable>
+      )}
     </View>
   );
 }
