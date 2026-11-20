@@ -41,11 +41,19 @@ function collectJoinLinks(batch) {
  * - Which calendar Saturday is Day 1 → CMS day1Date / orientationDate (or caller day1)
  * - Zoom / rare overrides → CMS sessions only when staff set them
  */
+/** Learner-facing session title: drops the journey document's "(B/W)" shorthand, which meant
+ *  nothing to learners. Batches saved with it in the CMS keep it there. */
+function cleanSessionTitle(title) {
+  return String(title || '').replace(/\s*\(\s*B\s*\/\s*W\s*\)\s*/gi, ' ').trim();
+}
+
 export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
   const day1 = String(batch?.day1Date || day1Iso || '').slice(0, 10);
   const orientation = batch?.orientationDate ? String(batch.orientationDate).slice(0, 10) : '';
   if (!day1 && !orientation) {
-    return (Array.isArray(batch?.sessions) ? batch.sessions : []).filter((s) => s?.date && s?.title && !s.cancelled);
+    return (Array.isArray(batch?.sessions) ? batch.sessions : [])
+      .filter((s) => s?.date && s?.title && !s.cancelled)
+      .map((s) => ({ ...s, title: cleanSessionTitle(s.title) }));
   }
 
   const joinLinks = collectJoinLinks(batch);
@@ -69,7 +77,7 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
     const overrideTitle = Boolean(cms?.title && cms.title !== row.title);
     return {
       ...row,
-      title: overrideTitle ? String(cms.title).trim() : row.title,
+      title: cleanSessionTitle(overrideTitle ? cms.title : row.title),
       startTime: overrideTime ? cms.startTime : row.startTime,
       endTime: overrideEnd ? cms.endTime : row.endTime,
       joinLink: String(cms?.joinLink || row.joinLink || '').trim(),

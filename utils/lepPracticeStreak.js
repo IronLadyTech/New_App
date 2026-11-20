@@ -23,6 +23,12 @@ function mondayOfWeekContaining(todayIso) {
   return addCalendarDays(todayIso, monOffset);
 }
 
+/** Monday to Sunday of this week — the streak card counts all seven days. */
+export function weekDaysMonSun(todayIso) {
+  const mon = mondayOfWeekContaining(todayIso);
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => addCalendarDays(mon, i));
+}
+
 export function weekWeekdaysMonFri(todayIso) {
   const mon = mondayOfWeekContaining(todayIso);
   return [0, 1, 2, 3, 4].map((i) => addCalendarDays(mon, i));
@@ -43,7 +49,8 @@ export function currentStreak(activeSet, todayIso) {
 export function computeLepStreakMetrics(doneMap, todayIso) {
   const active = activeDaysFromDone(doneMap);
   const activeSet = new Set(active);
-  const weekdays = weekWeekdaysMonFri(todayIso);
+  // Seven days, Monday to Sunday: practice on a weekend counts too (it was Mon–Fri only).
+  const weekdays = weekDaysMonSun(todayIso);
   const weekFilled = weekdays.map((iso) => activeSet.has(iso));
   const weekActiveDays = weekFilled.filter(Boolean).length;
 
@@ -51,7 +58,7 @@ export function computeLepStreakMetrics(doneMap, todayIso) {
     activeDays: active,
     currentStreak: currentStreak(activeSet, todayIso),
     weekActiveDays,
-    weekTotal: 5,
+    weekTotal: 7,
     weekdays,
     weekFilled,
     todayActive: activeSet.has(todayIso),

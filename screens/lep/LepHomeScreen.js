@@ -528,9 +528,16 @@ function EnrolledHome({ cmsBatch }) {
     cmsBatch,
     day1Iso,
   ]);
+  // Re-checked every minute, so the card turns LIVE (and back) on time while Home is open.
+  const [minuteTick, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setMinuteTick((n) => n + 1), 60000);
+    return () => clearInterval(t);
+  }, []);
   const upcoming = useMemo(
     () => buildUpcomingSessionCard(cmsBatch, { day1Iso }),
-    [cmsBatch, day1Iso]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cmsBatch, day1Iso, minuteTick]
   );
   const nextSession = useMemo(
     () => nextCmsBatchSession(cmsBatch || (day1Iso ? { day1Date: day1Iso } : null), new Date(), { day1Iso }),
@@ -645,6 +652,9 @@ function EnrolledHome({ cmsBatch }) {
         // A task whose phase has not opened yet is not due (it cannot be opened): it left the
         // guide's own list but stayed here, and the guide's fallback line read it from here —
         // "Program Access Essentials is still open this week" before Orientation had opened.
+        // Due = tasks only. Live sessions are in "Next live session" and the Schedule, and the
+        // "Continue Week practice" filler row was not a deadline either.
+        .filter((item) => Boolean(item.taskId))
         .filter((item) => !item.taskId || isGuideTaskOpen(PROGRAMS.LEP, profile, guideFlow, item.taskId))
         .map((item) => ({
           ...item,
@@ -804,21 +814,19 @@ function EnrolledHome({ cmsBatch }) {
             <ILText role="label" color={G.ink}>
               {streak.weekLabel}
             </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12, lineHeight: 17 }}>
-              {ritualsUnlocked
-                ? 'Active day = you finished at least one practice (5 Rituals count). Mon–Fri this week.'
-                : 'Active day = any practice you complete. 5 Rituals unlock after Day 1 and Day 2.'}
-            </ILText>
+            {/* What counts as an active day is explained on the Progress page (tap the card). */}
             <View style={{ flexDirection: 'row', marginTop: 8 }}>
-              {['M', 'T', 'W', 'T', 'F'].map((d, i) => (
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
                 <View
                   key={`${d}${i}`}
                   style={{
                     width: 26,
                     height: 26,
                     borderRadius: 13,
-                    marginRight: 6,
+                    marginRight: 5,
                     backgroundColor: streak.weekFilled[i] ? G.dark : G.mutedFill,
+                    borderWidth: streak.weekdays?.[i] === streak.today ? 1.5 : 0,
+                    borderColor: G.cta,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -860,6 +868,7 @@ function EnrolledHome({ cmsBatch }) {
           toggleRitual={toggleRitual}
           unmarkRitual={unmarkRitual}
           onOpenTracker={nav.goRitualsDashboard}
+          onWatchVideo={() => nav.goPractice('lep', 'lep-rituals')}
         />
       ) : null}
 
@@ -868,10 +877,19 @@ function EnrolledHome({ cmsBatch }) {
       ) : null}
 
       <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 18 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
-            {upcoming.kicker}
-          </ILText>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          {upcoming.live ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#E6F4EC', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#1B7A4A', marginRight: 6 }} />
+              <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 10 }]}>
+                LIVE NOW
+              </ILText>
+            </View>
+          ) : (
+            <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
+              {upcoming.kicker}
+            </ILText>
+          )}
           <MaterialIcons name="groups" size={18} color={G.ink} />
         </View>
         <ILText
@@ -889,16 +907,19 @@ function EnrolledHome({ cmsBatch }) {
             {upcoming.hours}
           </ILText>
         ) : null}
-        <View style={{ marginTop: 16 }}>
-          <RedCta
-            label="Add to calendar"
-            icon="event"
-            onPress={() => {
-              if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
-              else nav.goSchedule();
-            }}
-          />
-        </View>
+        {/* Live: only the Zoom button (adding to the calendar no longer helps). */}
+        {upcoming.live ? null : (
+          <View style={{ marginTop: 16 }}>
+            <RedCta
+              label="Add to calendar"
+              icon="event"
+              onPress={() => {
+                if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
+                else nav.goSchedule();
+              }}
+            />
+          </View>
+        )}
         <Pressable
           onPress={() => {
             if (upcoming.joinLink) {
@@ -907,15 +928,15 @@ function EnrolledHome({ cmsBatch }) {
             } else nav.goSchedule();
           }}
           style={{
-            marginTop: 10,
-            backgroundColor: G.dark,
+            marginTop: upcoming.live ? 16 : 10,
+            backgroundColor: upcoming.live ? '#1B7A4A' : G.dark,
             borderRadius: 999,
             paddingVertical: 14,
             alignItems: 'center',
           }}
         >
           <ILText role="label" color="#FFFFFF">
-            {upcoming.ready ? 'Join Zoom session' : 'Zoom Boardroom link'}
+            {upcoming.live && upcoming.ready ? 'Join live on Zoom' : upcoming.ready ? 'Join Zoom session' : 'Zoom Boardroom link'}
           </ILText>
           <ILText role="bodySm" color="rgba(255,255,255,0.6)" style={{ marginTop: 2, fontSize: 11 }}>
             {upcoming.ready ? 'Opens your batch join link' : 'Unlocks when the host posts the link'}

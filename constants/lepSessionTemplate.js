@@ -24,7 +24,7 @@ export const LEP_TIMEZONE = 'Asia/Kolkata';
 export const LEP_SESSION_TEMPLATE = [
   {
     code: 'S0',
-    title: 'Orientation (B/W)',
+    title: 'Orientation',
     kind: 'core',
     dayOffset: -2,
     startTime: '19:00',

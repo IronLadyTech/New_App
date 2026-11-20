@@ -58,74 +58,67 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
 
   if (!moment) return null;
 
-  return (
-    <View style={{ marginTop: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <View style={{ flex: 1, paddingRight: 8 }}>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
-            Take a moment
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12, lineHeight: 17 }}>
-            Not on your checklist — inspiration, community, or a story.
-          </ILText>
-        </View>
-      </View>
+  const icon =
+    moment.kind === 'cms' ? 'campaign' : moment.kind === 'army' ? 'groups' : moment.kind === 'listen' ? 'headphones' : 'auto-awesome';
+  const picture = moment.imageUrl ? { uri: moment.imageUrl } : moment.img || null;
+  const playable = moment.kind === 'listen' || Boolean(moment.videoUrl);
 
-      <WhiteCard style={{ marginTop: 10, borderRadius: 22, padding: 16 }}>
-        {moment.imageUrl ? (
-          <Image
-            source={{ uri: moment.imageUrl }}
-            style={{ width: '100%', height: 140, borderRadius: 16, marginBottom: 12 }}
-            resizeMode="cover"
-          />
-        ) : null}
-        {moment.img ? (
-          <View style={{ marginBottom: 12, borderRadius: 16, overflow: 'hidden' }}>
-            <Image source={moment.img} style={{ width: '100%', height: 120 }} resizeMode="cover" />
+  // One card, one action: the whole card opens it. A picture leads when there is one; the
+  // principle of the day gets a dark quote card instead.
+  return (
+    <View style={{ marginTop: 18 }}>
+      <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
+        Take a moment
+      </ILText>
+
+      <Pressable onPress={onPrimary} accessibilityRole="button" accessibilityLabel={`${moment.eyebrow}: ${moment.title}`} style={{ marginTop: 10 }}>
+        <View style={{ borderRadius: 22, overflow: 'hidden', backgroundColor: picture ? G.white : G.dark, borderWidth: picture ? 1 : 0, borderColor: G.line }}>
+          {picture ? (
+            <View>
+              <Image source={picture} style={{ width: '100%', aspectRatio: 16 / 9 }} resizeMode="cover" />
+              {playable ? (
+                <View style={{ position: 'absolute', right: 12, bottom: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: G.cta, alignItems: 'center', justifyContent: 'center' }}>
+                  <MaterialIcons name="play-arrow" size={26} color="#FFFFFF" />
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={{ padding: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: picture ? G.pink : 'rgba(255,255,255,0.12)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <MaterialIcons name={icon} size={13} color={picture ? G.cta : '#FFFFFF'} />
+                <ILText role="eyebrow" color={picture ? G.cta : '#FFFFFF'} style={{ marginLeft: 5, fontSize: 10 }}>
+                  {moment.eyebrow}
+                </ILText>
+              </View>
+              {moment.kicker ? (
+                <ILText role="bodySm" color={picture ? G.meta : 'rgba(255,255,255,0.65)'} style={{ marginLeft: 8, fontSize: 11 }}>
+                  {moment.kicker}
+                </ILText>
+              ) : null}
+            </View>
+            <ILText
+              role="title"
+              color={picture ? G.ink : '#FFFFFF'}
+              style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: picture ? 20 : 22, lineHeight: picture ? 26 : 29 }}
+            >
+              {moment.title}
+            </ILText>
+            {moment.body ? (
+              <ILText role="bodySm" color={picture ? G.meta : 'rgba(255,255,255,0.75)'} style={{ marginTop: 6, fontSize: 13, lineHeight: 19 }} numberOfLines={3}>
+                {moment.body}
+              </ILText>
+            ) : null}
+            <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center' }}>
+              <ILText role="label" color={picture ? G.cta : '#FFFFFF'} style={{ fontSize: 14 }}>
+                {moment.cta}
+              </ILText>
+              <MaterialIcons name="arrow-forward" size={16} color={picture ? G.cta : '#FFFFFF'} style={{ marginLeft: 6 }} />
+            </View>
           </View>
-        ) : null}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MaterialIcons
-            name={
-              moment.kind === 'cms'
-                ? 'campaign'
-                : moment.kind === 'army'
-                  ? 'groups'
-                  : moment.kind === 'listen'
-                    ? 'headphones'
-                    : 'auto-awesome'
-            }
-            size={16}
-            color={G.cta}
-          />
-          <ILText role="eyebrow" color={G.cta} style={{ marginLeft: 6, fontSize: 11 }}>
-            {moment.eyebrow}
-          </ILText>
-          {moment.kicker ? (
-            <ILText role="bodySm" color={G.meta} style={{ marginLeft: 8, fontSize: 11 }}>
-              · {moment.kicker}
-            </ILText>
-          ) : null}
         </View>
-        <ILText role="label" color={G.ink} style={{ marginTop: 8, fontSize: 17, lineHeight: 23 }}>
-          {moment.title}
-        </ILText>
-        {moment.body ? (
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13, lineHeight: 19 }} numberOfLines={4}>
-            {moment.body}
-          </ILText>
-        ) : null}
-        <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Pressable onPress={onPrimary} accessibilityRole="button">
-            <ILText role="label" color={G.cta} style={{ fontSize: 14 }}>
-              {moment.cta} →
-            </ILText>
-          </Pressable>
-          {moment.kind !== 'principle' ? (
-            <LinkRow label="Engage tab" onPress={nav.goEngage} />
-          ) : null}
-        </View>
-      </WhiteCard>
+      </Pressable>
     </View>
   );
 }

@@ -155,10 +155,10 @@ export default function LepYourProgressContent({ onOpenRitualsWeek, onOpenWeekly
   const day1Iso = resolveLepDay1Iso(profile, cmsBatch);
   const { today, model, toggleRitual, unmarkRitual } = useLepFiveRitualsTracker(day1Iso);
 
-  const consistencyFoot =
-    streak.weekActiveDays >= streak.weekTotal
-      ? 'Best week since you joined. A missed day never resets this — it’s a weekly measure.'
-      : 'A missed day never resets this — it’s a weekly measure.';
+  // The rule lives here (it was a line on the Home card): what makes a day active.
+  const consistencyFoot = `${
+    streak.weekActiveDays >= streak.weekTotal ? 'A full week. ' : ''
+  }A day counts when you finish at least one practice or tick a ritual — Monday to Sunday. A missed day never resets this; it is a weekly measure.`;
 
   return (
     <View style={{ paddingBottom: 28 }}>

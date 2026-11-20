@@ -105,6 +105,13 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
       calendarUrl,
       ready: Boolean(joinLink),
       code: raw?.code || '',
+      // Live: from 15 minutes before it starts until it ends (Home shows LIVE + Join only).
+      live: (() => {
+        const start = Date.parse(raw?.startAt || '');
+        const end = Date.parse(raw?.endAt || '');
+        const t = Date.now();
+        return Number.isFinite(start) && Number.isFinite(end) && t >= start - 15 * 60000 && t <= end;
+      })(),
     };
   }
 
