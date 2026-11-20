@@ -14,6 +14,7 @@ import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { resolveLepDay1Iso } from '../../utils/lepEnrolledCohortPhase';
 import { useLepFiveRitualsTracker } from '../../hooks/useLepFiveRitualsTracker';
 import LepRitualsTrackerPanel from '../../components/lep/LepRitualsTrackerPanel';
+import LepRitualsMonthCard from '../../components/lep/LepRitualsMonthCard';
 
 export default function LepRitualsDashboardScreen() {
   const navigation = useNavigation();
@@ -62,6 +63,8 @@ export default function LepRitualsDashboardScreen() {
           unmarkRitual={unmarkRitual}
           showVideoLink
         />
+        {/* The month at a glance, under the week. */}
+        <LepRitualsMonthCard today={today} />
       </ScrollView>
     </Page>
   );

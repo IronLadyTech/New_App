@@ -6,7 +6,7 @@ import ILText from '../il/ILText';
 import { G } from '../../constants/guestTheme';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import { WhiteCard } from '../../screens/lep/LepBits';
-import { LEP_RITUAL_DAILY_MARKS_MAX, LEP_RITUAL_WEEKLY_MARKS_MAX } from '../../constants/lepFiveRituals';
+import { LEP_RITUAL_DAILY_MARKS_MAX } from '../../constants/lepFiveRituals';
 
 /** One picture per ritual, so each can be found at a glance in the morning. */
 const RITUAL_EMOJI = {
@@ -22,7 +22,7 @@ const RITUAL_EMOJI = {
  * else on the card opens the full weekly grid. The rituals video is one tap away.
  */
 export default function LepRitualsTodayCard({ today, model, toggleRitual, unmarkRitual, onOpenTracker, onWatchVideo }) {
-  const { grid, todayMarks, weekMarks } = model;
+  const { grid, todayMarks } = model;
   const allDone = todayMarks >= LEP_RITUAL_DAILY_MARKS_MAX;
   return (
     <WhiteCard style={{ marginTop: 16, borderRadius: 22, padding: 16 }} onPress={onOpenTracker}>
@@ -37,12 +37,8 @@ export default function LepRitualsTodayCard({ today, model, toggleRitual, unmark
               : `${todayMarks} of ${LEP_RITUAL_DAILY_MARKS_MAX} today · tap each one as you do it`}
           </ILText>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-            {`Week ${weekMarks}/${LEP_RITUAL_WEEKLY_MARKS_MAX}`}
-          </ILText>
-          <MaterialIcons name="grid-view" size={16} color={G.meta} style={{ marginTop: 4 }} />
-        </View>
+        {/* The card opens the full tracker (week and month); no score here. */}
+        <MaterialIcons name="grid-view" size={18} color={G.meta} />
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 }}>

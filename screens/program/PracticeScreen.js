@@ -152,11 +152,37 @@ export default function PracticeScreen() {
           ]
       : p.steps;
 
-  const stepsDone = displaySteps.filter((_, i) => ticks[i] || done).length;
+  // The 5 Rituals: each step IS a ritual, ticked straight into the same marks as Home's tracker.
+  // Only the ones she ticks count (finishing used to tick all five). All five done = today's
+  // practice done.
+  const isRituals = isLepRitualsPracticeId(practiceId) && programId === 'lep';
+  const ritualKey = (i) => (LEP_FIVE_RITUALS[i] ? lepRitualMarkKey(LEP_FIVE_RITUALS[i].id, today) : null);
+  const ritualOn = (i) => Boolean(ritualKey(i) && demo.isDoneOnDay('lep', ritualKey(i)));
+  const stepOn = (i) => (isRituals ? ritualOn(i) : ticks[i] || done);
+  const toggleRitualStep = (i) => {
+    const key = ritualKey(i);
+    if (!key) return;
+    if (ritualOn(i)) {
+      demo.clearDone('lep', key);
+      if (dailyKey) demo.clearDone(programId, dailyKey);
+      return;
+    }
+    demo.markDoneOnDay('lep', key);
+    demo.recordLepActiveDay(today);
+    const allNow = LEP_FIVE_RITUALS.every((_, k) => k === i || ritualOn(k));
+    if (allNow) {
+      if (dailyKey) demo.markDoneOnDay(programId, dailyKey);
+      demo.markDone(programId, pKey);
+    }
+  };
+  const stepsDone = displaySteps.filter((_, i) => stepOn(i)).length;
   const audioUri = recordingUri || saved?.data?.audioUri || null;
   const watchedEnough = !minWatch || watchedSec >= minWatch;
   const canFinish =
-    (p.noteRequired ? !!note.trim() : true) && (!p.audioRecord || !!audioUri) && watchedEnough;
+    (p.noteRequired ? !!note.trim() : true) &&
+    (!p.audioRecord || !!audioUri) &&
+    watchedEnough &&
+    (!isRituals || stepsDone >= displaySteps.length);
   const finish = () => {
     if (!canFinish) return;
     const data = {};
@@ -168,14 +194,6 @@ export default function PracticeScreen() {
     // Always stamp done so home practice / dues / IL Guide update immediately.
     if (dailyKey) demo.markDoneOnDay(programId, dailyKey);
     demo.markDone(programId, pKey);
-    // The 5 Rituals: finishing here ticks the same five boxes as Home's tracker (it only marked
-    // the practice, so Home asked her to tick all five again).
-    if (isLepRitualsPracticeId(practiceId)) {
-      LEP_FIVE_RITUALS.forEach((r) => {
-        const key = lepRitualMarkKey(r.id, today);
-        if (!demo.isDoneOnDay('lep', key)) demo.markDoneOnDay('lep', key);
-      });
-    }
     if (programId === 'lep') demo.recordLepActiveDay(today);
   };
 
@@ -224,7 +242,7 @@ export default function PracticeScreen() {
                     height: 4,
                     borderRadius: 2,
                     marginRight: i < displaySteps.length - 1 ? 6 : 0,
-                    backgroundColor: ticks[i] || done ? G.cta : 'rgba(255,255,255,0.18)',
+                    backgroundColor: stepOn(i) ? G.cta : 'rgba(255,255,255,0.18)',
                   }}
                 />
               ))}
@@ -254,11 +272,14 @@ export default function PracticeScreen() {
           </ILText>
           <WhiteCard style={{ marginTop: 12, borderRadius: 22, paddingHorizontal: 16 }}>
             {displaySteps.map((step, i) => {
-              const on = ticks[i] || done;
+              const on = stepOn(i);
               return (
                 <Pressable
                   key={step}
-                  onPress={() => !done && setTicks((t) => ({ ...t, [i]: !t[i] }))}
+                  onPress={() => {
+                    if (isRituals) toggleRitualStep(i);
+                    else if (!done) setTicks((t) => ({ ...t, [i]: !t[i] }));
+                  }}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: !!on }}
                   style={{
