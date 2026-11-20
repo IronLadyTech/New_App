@@ -31,7 +31,7 @@ import { isLepRitualsPracticeId } from '../../utils/lepRitualsUnlock';
 import { LEP_FIVE_RITUALS } from '../../constants/lepFiveRituals';
 import { lepRitualMarkKey } from '../../utils/lepRitualsTracker';
 import { getPracticeVideoUrl } from '../../utils/resolveVideoUrl';
-import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
+import { LEP_PRINCIPLE_TITLES, lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
 import { cmsPracticeItem } from '../../hooks/useCmsLearnerItems';
 
 /** A practice item CX added in the CMS, in the shape of the built-in PRACTICE entries. */
@@ -135,7 +135,7 @@ export default function PracticeScreen() {
 
   const displayTitle =
     practiceId === 'lep-principle' && principleN
-      ? `Revise Principle ${principleN} from the 27 Principles`
+      ? `Revise Principle ${String(principleN).padStart(2, '0')}${LEP_PRINCIPLE_TITLES[principleN] ? ` · ${LEP_PRINCIPLE_TITLES[principleN]}` : ''}`
       : p.title;
   const displaySteps =
     practiceId === 'lep-principle' && principleN

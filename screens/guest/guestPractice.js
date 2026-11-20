@@ -109,7 +109,7 @@ export const DAILY_QUESTIONS = [
   },
   {
     id: 'ask',
-    principle: 'Ask for what you want',
+    principle: 'Powerful Request',
     question: 'You would love to lead the new client account. Nobody has asked you. You…',
     options: [
       ['A', 'Wait to be picked.'],

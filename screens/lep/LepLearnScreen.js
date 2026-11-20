@@ -65,7 +65,10 @@ import {
   LEARN_CASE_INSPIRATION_CARD,
   LEARN_CASE_INSPIRATION_TASK_ID,
 } from '../../utils/learnMediaShelves';
-import { lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
+import { LEP_PRINCIPLE_TITLES, lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
+import { todayPrincipleNumber } from '../../utils/lepHomeMoment';
+import { resolveLepDay1Iso } from '../../utils/lepEnrolledCohortPhase';
+import { todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 
 export default function LepLearnScreen() {
   const { profile } = useAuth();
@@ -1188,166 +1191,71 @@ function PrinciplesEnrolled({ onPrinciple }) {
   const openPrinciple = (n) => {
     if (typeof onPrinciple === 'function') onPrinciple(Number(n));
   };
+  // Today's principle — the same one as Home's "Take a moment" card.
+  const { profile } = useAuth();
+  const todayN = todayPrincipleNumber(practiceTodayIso(), resolveLepDay1Iso(profile, null));
+  const todayName = LEP_PRINCIPLE_TITLES[todayN] || '';
+  const groups = [
+    { label: '01–09', items: PRINCIPLES_FOUND_ENR },
+    { label: '10–18', items: PRINCIPLES_INFLUENCE_ENR },
+    { label: '19–27', items: PRINCIPLES_COMMAND_ENR },
+  ];
 
+  // No progress score here: the app does not record which principles she has revised, so the
+  // old "9 of 27 complete · 33%" and "Foundation closed on 12 Sep" were made up.
   return (
     <>
-      <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 16 }}>
-        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-          YOUR PROGRESS
+      <WhiteCard style={{ marginTop: 18, borderRadius: 22, padding: 16, backgroundColor: G.dark }}>
+        <ILText role="eyebrow" color="#F2C14E" style={[af, { fontSize: 10, letterSpacing: 2 }]}>
+          27 STARS TO STEER BY
         </ILText>
-        <View style={{ marginTop: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22 }}>
-            9 of 27 complete
-          </ILText>
-          <ILText role="display" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 26 }}>
-            33%
-          </ILText>
-        </View>
-        <View style={{ marginTop: 12, height: 4, backgroundColor: G.mutedFill, borderRadius: 2 }}>
-          <View style={{ width: '33%', height: 4, backgroundColor: G.cta, borderRadius: 2 }} />
-        </View>
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 12 }}>
-          Foundation closed on 12 Sep · Influence opens with Day 1
+        <ILText role="title" color="#FFFFFF" style={{ marginTop: 8, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
+          The 27 IL Principles
+        </ILText>
+        <ILText role="bodySm" color="rgba(255,255,255,0.75)" style={{ marginTop: 6, fontSize: 13, lineHeight: 19 }}>
+          One a day: watch it, then say it in your own words. Tap any principle to revise it.
         </ILText>
       </WhiteCard>
 
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10, textAlign: 'center' }]}>
-        FOUNDATION · 01–09
-      </ILText>
-      {PRINCIPLES_FOUND_ENR.map((p) => (
-        <WhiteCard
-          key={p.n}
-          onPress={() => openPrinciple(p.n)}
-          style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: G.dark,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-              {p.n}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink}>
-              {p.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {p.min}
-            </ILText>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#1B7A4A', marginRight: 6 }} />
-            <ILText role="eyebrow" color="#1B7A4A" style={[af, { fontSize: 9 }]}>
-              {p.state}
-            </ILText>
-          </View>
-        </WhiteCard>
-      ))}
-      <View
-        style={{
-          marginTop: 10,
-          borderRadius: 18,
-          backgroundColor: G.mutedFill,
-          paddingVertical: 14,
-          alignItems: 'center',
-        }}
-      >
-        <ILText role="bodySm" color={G.meta} style={{ fontSize: 13 }}>
-          5 more in Foundation · all complete
-        </ILText>
-      </View>
-
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10, textAlign: 'center' }]}>
-        INFLUENCE · 10–18
-      </ILText>
-      {PRINCIPLES_INFLUENCE_ENR.map((p) => (
-        <WhiteCard
-          key={p.n}
-          onPress={() => openPrinciple(p.n)}
-          style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
-        >
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: p.hot ? G.pink : G.mutedFill,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ILText role="label" color={G.ink} style={{ fontSize: 12 }}>
-              {p.n}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink} numberOfLines={1}>
-              {p.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {p.min}
-            </ILText>
-          </View>
-          {p.hot ? (
-            <View style={{ backgroundColor: G.cta, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}>
-              <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>
-                {p.state}
-              </ILText>
-            </View>
-          ) : (
-            <ILText role="label" color={G.ink} style={{ fontSize: 12 }}>
-              {p.state}
-            </ILText>
-          )}
-        </WhiteCard>
-      ))}
-
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10, textAlign: 'center' }]}>
-        COMMAND · 19–27
-      </ILText>
-      {PRINCIPLES_COMMAND_ENR.map((p) => (
-        <WhiteCard key={p.n} style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
-          <View
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: G.mutedFill,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ILText role="label" color={G.ink} style={{ fontSize: 12 }}>
-              {p.n}
-            </ILText>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <ILText role="label" color={G.ink} numberOfLines={1}>
-              {p.title}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
-              {p.min}
-            </ILText>
-          </View>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            {p.state}
+      {groups.map((g) => (
+        <View key={g.label}>
+          <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 22, fontSize: 10, textAlign: 'center' }]}>
+            {g.label}
           </ILText>
-        </WhiteCard>
+          {g.items.map((p) => {
+            const today = Number(p.n) === todayN;
+            return (
+              <WhiteCard
+                key={p.n}
+                onPress={() => openPrinciple(p.n)}
+                style={{ marginTop: 10, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center', borderWidth: today ? 1.5 : 0, borderColor: G.cta }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: today ? G.cta : G.mutedFill, alignItems: 'center', justifyContent: 'center' }}>
+                  <ILText role="label" color={today ? '#FFFFFF' : G.ink} style={{ fontSize: 12 }}>
+                    {p.n}
+                  </ILText>
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <ILText role="label" color={G.ink} numberOfLines={2}>
+                    {p.title}
+                  </ILText>
+                  <ILText role="bodySm" color={today ? G.cta : G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                    {today ? "Today's principle" : p.min}
+                  </ILText>
+                </View>
+                <MaterialIcons name="chevron-right" size={20} color={G.meta} />
+              </WhiteCard>
+            );
+          })}
+        </View>
       ))}
 
       <NextCard
-        kicker="NEXT FOR YOU"
-        title="Principle 10 · Negotiate from the seat you want"
+        kicker="TODAY'S PRINCIPLE"
+        title={`Principle ${String(todayN).padStart(2, '0')} · ${todayName}`}
         body="Watch the segment, then revise it out loud — same flow as Today’s practice on Home."
-        cta="Resume principle 10 →"
-        onPress={() => openPrinciple(10)}
+        cta="Revise it now →"
+        onPress={() => openPrinciple(todayN)}
       />
     </>
   );

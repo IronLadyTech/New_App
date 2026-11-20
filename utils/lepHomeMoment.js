@@ -76,6 +76,7 @@ function pickEngageListen(todayIso) {
         who: ep.who,
         meta: ep.meta,
         tagline: ep.tagline || '',
+        coverFocus: ep.coverFocus || 'right',
         episode: (String(ep.meta || '').match(/Ep\s*\d+/i) || [''])[0],
         // The real length of the recording (the typed "Ep 2 · 22 min" was wrong).
         length: videoLength(ep.assetKey, ''),
@@ -83,6 +84,12 @@ function pickEngageListen(todayIso) {
         assetKey: ep.assetKey,
       }
     : null;
+}
+
+/** Today's principle number (1–27), the same one Home's card shows. */
+export function todayPrincipleNumber(todayIso, day1Iso) {
+  const anchor = day1Iso ? addCalendarDays(day1Iso, 2) : todayIso;
+  return principleNumberForDay(todayIso, anchor);
 }
 
 function pickPrincipleMoment(todayIso, day1Iso) {
@@ -103,8 +110,15 @@ function pickPrincipleMoment(todayIso, day1Iso) {
  * Priority: fresh CMS post → Army event in the next 3 days → otherwise a new card each day,
  * alternating a podcast episode and a leadership principle.
  */
-export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOffline, featured }) {
-  const cms = pickFreshCmsPost(cmsPosts, todayIso);
+export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOffline, featured, force = null }) {
+  // force: the tester preview shows one kind on demand ('cms' | 'army' | 'listen' | 'principle'),
+  // using the newest post / next event even when it is outside the usual window.
+  const cms =
+    force === 'cms'
+      ? [...(cmsPosts || [])].sort((a, b) => (stampMs(b.createdAt) || 0) - (stampMs(a.createdAt) || 0))[0] || null
+      : force
+        ? null
+        : pickFreshCmsPost(cmsPosts, todayIso);
   if (cms) {
     return {
       kind: 'cms',
@@ -115,12 +129,40 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
       link: cms.link || '',
       imageUrl: cms.imageUrl || '',
       cta: cms.videoUrl ? 'Watch in the app' : cms.link ? 'Open link' : 'See on Engage',
+      // "Posted 2 days ago · Video" on the team-post card.
+      postedLabel: (() => {
+        const age = daysSincePublish(cms, todayIso);
+        const when = age == null ? '' : age <= 0 ? 'Posted today' : age === 1 ? 'Posted yesterday' : `Posted ${age} days ago`;
+        const what = cms.videoUrl ? 'Video' : cms.link ? 'Link' : 'Post';
+        return [when, what].filter(Boolean).join(' · ');
+      })(),
+      barLabel: cms.videoUrl ? 'Watch now' : cms.link ? 'Open link' : 'Read',
     };
   }
 
-  const army = pickSoonArmyEvent({ nextOffline, featured, todayIso });
+  const army =
+    force === 'army'
+      ? featured || nextOffline || null
+      : force
+        ? null
+        : pickSoonArmyEvent({ nextOffline, featured, todayIso });
   if (army) {
+    // Date tile and a title split at " · " (sheet titles read "Mega Global Event · 200+ …").
+    const d = parseLocalIso(army.dateIso);
+    const inDays = calendarDaysBetween(todayIso, army.dateIso);
+    const [headTitle, ...restTitle] = String(army.title || '').split(' · ');
+    const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const dateTile = d
+      ? { dow: DOW[d.getDay()], day: String(d.getDate()), monthYear: `${MON[d.getMonth()]} ${d.getFullYear()}`, time: army.timeLabel || '' }
+      : null;
+    const whenWord = inDays === 0 ? 'today' : inDays === 1 ? 'tomorrow' : inDays != null ? `in ${inDays} days` : '';
+    const mode = army.mode === 'offline' ? (army.city ? `In person · ${army.city}` : 'In person') : 'Live · Online';
     return {
+      headTitle: headTitle || army.title,
+      subTitle: restTitle.join(' · '),
+      dateTile,
+      metaLine: [mode, whenWord].filter(Boolean).join(' · '),
       kind: 'army',
       eyebrow: 'Iron Lady Army',
       title: army.title,
@@ -132,7 +174,7 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
 
   // Otherwise the card changes every day: a podcast one day, a leadership principle the next.
   const t = parseLocalIso(todayIso);
-  const podcastDay = !t || Math.floor(t.getTime() / 86400000) % 2 === 0;
+  const podcastDay = force === 'listen' || (force !== 'principle' && (!t || Math.floor(t.getTime() / 86400000) % 2 === 0));
   const listen = podcastDay ? pickEngageListen(todayIso) : null;
   if (listen) {
     return {
@@ -140,6 +182,7 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
       eyebrow: 'Iron Lady Speaks',
       title: listen.title,
       tagline: listen.tagline,
+      coverFocus: listen.coverFocus,
       who: listen.who,
       episode: listen.episode,
       length: listen.length,
@@ -158,6 +201,9 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
     title: principle.title,
     body: principle.body,
     principleN: principle.principleN,
-    cta: 'Open Engage',
+    // The quote card: the principle as a line, then one question to sit with.
+    quote: LEP_PRINCIPLE_TITLES[principle.principleN] || '',
+    reflection: 'Sit with this for a minute. Where could you use it today?',
+    cta: 'Reflect in one line',
   };
 }

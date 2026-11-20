@@ -1,5 +1,6 @@
 import { PREWORK_THUMBS } from '../../constants/preworkThumbs';
 import { videoLength } from '../../constants/videoDurations';
+import { LEP_PRINCIPLES } from '../../constants/lepPrincipleWatch';
 
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
@@ -56,7 +57,7 @@ export const DUE_WEEK = [
 /** Registered home — today's BHAG message (27 Principles preview). */
 export const TODAY_MESSAGE = {
   title: 'Your BHAG',
-  sub: 'Principle 01 · Ask for what you want',
+  sub: 'Principle 01 · B-HAG',
   hint: 'Name the goal big enough to scare you',
   duration: videoLength('lep-principles-video-preview', '12 min'),
   assetKey: 'lep-principles-video-preview',
@@ -185,19 +186,17 @@ export const CIRCLE = ['YUKTI', 'DISHA', 'UDAAN', 'Visibility Platform'];
 export const LEARN_CHIPS_REG = ['For you', 'Principles', 'Case studies', 'Events'];
 export const LEARN_CHIPS_ENR = ['For you', 'Principles', 'Case studies', 'Events', 'Community stories'];
 
-export const PRINCIPLES_OPEN = [
-  { n: '01', title: 'Ask for what you want', min: '12 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
-  { n: '02', title: 'Own the room before you speak', min: '14 min', track: 'Foundation', state: 'Watched', practiceId: 'lep-principles-video' },
-  { n: '03', title: 'The shameless pitch', min: '22 min', track: 'Foundation', state: 'Resume', practiceId: 'lep-shameless' },
-  { n: '04', title: 'Build your board of advocates', min: '16 min', track: 'Foundation', state: 'Start', practiceId: 'lep-principles-video' },
-];
+export const PRINCIPLES_OPEN = LEP_PRINCIPLES.slice(0, 4).map((p) => ({
+  ...p,
+  min: 'In the 27 Principles recording',
+  state: 'Watch',
+  practiceId: 'lep-principles-video',
+}));
 
-export const PRINCIPLES_LOCKED = [
-  { n: '05', title: 'Negotiate from the seat you want', min: '18 min', track: 'Influence' },
-  { n: '06', title: 'Turn visibility into sponsorship', min: '20 min', track: 'Influence' },
-  { n: '07', title: 'The unflinching no', min: '15 min', track: 'Influence' },
-  { n: '08', title: 'Read the room’s real agenda', min: '17 min', track: 'Influence' },
-];
+export const PRINCIPLES_LOCKED = LEP_PRINCIPLES.slice(4, 8).map((p) => ({
+  ...p,
+  min: 'Opens after enrolment',
+}));
 
 export const LEARN_CONTINUE = [
   {
@@ -305,25 +304,23 @@ export const LEARN_EVENT_ENR = {
 
 export const LEARN_WHISPER_ENR = 'Tell me your city and I’ll show you events near you.';
 
-export const PRINCIPLES_FOUND_ENR = [
-  { n: '01', title: 'Ask for what you want', min: '12 min', state: 'DONE' },
-  { n: '02', title: 'Own the room before you speak', min: '14 min', state: 'DONE' },
-  { n: '03', title: 'The shameless pitch', min: '22 min', state: 'DONE' },
-  { n: '04', title: 'Build your board of advocates', min: '16 min', state: 'DONE' },
-];
+export const PRINCIPLES_FOUND_ENR = LEP_PRINCIPLES.slice(0, 9).map((p) => ({
+  ...p,
+  min: 'Watch and revise',
+  state: 'Watch',
+}));
 
-export const PRINCIPLES_INFLUENCE_ENR = [
-  { n: '10', title: 'Negotiate from the seat you want', min: '18 min · in progress', state: 'Resume', hot: true },
-  { n: '11', title: 'Turn visibility into sponsorship', min: '20 min', state: 'Start' },
-  { n: '12', title: 'The unflinching no', min: '15 min', state: 'Start' },
-  { n: '13', title: 'Read the room’s real agenda', min: '17 min', state: 'Start' },
-];
+export const PRINCIPLES_INFLUENCE_ENR = LEP_PRINCIPLES.slice(9, 18).map((p) => ({
+  ...p,
+  min: 'Watch and revise',
+  state: 'Watch',
+}));
 
-export const PRINCIPLES_COMMAND_ENR = [
-  { n: '19', title: 'Speak to a board, not a boss', min: '21 min', state: 'Opens Day 2' },
-  { n: '20', title: 'Carry a P&L like a mandate', min: '19 min', state: 'Opens Day 2' },
-  { n: '21', title: 'Choose the fight worth having', min: '16 min', state: 'Opens Day 2' },
-];
+export const PRINCIPLES_COMMAND_ENR = LEP_PRINCIPLES.slice(18, 27).map((p) => ({
+  ...p,
+  min: 'Watch and revise',
+  state: 'Watch',
+}));
 
 export const CASES_ENR = [
   {

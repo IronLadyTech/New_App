@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Image, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Pressable from '../il/Press';
@@ -76,7 +76,21 @@ function PodcastMomentCard({ moment, width, onPress }) {
         <View style={{ flexDirection: 'row', height: panelH }}>
           <View style={{ width: photoW, height: panelH, overflow: 'hidden', backgroundColor: TEAL }}>
             {moment.img ? (
-              <Image source={moment.img} style={{ position: 'absolute', top: 0, right: 0, width: coverW, height: panelH }} resizeMode="cover" />
+              <Image
+                source={moment.img}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  width: coverW,
+                  height: panelH,
+                  ...(moment.coverFocus === 'left'
+                    ? { left: 0 }
+                    : moment.coverFocus === 'center'
+                      ? { left: -Math.round((coverW - photoW) / 2) }
+                      : { right: 0 }),
+                }}
+                resizeMode="cover"
+              />
             ) : null}
           </View>
           <View style={{ flex: 1, backgroundColor: TEAL, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12 }}>
@@ -124,6 +138,173 @@ function PodcastMomentCard({ moment, width, onPress }) {
   );
 }
 
+/** Shared shell: red shape behind the corner, rounded white card, and the pink action bar. */
+function MomentShell({ onPress, label, barIcon, barLabel, children, blobLeft = false }) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label} style={{ marginTop: 14 }}>
+      {blobLeft ? (
+        <View style={{ position: 'absolute', left: -8, bottom: 40, width: 70, height: 70, borderRadius: 35, backgroundColor: RED, opacity: 0.9 }} />
+      ) : (
+        <View style={{ position: 'absolute', right: -6, top: -14, width: 120, height: 90, borderTopRightRadius: 40, borderTopLeftRadius: 90, borderBottomRightRadius: 30, backgroundColor: RED, opacity: 0.9, transform: [{ rotate: '8deg' }] }} />
+      )}
+      <View style={{ borderRadius: 24, overflow: 'hidden', backgroundColor: G.white, shadowColor: '#0F1B3D', shadowOpacity: 0.12, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 5 }}>
+        {children}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#FCEEEE' }}>
+          {barIcon}
+          <ILText role="label" color={RED} style={{ marginLeft: 10, fontSize: 15, flex: 1 }}>
+            {barLabel}
+          </ILText>
+          <MaterialIcons name="arrow-forward" size={20} color={RED} />
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function Badge({ icon, text, light = false }) {
+  return (
+    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: light ? '#FFFFFF' : RED, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+      <MaterialIcons name={icon} size={13} color={light ? RED : '#FFFFFF'} />
+      <ILText role="label" color={light ? TEAL : '#FFFFFF'} style={{ marginLeft: 5, fontSize: 10, letterSpacing: 0.4 }}>
+        {text}
+      </ILText>
+    </View>
+  );
+}
+
+/** Team post: picture on top (badge + play when it is a video), dark panel, Watch/Open/Read bar. */
+function TeamPostMomentCard({ moment, width, onPress }) {
+  const cardW = Math.max(280, width - 40);
+  const picH = Math.round(cardW * 0.43);
+  const picture = moment.imageUrl ? { uri: moment.imageUrl } : null;
+  return (
+    <MomentShell
+      onPress={onPress}
+      label={`${moment.eyebrow}: ${moment.title}`}
+      blobLeft
+      barIcon={<MaterialIcons name={moment.videoUrl ? 'ondemand-video' : moment.link ? 'open-in-new' : 'article'} size={18} color={RED} />}
+      barLabel={moment.barLabel || moment.cta}
+    >
+      {picture ? (
+        <View style={{ height: picH, overflow: 'hidden', backgroundColor: TEAL }}>
+          <Image source={picture} style={{ position: 'absolute', left: 0, top: 0, width: '100%', height: '100%' }} resizeMode="cover" />
+          <View style={{ position: 'absolute', left: 12, top: 12 }}>
+            <Badge icon="campaign" text="FROM YOUR IRON LADY TEAM" light />
+          </View>
+          {moment.videoUrl ? (
+            <View style={{ position: 'absolute', right: 12, bottom: 12, width: 46, height: 46, borderRadius: 23, backgroundColor: RED, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)' }}>
+              <MaterialIcons name="play-arrow" size={26} color="#FFFFFF" />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      <View style={{ backgroundColor: TEAL, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
+        {picture ? null : <Badge icon="campaign" text="FROM YOUR IRON LADY TEAM" light />}
+        {moment.postedLabel ? (
+          <ILText role="bodySm" color="rgba(255,255,255,0.7)" style={{ marginTop: picture ? 0 : 10, fontSize: 11 }}>
+            {moment.postedLabel}
+          </ILText>
+        ) : null}
+        <ILText role="title" color="#FFFFFF" numberOfLines={3} style={{ marginTop: 6, fontFamily: IL_FONTS.displayBold, fontSize: 21, lineHeight: 26 }}>
+          {moment.title}
+        </ILText>
+        {moment.body ? (
+          <ILText role="bodySm" color="rgba(255,255,255,0.85)" numberOfLines={2} style={{ marginTop: 6, fontSize: 12, lineHeight: 17 }}>
+            {moment.body}
+          </ILText>
+        ) : null}
+      </View>
+    </MomentShell>
+  );
+}
+
+/** Army event: big red date tile on the left, dark panel, Add to calendar bar. */
+function EventMomentCard({ moment, width, onPress }) {
+  const cardW = Math.max(280, width - 40);
+  const panelH = Math.round(cardW * 0.5);
+  const tile = moment.dateTile;
+  return (
+    <MomentShell
+      onPress={onPress}
+      label={`${moment.eyebrow}: ${moment.headTitle || moment.title}`}
+      barIcon={<MaterialIcons name="event" size={18} color={RED} />}
+      barLabel="Add to calendar"
+    >
+      <View style={{ flexDirection: 'row', height: panelH }}>
+        <View style={{ width: Math.round(cardW * 0.35), backgroundColor: RED, alignItems: 'center', justifyContent: 'center' }}>
+          {tile ? (
+            <>
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 12, letterSpacing: 2 }}>{tile.dow}</ILText>
+              <ILText role="title" color="#FFFFFF" style={{ fontFamily: IL_FONTS.displayBold, fontSize: 52, lineHeight: 58 }}>{tile.day}</ILText>
+              <ILText role="label" color="#FFFFFF" style={{ fontSize: 12, letterSpacing: 2 }}>{tile.monthYear}</ILText>
+              {tile.time ? (
+                <View style={{ marginTop: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                  <ILText role="label" color="#FFFFFF" style={{ fontSize: 12 }}>{tile.time}</ILText>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <MaterialIcons name="event" size={40} color="#FFFFFF" />
+          )}
+        </View>
+        <View style={{ flex: 1, backgroundColor: TEAL, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 12 }}>
+          <Badge icon="groups" text="IRON LADY ARMY" />
+          <ILText role="title" color="#FFFFFF" numberOfLines={2} style={{ marginTop: 10, fontFamily: IL_FONTS.displayBold, fontSize: 21, lineHeight: 25 }}>
+            {moment.headTitle || moment.title}
+          </ILText>
+          {moment.subTitle ? (
+            <ILText role="bodySm" color="rgba(255,255,255,0.85)" numberOfLines={2} style={{ marginTop: 6, fontSize: 12, lineHeight: 17 }}>
+              {moment.subTitle}
+            </ILText>
+          ) : null}
+          <View style={{ flex: 1 }} />
+          <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginBottom: 8 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="public" size={13} color="rgba(255,255,255,0.8)" />
+            <ILText role="bodySm" color="rgba(255,255,255,0.85)" numberOfLines={1} style={{ marginLeft: 5, fontSize: 11, flex: 1 }}>
+              {moment.metaLine}
+            </ILText>
+          </View>
+        </View>
+      </View>
+    </MomentShell>
+  );
+}
+
+/** Principle of the day: a dark quote card with the number behind it, Reflect bar. */
+function PrincipleMomentCard({ moment, onPress }) {
+  const n = String(moment.principleN || '').padStart(2, '0');
+  return (
+    <MomentShell
+      onPress={onPress}
+      label={`Principle ${n}: ${moment.quote || moment.title}`}
+      barIcon={<MaterialIcons name="edit" size={18} color={RED} />}
+      barLabel="Reflect in one line"
+    >
+      <View style={{ backgroundColor: TEAL, paddingHorizontal: 18, paddingTop: 18, paddingBottom: 20, overflow: 'hidden' }}>
+        <ILText
+          role="title"
+          color="rgba(255,255,255,0.07)"
+          style={{ position: 'absolute', right: 10, top: -34, fontFamily: IL_FONTS.displayBold, fontSize: 150, lineHeight: 160 }}
+        >
+          {n}
+        </ILText>
+        <Badge icon="star-border" text="TODAY’S LEADERSHIP IDEA" />
+        <ILText role="label" color="rgba(255,255,255,0.6)" style={{ marginTop: 14, fontSize: 12, letterSpacing: 1.5 }}>
+          {`PRINCIPLE ${n} OF 27`}
+        </ILText>
+        <ILText role="title" color="#FFFFFF" style={{ marginTop: 6, fontFamily: IL_FONTS.displayItalic, fontSize: 26, lineHeight: 32 }}>
+          {moment.quote ? `“${moment.quote}.”` : moment.title}
+        </ILText>
+        <View style={{ width: 40, height: 3, borderRadius: 2, backgroundColor: RED, marginTop: 14 }} />
+        <ILText role="bodySm" color="rgba(255,255,255,0.85)" style={{ marginTop: 12, fontSize: 13, lineHeight: 19 }}>
+          {moment.reflection || moment.body}
+        </ILText>
+      </View>
+    </MomentShell>
+  );
+}
+
 /**
  * Optional engagement between Today’s practice and Due this week — not tracked as a task.
  */
@@ -131,6 +312,11 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
   const { width } = useWindowDimensions();
   const cmsPosts = useCmsEngagePosts('lep', cmsBatch);
   const { nextOffline, featured } = useArmyEventCalendar();
+  // Long-press "Take a moment" to preview each kind in turn (for checking the designs with real
+  // content; only one kind shows on a normal day). Off again after the last kind.
+  const KINDS = [null, 'cms', 'army', 'listen', 'principle'];
+  const [forceIdx, setForceIdx] = useState(0);
+  const force = KINDS[forceIdx];
   const moment = useMemo(
     () =>
       resolveLepHomeMoment({
@@ -139,8 +325,9 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
         cmsPosts,
         nextOffline,
         featured,
+        force,
       }),
-    [todayIso, day1Iso, cmsPosts, nextOffline, featured]
+    [todayIso, day1Iso, cmsPosts, nextOffline, featured, force]
   );
 
   const onPrimary = () => {
@@ -162,6 +349,8 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
         nav.goWatch({ assetKey: moment.assetKey, title: moment.title, sub: moment.body });
         break;
       case 'principle':
+        nav.goPractice('lep', 'lep-principle', { principleN: moment.principleN });
+        break;
       default:
         nav.goEngage();
         break;
@@ -181,9 +370,22 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
   // principle of the day gets a dark quote card instead.
   return (
     <View style={{ marginTop: 18 }}>
-      <MomentHeader />
+      <Pressable onLongPress={() => setForceIdx((i) => (i + 1) % KINDS.length)} delayLongPress={600} pressFeedback={false} accessibilityRole="header">
+        <MomentHeader />
+      </Pressable>
+      {force ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 11 }}>
+          {`Preview: ${force === 'cms' ? 'team post' : force === 'army' ? 'Army event' : force === 'listen' ? 'podcast' : 'principle'} · long-press the heading for the next`}
+        </ILText>
+      ) : null}
       {moment.kind === 'listen' ? (
         <PodcastMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
+      ) : moment.kind === 'cms' ? (
+        <TeamPostMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
+      ) : moment.kind === 'army' ? (
+        <EventMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
+      ) : moment.kind === 'principle' ? (
+        <PrincipleMomentCard moment={moment} onPress={onPrimary} />
       ) : (
 
       <Pressable onPress={onPrimary} accessibilityRole="button" accessibilityLabel={`${moment.eyebrow}: ${moment.title}`} style={{ marginTop: 10 }}>
