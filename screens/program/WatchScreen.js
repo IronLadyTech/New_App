@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -49,13 +49,18 @@ export default function WatchScreen() {
     sub: params.sub,
   });
 
+  // "Up next": back to the top and the new video starts by itself (it changed the player at
+  // the top while she was scrolled down, and waited for a tap there).
+  const scrollRef = useRef(null);
   const openRelated = (assetKey) => {
     const card = lookupCard(assetKey);
+    scrollRef.current?.scrollTo?.({ y: 0, animated: true });
     navigateWatch(navigation, {
       assetKey,
       title: card?.title,
       sub: card?.sub,
       img: card?.img,
+      autoPlay: true,
     });
   };
 
@@ -76,6 +81,7 @@ export default function WatchScreen() {
         <GuestBackBar title={params.title || 'Watch'} sub={params.sub} onBack={() => navigation.goBack()} />
       </View>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: 20,
@@ -84,8 +90,10 @@ export default function WatchScreen() {
       >
         {uri ? (
           <PracticeVideo
+            key={uri}
             uri={uri}
             poster={poster}
+            autoPlay={Boolean(params.autoPlay)}
             height={220}
             trackKey={params.assetKey || params.taskId || params.practiceId || uri}
           />

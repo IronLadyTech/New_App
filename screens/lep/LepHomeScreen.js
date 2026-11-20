@@ -67,7 +67,8 @@ import {
   WhiteCard,
 } from './LepBits';
 import { useLepNav } from './useLepNav';
-import { PREWORK, RITUALS_WATCH } from './lepData';
+import { PODCASTS, PREWORK, RITUALS_WATCH } from './lepData';
+import { useDaysAway } from '../../utils/appAway';
 import { useEnrolledDailyPractice } from '../../hooks/useLepDailyPractice';
 import { useLepPracticeStreak } from '../../hooks/useLepPracticeStreak';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
@@ -569,9 +570,19 @@ function EnrolledHome({ cmsBatch }) {
     () => journeyNextSteps(profile, guideFlow, taskIsDone),
     [profile, guideFlow, taskIsDone]
   );
+  // Back after 2+ days away: the guide opens with one Iron Lady Speaks episode (a gentle way
+  // back in), different each day. Tapping the guide card plays it.
+  const daysAway = useDaysAway();
+  const welcomeBack = useMemo(() => {
+    if (daysAway < 2 || !PODCASTS.length) return null;
+    const dayIndex = Math.floor(Date.now() / 86400000);
+    const ep = PODCASTS[dayIndex % PODCASTS.length];
+    return ep ? { watch: { assetKey: ep.assetKey, title: ep.title, sub: ep.who }, title: ep.title, who: ep.who } : null;
+  }, [daysAway]);
   const guideContext = useMemo(() => {
     const practiceDoneToday = practice.filter((p) => p.done).length;
     return {
+      welcomeBack,
       lepPractice: {
         currentStreak: streak.currentStreak,
         ritualsDoneToday: streak.ritualsDoneToday,
@@ -631,6 +642,7 @@ function EnrolledHome({ cmsBatch }) {
         : null,
     };
   }, [
+    welcomeBack,
     streak,
     practice,
     cmsBatch,
@@ -662,9 +674,23 @@ function EnrolledHome({ cmsBatch }) {
         })),
     [dueWeek.items, taskIsDone, profile, guideFlow]
   );
+  const firstName = String(name || '').trim().split(/\s+/)[0] || '';
+  // The task she should pick up first when she comes back: one due, else her next journey task.
+  const welcomeBackTask = useMemo(() => {
+    if (!welcomeBack) return null;
+    const due = dueItemsWithDone.find((d) => !d.done && d.taskId);
+    if (due) return { id: due.taskId, title: due.title };
+    return journeyNext?.id ? { id: journeyNext.id, title: journeyNext.title } : null;
+  }, [welcomeBack, dueItemsWithDone, journeyNext]);
   const whisperFallback = useMemo(
     () =>
-      enrolledWhisperFallback({
+      // Back after 2+ days: tasks first. An open task leads ("welcome back, pick up …"); only
+      // when nothing is open does the guide suggest a podcast to ease back in.
+      welcomeBack && !welcomeBackTask
+        ? `${firstName || 'Welcome'}, welcome back. Ease in with a podcast: ${welcomeBack.title} with ${welcomeBack.who}, on Iron Lady Speaks.`
+        : welcomeBack && welcomeBackTask
+          ? `${firstName || 'Welcome'}, welcome back. Pick up ${welcomeBackTask.title} first — it keeps you with your cohort.`
+          : enrolledWhisperFallback({
         name,
         nextSession,
         nextTaskTitle: journeyNext?.title || '',
@@ -676,7 +702,7 @@ function EnrolledHome({ cmsBatch }) {
         practiceTotalToday: practice.length,
         currentStreak: streak.currentStreak,
       }),
-    [name, nextSession, journeyNext, dueItemsWithDone, practice, ritualsUnlocked, streak.currentStreak]
+    [welcomeBack, welcomeBackTask, firstName, name, nextSession, journeyNext, dueItemsWithDone, practice, ritualsUnlocked, streak.currentStreak]
   );
   const savedReady = demo.getSubmission('lep', 'lep-get-ready')?.data?.checked;
   const readyItems = useMemo(() => mergeGetReadyItems(savedReady), [savedReady]);

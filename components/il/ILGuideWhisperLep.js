@@ -97,6 +97,10 @@ function resolveWhisperOpenTarget(guideContext, { message = '', apiTaskId = null
     openDues[0] ||
     null;
 
+  // Back after days away: the card plays the suggested podcast episode.
+  if (guideContext?.welcomeBack?.watch && /welcome back/i.test(msg) && /podcast/i.test(msg)) {
+    return { kind: 'watch', watch: guideContext.welcomeBack.watch, label: 'Play episode →' };
+  }
   if (matchedDue?.taskId) {
     return { kind: 'task', id: matchedDue.taskId, label: 'Open next task →' };
   }

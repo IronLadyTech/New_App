@@ -26,9 +26,11 @@ function fit16x9(maxW, maxH) {
   return { width: maxW, height: maxW * (9 / 16) };
 }
 
-function NativeVideo({ source, width, height, trackKey, onStart, onProgress, allowsFullscreen = false }) {
+function NativeVideo({ source, width, height, trackKey, onStart, onProgress, allowsFullscreen = false, autoPlay = false }) {
   const player = useVideoPlayer(source, (p) => {
     p.loop = false;
+    // Picked from "Up next": it starts by itself.
+    if (autoPlay) p.play();
   });
   useVideoProgressTracking(player, trackKey);
   // Furthest point reached, for "watch before you mark it" (timeUpdate interval set by the hook).
@@ -142,6 +144,7 @@ function VideoFrame({
   onProgress,
   allowsNativeFullscreen = false,
   allowsYoutubeFullscreen = false,
+  autoPlay = false,
 }) {
   const youtubeId = youtubeIdFromUri(uri);
   const showPoster = !!poster;
@@ -192,6 +195,7 @@ function VideoFrame({
             onStart={onPlaybackStart}
             onProgress={onProgress}
             allowsFullscreen={allowsNativeFullscreen}
+            autoPlay={autoPlay}
           />
         )
       ) : null}
@@ -227,9 +231,10 @@ function FullscreenButton({ onPress, style }) {
  * trackKey names the video on the CX dashboard (task / practice / asset id); falls back to the uri.
  * onStart() when playback begins; onProgress(0–1) as it plays — both optional.
  */
-export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, onProgress }) {
+export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, onProgress, autoPlay = false }) {
   const [landscape, setLandscape] = useState(false);
-  const [started, setStarted] = useState(!youtubeIdFromUri(uri));
+  // autoPlay: no tap on the poster needed (a video picked from "Up next").
+  const [started, setStarted] = useState(autoPlay || !youtubeIdFromUri(uri));
   const [stage, setStage] = useState({ width: 0, height: 0 });
   const insets = useSafeAreaInsets();
   useVideoLandscape(landscape);
@@ -262,6 +267,7 @@ export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, on
             trackKey={trackKey}
             onPlaybackStart={onStart}
             onProgress={onProgress}
+            autoPlay={autoPlay}
           />
           <FullscreenButton
             onPress={() => {
