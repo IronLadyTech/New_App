@@ -88,18 +88,24 @@ function resolveWhisperOpenTarget(guideContext, { message = '', apiTaskId = null
   const openDues = dues.filter((d) => d && !d.done);
   const msg = normMatchText(message);
 
-  const matchedDue =
-    openDues.find((d) => {
-      const title = normMatchText(d.title);
-      return title && (msg.includes(title) || title.includes(msg.slice(0, 24)));
-    }) ||
-    openDues.find((d) => d.urgent) ||
-    openDues[0] ||
-    null;
+  // The button opens what the message talks about. It used to fall back to the first due item
+  // (often a live session), so "today's next step: Feedback — Guiding Stars" showed
+  // "Open schedule". Only an item named in the message is a match.
+  const mentions = (title) => {
+    const t = normMatchText(title);
+    return Boolean(t) && msg.includes(t);
+  };
+  const matchedDue = openDues.find((d) => mentions(d.title)) || null;
+  const namedPractice = guideContext?.openPractice && mentions(guideContext.openPractice.title) ? guideContext.openPractice : null;
 
   // Back after days away: the card plays the suggested podcast episode.
   if (guideContext?.welcomeBack?.watch && /welcome back/i.test(msg) && /podcast/i.test(msg)) {
     return { kind: 'watch', watch: guideContext.welcomeBack.watch, label: 'Play episode →' };
+  }
+  if (namedPractice && (namedPractice.taskId || namedPractice.practiceId) && !matchedDue) {
+    return namedPractice.taskId
+      ? { kind: 'task', id: namedPractice.taskId, label: 'Open this task →' }
+      : { kind: 'practice', item: namedPractice, label: 'Start practice →' };
   }
   if (matchedDue?.taskId) {
     return { kind: 'task', id: matchedDue.taskId, label: 'Open next task →' };
