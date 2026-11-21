@@ -88,6 +88,31 @@ function sessionCard(event) {
  * LEP Sessions tab: only this learner's batch calendar rows.
  * Events with no date or title are skipped. Global events are not mixed in.
  */
+/** Minutes since midnight for "19:00", "9:00", "9:00 AM", "7 PM"; null when unreadable. */
+function clockMinutes(text) {
+  const m = /^\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*$/i.exec(String(text || ''));
+  if (!m) return null;
+  let h = Number(m[1]) % 24;
+  const min = Number(m[2] || 0);
+  const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+/** Minutes since midnight in India now. */
+function istMinutesNow(now) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(now);
+  const [h, m] = parts.split(':').map(Number);
+  return (h % 24) * 60 + (m || 0);
+}
+
+/** A session today is over once its end time has passed (it stayed "next" until midnight). */
+function endedToday(event, now) {
+  const end = clockMinutes(event.endTime);
+  return end != null && istMinutesNow(now) > end;
+}
+
 export function splitBatchSessions(events, { batchId, batchName, now = new Date() } = {}) {
   const id = batchId && batchId !== 'default' ? String(batchId) : '';
   const name = batchName && batchName !== 'default' ? String(batchName).trim() : '';
@@ -103,7 +128,8 @@ export function splitBatchSessions(events, { batchId, batchName, now = new Date(
   const done = [];
   mine.forEach((event) => {
     const card = sessionCard(event);
-    if (String(event.date).slice(0, 10) >= today) upcoming.push(card);
+    const day = String(event.date).slice(0, 10);
+    if (day > today || (day === today && !endedToday(event, now))) upcoming.push(card);
     else done.push(card);
   });
 

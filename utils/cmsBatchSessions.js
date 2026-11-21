@@ -130,6 +130,11 @@ export function nextRawCmsSession(batch, now = new Date(), opts = {}) {
   return (
     resolveCmsBatchSessions(batch, opts)
       .filter((s) => s?.date && s?.title && String(s.date).slice(0, 10) >= today)
+      // Today's session that has already ended is not "next" any more.
+      .filter((s) => {
+        const end = Date.parse(s?.endAt || '');
+        return !Number.isFinite(end) || end > now.getTime();
+      })
       .filter((s) => !s.kind || s.kind === 'core')
       .filter((s) => !codes || codes.has(s.code))
       .sort((a, b) =>

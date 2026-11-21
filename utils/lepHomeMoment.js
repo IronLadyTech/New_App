@@ -1,7 +1,7 @@
 import { addCalendarDays } from './lepBatchSchedule';
 import { principleNumberForDay } from './lepDailyPractice';
 import { LEP_PRINCIPLE_TITLES } from '../constants/lepPrincipleWatch';
-import { PODCASTS } from '../screens/lep/lepData';
+import { CASES_ENR, PODCASTS } from '../screens/lep/lepData';
 import { videoLength } from '../constants/videoDurations';
 
 const CMS_FRESH_DAYS = 7;
@@ -84,6 +84,15 @@ function pickEngageListen(todayIso) {
         assetKey: ep.assetKey,
       }
     : null;
+}
+
+/** A C-suite story, a different one each time it comes round (every third day). */
+function pickCsuiteStory(todayIso) {
+  if (!CASES_ENR.length) return null;
+  const t = parseLocalIso(todayIso);
+  const dayIndex = t ? Math.floor(t.getTime() / 86400000) : 0;
+  const c = CASES_ENR[Math.floor(dayIndex / 3) % CASES_ENR.length];
+  return c || null;
 }
 
 /** Today's principle number (1–27), the same one Home's card shows. */
@@ -172,10 +181,32 @@ export function resolveLepHomeMoment({ todayIso, day1Iso, cmsPosts = [], nextOff
     };
   }
 
-  // Otherwise the card changes every day: a podcast one day, a leadership principle the next.
+  // Otherwise the card changes every day, in turn: a podcast, a leadership principle, a C-suite
+  // story (C-suite was never offered before).
   const t = parseLocalIso(todayIso);
-  const podcastDay = force === 'listen' || (force !== 'principle' && (!t || Math.floor(t.getTime() / 86400000) % 2 === 0));
-  const listen = podcastDay ? pickEngageListen(todayIso) : null;
+  const turn = force === 'listen' ? 0 : force === 'principle' ? 1 : force === 'csuite' ? 2 : t ? Math.floor(t.getTime() / 86400000) % 3 : 0;
+  if (turn === 2) {
+    const c = pickCsuiteStory(todayIso);
+    if (c) {
+      return {
+        kind: 'csuite',
+        eyebrow: 'Executive stories',
+        badgeText: 'EXECUTIVE STORIES',
+        badgeIcon: 'work-outline',
+        barText: 'Watch Now',
+        title: c.title,
+        tagline: [c.fn, c.tag].filter(Boolean).join(' · '),
+        who: c.who,
+        episode: 'C-Suite League',
+        length: videoLength(c.assetKey, ''),
+        coverFocus: 'left',
+        img: c.img,
+        assetKey: c.assetKey,
+        cta: 'Watch story',
+      };
+    }
+  }
+  const listen = turn === 0 ? pickEngageListen(todayIso) : null;
   if (listen) {
     return {
       kind: 'listen',

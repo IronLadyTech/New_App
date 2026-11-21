@@ -99,9 +99,9 @@ function PodcastMomentCard({ moment, width, onPress }) {
               <WaveMark color="#FFFFFF" width={2} gap={3} heights={[10, 22, 14, 30, 18, 26, 12, 20]} />
             </View>
             <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', backgroundColor: RED, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
-              <MaterialIcons name="headphones" size={13} color="#FFFFFF" />
+              <MaterialIcons name={moment.badgeIcon || 'headphones'} size={13} color="#FFFFFF" />
               <ILText role="label" color="#FFFFFF" style={{ marginLeft: 5, fontSize: 10, letterSpacing: 0.4 }}>
-                IRON LADY SPEAKS
+                {moment.badgeText || 'IRON LADY SPEAKS'}
               </ILText>
             </View>
             <ILText role="title" color="#FFFFFF" numberOfLines={2} style={{ marginTop: 10, fontFamily: IL_FONTS.displayBold, fontSize: 21, lineHeight: 25, paddingRight: 54 }}>
@@ -129,7 +129,7 @@ function PodcastMomentCard({ moment, width, onPress }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 14, backgroundColor: '#FCEEEE' }}>
           <WaveMark width={3} gap={2} heights={[8, 14, 10]} />
           <ILText role="label" color={RED} style={{ marginLeft: 10, fontSize: 15, flex: 1 }}>
-            Listen Now
+            {moment.barText || 'Listen Now'}
           </ILText>
           <MaterialIcons name="arrow-forward" size={20} color={RED} />
         </View>
@@ -314,7 +314,7 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
   const { nextOffline, featured } = useArmyEventCalendar();
   // Long-press "Take a moment" to preview each kind in turn (for checking the designs with real
   // content; only one kind shows on a normal day). Off again after the last kind.
-  const KINDS = [null, 'cms', 'army', 'listen', 'principle'];
+  const KINDS = [null, 'cms', 'army', 'listen', 'principle', 'csuite'];
   const [forceIdx, setForceIdx] = useState(0);
   const force = KINDS[forceIdx];
   const moment = useMemo(
@@ -346,7 +346,8 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
         break;
       }
       case 'listen':
-        nav.goWatch({ assetKey: moment.assetKey, title: moment.title, sub: moment.body });
+      case 'csuite':
+        nav.goWatch({ assetKey: moment.assetKey, title: moment.title, sub: moment.who || moment.body });
         break;
       case 'principle':
         nav.goPractice('lep', 'lep-principle', { principleN: moment.principleN });
@@ -375,10 +376,10 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
       </Pressable>
       {force ? (
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 11 }}>
-          {`Preview: ${force === 'cms' ? 'team post' : force === 'army' ? 'Army event' : force === 'listen' ? 'podcast' : 'principle'} · long-press the heading for the next`}
+          {`Preview: ${force === 'cms' ? 'team post' : force === 'army' ? 'Army event' : force === 'listen' ? 'podcast' : force === 'csuite' ? 'C-suite story' : 'principle'} · long-press the heading for the next`}
         </ILText>
       ) : null}
-      {moment.kind === 'listen' ? (
+      {moment.kind === 'listen' || moment.kind === 'csuite' ? (
         <PodcastMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
       ) : moment.kind === 'cms' ? (
         <TeamPostMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
