@@ -1,6 +1,15 @@
 import { PREWORK_THUMBS } from '../../constants/preworkThumbs';
 import { videoLength } from '../../constants/videoDurations';
-import { LEP_PRINCIPLES } from '../../constants/lepPrincipleWatch';
+import { LEP_PRINCIPLES, lepPrincipleWatch } from '../../constants/lepPrincipleWatch';
+
+function principleLearnMeta(principleN) {
+  const w = lepPrincipleWatch(Number(principleN));
+  if (!w) return 'Watch and revise';
+  if (w.assetKey === 'lep-principles-video' || w.assetKey === 'lep-principles-video-preview') {
+    return 'In the 27 Principles recording';
+  }
+  return 'LEP session video';
+}
 
 export const FACE = require('../../assets/il/suvarna-face.jpg');
 export const HERO = require('../../assets/il/suvarna-hero.jpg');
@@ -188,9 +197,9 @@ export const LEARN_CHIPS_ENR = ['For you', 'Principles', 'Case studies', 'Events
 
 export const PRINCIPLES_OPEN = LEP_PRINCIPLES.slice(0, 4).map((p) => ({
   ...p,
-  min: 'In the 27 Principles recording',
+  min: principleLearnMeta(p.n),
   state: 'Watch',
-  practiceId: 'lep-principles-video',
+  practiceId: 'lep-principle',
 }));
 
 export const PRINCIPLES_LOCKED = LEP_PRINCIPLES.slice(4, 8).map((p) => ({
@@ -306,19 +315,19 @@ export const LEARN_WHISPER_ENR = 'Tell me your city and I’ll show you events n
 
 export const PRINCIPLES_FOUND_ENR = LEP_PRINCIPLES.slice(0, 9).map((p) => ({
   ...p,
-  min: 'Watch and revise',
+  min: principleLearnMeta(p.n),
   state: 'Watch',
 }));
 
 export const PRINCIPLES_INFLUENCE_ENR = LEP_PRINCIPLES.slice(9, 18).map((p) => ({
   ...p,
-  min: 'Watch and revise',
+  min: principleLearnMeta(p.n),
   state: 'Watch',
 }));
 
 export const PRINCIPLES_COMMAND_ENR = LEP_PRINCIPLES.slice(18, 27).map((p) => ({
   ...p,
-  min: 'Watch and revise',
+  min: principleLearnMeta(p.n),
   state: 'Watch',
 }));
 

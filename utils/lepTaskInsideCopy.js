@@ -6,7 +6,10 @@ export { lepTaskPurpose };
 /** Heading above embedded task video (checklist / read-watch tasks). */
 export function lepTaskWatchLabel(taskId) {
   const id = String(taskId || '');
+  if (id === 'lep-day3-max-value') return 'Watch · Getting maximum value from LEP';
   if (id === 'lep-day3-brand-roadmap') return 'Watch · Differentiated Brand & 0.5% League Roadmap';
+  if (id === 'lep-resume-template-study') return 'Watch · Resume template session (Rajesh)';
+  if (id === 'lep-resume-bootcamp') return 'Watch · Jobseekers Bootcamp';
   if (id === 'lep-day3-27-principles') return 'Watch · 27 Principles session';
   if (id === 'lep-day3-5-rituals') return 'Watch · 5 Daily Rituals';
   if (id === 'lep-day3-mentors') return 'Watch · Finding mentors';
@@ -41,8 +44,22 @@ export function lepTaskInsideSteps(task) {
   if (id === 'lep-weekly-1') {
     return [
       'After case studies or community stories, note what resonates — breakthrough and inspiration.',
-      'Type your answer in the box (a few lines is enough).',
+      'Fill all three fields — labels stay visible while you type.',
       'Tap Submit answer — it saves to your Week 1 engagement check-in.',
+    ];
+  }
+  if (id === 'lep-day1-promises') {
+    return [
+      'Read the Iron Lady and participant promises in the form.',
+      'Check your name, phone, and email; upload a photo of your signature.',
+      'Tick “I agree”, then tap Submit agreement.',
+    ];
+  }
+  if (id === 'lep-day2-assignment') {
+    return [
+      'Read all eight assignments listed on this screen.',
+      'Complete each item in your notebook or document.',
+      'Tap Choose file and upload your completed work.',
     ];
   }
   if (id === 'lep-prep-nsdc') {

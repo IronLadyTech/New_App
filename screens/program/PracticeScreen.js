@@ -137,14 +137,24 @@ export default function PracticeScreen() {
     practiceId === 'lep-principle' && principleN
       ? `Revise Principle ${String(principleN).padStart(2, '0')}${LEP_PRINCIPLE_TITLES[principleN] ? ` · ${LEP_PRINCIPLE_TITLES[principleN]}` : ''}`
       : p.title;
+  const dedicatedPrincipleFilm =
+    principleWatch?.assetKey &&
+    principleWatch.assetKey !== 'lep-principles-video' &&
+    principleWatch.assetKey !== 'lep-principles-video-preview';
   const displaySteps =
     practiceId === 'lep-principle' && principleN
       ? principleWatch
-        ? [
-            `Watch the Principle ${principleN} segment above (or scrub to it in the full recording).`,
-            'Say the principle in your own words.',
-            'Name one place you will use it today.',
-          ]
+        ? dedicatedPrincipleFilm
+          ? [
+              'Watch the LEP session above — it matches this principle.',
+              'Say the principle in your own words.',
+              'Name one place you will use it today.',
+            ]
+          : [
+              `Watch the Principle ${principleN} segment above (or scrub to it in the full recording).`,
+              'Say the principle in your own words.',
+              'Name one place you will use it today.',
+            ]
         : [
             `Open the 27 Principles in Learn and find Principle ${principleN}.`,
             'Read it once, then say it in your own words.',

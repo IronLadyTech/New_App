@@ -55,6 +55,7 @@ import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
 import CourseCurriculum from './CourseCurriculum';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { openMeetingUrl } from '../../utils/openMeetingUrl';
 import { useNavigation } from '@react-navigation/native';
 import { useCmsSessionRecordings } from '../../hooks/useCmsLearnerItems';
 import { openLink } from '../../utils/openLink';
@@ -319,7 +320,7 @@ function SessionsBody({ cmsBatch, enrolled = false, alumniGraduate = false, onEn
     const open = () => {
       if (s.linkUrl) {
         recordSessionJoin(s.code);
-        Linking.openURL(s.linkUrl).catch(() => {});
+        openMeetingUrl(s.linkUrl);
       }
     };
     if (compact) {

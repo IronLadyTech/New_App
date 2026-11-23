@@ -54,6 +54,7 @@ import {
 import { resolveCmsBatchSessions } from '../../utils/cmsBatchSessions';
 import { lepSessionCalendarUrl } from '../../utils/registeredHomeData';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { openMeetingUrl, resolveMeetingJoinUrl } from '../../utils/openMeetingUrl';
 import { openLink } from '../../utils/openLink';
 import { useArmyEventSelection } from '../../hooks/useArmyEventSelection';
 import {
@@ -97,11 +98,13 @@ function scheduleItemAllowed(item, enrolled, registeredCodes) {
 
 function ScheduleRow({ item, nav, alumniArchive = false, recordings = {}, navigation }) {
   const openJoin = () => {
-    if (item.joinLink) {
+    const joinTarget = resolveMeetingJoinUrl(item.joinLink);
+    if (joinTarget) {
       recordSessionJoin(item.code);
-      Linking.openURL(item.joinLink).catch(() => {});
+      openMeetingUrl(joinTarget);
+      return;
     }
-    else if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
+    if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
     else nav.goCheckin();
   };
   const openCalendar = () => {

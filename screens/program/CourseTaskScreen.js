@@ -1,7 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { learnerBhagText } from '../../utils/programAccess';
 import { practiceKey } from '../../constants/practice';
-import { Alert, Image, Platform, ScrollView, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TextInput,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
@@ -36,6 +45,9 @@ import {
   isTemplateComplete,
   TEMPLATE_IDS,
 } from '../../constants/formTemplates';
+import { uploadFile } from '../../services/storage';
+import { updateUserProfile } from '../../services/firestore';
+import { saveWelcomeProfileFields } from '../../services/functions';
 import PracticeVideo from '../../components/program/PracticeVideo';
 import { getVideoPoster } from '../../constants/preworkThumbs';
 import { resolveTaskVideoUrl } from '../../utils/resolveVideoUrl';
@@ -68,6 +80,8 @@ import {
 import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose, lepTaskWatchLabel } from '../../utils/lepTaskInsideCopy';
 import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipCard';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
+import LepAssignmentBriefCard from '../../components/program/LepAssignmentBriefCard';
+import { lepAssignmentBrief } from '../../constants/lepAssignmentCopy';
 import {
   ALUMNI_PRACTICE_BANNER,
   alumniFlipGainFallback,
@@ -471,7 +485,7 @@ export default function CourseTaskScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
   const nav = useLepNav();
   const demo = useCourseDemo();
-  const { profile, user } = useAuth();
+  const { profile, user, patchProfile } = useAuth();
   const { getTaskSubmission, submitTask } = usePrograms();
   const programId = route.params?.programId || PROGRAMS.LEP;
   const taskId = route.params?.taskId;
@@ -482,6 +496,8 @@ export default function CourseTaskScreen({ route, navigation }) {
     programId === PROGRAMS.LEP && resolveLepEnrolledCohortPhase(profile, day1Iso) === 'alumni';
   const alumniPractice = route.params?.alumniPractice === true || cohortAlumni;
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
+  const scrollRef = useRef(null);
+  const [keyboardPad, setKeyboardPad] = useState(0);
   const task = courseTask(programId, taskId);
   const ritualsTaskLocked =
     programId === PROGRAMS.LEP &&
@@ -575,6 +591,24 @@ export default function CourseTaskScreen({ route, navigation }) {
           purpose: lepTaskPurpose(taskId),
         }
       : null;
+  const lepAssignment = programId === PROGRAMS.LEP ? lepAssignmentBrief(taskId) : null;
+
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (e) => {
+      const h = e?.endCoordinates?.height || 0;
+      setKeyboardPad(Math.max(0, h - Math.max(insets.bottom, 0)));
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    };
+    const onHide = () => setKeyboardPad(0);
+    const show = Keyboard.addListener(showEvt, onShow);
+    const hide = Keyboard.addListener(hideEvt, onHide);
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [insets.bottom]);
 
   useEffect(() => {
     let mounted = true;
@@ -622,6 +656,27 @@ export default function CourseTaskScreen({ route, navigation }) {
           learnerBhagText(profile) || demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || ''
         ).trim();
         if (bhag && !blank.goal) blank.goal = bhag;
+      }
+      if (task?.templateId === TEMPLATE_IDS.PROMISES_AGREEMENT) {
+        const name = String(profile?.displayName || profile?.name || '').trim();
+        const phone = String(profile?.phoneNumber || profile?.phone || '').trim();
+        const email = String(profile?.email || user?.email || '').trim();
+        if (name && !blank.fullName) blank.fullName = name;
+        if (phone && !blank.contactNo) blank.contactNo = phone;
+        if (email && !blank.email) blank.email = email;
+        const linkedin = String(
+          profile?.linkedinUrl || profile?.linkedin || profile?.zohoLead?.LinkedIn || ''
+        ).trim();
+        const salary = String(profile?.salaryRange || profile?.zohoLead?.Annual_Income || '').trim();
+        if (linkedin && !blank.linkedinUrl) blank.linkedinUrl = linkedin;
+        if (salary && !blank.salaryRange) blank.salaryRange = salary;
+        if (!blank.agreementDate) {
+          blank.agreementDate = new Date().toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          });
+        }
       }
       setForm(blank);
       setSubmittedAt(null);
@@ -795,10 +850,50 @@ export default function CourseTaskScreen({ route, navigation }) {
         jobs.current.clear(); // submitted: keep the files
         uploaded = { ...list[list.length - 1], batch: list };
       }
+      let formPayload = form;
+      if (
+        task?.templateId === TEMPLATE_IDS.PROMISES_AGREEMENT &&
+        form?.signatureUri &&
+        !form?.signatureUrl &&
+        canUpload &&
+        user?.uid &&
+        user.uid !== 'preview'
+      ) {
+        const signatureUrl = await uploadFile(
+          `lep/${user.uid}/${taskId}/signature.jpg`,
+          form.signatureUri,
+          'image/jpeg'
+        );
+        formPayload = { ...form, signatureUrl };
+        setForm(formPayload);
+      }
+      if (task?.templateId === TEMPLATE_IDS.PROMISES_AGREEMENT && formPayload) {
+        const profilePatch = {};
+        const fullName = String(formPayload.fullName || '').trim();
+        if (fullName) {
+          profilePatch.displayName = fullName;
+          profilePatch.name = fullName;
+        }
+        const linkedinUrl = String(formPayload.linkedinUrl || '').trim();
+        if (linkedinUrl) profilePatch.linkedinUrl = linkedinUrl;
+        const salaryRange = String(formPayload.salaryRange || '').trim();
+        if (salaryRange) profilePatch.salaryRange = salaryRange;
+        if (Object.keys(profilePatch).length) {
+          patchProfile(profilePatch);
+          if (user?.uid && user.uid !== 'preview') {
+            updateUserProfile(user.uid, profilePatch).catch(() => {});
+            const zohoFields = {};
+            if (fullName) zohoFields.displayName = fullName;
+            if (linkedinUrl) zohoFields.linkedinUrl = linkedinUrl;
+            if (salaryRange) zohoFields.salaryRange = salaryRange;
+            if (Object.keys(zohoFields).length) saveWelcomeProfileFields(zohoFields).catch(() => {});
+          }
+        }
+      }
       const saving = submitTask(
         programId,
         task,
-        lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded })
+        lmsFieldsForJourneyTask(task, { text, link, form: formPayload, checked, uploaded })
       );
       // Firestore shows the write on this phone at once and keeps it until the server has it:
       // don't hold her on "Saving…" for the server's ack — on weak phones and networks that was
@@ -952,26 +1047,33 @@ export default function CourseTaskScreen({ route, navigation }) {
   return (
     <Page>
       <StatusBar style="dark" />
-      <View style={{ paddingTop: Math.max(insets.top, 8) }}>
-        <GuestBackBar
-          title={task.title}
-          sub={
-            alumniPractice
-              ? alumniTaskSubtitle(task)
-              : `${COURSE_LABEL[programId]} · ${task.kind}${task.week ? ` · ${task.week}` : ''}`
-          }
-          onBack={() => navigation.goBack()}
-        />
-      </View>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
-        }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(insets.top, 8) : 0}
       >
+        <View style={{ paddingTop: Math.max(insets.top, 8) }}>
+          <GuestBackBar
+            title={task.title}
+            sub={
+              alumniPractice
+                ? alumniTaskSubtitle(task)
+                : `${COURSE_LABEL[programId]} · ${task.kind}${task.week ? ` · ${task.week}` : ''}`
+            }
+            onBack={() => navigation.goBack()}
+          />
+        </View>
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8) + keyboardPad + 24,
+          }}
+        >
         <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 8, fontSize: 10 }]}>
           {alumniPractice ? 'Alumni monthly practice' : task.kind}
         </ILText>
@@ -1041,6 +1143,10 @@ export default function CourseTaskScreen({ route, navigation }) {
               ),
             }}
           />
+        ) : null}
+
+        {lepAssignment ? (
+          <LepAssignmentBriefCard title={lepAssignment.title} items={lepAssignment.items} />
         ) : null}
 
         <TaskFiles task={taskForFiles} skipReadingDocument={isErrcTask} />
@@ -1387,6 +1493,7 @@ export default function CourseTaskScreen({ route, navigation }) {
           ) : null}
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </Page>
   );
 }

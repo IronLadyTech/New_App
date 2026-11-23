@@ -18,6 +18,8 @@ export const TEMPLATE_IDS = {
   KEY_RELATIONSHIPS: 'key-relationships',
   PURPOSE_PEG: 'purpose-peg',
   LEAGUE_ROADMAP: 'league-roadmap',
+  WEEK1_ENGAGEMENT: 'week1-engagement',
+  PROMISES_AGREEMENT: 'promises-agreement',
 };
 
 export const CODESEF_ROW_COUNT = 6;
@@ -100,14 +102,44 @@ export function isAgameBeliefsComplete(form) {
   );
 }
 
+export function initialPromisesAgreementForm() {
+  return {
+    fullName: '',
+    contactNo: '',
+    email: '',
+    linkedinUrl: '',
+    salaryRange: '',
+    agreementDate: '',
+    signatureUri: '',
+    signatureFileName: '',
+    signatureUrl: '',
+    agreed: false,
+  };
+}
+
+export function isPromisesAgreementComplete(form) {
+  if (!form) return false;
+  const filled = (v) => !!(v || '').trim();
+  return (
+    filled(form.fullName) &&
+    filled(form.contactNo) &&
+    filled(form.email) &&
+    filled(form.agreementDate) &&
+    !!form.agreed &&
+    (filled(form.signatureUri) || filled(form.signatureUrl))
+  );
+}
+
 export function initialFormForTemplate(templateId) {
   if (templateId === TEMPLATE_IDS.CODESEF) return initialCodesefForm();
   if (templateId === TEMPLATE_IDS.AGAME_BELIEFS) return initialAgameBeliefsForm();
+  if (templateId === TEMPLATE_IDS.PROMISES_AGREEMENT) return initialPromisesAgreementForm();
   return initialLepForm(templateId);
 }
 
 export function isTemplateComplete(templateId, form) {
   if (templateId === TEMPLATE_IDS.CODESEF) return isCodesefComplete(form);
   if (templateId === TEMPLATE_IDS.AGAME_BELIEFS) return isAgameBeliefsComplete(form);
+  if (templateId === TEMPLATE_IDS.PROMISES_AGREEMENT) return isPromisesAgreementComplete(form);
   return isLepFormComplete(templateId, form);
 }

@@ -78,6 +78,23 @@ export function lepPrincipleWatch(principleN) {
     };
   }
 
+  const dedicatedKey = {
+    3: 'lep:brand-roadmap',
+    5: 'lep:mentors-yt',
+    9: 'lep:differentiated-brand',
+    24: 'lep:3t-suvarna',
+  }[n];
+  if (dedicatedKey && LESSON_VIDEOS[dedicatedKey]) {
+    return {
+      principleN: n,
+      title,
+      uri: LESSON_VIDEOS[dedicatedKey],
+      assetKey: dedicatedKey,
+      thumb: PREWORK_THUMBS[dedicatedKey] || PREWORK_THUMBS['lep-brand-roadmap'] || PREWORK_THUMBS['lep-principles-video'],
+      practiceId: 'lep-principle',
+    };
+  }
+
   return {
     principleN: n,
     title,

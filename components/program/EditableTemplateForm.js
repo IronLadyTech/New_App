@@ -10,6 +10,7 @@ import AgameBeliefsForm from './AgameBeliefsForm';
 import CodesefForm from './CodesefForm';
 import ErrcForm from './ErrcForm';
 import GenericLepForm from './GenericLepForm';
+import PromisesAgreementForm from './PromisesAgreementForm';
 
 const GENERIC_FIELDS = ['What you will keep', 'What you will change', 'Your next step'];
 
@@ -26,6 +27,9 @@ export default function EditableTemplateForm({ templateId, form, setForm }) {
   }
   if (templateId === TEMPLATE_IDS.ERRC) {
     return <ErrcForm form={form} setForm={setForm} />;
+  }
+  if (templateId === TEMPLATE_IDS.PROMISES_AGREEMENT) {
+    return <PromisesAgreementForm form={form} setForm={setForm} />;
   }
 
   const def = getFormDefinition(templateId);

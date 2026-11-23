@@ -1,6 +1,7 @@
 import { splitBatchSessions } from './eventVisibility';
 import { buildLepBatchSessions, mergeCustomSessions } from './lepBatchSchedule';
 import { groupJoinLink } from './batchGroups';
+import { resolveMeetingJoinUrl } from './openMeetingUrl';
 
 function sessionAsCalendarEvent(session, batch) {
   if (!session?.date || !session?.title) return null;
@@ -12,8 +13,8 @@ function sessionAsCalendarEvent(session, batch) {
     endTime: session.endTime || '',
     title: session.title,
     description: detail,
-    linkUrl: session.joinLink || '',
-    meetingUrl: session.joinLink || '',
+    linkUrl: resolveMeetingJoinUrl(session.joinLink || ''),
+    meetingUrl: resolveMeetingJoinUrl(session.joinLink || ''),
     batchId: batch?.id || '',
     batchName: batch?.name || '',
     code: session.code || '',
@@ -80,7 +81,7 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
       title: cleanSessionTitle(overrideTitle ? cms.title : row.title),
       startTime: overrideTime ? cms.startTime : row.startTime,
       endTime: overrideEnd ? cms.endTime : row.endTime,
-      joinLink: String(cms?.joinLink || row.joinLink || '').trim(),
+      joinLink: resolveMeetingJoinUrl(String(cms?.joinLink || row.joinLink || '').trim()),
       ...(cms?.custom ? { custom: true, date: cms.date } : {}),
       ...(cms?.cancelled ? { cancelled: true } : {}),
     };
@@ -91,7 +92,7 @@ export function resolveCmsBatchSessions(batch, { day1Iso = '' } = {}) {
   if (!batch?.myGroupId) return merged;
   return merged.map((s) => ({
     ...s,
-    joinLink: groupJoinLink(batch, batch.myGroupId, s.code) || s.joinLink,
+    joinLink: resolveMeetingJoinUrl(groupJoinLink(batch, batch.myGroupId, s.code) || s.joinLink),
     groupName: batch.myGroupName || '',
   }));
 }

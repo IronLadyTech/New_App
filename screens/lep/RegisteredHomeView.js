@@ -1,6 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { videoLength } from '../../constants/videoDurations';
 import { Image, Linking, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { openMeetingUrl, resolveMeetingJoinUrl } from '../../utils/openMeetingUrl';
 import { useIsFocused } from '@react-navigation/native';
 import Pressable from '../../components/il/Press';
 import OneByOneRail from '../../components/il/OneByOneRail';
@@ -35,6 +37,8 @@ const T = {
   chip: '#EEEAE0',
   chipInk: '#55595A',
   todo: '#B9B6A8',
+  done: '#1B7A4A',
+  doneSoft: '#D8F0E3',
 };
 
 /** Morning / afternoon / evening from India time (same clock as LEP sessions). */
@@ -60,7 +64,7 @@ function StatusIcon({ state }) {
           width: 26,
           height: 26,
           borderRadius: 13,
-          backgroundColor: T.teal,
+          backgroundColor: T.done,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -610,7 +614,8 @@ export function BhagHomeCard({ bhag, onBhag, style }) {
 }
 
 function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) {
-  const canJoin = Boolean(upcoming.ready && upcoming.joinLink);
+  const joinTarget = resolveMeetingJoinUrl(upcoming.joinLink);
+  const canJoin = Boolean(joinTarget);
   return (
     <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -657,9 +662,8 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
         onPress={() => {
           if (canJoin) {
             recordSessionJoin(upcoming.code);
-            Linking.openURL(upcoming.joinLink).catch(() => {});
-          }
-          else onOpenSchedule?.();
+            openMeetingUrl(joinTarget);
+          } else onOpenSchedule?.();
         }}
         style={{
           marginTop: 10,
@@ -676,7 +680,7 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
         </ILText>
         {!canJoin ? (
           <ILText role="bodySm" color="rgba(255,255,255,0.65)" style={{ marginTop: 2, fontSize: 11 }}>
-            Join link unlocks about an hour before your session
+            Your host adds the Zoom link in the batch calendar
           </ILText>
         ) : null}
       </Pressable>
@@ -688,42 +692,79 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
  * Orientation and the intensive are live online sessions: four things to have ready.
  * Its own card right above the session card (as on the enrolled Home), not inside the phase card.
  */
+const JOIN_CHECKS_KEY = 'il_before_join_checks_v1';
+
 const JOIN_CHECKS = [
-  { icon: 'videocam', text: 'Camera on' },
-  { icon: 'wifi', text: 'Good network' },
-  { icon: 'schedule', text: 'Join 5 min early' },
-  { icon: 'edit-note', text: 'Notebook ready' },
+  { id: 'camera', icon: 'videocam', text: 'Camera on' },
+  { id: 'network', icon: 'wifi', text: 'Good network' },
+  { id: 'early', icon: 'schedule', text: 'Join 5 min early' },
+  { id: 'notebook', icon: 'edit-note', text: 'Notebook ready' },
 ];
 
 function JoinChecklist() {
+  const [checked, setChecked] = useState(() => Object.fromEntries(JOIN_CHECKS.map((c) => [c.id, false])));
+
+  useEffect(() => {
+    AsyncStorage.getItem(JOIN_CHECKS_KEY)
+    .then((raw) => {
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved && typeof saved === 'object') {
+        setChecked((prev) => ({ ...prev, ...saved }));
+      }
+    })
+      .catch(() => {});
+  }, []);
+
+  const toggle = useCallback((id) => {
+    setChecked((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      AsyncStorage.setItem(JOIN_CHECKS_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
   return (
     <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
       <ILText role="title" color={T.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
         Before you join
       </ILText>
       <ILText role="bodySm" color={T.muted} style={{ marginTop: 4, fontSize: 13, lineHeight: 18 }}>
-        Sessions are live on Zoom. Have these ready.
+        Sessions are live on Zoom. Tap each item when you are ready.
       </ILText>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 10, marginHorizontal: -4 }}>
-        {JOIN_CHECKS.map((c) => (
-          <View key={c.text} style={{ width: '50%', padding: 4 }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: T.redSoft,
-                borderRadius: 14,
-                paddingHorizontal: 12,
-                paddingVertical: 12,
-              }}
-            >
-              <MaterialIcons name={c.icon} size={18} color={T.redText} />
-              <ILText role="label" color={T.ink} style={{ marginLeft: 8, fontSize: 13.5 }}>
-                {c.text}
-              </ILText>
+        {JOIN_CHECKS.map((c) => {
+          const on = !!checked[c.id];
+          return (
+            <View key={c.id} style={{ width: '50%', padding: 4 }}>
+              <Pressable
+                onPress={() => toggle(c.id)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={c.text}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: on ? T.doneSoft : T.redSoft,
+                  borderRadius: 14,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  borderWidth: on ? 1 : 0,
+                  borderColor: on ? T.done : 'transparent',
+                }}
+              >
+                <MaterialIcons name={on ? 'check-circle' : c.icon} size={18} color={on ? T.done : T.redText} />
+                <ILText
+                  role="label"
+                  color={on ? T.done : T.ink}
+                  style={{ marginLeft: 8, fontSize: 13.5, flex: 1 }}
+                >
+                  {c.text}
+                </ILText>
+              </Pressable>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );
@@ -820,7 +861,7 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
   const registeredDone = Boolean(phases[0]?.done || lockerStep > 0);
 
   return (
-    <View style={{ paddingHorizontal: 20, gap: 14 }}>
+    <View style={{ paddingHorizontal: 20, gap: 8 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View
           style={{
@@ -930,15 +971,14 @@ function PhaseSlider({ firstName, phases, lockerStep, onPhaseCta }) {
         count={count}
         slide={slide}
         index={index}
-        minHeight={50}
+        minHeight={44}
         layoutKey={lockerStep}
-        steady
         render={(i) => {
           const p = phases[i];
           if (!p) return null;
           const press = p.unlocked && !p.ctaBlocked;
           return (
-            <View style={{ gap: 14 }}>
+            <View style={{ gap: 8 }}>
               {p.dated && p.orientation ? (
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <DateTile label="ORIENTATION" value={p.orientation} />

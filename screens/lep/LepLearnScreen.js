@@ -11,11 +11,12 @@ import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../../components/il/ILText';
 import { G, af } from '../../constants/guestTheme';
 import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
+import LearnCategoryDock, { LEARN_CATEGORY_DOCK_PAD } from '../../components/learn/LearnCategoryDock';
 import { useAuth } from '../../context/AuthContext';
 import { usePrograms } from '../../context/ProgramsContext';
 import { PROGRAMS } from '../../constants/programs';
 import { isLepEnrolled } from '../../utils/lepState';
-import { CoverThumb, GuideFace, LepHeader, Page, PillRow, SectionHead, WhiteCard } from './LepBits';
+import { CoverThumb, GuideFace, LepHeader, Page, SectionHead, WhiteCard } from './LepBits';
 import { useLepNav } from './useLepNav';
 import {
   CASES_ENR,
@@ -88,17 +89,15 @@ export default function LepLearnScreen() {
         contentContainerStyle={{
         paddingTop: headerPad + 4,
           paddingHorizontal: 20,
-          paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8),
+          paddingBottom: LIQUID_TAB_PAD + LEARN_CATEGORY_DOCK_PAD + Math.max(insets.bottom, 8),
         }}
       >
         {enrolled ? (
           <>
             {chip !== 'For you' ? <EnrolledHead chip={chip} /> : null}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: chip === 'For you' ? 4 : 16 }}>
-              <PillRow items={chips} value={chip} onChange={setChip} />
-            </ScrollView>
             {chip === 'Principles' ? (
               <PrinciplesEnrolled
+                onWatch={nav.goWatch}
                 onPrinciple={(n) => {
                   const w = lepPrincipleWatch(n);
                   if (!w) return;
@@ -135,9 +134,6 @@ export default function LepLearnScreen() {
         ) : (
           <>
             <RegisteredHead chip={chip} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 16 }}>
-              <PillRow items={chips} value={chip} onChange={setChip} />
-            </ScrollView>
             {chip === 'Principles' ? (
               <PrinciplesPane onEnroll={nav.goEnroll} onPractice={nav.goPractice} />
             ) : chip === 'Case studies' ? (
@@ -156,6 +152,7 @@ export default function LepLearnScreen() {
           </>
         )}
       </RevealScrollView>
+      <LearnCategoryDock items={chips} value={chip} onChange={setChip} />
     </Page>
   );
 }
@@ -580,7 +577,7 @@ function PrinciplesPane({ onEnroll, onPractice }) {
         <NumberRow
           key={p.n}
           item={p}
-          onPress={() => p.practiceId && onPractice?.('lep', p.practiceId)}
+          onPress={() => onPractice?.('lep', 'lep-principle', { principleN: Number(p.n) })}
         />
       ))}
 
@@ -1187,7 +1184,7 @@ function NextCard({ kicker, title, body, cta, onPress }) {
   );
 }
 
-function PrinciplesEnrolled({ onPrinciple }) {
+function PrinciplesEnrolled({ onPrinciple, onWatch }) {
   const openPrinciple = (n) => {
     if (typeof onPrinciple === 'function') onPrinciple(Number(n));
   };
@@ -1216,6 +1213,37 @@ function PrinciplesEnrolled({ onPrinciple }) {
           One a day: watch it, then say it in your own words. Tap any principle to revise it.
         </ILText>
       </WhiteCard>
+
+      <View style={{ marginTop: 18 }}>
+        <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10 }]}>
+          LEP SESSION FILMS
+        </ILText>
+        <Pressable
+          onPress={() =>
+            onWatch?.({
+              assetKey: 'lep:errc-yt',
+              title: 'Time Management Strategies (ERRC)',
+              sub: 'LEP · Principle 24',
+            })
+          }
+          accessibilityRole="button"
+        >
+          <WhiteCard style={{ marginTop: 10, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: G.pink, alignItems: 'center', justifyContent: 'center' }}>
+              <MaterialIcons name="play-arrow" size={22} color={G.cta} />
+            </View>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <ILText role="label" color={G.ink} style={{ fontSize: 15 }}>
+                Time Management Strategies (ERRC)
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                Pairs with Principle 24 · ERRC and 3T
+              </ILText>
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color={G.meta} />
+          </WhiteCard>
+        </Pressable>
+      </View>
 
       {groups.map((g) => (
         <View key={g.label}>
@@ -1257,6 +1285,7 @@ function PrinciplesEnrolled({ onPrinciple }) {
         cta="Revise it now →"
         onPress={() => openPrinciple(todayN)}
       />
+      <View style={{ height: 12 }} />
     </>
   );
 }

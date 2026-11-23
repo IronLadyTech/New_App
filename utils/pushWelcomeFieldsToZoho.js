@@ -10,6 +10,10 @@ export function welcomeFieldsPayloadFromProfile(profile) {
   if (welcome.bhag) payload.bhag = welcome.bhag;
   const salary = String(profile?.salaryRange || profile?.zohoLead?.Annual_Income || '').trim();
   if (salary) payload.salaryRange = salary;
+  const linkedin = String(
+    profile?.linkedinUrl || profile?.linkedin || profile?.zohoLead?.LinkedIn || ''
+  ).trim();
+  if (linkedin) payload.linkedinUrl = linkedin;
   const chapter = String(profile?.chapters || profile?.zohoLead?.Chapters || '').trim();
   if (chapter) payload.chapters = chapter;
   // Never the batch. Zoho owns it; the app writes it only when she changes her batch herself

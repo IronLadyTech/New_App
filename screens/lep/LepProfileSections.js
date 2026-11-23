@@ -65,6 +65,13 @@ export function ProfileStrengthCard({ facts, onSaved }) {
   const domain = facts.domain || facts.industry || '';
   const fields = [
     {
+      key: 'displayName',
+      title: 'Your name',
+      value: facts.displayName || facts.name,
+      hint: 'As it appears on your certificate and agreements',
+      placeholder: 'Full name',
+    },
+    {
       key: 'city',
       title: 'Current city',
       value: facts.city,
@@ -83,6 +90,13 @@ export function ProfileStrengthCard({ facts, onSaved }) {
       title: 'Annual income',
       value: facts.salaryRange,
       hint: 'Private — helps us match you with the right peers',
+    },
+    {
+      key: 'linkedinUrl',
+      title: 'LinkedIn',
+      value: facts.linkedinUrl,
+      hint: 'Your profile link (optional)',
+      placeholder: 'https://linkedin.com/in/your-name',
     },
     {
       key: 'experience',
@@ -105,7 +119,8 @@ export function ProfileStrengthCard({ facts, onSaved }) {
 
   const save = async (picked) => {
     const value = String(typeof picked === 'string' ? picked : draft).trim();
-    if (!edit || !value || saving) return;
+    if (!edit || saving) return;
+    if (!value && edit.key !== 'linkedinUrl' && edit.key !== 'salaryRange') return;
     setSaving(true);
     try {
       if (edit.key === 'experience') {
@@ -113,7 +128,17 @@ export function ProfileStrengthCard({ facts, onSaved }) {
         setEdit(null);
         return;
       }
-      const key = ['domain', 'salaryRange'].includes(edit.key) ? edit.key : 'city';
+      if (edit.key === 'displayName') {
+        onSaved?.({ displayName: value, name: value });
+        setEdit(null);
+        const result = await saveWelcomeProfileFields({ displayName: value });
+        const feedback = welcomeSaveFeedback(result);
+        if (feedback.message && (feedback.isError || !feedback.zohoSynced)) {
+          Alert.alert(feedback.isError ? 'Could not save' : 'Saved', feedback.message);
+        }
+        return;
+      }
+      const key = ['domain', 'salaryRange', 'linkedinUrl'].includes(edit.key) ? edit.key : 'city';
       const local = key === 'domain' ? { domain: value, leadershipRole: value } : { [key]: value };
       onSaved?.(local);
       setEdit(null);
@@ -198,7 +223,26 @@ export function ProfileStrengthCard({ facts, onSaved }) {
             ) : edit?.key === 'domain' ? (
               <FieldOfWorkPicker value={edit.value} onPick={save} />
             ) : edit?.key === 'salaryRange' ? (
-              <SalaryPicker value={edit.value} onPick={save} />
+              <SalaryPicker value={edit.value} optional onPick={save} />
+            ) : edit?.key === 'linkedinUrl' ? (
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={edit?.placeholder}
+              placeholderTextColor={G.meta}
+              autoCapitalize="none"
+              keyboardType="url"
+              autoFocus
+              style={{
+                borderWidth: 1,
+                borderColor: G.line,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 15,
+                color: G.ink,
+              }}
+            />
             ) : (
             <TextInput
               value={draft}
@@ -218,7 +262,7 @@ export function ProfileStrengthCard({ facts, onSaved }) {
             />
             )}
             </ScrollView>
-            {edit?.key === 'experience' ? (
+            {edit?.key === 'experience' || edit?.key === 'linkedinUrl' || edit?.key === 'displayName' ? (
             <Pressable
               onPress={() => save()}
               disabled={saving || !draft.trim()}

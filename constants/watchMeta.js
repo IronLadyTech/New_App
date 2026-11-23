@@ -215,6 +215,31 @@ const PRACTICE_META = {
     practiceId: 'lep-rituals',
     practiceLabel: 'Start ritual practice',
   },
+  'lep:differentiated-brand': {
+    tag: 'LEP session',
+    series: 'Principle 09 · Differentiated Brand',
+    takeaways: ['Name the strength people remember you for.', 'Your brand is not modesty — it is signal.'],
+  },
+  'lep:mentors-yt': {
+    tag: 'LEP session',
+    series: 'Principle 05 · Powerful Request',
+    takeaways: ['Mentors respond to a clear ask.', 'Powerful requests open doors modesty keeps shut.'],
+  },
+  'lep:brand-roadmap': {
+    tag: 'LEP session',
+    series: 'Principle 03 · 0.5% Excellence Roadmap',
+    takeaways: ['Build the league roadmap before the room asks for it.', 'Differentiated brand and roadmap travel together.'],
+  },
+  'lep:3t-suvarna': {
+    tag: 'LEP session',
+    series: 'Principle 24 · ERRC and 3T',
+    takeaways: ['3T keeps time honest.', 'Suvarna walks through how to use it on the floor.'],
+  },
+  'lep:errc-yt': {
+    tag: 'LEP session',
+    series: 'Time Management · ERRC',
+    takeaways: ['Eliminate, reduce, raise, create — in that order.', 'ERRC is how you protect the hours for your BHAG.'],
+  },
   'lep-shameless': {
     tag: 'LEP pre-work',
     series: 'Shameless Pitch',

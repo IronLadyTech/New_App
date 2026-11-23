@@ -30,6 +30,12 @@ export const LEP_RESOURCES = {
   'lep-day1-crucible': {
     readingDocument: { label: 'Crucibles of Leadership', url: lepDoc('crucibles-of-leadership.pdf') },
   },
+  'lep-day2-assignment': {
+    readingDocument: {
+      label: 'Assignments: Day 2',
+      url: lepDoc('day-2-assignment.pdf'),
+    },
+  },
   'lep-day1-assignment': {
     readingDocument: {
       label: 'Affirmations — Sense of Internal Confidence',
@@ -73,8 +79,15 @@ export const LEP_RESOURCES = {
   },
   'lep-resume-template-study': {
     resourceLinks: [
+      { label: 'Sample resume (PDF)', url: lepDoc('resume-sample.pdf') },
       { label: 'Sample Resume Template', url: lepDoc('resume-template.pdf') },
       { label: 'Iron Lady Resume Template', url: lmsUrl('/templates/Iron Lady Resume Template.doc') },
+      { label: 'Watch · Resume template session (Rajesh)', url: 'https://www.youtube.com/watch?v=IHn-U2oatcE' },
+    ],
+  },
+  'lep-resume-linkedin': {
+    resourceLinks: [
+      { label: 'Watch · Build your LinkedIn profile', url: 'https://www.youtube.com/watch?v=RAfeXhk31l0' },
     ],
   },
   'lep-resume-prepare': {
@@ -85,6 +98,12 @@ export const LEP_RESOURCES = {
       label: 'Shameless Pitch Preparation Instructions',
       url: lepDoc('shameless-pitch-instructions.pdf'),
     },
+    resourceLinks: [
+      { label: 'Intro · Shameless Pitch', url: 'https://www.youtube.com/watch?v=jr4Z9izw5jo' },
+      { label: 'Sample · Jobseekers', url: 'https://youtu.be/k16c3d02yj0' },
+      { label: 'Sample · Entrepreneurs', url: 'https://youtu.be/SYsU3P4R4_I' },
+      { label: 'Sample · People in jobs', url: 'https://youtu.be/LxF5CzETIDA' },
+    ],
   },
   'lep-day6-guiding-stars': {
     readingDocument: { label: 'Guiding Stars Poster', url: lepDoc('guiding-stars.pdf') },

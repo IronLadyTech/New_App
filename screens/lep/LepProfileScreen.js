@@ -195,8 +195,11 @@ export default function LepProfileScreen({ route, navigation }) {
   const lead = learnerLeadDetails(source);
   const facts = {
     ...lead,
+    displayName: source?.displayName || source?.name || lead.name || '',
     domain: source?.domain || lead.industry || source?.leadershipRole || '',
     salaryRange: source?.salaryRange || source?.zohoLead?.Annual_Income || '',
+    linkedinUrl:
+      source?.linkedinUrl || source?.linkedin || source?.zohoLead?.LinkedIn || '',
     ...localFacts,
   };
   const name = facts.name || lepFullName(profile);

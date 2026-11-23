@@ -273,6 +273,34 @@ export const LEP_FORM_DEFINITIONS = {
     type: 'grid',
     submitLabel: 'Submit ERRC table',
   },
+
+  'week1-engagement': {
+    submitLabel: 'Submit answer',
+    fields: [
+      {
+        key: 'breakthrough',
+        label: 'Breakthrough I am working toward:',
+        type: 'textarea',
+        required: true,
+      },
+      {
+        key: 'inspiration',
+        label: 'What inspires me right now:',
+        type: 'textarea',
+        required: true,
+      },
+      {
+        key: 'engaging',
+        label: 'How I am engaging this week:',
+        type: 'textarea',
+        required: true,
+      },
+    ],
+  },
+
+  'promises-agreement': {
+    submitLabel: 'Submit agreement',
+  },
 };
 
 export function getFormDefinition(templateId) {

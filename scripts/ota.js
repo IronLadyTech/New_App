@@ -19,7 +19,12 @@ if (!message) {
 }
 
 // Same build-time env as the APK, or the update would switch login back to demo codes.
-const env = { ...process.env, EXPO_PUBLIC_PHONE_OTP: 'firebase' };
+const env = {
+  ...process.env,
+  EXPO_PUBLIC_PHONE_OTP: 'firebase',
+  // Preview testers: every Join opens the QA Zoom registration page (remove for production OTA).
+  ...(channel === 'preview' ? { EXPO_PUBLIC_ZOOM_TEST_ALL: '1' } : {}),
+};
 
 // Windows needs the shell to find npx, and the shell splits on spaces: quote the message.
 const isWin = process.platform === 'win32';

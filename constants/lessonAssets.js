@@ -50,6 +50,20 @@ export const LEP_MENTORS_MP4 = `${LEP_CF}/lep_video.mp4`;
 export const LEP_BRAND_MP4 =
   `${IL_S3}/Building+and+using+the+Differentiated+Brand+_+0.5%25+League+Roadmap.mp4`;
 
+/** LEP Learn · principle session films (YouTube). */
+export const LEP_DIFFERENTIATED_BRAND_YT = YT('cRdEi3NZhzk');
+export const LEP_MENTORS_YT = YT('9S6F0jrgHAs');
+export const LEP_BRAND_ROADMAP_YT = YT('W99ylu6Y3TU');
+export const LEP_3T_SUVARNA_YT = YT('WGfpumyYmZ0');
+export const LEP_ERRC_YT = YT('SydODFVHsV4');
+export const LEP_MAX_VALUE_YT = YT('t_9Ni7M_VaM');
+export const LEP_RESUME_RAJESH_YT = YT('IHn-U2oatcE');
+export const LEP_JOBSEEKERS_BOOTCAMP_YT = YT('RAfeXhk31l0');
+export const LEP_SHAMELESS_INTRO_YT = YT('jr4Z9izw5jo');
+export const LEP_SHAMELESS_JOBSEEKERS_YT = YT('k16c3d02yj0');
+export const LEP_SHAMELESS_ENTREPRENEURS_YT = YT('SYsU3P4R4_I');
+export const LEP_SHAMELESS_EMPLOYED_YT = YT('LxF5CzETIDA');
+
 /** Keys used by practice entries, pre-work cards, podcasts, C-suite tiles. */
 export const LESSON_VIDEOS = {
   'lep-principles-video': PRINCIPLES_FULL_M3U8,
@@ -79,8 +93,12 @@ export const LESSON_VIDEOS = {
   'csuite:poornima': CSUITE_POORNIMA,
   'community:iron-ladies': COMMUNITY_IRON_LADIES,
   'community:indra-nooyi': COMMUNITY_INDRA_NOOYI,
-  'lep:mentors': LEP_MENTORS_MP4,
-  'lep:brand-roadmap': LEP_BRAND_MP4,
+  'lep:mentors': LEP_MENTORS_YT,
+  'lep:mentors-yt': LEP_MENTORS_YT,
+  'lep:brand-roadmap': LEP_BRAND_ROADMAP_YT,
+  'lep:differentiated-brand': LEP_DIFFERENTIATED_BRAND_YT,
+  'lep:3t-suvarna': LEP_3T_SUVARNA_YT,
+  'lep:errc-yt': LEP_ERRC_YT,
   'mbw:indra': PRINCIPLES_PREVIEW_YT,
   'mbw:impact-s1': YT('qtSBQTXtS4A'),
   'mbw:impact-s2': YT('k16c3d02yj0'),
@@ -97,11 +115,14 @@ export const TASK_VIDEOS = {
   'mbw-drama-huddle': YT('1QDGDBUiLZ0'),
   'mbw-lep': RITUALS_M3U8,
   'mbw-powerful-request': `${S3}/LEP+%3A+Finding+and+working+with+mentors-+Powerful+Requests/output/LEP+_+Finding+and+working+with+mentors.m3u8`,
-  'lep-day1-errc': ERRC_M3U8,
+  'lep-day1-errc': LEP_ERRC_YT,
   'lep-day3-27-principles': PRINCIPLES_FULL_M3U8,
   'lep-day3-5-rituals': RITUALS_M3U8,
   'lep-day3-mentors': LEP_MENTORS_MP4,
   'lep-day3-brand-roadmap': LEP_BRAND_MP4,
+  'lep-day3-max-value': LEP_MAX_VALUE_YT,
+  'lep-resume-template-study': LEP_RESUME_RAJESH_YT,
+  'lep-resume-bootcamp': LEP_JOBSEEKERS_BOOTCAMP_YT,
   'q1-session1': YT('qtSBQTXtS4A'),
   'q1-session2': YT('k16c3d02yj0'),
   'q1-suvarna-session': YT('GsCztuFb7rM'),

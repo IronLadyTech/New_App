@@ -292,13 +292,75 @@ export function BhagComposer({ value, onChange, field }) {
 }
 
 /** Annual income — one tap. Optional, and only for her profile and Zoho. */
-export function SalaryPicker({ value, onPick }) {
+export function SalaryPicker({ value, onPick, optional = false }) {
+  const listed = SALARY_RANGES.includes(value) || value === '';
+  const custom = value && !listed ? String(value) : '';
+  const [otherOpen, setOtherOpen] = useState(Boolean(custom));
+  const [otherText, setOtherText] = useState(custom);
+  const otherReady = otherText.trim().length > 2;
+
   return (
     <View>
+      {optional ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }}>
+          <Chip label="Prefer not to say" active={!value} onPress={() => onPick('')} />
+        </View>
+      ) : null}
+      {otherOpen ? (
+        <View style={{ marginBottom: 10 }}>
+          <TextInput
+            value={otherText}
+            onChangeText={setOtherText}
+            placeholder="Your range, e.g. 35L - 45L"
+            placeholderTextColor="rgba(16,44,50,0.45)"
+            autoFocus
+            style={{
+              backgroundColor: IL_BRAND.white,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: LINE,
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+              fontSize: 16,
+              color: IL_BRAND.ink,
+            }}
+          />
+          <Pressable
+            accessibilityRole="button"
+            disabled={!otherReady}
+            onPress={() => onPick(otherText.trim())}
+            style={{
+              marginTop: 8,
+              alignSelf: 'flex-start',
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: otherReady ? CTA : 'rgba(237,29,36,0.35)',
+            }}
+          >
+            <ILText role="label" color="#FFFFFF" style={{ fontSize: 14 }}>
+              Save range
+            </ILText>
+          </Pressable>
+        </View>
+      ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
         {SALARY_RANGES.map((r) => (
-          <Chip key={r} label={r} active={r === value} onPress={() => onPick(r)} />
+          <Chip
+            key={r}
+            label={r}
+            active={r === value}
+            onPress={() => {
+              setOtherOpen(false);
+              onPick(r);
+            }}
+          />
         ))}
+        <Chip
+          label={custom && !otherOpen ? custom : 'Other'}
+          active={otherOpen || Boolean(custom)}
+          onPress={() => setOtherOpen(true)}
+        />
       </View>
       <ILText role="bodySm" color={MUTED} style={{ marginTop: 4, fontSize: 12 }}>
         Private — only the Iron Lady team sees this. It helps us match you with the right peers.

@@ -79,7 +79,7 @@ export const COURSE_TASKS = {
       kind: "Checklist",
       description: "Set up your access so nothing blocks you on Day 1.",
       week: "Start",
-      checklistItems: ["I can sign in to the programme","I have joined the community group","I have the session joining details"],
+      checklistItems: ["I have read Program Access Essentials and completed what it asks"],
     },
     {
       id: "lep-orientation-schedule",
@@ -97,11 +97,12 @@ export const COURSE_TASKS = {
       phase: "day-1",
       order: 200,
       title: "Promises and Agreements",
-      type: TASK_TYPES.CHECKLIST,
-      kind: "Checklist",
-      description: "Read the promises and agreements for the programme and sign them.",
+      type: TASK_TYPES.EDITABLE_TEMPLATE,
+      templateId: "promises-agreement",
+      kind: "Form",
+      description:
+        "Read the Iron Lady promises, complete your details, upload your signature, and submit your agreement before Day 1.",
       week: "Day 1",
-      checklistItems: ["I have read and signed the promises and agreements"],
     },
     {
       id: "lep-day1-beliefs",
@@ -208,7 +209,8 @@ export const COURSE_TASKS = {
       title: "Day 2 Assignment",
       type: TASK_TYPES.FILE_UPLOAD,
       kind: "Assignment",
-      description: "Download the Day 2 assignment, answer all questions and upload your work.",
+      description:
+        "Complete all eight Day 2 assignments (acknowledgements, mirror affirmation, powerful requests, purpose, ritual, relationships, CoDeSeF) and upload your work.",
       week: "Day 2",
     },
     {
@@ -258,13 +260,12 @@ export const COURSE_TASKS = {
       phase: "week-1",
       order: 480,
       title: "Week 1 Engagement Form",
-      type: TASK_TYPES.TEXT,
-      kind: "Write",
+      type: TASK_TYPES.EDITABLE_TEMPLATE,
+      templateId: "week1-engagement",
+      kind: "Form",
       description:
         "A short check-in for your cohort team: what breakthrough you are working toward, what inspires you right now (a case study, a moment, or a goal), and how you are engaging with the program this week.",
       week: "Week 1",
-      placeholder:
-        "Breakthrough I am working toward:\n\nWhat inspires me right now:\n\nHow I am engaging this week:",
     },
     {
       id: "lep-challenge-1",
@@ -324,11 +325,10 @@ export const COURSE_TASKS = {
       phase: "week-2",
       order: 504,
       title: "Getting Maximum Value from LEP",
-      type: TASK_TYPES.CHECKLIST,
-      kind: "Checklist",
+      type: TASK_TYPES.WATCH_ONLY,
+      kind: "Watch",
       description: "Know what the programme offers beyond the sessions and how to use it.",
       week: "Day 3",
-      checklistItems: ["I know how to get the most from this programme"],
     },
     {
       id: "lep-resume-linkedin",
@@ -356,11 +356,10 @@ export const COURSE_TASKS = {
       phase: "week-2",
       order: 507,
       title: "Jobseekers Bootcamp",
-      type: TASK_TYPES.CHECKLIST,
-      kind: "Checklist",
+      type: TASK_TYPES.WATCH_ONLY,
+      kind: "Watch",
       description: "Watch the Jobseekers Bootcamp recording.",
       week: "Week 2",
-      checklistItems: ["I have watched the bootcamp recording"],
     },
     {
       id: "lep-resume-prepare",
@@ -381,7 +380,10 @@ export const COURSE_TASKS = {
       kind: "Checklist",
       description: "Read the preparation instructions and the key points before you pitch.",
       week: "Day 5",
-      checklistItems: ["I have read the preparation instructions","I have read the key points"],
+      checklistItems: [
+        "I have watched the Shameless Pitch intro and sample sessions",
+        "I have read the preparation instructions and key points",
+      ],
     },
     {
       id: "lep-day5-pitch",

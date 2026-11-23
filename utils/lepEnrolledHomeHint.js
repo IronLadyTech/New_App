@@ -1,3 +1,4 @@
+import { resolveMeetingJoinUrl } from './openMeetingUrl';
 import { addCalendarDays } from './lepBatchSchedule';
 import { nextCmsBatchSession, nextRawCmsSession } from './cmsBatchSessions';
 import { day1CalendarUrl, formatLepDay, lepSessionCalendarUrl } from './registeredHomeData';
@@ -84,7 +85,7 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
     const title = raw?.title || card?.title || 'Upcoming session';
     const startTime = raw?.startTime || '';
     const endTime = raw?.endTime || '';
-    const joinLink = String(raw?.joinLink || card?.linkUrl || '').trim();
+    const joinLink = resolveMeetingJoinUrl(String(raw?.joinLink || card?.linkUrl || '').trim());
     const hours = hoursLine(startTime, endTime, card?.meta);
     const calendarUrl = dateIso
       ? lepSessionCalendarUrl({

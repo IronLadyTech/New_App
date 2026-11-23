@@ -97,6 +97,7 @@ import { useLepFiveRitualsTracker } from '../../hooks/useLepFiveRitualsTracker';
 import { mergeGetReadyItems, toggleGetReadyItem } from '../../utils/lepGetReadyChecklist';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 import { recordSessionJoin } from '../../services/activityTracking';
+import { openMeetingUrl } from '../../utils/openMeetingUrl';
 import {
   cancelLepRitualsNotifications,
   scheduleLepRitualsNotifications,
@@ -950,7 +951,7 @@ function EnrolledHome({ cmsBatch }) {
           onPress={() => {
             if (upcoming.joinLink) {
               recordSessionJoin(upcoming.code);
-              Linking.openURL(upcoming.joinLink).catch(() => {});
+              openMeetingUrl(upcoming.joinLink);
             } else nav.goSchedule();
           }}
           style={{

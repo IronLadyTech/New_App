@@ -38,7 +38,8 @@ const NAME = '#F5F2E8';
 const ICON_DIM = 'rgba(245,242,232,0.78)';
 const SPRING = { damping: 15, stiffness: 220, mass: 0.6 };
 
-export const LIQUID_TAB_PAD = BAR_TOP + PILL_H + 24;
+export const LIQUID_TAB_PILL_STACK = BAR_TOP + PILL_H;
+export const LIQUID_TAB_PAD = LIQUID_TAB_PILL_STACK + 24;
 
 const AnimatedPath = Reanimated.createAnimatedComponent(Path);
 const IS_WEB = Platform.OS === 'web';

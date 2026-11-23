@@ -30,6 +30,10 @@ export const PREWORK_THUMBS = {
   'prework-03': require('../assets/il/prework/thumb-shameless-pitch.jpg'),
   /** Differentiated Brand session — not the 27 Principles pre-work art. */
   'lep-brand-roadmap': require('../assets/il/suvarna-hero.jpg'),
+  'lep:differentiated-brand': require('../assets/il/suvarna-hero.jpg'),
+  'lep:mentors-yt': require('../assets/il/suvarna-face.jpg'),
+  'lep:3t-suvarna': require('../assets/il/suvarna-hero.jpg'),
+  'lep:errc-yt': require('../assets/il/prework/thumb-27-principles.jpg'),
 };
 
 /** Posters for all wired lesson videos (pre-work, podcasts, C-suite, army, MBW). */
