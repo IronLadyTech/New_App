@@ -223,6 +223,10 @@ export default function BatchGroupsCard({ batch, sessions, canEdit }) {
           <>
             <NameList title="In Zoho, missing in the app" rows={check.onlyZoho} />
             <NameList title="In the app, not in Zoho for this date" rows={check.onlyApp} />
+            <NameList
+              title="Matched from Zoho registration only (fill LEP Batch on her Lead)"
+              rows={check.registrationOnly}
+            />
           </>
         ) : null}
       </Step>
