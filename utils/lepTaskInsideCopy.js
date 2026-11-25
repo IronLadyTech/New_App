@@ -69,6 +69,13 @@ export function lepTaskInsideSteps(task) {
       'Day 7: answer below and Submit.',
     ];
   }
+  if (id === 'lep-brand-statement') {
+    return [
+      'Attend the Differentiated Brand session.',
+      'Write your statement: who you serve, what you are known for, what makes you different.',
+      'Keep it to one or two lines and tap Submit.',
+    ];
+  }
   if (id === 'lep-day8-preparation') {
     return [
       'Read "Get ready for your Graduation Day" on this screen.',

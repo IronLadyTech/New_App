@@ -75,6 +75,10 @@ export const LEP_TASK_PURPOSE = {
     why: 'Brand without direction becomes slogans.',
     gain: 'A 0.5% League roadmap tied to your differentiated brand.',
   },
+  'lep-brand-statement': {
+    why: 'Your differentiated strength only works when you can say it in one breath.',
+    gain: 'Your brand statement, ready for LinkedIn, your resume and your pitch.',
+  },
   'lep-day4-feedback': {
     why: 'Session feedback shapes what we reinforce in Week 2.',
     gain: 'Your input on the Differentiated Brand session.',

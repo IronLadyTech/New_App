@@ -228,6 +228,16 @@
       "after": "Thank you. Your voice shapes this journey."
     },
     {
+      "id": "lep-brand-statement",
+      "phase": "week-1",
+      "order": 403,
+      "title": "Your Differentiated Brand Statement",
+      "dueSession": "S6",
+      "opens": "Say what makes you different, in one or two lines.",
+      "due": "Due today: your Differentiated Brand Statement.",
+      "after": "Your brand, in your words. Use it everywhere."
+    },
+    {
       "id": "lep-challenge-1",
       "phase": "week-1",
       "order": 490,

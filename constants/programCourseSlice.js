@@ -255,6 +255,17 @@ export const COURSE_TASKS = {
       week: "Day 4",
     },
     {
+      id: "lep-brand-statement",
+      phase: "week-1",
+      order: 403,
+      title: "Your Differentiated Brand Statement",
+      type: TASK_TYPES.TEXT,
+      kind: "Write",
+      description: "After the Differentiated Brand session, write your brand statement in one or two lines: who you serve, what you are known for, and what makes you different. Needed for your certificate.",
+      placeholder: "e.g. I help growing companies turn ideas into revenue, known for…",
+      week: "Week 1",
+    },
+    {
       id: "lep-day4-feedback",
       phase: "week-1",
       order: 402,

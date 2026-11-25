@@ -16,7 +16,7 @@ import { makeTaskDoneChecker } from './taskDone';
 // the Shameless Pitch video and the Differentiated Brand Statement are.
 export const LEP_GRADUATION_REQUIRED = [
   { taskId: 'lep-day3-5-rituals', title: 'Practising the 5 Rituals' },
-  { taskId: 'lep-day4-feedback', title: 'Differentiated Brand Statement' },
+  { taskId: 'lep-brand-statement', title: 'Differentiated Brand Statement' },
   { taskId: 'lep-day5-pitch', title: 'Shameless Pitch video' },
   { taskId: 'lep-day8-preparation', title: 'Graduation Preparations' },
   { taskId: 'lep-prep-nsdc', title: 'NSDC registration' },
