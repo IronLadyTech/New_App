@@ -107,6 +107,25 @@ export function lepChallengeState(challenge, day1Iso, now = new Date()) {
   };
 }
 
+/** Her batch dates are not known: the summary is simply open. */
+export function lepChallengeOpenState(challenge) {
+  return {
+    challenge,
+    phase: 'after',
+    today: nowIst().iso,
+    days: null,
+    sessionTitle: '',
+    dayN: null,
+    summaryOpen: true,
+    summaryNudgeOver: true,
+  };
+}
+
+/** A summary sent from the form (it starts with the challenge title). */
+export function isLepChallengeSummaryText(challenge, text) {
+  return Boolean(challenge && String(text || '').startsWith(`${challenge.title} — summary`));
+}
+
 /** Counts for her summary and the coaches' view. */
 export function lepChallengeCounts(challenge, state, log) {
   const byDay = log?.days?.[challenge.key] || {};

@@ -50,7 +50,7 @@ const QUESTIONS = {
  * End-of-week challenge summary: her numbers from the daily entries, two tap questions and one
  * line. It hands the finished answer up as text (the task stays a write-up for the LMS / coaches).
  */
-export default function LepChallengeSummaryForm({ state, log, onChangeText }) {
+export default function LepChallengeSummaryForm({ state, log, onChangeText, earlierText }) {
   const { challenge } = state;
   const spec = QUESTIONS[challenge.key];
   const counts = lepChallengeCounts(challenge, state, log);
@@ -85,12 +85,27 @@ export default function LepChallengeSummaryForm({ state, log, onChangeText }) {
             ? `This challenge starts after the ${state.sessionTitle} session. Each day's items will be on your Home screen.`
             : `Do today's challenge on your Home screen. On ${formatChallengeDay(state.lastIso)} you can write your week summary here.`}
         </ILText>
+        {earlierText ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13, lineHeight: 18 }}>
+            {`Your earlier answer: ${earlierText}`}
+          </ILText>
+        ) : null}
       </WhiteCard>
     );
   }
 
   return (
     <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 16 }}>
+      {earlierText ? (
+        <View style={{ marginBottom: 14, padding: 12, borderRadius: 12, backgroundColor: G.pink }}>
+          <ILText role="label" color={G.meta} style={{ fontSize: 12 }}>
+            Your earlier answer
+          </ILText>
+          <ILText role="bodySm" color={G.ink} style={{ marginTop: 4, fontSize: 14, lineHeight: 20 }}>
+            {earlierText}
+          </ILText>
+        </View>
+      ) : null}
       <ILText role="label" color={G.ink} style={{ fontSize: 16 }}>
         Your week
       </ILText>

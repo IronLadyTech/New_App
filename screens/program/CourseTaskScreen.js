@@ -91,7 +91,12 @@ import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipC
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
 import LepAssignmentBriefCard from '../../components/program/LepAssignmentBriefCard';
 import LepChallengeSummaryForm from '../../components/program/LepChallengeSummaryForm';
-import { lepChallengeByTaskId, lepChallengeState } from '../../utils/lepChallenges';
+import {
+  isLepChallengeSummaryText,
+  lepChallengeByTaskId,
+  lepChallengeOpenState,
+  lepChallengeState,
+} from '../../utils/lepChallenges';
 import { useLepChallengeLog } from '../../hooks/useLepChallengeLog';
 import { lepAssignmentBrief } from '../../constants/lepAssignmentCopy';
 import {
@@ -731,12 +736,15 @@ export default function CourseTaskScreen({ route, navigation }) {
         }
       : null;
   const lepAssignment = programId === PROGRAMS.LEP ? lepAssignmentBrief(taskId) : null;
-  // Weekly challenge: an end-of-week summary built from her daily entries (an older
-  // free-text answer still shows as text).
+  // Weekly challenge: always the end-of-week summary form (taps + one line). An older free-text
+  // answer shows above it; a sent summary shows as text. No batch dates → the form is open.
   const { log: challengeLog } = useLepChallengeLog();
   const challengeDef = programId === PROGRAMS.LEP ? lepChallengeByTaskId(taskId) : null;
-  const challengeState = challengeDef && day1Iso ? lepChallengeState(challengeDef, day1Iso) : null;
-  const showChallengeForm = Boolean(challengeState && !String(submission?.textValue || '').trim());
+  const challengeState = challengeDef
+    ? (day1Iso && lepChallengeState(challengeDef, day1Iso)) || lepChallengeOpenState(challengeDef)
+    : null;
+  const priorText = String(submission?.textValue || '').trim();
+  const showChallengeForm = Boolean(challengeState && !isLepChallengeSummaryText(challengeDef, priorText));
 
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -1382,7 +1390,12 @@ export default function CourseTaskScreen({ route, navigation }) {
         ) : null}
 
         {type === TASK_TYPES.TEXT && showChallengeForm ? (
-          <LepChallengeSummaryForm state={challengeState} log={challengeLog} onChangeText={setText} />
+          <LepChallengeSummaryForm
+            state={challengeState}
+            log={challengeLog}
+            onChangeText={setText}
+            earlierText={priorText}
+          />
         ) : null}
 
         {type === TASK_TYPES.TEXT && !showChallengeForm ? (

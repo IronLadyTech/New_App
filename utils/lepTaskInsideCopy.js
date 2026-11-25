@@ -50,23 +50,23 @@ export function lepTaskInsideSteps(task) {
   }
   if (id === 'lep-challenge-1') {
     return [
-      'It starts the day after Day 2. Each day, in your 5 Daily Rituals on Home: tick that you updated your A-Game table.',
-      'Each day, after Mirror Work: write one learning from it.',
-      'On Day 7, answer the few questions below and tap Submit.',
+      'Daily on Home, in your 5 Rituals: tick your A-Game table.',
+      'Write one learning from Mirror Work.',
+      'Day 7: answer below and Submit.',
     ];
   }
   if (id === 'lep-challenge-2') {
     return [
-      'It starts the day after the Differentiated Brand session. On Home: add your LinkedIn profile link.',
-      'Each day: write one LinkedIn post, article or share, paste its link and tap Mark done.',
-      'On Day 7, answer the few questions below and tap Submit.',
+      'On Home: add your LinkedIn profile link.',
+      'Daily: one LinkedIn post, then Mark done.',
+      'Day 7: answer below and Submit.',
     ];
   }
   if (id === 'lep-challenge-3') {
     return [
-      'It starts the day after the Shameless Pitch session. Each day on Home: write your pitch script.',
-      'Make at least one real pitch this week and note what happened.',
-      'On Day 7, answer the few questions below and tap Submit.',
+      'Daily on Home: write your pitch script.',
+      'Make one real pitch this week; note it.',
+      'Day 7: answer below and Submit.',
     ];
   }
   if (id === 'lep-day8-preparation') {

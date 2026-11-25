@@ -12,11 +12,12 @@ import { makeTaskDoneChecker } from './taskDone';
  * certificate paperwork). The weekly engagement forms were removed from the programme
  * (programme team, 25 Nov 2026). Change this list to change the rule everywhere.
  */
+// Programme team, 25 Nov 2026: the two quizzes and the Week 4 Challenge are no longer required;
+// the Shameless Pitch video and the Differentiated Brand Statement are.
 export const LEP_GRADUATION_REQUIRED = [
   { taskId: 'lep-day3-5-rituals', title: 'Practising the 5 Rituals' },
-  { taskId: 'lep-quiz-5-rituals', title: '5 Daily Rituals quiz' },
-  { taskId: 'lep-quiz-27-principles', title: '27 Principles quiz' },
-  { taskId: 'lep-challenge-4', title: 'Challenge for Week 4' },
+  { taskId: 'lep-day4-feedback', title: 'Differentiated Brand Statement' },
+  { taskId: 'lep-day5-pitch', title: 'Shameless Pitch video' },
   { taskId: 'lep-day8-preparation', title: 'Graduation Preparations' },
   { taskId: 'lep-prep-nsdc', title: 'NSDC registration' },
   { taskId: 'lep-attendance', title: 'Attendance record' },
