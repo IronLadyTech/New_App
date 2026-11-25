@@ -33,8 +33,8 @@ const STAGGER_MS = 55;
 
 /** Teal chip fill for every Explore bubble (For you, Principles, Case studies, Events, Stories). */
 const EXPLORE_CHIP_TEAL = {
-  chipBg: 'rgba(17, 55, 68, 0.10)',
-  chipBgActive: 'rgba(17, 55, 68, 0.18)',
+  chipBg: '#FFFFFF',
+  chipBgActive: G.dark,
 };
 
 /** Customer-facing order — maps to existing Learn chip ids in LepLearnScreen. */
@@ -137,7 +137,7 @@ function ExploreBubble({ option, index, visible, active, onPress, total }) {
           <View style={[styles.bubbleIcon, active && styles.bubbleIconActive]}>
             <MaterialIcons name={option.icon} size={18} color={active ? '#FFFFFF' : G.dark} />
           </View>
-          <ILText role="label" color={G.ink} numberOfLines={1} style={[af, styles.bubbleTitle]}>
+          <ILText role="label" color={active ? '#FFFFFF' : G.ink} numberOfLines={1} style={[af, styles.bubbleTitle]}>
             {option.title}
           </ILText>
         </GlassShell>
@@ -214,13 +214,7 @@ export default function LearnCategoryDock({ items, value, onChange }) {
       <View pointerEvents="box-none" style={[styles.anchor, { bottom: dockBottom }]}>
         <View pointerEvents="box-none" style={styles.row}>
           {open ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              bounces={false}
-              style={styles.bubbleScroll}
-              contentContainerStyle={styles.bubbleRow}
-            >
+            <View pointerEvents="box-none" style={styles.bubbleColumn}>
               {options.map((opt, index) => (
                 <ExploreBubble
                   key={opt.id}
@@ -232,7 +226,7 @@ export default function LearnCategoryDock({ items, value, onChange }) {
                   onPress={() => pick(opt.id)}
                 />
               ))}
-            </ScrollView>
+            </View>
           ) : null}
 
           <Reanimated.View style={fabStyle}>
@@ -258,7 +252,7 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 25,
-    backgroundColor: 'rgba(17,55,68,0.18)',
+    backgroundColor: 'rgba(17,55,68,0.45)',
   },
   anchor: {
     position: 'absolute',
@@ -273,6 +267,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     maxWidth: '100%',
+  },
+  bubbleColumn: {
+    position: 'absolute',
+    right: 0,
+    bottom: FAB + 12,
+    alignItems: 'flex-end',
+    gap: 8,
   },
   bubbleScroll: {
     flexGrow: 0,
@@ -295,12 +296,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
-    paddingVertical: 5,
-    paddingLeft: 5,
-    paddingRight: 11,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    paddingVertical: 6,
+    paddingLeft: 6,
+    paddingRight: 14,
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(17,55,68,0.12)',
     shadowColor: '#113744',
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.22,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 6,
@@ -318,9 +320,9 @@ const styles = StyleSheet.create({
     backgroundColor: G.cta,
   },
   bubbleTitle: {
-    fontSize: 12,
-    lineHeight: 15,
-    maxWidth: 92,
+    fontSize: 14,
+    lineHeight: 18,
+    maxWidth: 140,
   },
   fabShadow: {
     borderRadius: FAB / 2,

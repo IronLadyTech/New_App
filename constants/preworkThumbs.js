@@ -64,7 +64,6 @@ export const VIDEO_POSTERS = {
   'community:iron-ladies': require('../assets/il/community-75-crore.jpg'),
   'community:indra-nooyi': require('../assets/il/community-indra-nooyi.jpg'),
   'lep:mentors': P.smriti,
-  'lep:brand-roadmap': PREWORK_THUMBS['lep-brand-roadmap'],
 };
 
 const BY_TASK = {
@@ -74,7 +73,6 @@ const BY_TASK = {
   'mbw-lep': PREWORK_THUMBS['lep-rituals'],
   'lep-shameless': PREWORK_THUMBS['lep-shameless'],
   'lep-day1-errc': PREWORK_THUMBS['lep-principles-video'],
-  'lep-day3-brand-roadmap': PREWORK_THUMBS['lep-brand-roadmap'],
   'lep-day3-mentors': P.smriti,
   'mbw-errc': PREWORK_THUMBS['lep-principles-video'],
   'mbw-csuite': P.priyanka,
@@ -138,6 +136,10 @@ export function getVideoPoster({ practiceId, taskId, assetKey, uri, poster, img 
   if (taskId && BY_TASK[taskId]) return BY_TASK[taskId];
   if (taskId && VIDEO_POSTERS[taskId]) return VIDEO_POSTERS[taskId];
   if (assetKey && VIDEO_POSTERS[assetKey]) return VIDEO_POSTERS[assetKey];
+  // A task's YouTube video with no cover of its own shows YouTube's own thumbnail (the player
+  // fetches it). Borrowing by address gave "Getting Maximum Value" another programme's cover
+  // (the same video is an MBW session, mapped to the Simon podcast photo).
+  if (taskId && /youtube\.com|youtu\.be/i.test(String(uri || ''))) return null;
   if (uri && BY_URI[uri]) return BY_URI[uri];
   return null;
 }

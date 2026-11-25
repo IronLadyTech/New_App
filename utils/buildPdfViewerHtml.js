@@ -64,7 +64,7 @@ export function buildPdfViewerHtmlFromUrl(pdfUrl, pages, label = 'Document') {
       var pad = 24;
       var w = Math.max((document.body.clientWidth || window.innerWidth) - pad, 280);
       var base = page.getViewport({ scale: 1 });
-      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      var dpr = Math.min(window.devicePixelRatio || 1, pdf.numPages <= 3 ? 3 : 1.5);
       var vp = page.getViewport({ scale: (w / base.width) * dpr });
       canvas.width = Math.floor(vp.width);
       canvas.height = Math.floor(vp.height);
@@ -157,7 +157,7 @@ export function buildPdfViewerHtml(base64, pages, label = 'Document') {
           var pad = 24;
           var w = Math.max((document.body.clientWidth || window.innerWidth) - pad, 280);
           var base = page.getViewport({ scale: 1 });
-          var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          var dpr = Math.min(window.devicePixelRatio || 1, pdf.numPages <= 3 ? 3 : 1.5);
           var vp = page.getViewport({ scale: (w / base.width) * dpr });
           canvas.width = Math.floor(vp.width);
           canvas.height = Math.floor(vp.height);
