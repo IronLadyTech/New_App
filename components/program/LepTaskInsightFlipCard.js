@@ -13,7 +13,7 @@ import { WhiteCard } from '../../screens/lep/LepBits';
 
 const FLIP_MS = 480;
 const MIN_SLOT_H = 160;
-const MAX_SLOT_H = 340;
+const MAX_SLOT_H = 520;
 
 function CoinFace({ eyebrow, children, backgroundColor, hint }) {
   return (

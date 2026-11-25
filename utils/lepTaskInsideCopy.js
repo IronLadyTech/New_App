@@ -48,11 +48,39 @@ export function lepTaskInsideSteps(task) {
       'Tap Submit answer — it saves to your Week 1 engagement check-in.',
     ];
   }
+  if (id === 'lep-orientation-framework') {
+    return [
+      'Open Leadership Essentials Program Information under Batch materials and read it in the app.',
+      'Tick the checklist when you understand the programme framework.',
+      'Tap Submit checklist.',
+    ];
+  }
+  if (id === 'lep-orientation-access') {
+    return [
+      'Open Program Access Essentials (PDF) under Batch materials.',
+      'Complete each login and session join step it describes.',
+      'Tick the checklist and tap Submit checklist.',
+    ];
+  }
+  if (id === 'lep-resume-linkedin') {
+    return [
+      'Watch the video on this screen.',
+      'Update your LinkedIn profile on linkedin.com.',
+      'Paste your profile link below and tap Submit link.',
+    ];
+  }
+  if (id === 'lep-resume-template-study') {
+    return [
+      'Watch the resume template session video on this screen.',
+      'Open Sample Resume Template (PDF) to view the format — download from there only if you need a copy.',
+      'Tick the checklist when you are done, then tap Submit checklist.',
+    ];
+  }
   if (id === 'lep-day1-promises') {
     return [
-      'Read the Iron Lady and participant promises in the form.',
-      'Check your name, phone, and email; upload a photo of your signature.',
-      'Tick “I agree”, then tap Submit agreement.',
+      'Read the full Promises and Agreements text on this screen (scroll to the end).',
+      'Tap “I have read the full agreement” to unlock the form.',
+      'Fill in your details, upload your signature, confirm you agree, then tap Submit agreement.',
     ];
   }
   if (id === 'lep-day2-assignment') {

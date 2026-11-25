@@ -130,12 +130,6 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
         meta: 'Orientation checklist',
         taskId: 'lep-orientation-access',
       }),
-      row({
-        id: 's0-schedule',
-        title: 'Program Schedule',
-        meta: 'Block your batch dates',
-        taskId: 'lep-orientation-schedule',
-      }),
     ];
   }
 

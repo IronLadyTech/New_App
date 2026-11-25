@@ -171,25 +171,43 @@ export function WeekRing({ done = 4, total = 5, size = 56 }) {
   );
 }
 
-export function RedCta({ label, onPress, icon }) {
+export function RedCta({ label, onPress, icon, subtitle, style }) {
+  const stacked = Boolean(subtitle);
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
         backgroundColor: G.cta,
-        borderRadius: 999,
-        paddingVertical: 14,
+        borderRadius: stacked ? 16 : 999,
+        paddingVertical: stacked ? 12 : 14,
+        paddingHorizontal: stacked ? 16 : 20,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
         opacity: pressed ? 0.7 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
+        ...style,
       })}
     >
       {icon ? <MaterialIcons name={icon} size={16} color="#FFFFFF" style={{ marginRight: 8 }} /> : null}
-      <ILText role="label" color="#FFFFFF">
-        {label}
-      </ILText>
+      {stacked ? (
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <ILText role="eyebrow" color="#FFFFFF" style={{ fontSize: 11, opacity: 0.92, textAlign: 'center' }}>
+            {label}
+          </ILText>
+          <ILText
+            role="label"
+            color="#FFFFFF"
+            style={{ marginTop: 4, textAlign: 'center', lineHeight: 20 }}
+          >
+            {subtitle}
+          </ILText>
+        </View>
+      ) : (
+        <ILText role="label" color="#FFFFFF" style={{ textAlign: 'center', flexShrink: 1 }}>
+          {label}
+        </ILText>
+      )}
     </Pressable>
   );
 }

@@ -18,18 +18,39 @@ export function isGenericTemplateComplete(form) {
   return GENERIC_FIELDS.every((f) => (form[f] || '').trim());
 }
 
-export default function EditableTemplateForm({ templateId, form, setForm }) {
+export default function EditableTemplateForm({
+  templateId,
+  form,
+  setForm,
+  promisesPdfRead,
+  onOpenPromisesPdf,
+  promisesPdfLabel,
+  onMarkPromisesRead,
+  promisesPdfAvailable,
+  onInputFocus,
+}) {
   if (templateId === TEMPLATE_IDS.CODESEF) {
     return <CodesefForm form={form} setForm={setForm} />;
   }
   if (templateId === TEMPLATE_IDS.AGAME_BELIEFS) {
-    return <AgameBeliefsForm form={form} setForm={setForm} />;
+    return <AgameBeliefsForm form={form} setForm={setForm} onInputFocus={onInputFocus} />;
   }
   if (templateId === TEMPLATE_IDS.ERRC) {
-    return <ErrcForm form={form} setForm={setForm} />;
+    return <ErrcForm form={form} setForm={setForm} onInputFocus={onInputFocus} />;
   }
   if (templateId === TEMPLATE_IDS.PROMISES_AGREEMENT) {
-    return <PromisesAgreementForm form={form} setForm={setForm} />;
+    return (
+      <PromisesAgreementForm
+        form={form}
+        setForm={setForm}
+        pdfRead={!!promisesPdfRead}
+        onOpenPdf={onOpenPromisesPdf}
+        pdfLabel={promisesPdfLabel}
+        onMarkRead={onMarkPromisesRead}
+        pdfAvailable={promisesPdfAvailable}
+        onInputFocus={onInputFocus}
+      />
+    );
   }
 
   const def = getFormDefinition(templateId);

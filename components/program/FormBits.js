@@ -22,24 +22,31 @@ export function SectionTitle({ children, first }) {
   );
 }
 
-export function PlainInput({ value, onChangeText, placeholder, minHeight = 52, style }) {
+export function PlainInput({ value, onChangeText, placeholder, minHeight = 72, style, onFocus }) {
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
+      onFocus={onFocus}
       placeholder={placeholder || 'Write here'}
       placeholderTextColor="#B8B4A8"
       multiline
+      textAlignVertical="top"
       style={[
         {
           marginTop: 8,
           minHeight,
           fontFamily: IL_FONTS.regular,
           fontSize: 15,
+          lineHeight: 22,
           color: G.ink,
-          borderBottomWidth: 1,
-          borderBottomColor: G.line,
-          paddingBottom: 8,
+          borderWidth: 1,
+          borderColor: G.line,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          paddingVertical: 10,
+          backgroundColor: G.white,
+          ...(Platform.OS === 'web' ? { outlineStyle: 'none', cursor: 'text' } : null),
         },
         style,
       ]}
@@ -60,16 +67,21 @@ export function Field({ label, value, onChangeText, placeholder, minHeight = 56,
         placeholder={placeholder || 'Write here'}
         placeholderTextColor="#B8B4A8"
         multiline
+        textAlignVertical="top"
         editable
         style={{
           marginTop: 6,
           minHeight,
           fontFamily: IL_FONTS.regular,
           fontSize: 15,
+          lineHeight: 22,
           color: G.ink,
-          borderBottomWidth: 1,
-          borderBottomColor: G.line,
-          paddingBottom: 8,
+          borderWidth: 1,
+          borderColor: G.line,
+          borderRadius: 10,
+          paddingHorizontal: 10,
+          paddingVertical: 10,
+          backgroundColor: G.white,
           ...(Platform.OS === 'web' ? { outlineStyle: 'none', cursor: 'text' } : null),
         }}
       />

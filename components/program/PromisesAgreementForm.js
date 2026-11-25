@@ -5,40 +5,19 @@ import * as ImagePicker from 'expo-image-picker';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import ILText from '../il/ILText';
 import Pressable from '../il/Press';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { G, af } from '../../constants/guestTheme';
-import { WhiteCard } from '../../screens/lep/LepBits';
+import { WhiteCard, RedCta } from '../../screens/lep/LepBits';
 import { SalaryPicker } from '../profile/ProfilePickers';
+import {
+  PROMISES_PARTICIPANT,
+  PROMISES_PARTICIPANT_TITLE,
+  PROMISES_TEAM,
+  PROMISES_TEAM_TITLE,
+  PROMISES_WELCOME,
+} from '../../constants/promisesAgreementContent';
 
-const TEAM_PROMISES = [
-  'You will develop a new sense of internal confidence, understand your own strengths and start enhancing those continuously.',
-  'You will start developing an ability to lead with sense of purpose.',
-  'You will be able to visualise your long-term goals and be able to start working towards them.',
-  'You will be exposed to breakthrough, distinct, global leadership and management principles and methodologies from the practitioners and be supported in practicing the same.',
-  'The experiential methodology used in the program will enable you to honestly examine your existing limitations — be it about your goals, beliefs, assumptions or capabilities.',
-  'The recognition of your limitations will allow you to step beyond them and act on opportunities which you may have never considered before.',
-  'We promise that you will be treated with respect and dignity throughout the program. We will strive to always look at the greatness in you. However, you may experience sometimes that you are being “pushed”. This is intentional, to support you in breaching your own limits and going beyond them.',
-  'We promise that we maintain the confidentiality of all the information about you and the information shared by you and will not use the information anywhere outside the program.',
-  'Certificate of completion will be provided at the end of the program provided you participate in all the sessions completely.',
-  'To get a lot of value out of program, you may go through some unsettling moments during the program, especially as you explore your beliefs in an open environment with your co-participants. You may also find yourself stretched — intellectually, physically and emotionally. You will be challenged frequently to go beyond your current thinking.',
-  'This kind of “push” is intentional as the program is designed to support you in shifting your values, beliefs, feelings and thinking consciously with the sole intent of generating new possibilities for your life.',
-];
-
-const PARTICIPANT_PROMISES = [
-  'I confirm my participation in this journey and promise to voluntarily bring my “whole self” — my dreams, emotions, challenges and aspirations to the program.',
-  'I affirm that I will be “coachable”, provided that my well-being and dignity are not at stake. I will not let my ego come in the way of my learning, and when prompted by the Iron Lady Program Leaders, will permit them to coach me, lead me to look within, and find my answers.',
-  'I understand that I will not get the complete value promised by Iron Lady program, in case I drop out of program in between or do not follow the instructions provided during the program fully.',
-  'If I do not complete the program, or I do not adhere to the above-mentioned promises, I concur that I have no right to expect a refund either in full or in part. The fees I pay, and the time and my involvement are what I am putting at stake here.',
-  'I also understand that the organisers of this program are not accountable for my well-being. I alone am accountable for my well-being.',
-  'I affirm that I am of sound mind, that I am not under any therapy, that I know that this program is not a substitute for therapy.',
-  'I promise that I will not take any stimulant in the form of any drug or alcohol during the days of the workshop. I promise to be present, physically, emotionally and on time each day of the program workshops. I promise to complete all the assignments, recognising that these are key to the design of the program.',
-  'I promise that I maintain the confidentiality of all the information about the co-participants and do not use any such information anywhere outside, including my conversation with the co-participants.',
-  'I promise that I maintain the confidentiality of the methodology and materials of Iron Lady Program.',
-  'In case I choose to endorse the program through articles or videos or by any other means, it will be my own choice. In case I choose share these videos / articles with the Iron Lady team, I give Iron Lady team the permission to use it publicly.',
-  'I will not try to coach other people using the methodologies learnt in the program.',
-];
-
-function LabeledInput({ label, value, onChangeText, keyboardType, editable = true, optional }) {
+function LabeledInput({ label, value, onChangeText, keyboardType, editable = true, optional, onFocus }) {
   return (
     <View style={{ marginTop: 14 }}>
       <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold, fontSize: 14 }}>
@@ -53,10 +32,13 @@ function LabeledInput({ label, value, onChangeText, keyboardType, editable = tru
       <TextInput
         value={value}
         onChangeText={onChangeText}
+        onFocus={onFocus}
         editable={editable}
         keyboardType={keyboardType}
         autoCapitalize={keyboardType === 'email-address' || keyboardType === 'phone-pad' || keyboardType === 'url' ? 'none' : 'words'}
         placeholderTextColor="#B8B4A8"
+        multiline={keyboardType !== 'phone-pad'}
+        textAlignVertical="top"
         style={{
           marginTop: 6,
           borderRadius: 12,
@@ -64,12 +46,111 @@ function LabeledInput({ label, value, onChangeText, keyboardType, editable = tru
           borderColor: G.line,
           paddingHorizontal: 12,
           paddingVertical: 10,
+          minHeight: keyboardType === 'phone-pad' ? undefined : 44,
           fontFamily: IL_FONTS.regular,
           fontSize: 15,
+          lineHeight: 22,
           color: G.ink,
           backgroundColor: G.white,
         }}
       />
+    </View>
+  );
+}
+
+function BulletList({ items }) {
+  return (
+    <View style={{ marginTop: 10 }}>
+      {items.map((line) => (
+        <View key={line.slice(0, 48)} style={{ flexDirection: 'row', marginTop: 10, alignItems: 'flex-start' }}>
+          <ILText role="body" color={G.cta} style={{ width: 14, fontSize: 14, lineHeight: 21 }}>
+            •
+          </ILText>
+          <ILText role="body" color={G.ink} style={{ flex: 1, fontSize: 14, lineHeight: 21 }}>
+            {line}
+          </ILText>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Step 1 — full agreement text in-app (PDF on server is optional when available). */
+export function PromisesPdfGate({ onMarkRead, onOpenPdf, pdfAvailable }) {
+  const [scrolledEnd, setScrolledEnd] = useState(false);
+
+  const onScroll = (e) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 48) {
+      setScrolledEnd(true);
+    }
+  };
+
+  return (
+    <View style={{ marginTop: 18 }}>
+      <WhiteCard style={{ borderRadius: 18, padding: 14, backgroundColor: G.pink }}>
+        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+          STEP 1 · READ THE AGREEMENT
+        </ILText>
+        {PROMISES_WELCOME.map((p) => (
+          <ILText key={p} role="body" color={G.ink} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
+            {p}
+          </ILText>
+        ))}
+      </WhiteCard>
+
+      <WhiteCard style={{ marginTop: 12, borderRadius: 18, padding: 0, overflow: 'hidden' }}>
+        <ScrollView
+          style={{ maxHeight: 360 }}
+          nestedScrollEnabled
+          onScroll={onScroll}
+          scrollEventThrottle={120}
+          showsVerticalScrollIndicator
+        >
+          <View style={{ padding: 16 }}>
+            <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold, fontSize: 16 }}>
+              {PROMISES_TEAM_TITLE}
+            </ILText>
+            <BulletList items={PROMISES_TEAM} />
+
+            <ILText
+              role="label"
+              color={G.ink}
+              style={{ marginTop: 20, fontFamily: IL_FONTS.semibold, fontSize: 16 }}
+            >
+              {PROMISES_PARTICIPANT_TITLE}
+            </ILText>
+            <BulletList items={PROMISES_PARTICIPANT} />
+          </View>
+        </ScrollView>
+      </WhiteCard>
+
+      <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13, lineHeight: 18 }}>
+        Scroll through the full text above. When you are done, tap below to unlock the sign-in form.
+      </ILText>
+
+      <View style={{ marginTop: 12, gap: 10 }}>
+        <RedCta
+          label="I have read the full agreement"
+          onPress={() => {
+            if (!scrolledEnd) {
+              Alert.alert(
+                'Read to the end',
+                'Please scroll through the entire Promises and Agreements text above, then tap this button again.'
+              );
+              return;
+            }
+            onMarkRead?.();
+          }}
+        />
+        {pdfAvailable && onOpenPdf ? (
+          <Pressable onPress={onOpenPdf} style={{ alignItems: 'center', paddingVertical: 8 }}>
+            <ILText role="label" color={G.cta} style={{ fontSize: 13 }}>
+              Open printable PDF copy (optional)
+            </ILText>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -80,9 +161,23 @@ function applySignatureAsset(set, asset) {
   set('signatureFileName', asset.fileName || asset.name || 'signature.jpg');
 }
 
-export default function PromisesAgreementForm({ form, setForm }) {
+export default function PromisesAgreementForm({
+  form,
+  setForm,
+  pdfRead,
+  onOpenPdf,
+  onMarkRead,
+  pdfAvailable,
+  onInputFocus,
+}) {
   const set = useCallback((key, value) => setForm((prev) => ({ ...prev, [key]: value })), [setForm]);
   const [salaryOpen, setSalaryOpen] = useState(false);
+
+  if (!pdfRead) {
+    return (
+      <PromisesPdfGate onMarkRead={onMarkRead} onOpenPdf={onOpenPdf} pdfAvailable={pdfAvailable} />
+    );
+  }
 
   const pickFromLibrary = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -127,39 +222,21 @@ export default function PromisesAgreementForm({ form, setForm }) {
   return (
     <View style={{ marginTop: 18 }}>
       <WhiteCard style={{ borderRadius: 18, padding: 14, backgroundColor: G.pink }}>
-        <ILText role="body" color={G.ink} style={{ fontSize: 15, lineHeight: 22 }}>
-          Welcome on-board! We are about to start the journey together in the program. Just before we begin,
-          listed here are promises by the Iron Lady team to you and your agreement with us.
+        <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
+          STEP 2 · YOUR AGREEMENT
         </ILText>
-      </WhiteCard>
-
-      <WhiteCard style={{ marginTop: 14, borderRadius: 18, padding: 0, overflow: 'hidden' }}>
-        <ScrollView style={{ maxHeight: 280 }} contentContainerStyle={{ padding: 14 }}>
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-            Iron Lady team promise
-          </ILText>
-          <ILText role="bodySm" color={G.body} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
-            We, the Iron Lady team, promise to enable you to be clearer about your life, who you really are
-            and what you really want to be. Through the program, we promise that:
-          </ILText>
-          {TEAM_PROMISES.map((line, i) => (
-            <ILText key={i} role="bodySm" color={G.ink} style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}>
-              • {line}
+        <ILText role="body" color={G.ink} style={{ marginTop: 8, fontSize: 15, lineHeight: 22 }}>
+          You have read the Promises and Agreements. Complete your details, upload your signature, and
+          confirm you agree.
+        </ILText>
+        {pdfAvailable && onOpenPdf ? (
+          <Pressable onPress={onOpenPdf} style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="menu-book" size={18} color={G.cta} />
+            <ILText role="label" color={G.cta} style={{ marginLeft: 8, fontSize: 13 }}>
+              Open printable PDF copy
             </ILText>
-          ))}
-
-          <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10, marginTop: 16 }]}>
-            Participant promise
-          </ILText>
-          <ILText role="bodySm" color={G.body} style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
-            I, as the Iron Lady Leadership program participant, promise as mentioned below:
-          </ILText>
-          {PARTICIPANT_PROMISES.map((line, i) => (
-            <ILText key={i} role="bodySm" color={G.ink} style={{ marginTop: 8, fontSize: 13, lineHeight: 19 }}>
-              • {line}
-            </ILText>
-          ))}
-        </ScrollView>
+          </Pressable>
+        ) : null}
       </WhiteCard>
 
       <WhiteCard style={{ marginTop: 14, borderRadius: 18, padding: 14 }}>
@@ -169,18 +246,25 @@ export default function PromisesAgreementForm({ form, setForm }) {
         <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12, lineHeight: 17 }}>
           Pre-filled from your profile — change your name or add details if needed.
         </ILText>
-        <LabeledInput label="Full name *" value={form.fullName || ''} onChangeText={(v) => set('fullName', v)} />
+        <LabeledInput
+          label="Full name *"
+          value={form.fullName || ''}
+          onChangeText={(v) => set('fullName', v)}
+          onFocus={onInputFocus}
+        />
         <LabeledInput
           label="Contact no. *"
           value={form.contactNo || ''}
           onChangeText={(v) => set('contactNo', v)}
           keyboardType="phone-pad"
+          onFocus={onInputFocus}
         />
         <LabeledInput
           label="Email *"
           value={form.email || ''}
           onChangeText={(v) => set('email', v)}
           keyboardType="email-address"
+          onFocus={onInputFocus}
         />
         <LabeledInput
           label="LinkedIn profile"
@@ -188,6 +272,7 @@ export default function PromisesAgreementForm({ form, setForm }) {
           onChangeText={(v) => set('linkedinUrl', v)}
           keyboardType="url"
           optional
+          onFocus={onInputFocus}
         />
         <Pressable onPress={() => setSalaryOpen((o) => !o)} style={{ marginTop: 14 }}>
           <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold, fontSize: 14 }}>
@@ -231,6 +316,7 @@ export default function PromisesAgreementForm({ form, setForm }) {
           label="Date *"
           value={form.agreementDate || ''}
           onChangeText={(v) => set('agreementDate', v)}
+          onFocus={onInputFocus}
         />
       </WhiteCard>
 
@@ -318,7 +404,7 @@ export default function PromisesAgreementForm({ form, setForm }) {
           style={{ marginTop: 1 }}
         />
         <ILText role="body" color={G.ink} style={{ marginLeft: 10, flex: 1, fontSize: 14, lineHeight: 20 }}>
-          I agree to the points mentioned in the document above.
+          I have read the Promises and Agreements above and I agree to those promises.
         </ILText>
       </Pressable>
     </View>

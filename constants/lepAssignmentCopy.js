@@ -1,7 +1,7 @@
 /** In-app assignment briefs (FILE_UPLOAD tasks) when LMS PDF is missing or for quick reference. */
 
 export const LEP_DAY2_ASSIGNMENT = {
-  title: 'Assignments: Day 2',
+  title: 'Day 2 assignments',
   items: [
     'Acknowledge parents by letter again. Also, acknowledge the most important person in your life, aside from your parents. If you are married — spouse and kids necessarily.',
     'In the mirror, state emphatically: “I am whole, complete and perfect.”',
@@ -17,5 +17,6 @@ export const LEP_DAY2_ASSIGNMENT = {
 export function lepAssignmentBrief(taskId) {
   const id = String(taskId || '');
   if (id === 'lep-day2-assignment') return LEP_DAY2_ASSIGNMENT;
+  // Day 2 list is in-app only — no hosted PDF (day-2-assignment.pdf was missing on LMS).
   return null;
 }

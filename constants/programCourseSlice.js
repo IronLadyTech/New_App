@@ -66,9 +66,9 @@ export const COURSE_TASKS = {
       title: "Program Framework",
       type: TASK_TYPES.CHECKLIST,
       kind: "Checklist",
-      description: "Read the programme framework and confirm you know how the four weeks are structured.",
+      description: "Read the Leadership Essentials programme document and confirm you understand the framework.",
       week: "Start",
-      checklistItems: ["I have read the programme framework","I know which days are live sessions","I know what is expected of me each week"],
+      checklistItems: ["I have understood the programme framework"],
     },
     {
       id: "lep-orientation-access",
@@ -82,17 +82,6 @@ export const COURSE_TASKS = {
       checklistItems: ["I have read Program Access Essentials and completed what it asks"],
     },
     {
-      id: "lep-orientation-schedule",
-      phase: "orientation",
-      order: 102,
-      title: "Program Schedule",
-      type: TASK_TYPES.CHECKLIST,
-      kind: "Checklist",
-      description: "Check your batch dates on the calendar and block them out.",
-      week: "Start",
-      checklistItems: ["I have blocked out all session dates in my own calendar"],
-    },
-    {
       id: "lep-day1-promises",
       phase: "day-1",
       order: 200,
@@ -101,7 +90,7 @@ export const COURSE_TASKS = {
       templateId: "promises-agreement",
       kind: "Form",
       description:
-        "Read the Iron Lady promises, complete your details, upload your signature, and submit your agreement before Day 1.",
+        "Open the Promises and Agreements PDF, read it fully, then complete your details, signature, and submit before Day 1.",
       week: "Day 1",
     },
     {
@@ -134,7 +123,7 @@ export const COURSE_TASKS = {
       type: TASK_TYPES.EDITABLE_TEMPLATE,
       templateId: "errc",
       kind: "Form",
-      description: "Complete your ERRC table below — what you will Eliminate, Reduce, Raise and Create. Fill every block before submitting.",
+      description: "Complete your Week 1 ERRC handbook table below. Fill the rows you are working on before submitting.",
       week: "Day 1",
     },
     {
@@ -337,7 +326,7 @@ export const COURSE_TASKS = {
       title: "Build your LinkedIn Profile",
       type: TASK_TYPES.LINK,
       kind: "Link",
-      description: "Rebuild your LinkedIn profile, then share the link to it.",
+      description: "Watch the guidance video, update your LinkedIn profile, then paste your profile link here.",
       week: "Week 2",
     },
     {
@@ -347,7 +336,7 @@ export const COURSE_TASKS = {
       title: "Resume Template and Samples",
       type: TASK_TYPES.CHECKLIST,
       kind: "Checklist",
-      description: "Study the Iron Lady resume format before writing your own.",
+      description: "Watch the session video, study the sample resume template (PDF), then confirm on the checklist.",
       week: "Week 2",
       checklistItems: ["I have studied the resume template and samples"],
     },
@@ -1868,4 +1857,12 @@ export function nextCourseTask(programId, taskId) {
   const list = courseTasks(programId, task.phase);
   const i = list.findIndex((t) => t.id === taskId);
   return i >= 0 && i < list.length - 1 ? list[i + 1] : null;
+}
+
+export function prevCourseTask(programId, taskId) {
+  const task = courseTask(programId, taskId);
+  if (!task) return null;
+  const list = courseTasks(programId, task.phase);
+  const i = list.findIndex((t) => t.id === taskId);
+  return i > 0 ? list[i - 1] : null;
 }

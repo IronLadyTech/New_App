@@ -354,7 +354,7 @@ export function isErrcActivitiesComplete(form) {
 }
 
 export function isErrcFormComplete(form) {
-  return isErrcHandbookComplete(form) || isErrcActivitiesComplete(form);
+  return isErrcHandbookComplete(form);
 }
 
 function createTableRows(field) {

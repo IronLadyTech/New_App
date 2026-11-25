@@ -71,6 +71,28 @@ import { todayPrincipleNumber } from '../../utils/lepHomeMoment';
 import { resolveLepDay1Iso } from '../../utils/lepEnrolledCohortPhase';
 import { todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 
+/** Soft teal section tint behind Explore content (every chip). */
+const EXPLORE_SECTION_TEAL = 'rgba(17, 55, 68, 0.06)';
+
+function ExploreSectionSurface({ chip, children }) {
+  if (!chip) return children;
+  const bg = EXPLORE_SECTION_TEAL;
+  return (
+    <View
+      style={{
+        marginTop: 10,
+        marginHorizontal: -6,
+        paddingHorizontal: 10,
+        paddingVertical: 12,
+        borderRadius: 22,
+        backgroundColor: bg,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+
 export default function LepLearnScreen() {
   const { profile } = useAuth();
   const insets = useSafeAreaInsets();
@@ -95,60 +117,64 @@ export default function LepLearnScreen() {
         {enrolled ? (
           <>
             {chip !== 'For you' ? <EnrolledHead chip={chip} /> : null}
-            {chip === 'Principles' ? (
-              <PrinciplesEnrolled
-                onWatch={nav.goWatch}
-                onPrinciple={(n) => {
-                  const w = lepPrincipleWatch(n);
-                  if (!w) return;
-                  if (w.practiceId === 'lep-shameless') {
-                    nav.goPractice('lep', 'lep-shameless');
-                    return;
-                  }
-                  nav.goPractice('lep', 'lep-principle', { principleN: n });
-                }}
-              />
-            ) : chip === 'Case studies' ? (
-              <CasesEnrolled
-                onShareReflection={() => nav.goCourseTask('lep', LEARN_CASE_INSPIRATION_TASK_ID)}
-                onWatch={nav.goWatch}
-                onSeeAll={() => nav.goEngageMediaList('csuite')}
-              />
-            ) : chip === 'Events' ? (
-              <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goEventDetail} />
-            ) : chip === 'Community stories' ? (
-              <StoriesEnrolled
-                onHow={nav.goEngage}
-                onSeeAll={() => nav.goEngageMediaList('podcast')}
-                onWatch={nav.goWatch}
-              />
-            ) : (
-              <EnrolledForYou
-                onTicket={nav.goEventDetail}
-                onWatch={nav.goWatch}
-                onSeeAll={() => nav.goEngageMediaList('csuite')}
-                onChapterHub={() => setChip('Events')}
-              />
-            )}
+            <ExploreSectionSurface chip={chip}>
+              {chip === 'Principles' ? (
+                <PrinciplesEnrolled
+                  onWatch={nav.goWatch}
+                  onPrinciple={(n) => {
+                    const w = lepPrincipleWatch(n);
+                    if (!w) return;
+                    if (w.practiceId === 'lep-shameless') {
+                      nav.goPractice('lep', 'lep-shameless');
+                      return;
+                    }
+                    nav.goPractice('lep', 'lep-principle', { principleN: n });
+                  }}
+                />
+              ) : chip === 'Case studies' ? (
+                <CasesEnrolled
+                  onShareReflection={() => nav.goCourseTask('lep', LEARN_CASE_INSPIRATION_TASK_ID)}
+                  onWatch={nav.goWatch}
+                  onSeeAll={() => nav.goEngageMediaList('csuite')}
+                />
+              ) : chip === 'Events' ? (
+                <EventsEnrolled onCal={nav.goSchedule} onTriad={nav.goMyProgram} onTicket={nav.goEventDetail} />
+              ) : chip === 'Community stories' ? (
+                <StoriesEnrolled
+                  onHow={nav.goEngage}
+                  onSeeAll={() => nav.goEngageMediaList('podcast')}
+                  onWatch={nav.goWatch}
+                />
+              ) : (
+                <EnrolledForYou
+                  onTicket={nav.goEventDetail}
+                  onWatch={nav.goWatch}
+                  onSeeAll={() => nav.goEngageMediaList('csuite')}
+                  onChapterHub={() => setChip('Events')}
+                />
+              )}
+            </ExploreSectionSurface>
           </>
         ) : (
           <>
             <RegisteredHead chip={chip} />
-            {chip === 'Principles' ? (
-              <PrinciplesPane onEnroll={nav.goEnroll} onPractice={nav.goPractice} />
-            ) : chip === 'Case studies' ? (
-              <CasesPane onEnroll={nav.goEnroll} onWatch={nav.goWatch} />
-            ) : chip === 'Events' ? (
-              <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goEventDetail} />
-            ) : (
-              <ForYouPane
-                enrolled={false}
-                onEnroll={nav.goEnroll}
-                onTicket={nav.goEventDetail}
-                onPractice={nav.goPractice}
-                onWatch={nav.goWatch}
-              />
-            )}
+            <ExploreSectionSurface chip={chip}>
+              {chip === 'Principles' ? (
+                <PrinciplesPane onEnroll={nav.goEnroll} onPractice={nav.goPractice} />
+              ) : chip === 'Case studies' ? (
+                <CasesPane onEnroll={nav.goEnroll} onWatch={nav.goWatch} />
+              ) : chip === 'Events' ? (
+                <EventsPane onEnroll={nav.goEnroll} onTicket={nav.goEventDetail} />
+              ) : (
+                <ForYouPane
+                  enrolled={false}
+                  onEnroll={nav.goEnroll}
+                  onTicket={nav.goEventDetail}
+                  onPractice={nav.goPractice}
+                  onWatch={nav.goWatch}
+                />
+              )}
+            </ExploreSectionSurface>
           </>
         )}
       </RevealScrollView>

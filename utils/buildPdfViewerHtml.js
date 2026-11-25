@@ -6,6 +6,102 @@
  * @param {number[] | null | undefined} pages 1-based page numbers, or all pages
  * @param {string} [label] for canvas aria-labels
  */
+/**
+ * Faster path: pdf.js fetches from HTTPS inside the WebView (no RN download + base64 embed).
+ */
+export function buildPdfViewerHtmlFromUrl(pdfUrl, pages, label = 'Document') {
+  const pagesJson = JSON.stringify(pages?.length ? pages : null);
+  const safeLabel = String(label).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const safeUrl = String(pdfUrl)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/</g, '\\u003c');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+<link rel="dns-prefetch" href="https://cdnjs.cloudflare.com" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 12px 12px 28px; background: #F7F6E4; }
+  #status { padding: 40px 16px; text-align: center; color: #4A463D; font: 15px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; }
+  #err { display: none; padding: 24px 16px; color: #113744; text-align: center; font: 15px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; }
+  canvas { display: block; width: 100%; height: auto; margin: 0 auto 14px; background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(17,55,68,0.08); }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<div id="status">Loading document…</div>
+<div id="err"></div>
+<div id="pages"></div>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  var label = '${safeLabel}';
+  var filterPages = ${pagesJson};
+  var pdfUrl = '${safeUrl}';
+
+  function notifyReady() {
+    try {
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pdf-ready' }));
+    } catch (e) {}
+  }
+  function notifyError() {
+    try {
+      window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pdf-error' }));
+    } catch (e) {}
+  }
+
+  var notified = false;
+  function renderPage(pdf, num, root) {
+    return pdf.getPage(num).then(function(page) {
+      var canvas = document.createElement('canvas');
+      canvas.setAttribute('role', 'img');
+      canvas.setAttribute('aria-label', label + ' — page ' + num + ' of ' + pdf.numPages);
+      root.appendChild(canvas);
+      var pad = 24;
+      var w = Math.max((document.body.clientWidth || window.innerWidth) - pad, 280);
+      var base = page.getViewport({ scale: 1 });
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      var vp = page.getViewport({ scale: (w / base.width) * dpr });
+      canvas.width = Math.floor(vp.width);
+      canvas.height = Math.floor(vp.height);
+      canvas.style.width = Math.floor(vp.width / dpr) + 'px';
+      canvas.style.height = Math.floor(vp.height / dpr) + 'px';
+      return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function() {
+        if (!notified) {
+          notified = true;
+          document.getElementById('status').style.display = 'none';
+          notifyReady();
+        }
+      });
+    });
+  }
+
+  pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false, disableAutoFetch: false }).promise.then(function(pdf) {
+    var nums = filterPages && filterPages.length
+      ? filterPages.filter(function(n) { return n >= 1 && n <= pdf.numPages; })
+      : Array.from({ length: pdf.numPages }, function(_, i) { return i + 1; });
+    var root = document.getElementById('pages');
+  var chain = Promise.resolve();
+    nums.forEach(function(num) {
+      chain = chain.then(function() { return renderPage(pdf, num, root); });
+    });
+    return chain;
+  }).catch(function() {
+    document.getElementById('status').style.display = 'none';
+    var err = document.getElementById('err');
+    err.style.display = 'block';
+    err.textContent = 'This document could not be displayed. Check your connection and try again.';
+    notifyError();
+  });
+</script>
+</body>
+</html>`;
+}
+
 export function buildPdfViewerHtml(base64, pages, label = 'Document') {
   const pagesJson = JSON.stringify(pages?.length ? pages : null);
   const safeLabel = String(label).replace(/\\/g, '\\\\').replace(/'/g, "\\'");

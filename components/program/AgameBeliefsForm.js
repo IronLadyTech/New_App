@@ -26,7 +26,7 @@ const SITUATION_BLOCKS = [
   },
 ];
 
-function SituationBlock({ meta, data, onChange }) {
+function SituationBlock({ meta, data, onChange, onInputFocus }) {
   const setSituation = (v) => onChange({ ...data, situation: v });
   const setAnswer = (i, v) => {
     const answers = [...(data.answers || [])];
@@ -66,24 +66,29 @@ function SituationBlock({ meta, data, onChange }) {
         <ILText role="label" color={G.ink} style={{ marginTop: 14, fontSize: 14 }}>
           The situation was
         </ILText>
-        <PlainInput value={data.situation || ''} onChangeText={setSituation} minHeight={72} />
+        <PlainInput
+          value={data.situation || ''}
+          onChangeText={setSituation}
+          minHeight={80}
+          onFocus={onInputFocus}
+        />
 
         {AGAME_QUESTION_LABELS.map((label, i) => (
           <View
             key={label}
             style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTopWidth: 1,
-              borderTopColor: G.line,
+              marginTop: 18,
+              paddingTop: i > 0 ? 0 : 4,
             }}
           >
-            <ILText role="label" color={G.ink} style={{ fontSize: 14, lineHeight: 20 }}>
+            <ILText role="label" color={G.ink} style={{ fontSize: 14, lineHeight: 22 }}>
               {label}
             </ILText>
             <PlainInput
               value={(data.answers || [])[i] || ''}
               onChangeText={(v) => setAnswer(i, v)}
+              minHeight={80}
+              onFocus={onInputFocus}
             />
           </View>
         ))}
@@ -117,7 +122,7 @@ function ReflectionBlock({ title, eyebrow, children, tint = G.mutedFill }) {
   );
 }
 
-export default function AgameBeliefsForm({ form, setForm }) {
+export default function AgameBeliefsForm({ form, setForm, onInputFocus }) {
   const setBlock = (key, data) => setForm((prev) => ({ ...prev, [key]: data }));
 
   return (
@@ -131,27 +136,30 @@ export default function AgameBeliefsForm({ form, setForm }) {
           habits.
         </ILText>
 
-        <SectionTitle first>Two situations</SectionTitle>
-        {SITUATION_BLOCKS.map((meta) => (
-          <SituationBlock
-            key={meta.key}
-            meta={meta}
-            data={form[meta.key] || { situation: '', answers: [] }}
-            onChange={(data) => setBlock(meta.key, data)}
-          />
-        ))}
       </WhiteCard>
+
+      {SITUATION_BLOCKS.map((meta) => (
+        <SituationBlock
+          key={meta.key}
+          meta={meta}
+          data={form[meta.key] || { situation: '', answers: [] }}
+          onChange={(data) => setBlock(meta.key, data)}
+          onInputFocus={onInputFocus}
+        />
+      ))}
 
       <ReflectionBlock title="Top beliefs" eyebrow="REFLECT">
         <Field
           label="Empowering beliefs"
           value={form.empoweringBeliefs || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, empoweringBeliefs: v }))}
+          onFocus={onInputFocus}
         />
         <Field
           label="Disempowering beliefs"
           value={form.disempoweringBeliefs || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, disempoweringBeliefs: v }))}
+          onFocus={onInputFocus}
         />
       </ReflectionBlock>
 
@@ -160,11 +168,13 @@ export default function AgameBeliefsForm({ form, setForm }) {
           label="Positive emotions"
           value={form.positiveEmotions || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, positiveEmotions: v }))}
+          onFocus={onInputFocus}
         />
         <Field
           label="Negative emotions"
           value={form.negativeEmotions || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, negativeEmotions: v }))}
+          onFocus={onInputFocus}
         />
       </ReflectionBlock>
 
@@ -173,11 +183,13 @@ export default function AgameBeliefsForm({ form, setForm }) {
           label="Effective work patterns / habits"
           value={form.effectiveHabits || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, effectiveHabits: v }))}
+          onFocus={onInputFocus}
         />
         <Field
           label="Non-effective work patterns / habits"
           value={form.nonEffectiveHabits || ''}
           onChangeText={(v) => setForm((prev) => ({ ...prev, nonEffectiveHabits: v }))}
+          onFocus={onInputFocus}
         />
       </ReflectionBlock>
     </View>

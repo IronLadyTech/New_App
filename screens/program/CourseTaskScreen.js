@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { learnerBhagText } from '../../utils/programAccess';
 import { practiceKey } from '../../constants/practice';
 import {
@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { openLink } from '../../utils/openLink';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -23,7 +23,13 @@ import { LIQUID_TAB_PAD } from '../../components/il/LiquidTabBar';
 import Pressable from '../../components/il/Press';
 import { GuestBackBar } from '../guest/GuestBits';
 import { Page, RedCta, WhiteCard } from '../lep/LepBits';
-import { COURSE_LABEL, coursePhase, courseTask, nextCourseTask } from '../../constants/programCourseSlice';
+import {
+  COURSE_LABEL,
+  coursePhase,
+  courseTask,
+  nextCourseTask,
+  prevCourseTask,
+} from '../../constants/programCourseSlice';
 import { phaseLockLabel } from '../../utils/phaseUnlock';
 import { lepFlowContextFromBatch } from '../../utils/lepFlowGates';
 import { isLepEnrolled } from '../../utils/lepState';
@@ -36,6 +42,9 @@ import { useLearnerCmsBatch } from '../../hooks/useLearnerCmsBatch';
 import { useLepRitualsUnlocked } from '../../hooks/useLepRitualsUnlocked';
 import { isLepRitualsCourseTask } from '../../utils/lepRitualsUnlock';
 import { isInAppDocument } from '../../utils/taskDocumentUri';
+import { warmPdfUrl } from '../../utils/pdfWarm';
+import { getTaskReadingAck, setTaskReadingAck } from '../../utils/taskReadingAck';
+import { remoteUrlIsPdf } from '../../utils/fetchTaskPdfBase64';
 import EditableTemplateForm, {
   isGenericTemplateComplete,
 } from '../../components/program/EditableTemplateForm';
@@ -67,7 +76,6 @@ import { showAlert } from '../../utils/showAlert';
 import LEP_TASK_SCHEDULE from '../../constants/lepTaskSchedule.json';
 import {
   TASK_MATERIALS_LOAD_FAILED,
-  TASK_MATERIALS_PENDING,
   TASK_SAVE_FAILED,
 } from '../../utils/learnerBatchDisplay';
 import { todayIsoIST } from '../../utils/lepDailyPractice';
@@ -178,14 +186,61 @@ function fileKind(url, cmsType) {
   return { icon: 'open-in-new', sub: 'Open file' };
 }
 
-function openTaskDocument(navigation, item) {
-  const params = { url: item.url, label: item.title, pages: item.pages };
+function TaskNavButtons({ prev, next, onPrev, onNext, marginTop = 0 }) {
+  return (
+    <View style={{ marginTop, gap: 10 }}>
+      {prev ? (
+        <Pressable
+          onPress={onPrev}
+          accessibilityRole="button"
+          style={{
+            borderRadius: 16,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            borderWidth: 1,
+            borderColor: G.line,
+            backgroundColor: G.white,
+          }}
+        >
+          <ILText role="eyebrow" color={G.meta} style={[af, { fontSize: 10, textAlign: 'center' }]}>
+            Previous task
+          </ILText>
+          <ILText role="label" color={G.ink} style={{ marginTop: 4, textAlign: 'center', lineHeight: 20 }}>
+            {prev.title}
+          </ILText>
+        </Pressable>
+      ) : null}
+      <RedCta
+        label={next ? 'Next task' : 'Back to this phase'}
+        subtitle={next?.title}
+        onPress={onNext}
+      />
+    </View>
+  );
+}
+
+function openTaskDocument(navigation, item, ack = {}) {
+  const params = {
+    url: item.url,
+    label: item.title,
+    pages: item.pages,
+    allowDownload: item.allowDownload === true,
+    ...(ack.ackProgramId ? ack : {}),
+  };
   const names = navigation.getState()?.routeNames || [];
   if (names.includes('TaskDocument')) navigation.navigate('TaskDocument', params);
   else openInTab(navigation, 'MyProgram', 'TaskDocument', params);
 }
 
-function TaskFiles({ task, skipReadingDocument = false }) {
+function TaskFiles({
+  task,
+  skipReadingDocument = false,
+  ackProgramId,
+  ackTaskId,
+  sectionTitle,
+  sectionHint,
+}) {
   const navigation = useNavigation();
   const items = [];
   const seen = new Set();
@@ -193,10 +248,11 @@ function TaskFiles({ task, skipReadingDocument = false }) {
     if (!item?.url || seen.has(item.url)) return;
     seen.add(item.url);
     const kind = fileKind(item.url, item.cmsType);
-    items.push({
+      items.push({
       url: item.url,
       title: item.label || item.title,
       pages: item.pages,
+      allowDownload: item.allowDownload,
       icon: kind.icon,
       sub: fallback || (isInAppDocument(item.url) ? 'Read in app' : kind.sub),
     });
@@ -205,18 +261,29 @@ function TaskFiles({ task, skipReadingDocument = false }) {
   if (task.readingDocument && !skipReadingDocument) {
     const pages = task.readingDocument.pages;
     add(
-      task.readingDocument,
+      {
+        ...task.readingDocument,
+        allowDownload: task.readingDocument.allowDownload,
+      },
       pages?.length ? `Read in app · page ${pages.join(', ')}` : 'Read in app'
     );
   }
   (task.resourceLinks || []).forEach((link) => add(link));
   if (!items.length) return null;
 
+  const ack =
+    ackProgramId && ackTaskId ? { ackProgramId, ackTaskId } : {};
+
   return (
     <View style={{ marginTop: 18 }}>
-      <ILText role="label" color={G.ink} style={{ marginBottom: 4 }}>
-        Batch materials
+      <ILText role="label" color={G.ink} style={{ marginBottom: sectionHint ? 2 : 4 }}>
+        {sectionTitle || 'Batch materials'}
       </ILText>
+      {sectionHint ? (
+        <ILText role="bodySm" color={G.meta} style={{ marginBottom: 8, fontSize: 13, lineHeight: 18 }}>
+          {sectionHint}
+        </ILText>
+      ) : null}
       {items.map((item) => (
         <PickCard
           key={item.url}
@@ -225,7 +292,7 @@ function TaskFiles({ task, skipReadingDocument = false }) {
           sub={item.sub}
           onPress={() =>
             isInAppDocument(item.url)
-              ? openTaskDocument(navigation, item)
+              ? openTaskDocument(navigation, item, ack)
               : openTaskFile(item.url, navigation, item.title)
           }
         />
@@ -497,6 +564,7 @@ export default function CourseTaskScreen({ route, navigation }) {
   const alumniPractice = route.params?.alumniPractice === true || cohortAlumni;
   const { unlocked: ritualsUnlocked } = useLepRitualsUnlocked({ cmsBatch });
   const scrollRef = useRef(null);
+  const scrollY = useRef(0);
   const [keyboardPad, setKeyboardPad] = useState(0);
   const task = courseTask(programId, taskId);
   const ritualsTaskLocked =
@@ -515,6 +583,7 @@ export default function CourseTaskScreen({ route, navigation }) {
     return phaseLockLabel(coursePhase(programId, task.phase), { enrolled, flow });
   }, [programId, task?.phase, alumniPractice, cmsBatch, day1Iso, enrolled]);
   const next = nextCourseTask(programId, taskId);
+  const prev = prevCourseTask(programId, taskId);
 
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
@@ -557,9 +626,6 @@ export default function CourseTaskScreen({ route, navigation }) {
             cmsType: r.type,
           }));
         setCmsLinks(links);
-        if (!links.length && taskId === 'lep-orientation-schedule') {
-          setCmsHint(TASK_MATERIALS_PENDING);
-        }
       })
       .catch((e) => {
         if (!cancelled) {
@@ -577,9 +643,75 @@ export default function CourseTaskScreen({ route, navigation }) {
 
   const taskForFiles = useMemo(() => {
     if (!task) return task;
-    if (!cmsLinks.length) return task;
-    return { ...task, resourceLinks: [...(task.resourceLinks || []), ...cmsLinks] };
-  }, [task, cmsLinks]);
+    const stripDay2AssignmentPdf = (link) => {
+      const hay = `${link?.label || ''} ${link?.url || ''}`.toLowerCase();
+      return !hay.includes('day-2-assignment') && !hay.includes('assignments: day 2');
+    };
+    const cms = taskId === 'lep-day2-assignment' ? cmsLinks.filter(stripDay2AssignmentPdf) : cmsLinks;
+    const merged =
+      taskId === 'lep-day2-assignment'
+        ? (({ readingDocument: _drop, ...rest }) => rest)(task)
+        : task;
+    if (!cms.length) return merged;
+    return { ...merged, resourceLinks: [...(merged.resourceLinks || []), ...cms] };
+  }, [task, cmsLinks, taskId]);
+
+  useEffect(() => {
+    const doc = taskForFiles?.readingDocument?.url;
+    if (doc && isInAppDocument(doc)) warmPdfUrl(doc);
+    (taskForFiles?.resourceLinks || []).forEach((link) => {
+      if (link?.url && isInAppDocument(link.url)) warmPdfUrl(link.url);
+    });
+  }, [taskForFiles]);
+
+  const isPromisesTask = task?.templateId === TEMPLATE_IDS.PROMISES_AGREEMENT;
+  const [promisesPdfRead, setPromisesPdfRead] = useState(false);
+  const [promisesPdfAvailable, setPromisesPdfAvailable] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPromisesTask || !user?.uid || !taskId) return undefined;
+      let active = true;
+      getTaskReadingAck(user.uid, programId, taskId).then((ok) => {
+        if (active) setPromisesPdfRead(ok);
+      });
+      return () => {
+        active = false;
+      };
+    }, [isPromisesTask, user?.uid, programId, taskId])
+  );
+
+  useEffect(() => {
+    const docUrl = taskForFiles?.readingDocument?.url;
+    if (!isPromisesTask || !docUrl) {
+      setPromisesPdfAvailable(false);
+      return undefined;
+    }
+    let active = true;
+    remoteUrlIsPdf(docUrl).then((ok) => {
+      if (active) setPromisesPdfAvailable(ok);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isPromisesTask, taskForFiles?.readingDocument?.url]);
+
+  const markPromisesRead = useCallback(() => {
+    if (user?.uid && user.uid !== 'preview') {
+      setTaskReadingAck(user.uid, programId, taskId).catch(() => {});
+    }
+    setPromisesPdfRead(true);
+  }, [user?.uid, programId, taskId]);
+
+  const openPromisesPdf = useCallback(() => {
+    const doc = taskForFiles?.readingDocument;
+    if (!doc?.url || !promisesPdfAvailable) return;
+    openTaskDocument(
+      navigation,
+      { url: doc.url, title: doc.label || 'Promises and Agreements', pages: doc.pages },
+      { ackProgramId: programId, ackTaskId: taskId }
+    );
+  }, [navigation, taskForFiles, programId, taskId, promisesPdfAvailable]);
 
   const isErrcTask = task?.templateId === TEMPLATE_IDS.ERRC;
   const videoPoster = getVideoPoster({ taskId, uri: videoUri });
@@ -598,8 +730,9 @@ export default function CourseTaskScreen({ route, navigation }) {
     const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
     const onShow = (e) => {
       const h = e?.endCoordinates?.height || 0;
-      setKeyboardPad(Math.max(0, h - Math.max(insets.bottom, 0)));
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+      if (Platform.OS === 'ios') {
+        setKeyboardPad(Math.max(0, h - Math.max(insets.bottom, 0)));
+      }
     };
     const onHide = () => setKeyboardPad(0);
     const show = Keyboard.addListener(showEvt, onShow);
@@ -833,6 +966,13 @@ export default function CourseTaskScreen({ route, navigation }) {
 
   const submit = async () => {
     if (syncing || !task?.id) return;
+    if (isPromisesTask && !promisesPdfRead) {
+      Alert.alert(
+        'Read the PDF first',
+        'Open Promises and Agreements above, read the full document, then return here to sign and submit.'
+      );
+      return;
+    }
     setSyncing(true);
     try {
       let uploaded = null;
@@ -987,7 +1127,10 @@ export default function CourseTaskScreen({ route, navigation }) {
             ? canMarkWatched
             : type === TASK_TYPES.EDITABLE_TEMPLATE
               ? task.templateId
-                ? isTemplateComplete(task.templateId, form)
+                ? (isPromisesTask ? promisesPdfRead : true) &&
+                  (task.templateId
+                    ? isTemplateComplete(task.templateId, form)
+                    : isGenericTemplateComplete(form))
                 : isGenericTemplateComplete(form)
               : !!picked; // file / video: a (re)submission needs a file chosen now
 
@@ -1044,13 +1187,41 @@ export default function CourseTaskScreen({ route, navigation }) {
     else navigation.goBack();
   };
 
+  const goPrev = () => {
+    if (prev) nav.goCourseTask(programId, prev.id);
+    else navigation.goBack();
+  };
+
+  const scrollOnFocus = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({
+        y: scrollY.current + 120,
+        animated: true,
+      });
+    }, 120);
+  }, []);
+
+  const attemptSubmit = () => {
+    if (syncing) return;
+    if (isPromisesTask && !promisesPdfRead) {
+      Alert.alert(
+        'Read the agreement first',
+        'Scroll through the full Promises and Agreements text on this screen and tap “I have read the full agreement” before you sign.'
+      );
+      return;
+    }
+    if (!ready) return;
+    submit();
+  };
+
   return (
     <Page>
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? Math.max(insets.top, 8) : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
+        keyboardVerticalOffset={Math.max(insets.top, 8) + 44}
       >
         <View style={{ paddingTop: Math.max(insets.top, 8) }}>
           <GuestBackBar
@@ -1068,10 +1239,18 @@ export default function CourseTaskScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'android'}
+          onScroll={(e) => {
+            scrollY.current = e.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingBottom: LIQUID_TAB_PAD + Math.max(insets.bottom, 8) + keyboardPad + 24,
+            paddingBottom:
+              LIQUID_TAB_PAD +
+              Math.max(insets.bottom, 8) +
+              keyboardPad +
+              (Platform.OS === 'android' ? 48 : 24),
           }}
         >
         <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 8, fontSize: 10 }]}>
@@ -1149,14 +1328,31 @@ export default function CourseTaskScreen({ route, navigation }) {
           <LepAssignmentBriefCard title={lepAssignment.title} items={lepAssignment.items} />
         ) : null}
 
-        <TaskFiles task={taskForFiles} skipReadingDocument={isErrcTask} />
+        {videoUri &&
+        type !== TASK_TYPES.WATCH_ONLY &&
+        (taskId === 'lep-resume-linkedin' || taskId === 'lep-resume-template-study') ? (
+          <View style={{ marginTop: 18 }}>
+            <ILText role="label" color={G.ink} style={{ marginBottom: 8 }}>
+              {lepTaskWatchLabel(taskId)}
+            </ILText>
+            <PracticeVideo uri={videoUri} poster={videoPoster} height={200} trackKey={`${programId}:${taskId}`} />
+          </View>
+        ) : null}
+
+        <TaskFiles
+          task={taskForFiles}
+          skipReadingDocument={isErrcTask || isPromisesTask}
+        />
         {cmsHint && !cmsLinks.length ? (
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 14, fontSize: 13, lineHeight: 18 }}>
             {cmsHint}
           </ILText>
         ) : null}
 
-        {videoUri && type !== TASK_TYPES.WATCH_ONLY ? (
+        {videoUri &&
+        type !== TASK_TYPES.WATCH_ONLY &&
+        taskId !== 'lep-resume-linkedin' &&
+        taskId !== 'lep-resume-template-study' ? (
           <View style={{ marginTop: 18 }}>
             <ILText role="label" color={G.ink} style={{ marginBottom: 8 }}>
               {lepTaskWatchLabel(taskId)}
@@ -1170,6 +1366,7 @@ export default function CourseTaskScreen({ route, navigation }) {
             <TextInput
               value={text}
               onChangeText={setText}
+              onFocus={scrollOnFocus}
               placeholder={task.placeholder || 'Type your answer'}
               placeholderTextColor="#B8B4A8"
               multiline
@@ -1188,6 +1385,7 @@ export default function CourseTaskScreen({ route, navigation }) {
             <TextInput
               value={link}
               onChangeText={setLink}
+              onFocus={scrollOnFocus}
               autoCapitalize="none"
               placeholder={task.linkLabel || 'https://'}
               placeholderTextColor="#B8B4A8"
@@ -1344,7 +1542,17 @@ export default function CourseTaskScreen({ route, navigation }) {
         ) : null}
 
         {type === TASK_TYPES.EDITABLE_TEMPLATE ? (
-          <EditableTemplateForm templateId={task.templateId} form={form} setForm={setForm} />
+          <EditableTemplateForm
+            templateId={task.templateId}
+            form={form}
+            setForm={setForm}
+            promisesPdfRead={isPromisesTask ? promisesPdfRead : true}
+            onOpenPromisesPdf={openPromisesPdf}
+            promisesPdfLabel={taskForFiles?.readingDocument?.label}
+            onMarkPromisesRead={isPromisesTask ? markPromisesRead : undefined}
+            promisesPdfAvailable={isPromisesTask ? promisesPdfAvailable : false}
+            onInputFocus={scrollOnFocus}
+          />
         ) : null}
 
         <View style={{ marginTop: 22 }}>
@@ -1371,10 +1579,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                   />
                 </View>
               ) : null}
-              <RedCta
-                label={next ? `Next task · ${next.title}` : 'Back to this phase'}
-                onPress={goNext}
-              />
+              <TaskNavButtons prev={prev} next={next} onPrev={goPrev} onNext={goNext} />
               {displayReview === 'submitted' ? (
                 <Pressable
                   onPress={() => setEditing(true)}
@@ -1399,10 +1604,7 @@ export default function CourseTaskScreen({ route, navigation }) {
 
           {done && !editing && !canAddAnotherFile && isErrcTask ? (
             <>
-              <RedCta
-                label={next ? `Next task · ${next.title}` : 'Back to this phase'}
-                onPress={goNext}
-              />
+              <TaskNavButtons prev={prev} next={next} onPrev={goPrev} onNext={goNext} />
               {displayReview === 'submitted' ? (
                 <Pressable
                   onPress={() => setEditing(true)}
@@ -1427,10 +1629,7 @@ export default function CourseTaskScreen({ route, navigation }) {
 
           {done && !editing && !canAddAnotherFile && !isErrcTask ? (
             <>
-              <RedCta
-                label={next ? `Next task · ${next.title}` : 'Back to this phase'}
-                onPress={goNext}
-              />
+              <TaskNavButtons prev={prev} next={next} onPrev={goPrev} onNext={goNext} />
               {displayReview === 'submitted' && type !== TASK_TYPES.WATCH_ONLY ? (
                 <Pressable
                   onPress={() => setEditing(true)}
@@ -1467,27 +1666,21 @@ export default function CourseTaskScreen({ route, navigation }) {
                   />
                 ) : (
                   <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
-                    <RedCta label={syncing ? 'Saving…' : cta} onPress={ready && !syncing ? submit : () => {}} />
+                    <RedCta
+                      label={syncing ? 'Saving…' : cta}
+                      onPress={syncing ? undefined : attemptSubmit}
+                    />
                   </View>
                 )
               ) : null}
               {done && isErrcTask ? (
-                <Pressable
-                  onPress={goNext}
-                  style={{
-                    marginTop: 12,
-                    borderRadius: 999,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: G.line,
-                    backgroundColor: G.white,
-                  }}
-                >
-                  <ILText role="label" color={G.ink}>
-                    {next ? `Next task · ${next.title}` : 'Back to this phase'}
-                  </ILText>
-                </Pressable>
+                <TaskNavButtons
+                  prev={prev}
+                  next={next}
+                  onPrev={goPrev}
+                  onNext={goNext}
+                  marginTop={12}
+                />
               ) : null}
             </>
           ) : null}

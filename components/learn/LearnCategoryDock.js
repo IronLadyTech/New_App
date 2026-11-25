@@ -31,13 +31,49 @@ const FAB = 52;
 const BUBBLE_GAP = 6;
 const STAGGER_MS = 55;
 
+/** Teal chip fill for every Explore bubble (For you, Principles, Case studies, Events, Stories). */
+const EXPLORE_CHIP_TEAL = {
+  chipBg: 'rgba(17, 55, 68, 0.10)',
+  chipBgActive: 'rgba(17, 55, 68, 0.18)',
+};
+
 /** Customer-facing order — maps to existing Learn chip ids in LepLearnScreen. */
 const EXPLORE_OPTIONS = [
-  { id: 'For you', title: 'For You', hint: 'Personalized recommendations', icon: 'auto-awesome' },
-  { id: 'Case studies', title: 'Case Studies', hint: 'Real experiences and success stories', icon: 'business-center' },
-  { id: 'Events', title: 'Events', hint: 'Upcoming workshops and events', icon: 'event' },
-  { id: 'Community stories', title: 'Stories', hint: 'Inspirational leadership stories', icon: 'record-voice-over' },
-  { id: 'Principles', title: 'Principles', hint: 'Iron Lady leadership principles', icon: 'menu-book' },
+  {
+    id: 'For you',
+    title: 'For You',
+    hint: 'Personalized recommendations',
+    icon: 'auto-awesome',
+    ...EXPLORE_CHIP_TEAL,
+  },
+  {
+    id: 'Case studies',
+    title: 'Case Studies',
+    hint: 'Real experiences and success stories',
+    icon: 'business-center',
+    ...EXPLORE_CHIP_TEAL,
+  },
+  {
+    id: 'Events',
+    title: 'Events',
+    hint: 'Upcoming workshops and events',
+    icon: 'event',
+    ...EXPLORE_CHIP_TEAL,
+  },
+  {
+    id: 'Community stories',
+    title: 'Stories',
+    hint: 'Inspirational leadership stories',
+    icon: 'record-voice-over',
+    ...EXPLORE_CHIP_TEAL,
+  },
+  {
+    id: 'Principles',
+    title: 'Principles',
+    hint: 'Iron Lady leadership principles',
+    icon: 'menu-book',
+    ...EXPLORE_CHIP_TEAL,
+  },
 ];
 
 const SPRING_IN = { damping: 17, stiffness: 200, mass: 0.75 };
@@ -86,7 +122,18 @@ function ExploreBubble({ option, index, visible, active, onPress, total }) {
         accessibilityLabel={option.title}
         accessibilityState={{ selected: active }}
       >
-        <GlassShell dark={false} intensity={58} style={styles.bubble}>
+        <GlassShell
+          dark={false}
+          intensity={58}
+          style={[
+            styles.bubble,
+            {
+              backgroundColor: active
+                ? option.chipBgActive || EXPLORE_CHIP_TEAL.chipBgActive
+                : option.chipBg || EXPLORE_CHIP_TEAL.chipBg,
+            },
+          ]}
+        >
           <View style={[styles.bubbleIcon, active && styles.bubbleIconActive]}>
             <MaterialIcons name={option.icon} size={18} color={active ? '#FFFFFF' : G.dark} />
           </View>

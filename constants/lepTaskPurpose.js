@@ -17,15 +17,11 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-orientation-access': {
     why: 'Technical glitches on Day 1 waste your time and energy.',
-    gain: 'Login, community, and join details sorted so nothing blocks you on Saturday.',
-  },
-  'lep-orientation-schedule': {
-    why: 'Live attendance matters for your certificate.',
-    gain: 'All session dates protected in your calendar.',
+    gain: 'Login and session join details sorted so nothing blocks you on Saturday.',
   },
   'lep-day1-promises': {
     why: 'Commitment from hour one changes how you show up.',
-    gain: 'A clear agreement with yourself and the cohort for the month ahead.',
+    gain: 'A signed agreement with yourself and the cohort, after you read the full Promises and Agreements PDF.',
   },
   'lep-day1-beliefs': {
     why: 'Limiting beliefs quietly pull you off your A-Game.',

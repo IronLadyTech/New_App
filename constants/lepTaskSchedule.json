@@ -78,16 +78,6 @@
       "after": "All set. Nothing will stand between you and Day 1."
     },
     {
-      "id": "lep-orientation-schedule",
-      "phase": "orientation",
-      "order": 102,
-      "title": "Program Schedule",
-      "dueSession": "S1",
-      "opens": "Block your session dates. You're making time for yourself.",
-      "due": "Due today: put your sessions in your calendar.",
-      "after": "Dates blocked. You've made yourself a priority."
-    },
-    {
       "id": "lep-day1-promises",
       "phase": "day-1",
       "order": 200,
