@@ -1411,13 +1411,8 @@ function CasesEnrolled({ onShareReflection, onWatch, onSeeAll }) {
           Each of these names a company and a number. They stay inside the cohort — no downloads, no forwarding.
         </ILText>
       </WhiteCard>
-      <NextCard
-        kicker={LEARN_CASE_INSPIRATION_CARD.kicker}
-        title={LEARN_CASE_INSPIRATION_CARD.title}
-        body={LEARN_CASE_INSPIRATION_CARD.body}
-        cta={inspirationSaved?.textValue ? 'Update my check-in →' : LEARN_CASE_INSPIRATION_CARD.cta}
-        onPress={onShareReflection}
-      />
+      {/* The "Tell us what inspires you" card saved into the Week 1 Engagement Form, which was
+          removed from the programme (25 Nov 2026), so the card went with it. */}
     </>
   );
 }

@@ -1,4 +1,6 @@
-import * as FileSystem from 'expo-file-system';
+// The legacy API lives under /legacy since Expo SDK 54: imported from the package root these
+// calls throw at run time, so every in-app PDF failed ("Could not load this document").
+import * as FileSystem from 'expo-file-system/legacy';
 import { arrayBufferToBase64 } from './arrayBufferToBase64';
 
 function cachePathFor(url) {

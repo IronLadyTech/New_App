@@ -31,10 +31,10 @@
       "id": "lep-via-survey",
       "phase": "pre-program",
       "order": 0,
-      "title": "Complete your VIA Survey and Submit your 3 Photographs",
+      "title": "Complete your VIA Survey",
       "dueSession": "S1",
       "opens": "Before Day 1, let's find what's strongest in you. 15 minutes.",
-      "due": "Due today: your VIA and 3 photos. Start with what's right with you.",
+      "due": "Due today: your VIA Survey. Start with what's right with you.",
       "after": "Your strengths are in. Your excellence profile is on its way."
     },
     {
@@ -228,16 +228,6 @@
       "after": "Thank you. Your voice shapes this journey."
     },
     {
-      "id": "lep-weekly-1",
-      "phase": "week-1",
-      "order": 480,
-      "title": "Week 1 Engagement Form",
-      "dueSession": "S4",
-      "opens": "One week in. How are you really doing?",
-      "due": "Due today: your Week 1 check-in. 2 minutes.",
-      "after": "Thank you for sharing. We're with you."
-    },
-    {
       "id": "lep-challenge-1",
       "phase": "week-1",
       "order": 490,
@@ -368,16 +358,6 @@
       "after": "Thank you. Your voice shapes this journey."
     },
     {
-      "id": "lep-weekly-2",
-      "phase": "week-2",
-      "order": 580,
-      "title": "Week 2 Engagement Form",
-      "dueSession": "S5",
-      "opens": "Halfway there. How are you really doing?",
-      "due": "Due today: your Week 2 check-in. 2 minutes.",
-      "after": "Thank you for sharing. We're with you."
-    },
-    {
       "id": "lep-challenge-2",
       "phase": "week-2",
       "order": 590,
@@ -416,16 +396,6 @@
       "opens": "What did Guiding Stars stir in you? Tell us.",
       "due": "Due today: 2 minutes of feedback on Guiding Stars.",
       "after": "Thank you. Your voice shapes this journey."
-    },
-    {
-      "id": "lep-weekly-3",
-      "phase": "week-3",
-      "order": 680,
-      "title": "Week 3 Engagement Form",
-      "dueSession": "S7",
-      "opens": "Three weeks in. How are you really doing?",
-      "due": "Due today: your Week 3 check-in. 2 minutes.",
-      "after": "Thank you for sharing. We're with you."
     },
     {
       "id": "lep-challenge-3",
@@ -468,26 +438,6 @@
       "after": "Thank you. Your story inspires the next Iron Lady."
     },
     {
-      "id": "lep-weekly-4",
-      "phase": "week-4",
-      "order": 780,
-      "title": "Week 4 Engagement Form",
-      "dueSession": "S8",
-      "opens": "Final stretch. How are you really doing?",
-      "due": "Due today: your Week 4 check-in. 2 minutes.",
-      "after": "Thank you for sharing. We're with you."
-    },
-    {
-      "id": "lep-weekly-5",
-      "phase": "week-4",
-      "order": 781,
-      "title": "Week 5 Engagement Form",
-      "dueSession": null,
-      "opens": "Life after LEP has begun. How is it going?",
-      "due": "Due today: your Week 5 check-in. 2 minutes.",
-      "after": "Thank you. The journey continues, and so do we."
-    },
-    {
       "id": "lep-challenge-4",
       "phase": "week-4",
       "order": 790,
@@ -526,16 +476,6 @@
       "opens": "Your learning doesn't stop at graduation. See what's next.",
       "due": "Due today: check the community session dates.",
       "after": "Dates noted. Your community is waiting for you."
-    },
-    {
-      "id": "lep-community-handholding",
-      "phase": "community",
-      "order": 801,
-      "title": "Weekly Handholding Sessions",
-      "dueSession": null,
-      "opens": "Support every week, whenever you need it.",
-      "due": "Due today: see how the weekly sessions can help you.",
-      "after": "You know where to turn. You're never on your own."
     },
     {
       "id": "lep-attendance",

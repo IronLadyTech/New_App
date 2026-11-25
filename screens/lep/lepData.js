@@ -118,7 +118,7 @@ export const PHASES = [
   {
     n: '01',
     title: 'Pre-Program Preparation',
-    sub: 'VIA Survey · 3 photographs · CoDeSeF · NSDC',
+    sub: 'VIA Survey · Photograph · CoDeSeF · NSDC',
     done: true,
   },
   { n: '02', title: 'Program Orientation', sub: 'Framework · Access Essentials · Schedule', done: true },
@@ -144,7 +144,7 @@ export const PHASE_TASKS = [
 /** Phase 01 tasks a registered (part-paid) participant sees; the first few are open. */
 export const PRE_PROGRAM_TASKS = [
   { id: 'p1', title: 'VIA Survey', kind: 'Form · ~15 min', done: true },
-  { id: 'p2', title: 'Upload 3 photographs', kind: 'Upload', done: false },
+  { id: 'p2', title: 'Your photograph before Day 1', kind: 'Upload', done: false },
   { id: 'p3', title: 'CoDeSeF', kind: 'Reading', done: false },
   { id: 'p4', title: 'NSDC registration', kind: 'Form', done: false },
   { id: 'p5', title: 'Program Orientation video', kind: 'Video · Phase 02', done: false },

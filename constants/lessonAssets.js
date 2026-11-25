@@ -122,7 +122,8 @@ export const TASK_VIDEOS = {
   'lep-day3-brand-roadmap': LEP_BRAND_MP4,
   'lep-day3-max-value': LEP_MAX_VALUE_YT,
   'lep-resume-template-study': LEP_RESUME_RAJESH_YT,
-  'lep-resume-linkedin': YT('RAfeXhk31l0'),
+  // LinkedIn session by Ms Divya (programme team, 25 Nov 2026).
+  'lep-resume-linkedin': YT('DH-KDm6anic'),
   'lep-resume-bootcamp': LEP_JOBSEEKERS_BOOTCAMP_YT,
   'q1-session1': YT('qtSBQTXtS4A'),
   'q1-session2': YT('k16c3d02yj0'),

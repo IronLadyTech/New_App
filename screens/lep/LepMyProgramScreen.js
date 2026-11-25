@@ -188,7 +188,7 @@ function UnlockRest({ onEnroll }) {
         color="#FFFFFF"
         style={{ marginTop: 10, fontFamily: IL_FONTS.display, fontSize: 24, lineHeight: 30 }}
       >
-        Unlock Phases {String(REG_OPEN_PHASES + 1).padStart(2, '0')}–11
+        Unlock the full programme
       </ILText>
       <ILText role="body" color="rgba(255,255,255,0.72)" style={{ marginTop: 8, fontSize: 14, lineHeight: 20 }}>
         Your seat is held with a part payment. Day 1, Day 2, the four practice weeks and your certificate open the

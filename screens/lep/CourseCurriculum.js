@@ -107,9 +107,7 @@ export default function CourseCurriculum({
       phaseN: currentIndex + 1,
       total: phases.length || 11,
       nextTitle: next?.title || phases[currentIndex]?.title || '',
-      foot: next
-        ? `${percent}% complete · Next up: ${next.title}`
-        : `${percent}% complete`,
+      foot: next ? `Next up: ${next.title}` : 'Every task done',
     };
   }, [phases, programId, taskIsDone, currentIndex]);
 
@@ -117,7 +115,7 @@ export default function CourseCurriculum({
     <View>
       <ProgressDark
         kicker="Your progress"
-        title={`Phase ${progress.phaseN} of ${progress.total}`}
+        title={`${progress.percent}% complete`}
         percent={progress.percent}
         foot={progress.foot}
         right={null}
@@ -244,7 +242,7 @@ function DonePhaseCard({ index, phase, done, now, onPress }) {
         </View>
         <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
           <ILText role="label" color={G.ink} style={{ fontSize: 15, lineHeight: 20 }}>
-            {String(index + 1).padStart(2, '0')} {String(phase.title || '').replace(/—/g, '–')}
+            {String(phase.title || '').replace(/—/g, '–')}
           </ILText>
           <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 12, lineHeight: 16 }}>
             {phase.sub}
@@ -276,7 +274,7 @@ function LockedPhaseCard({ index, phase, hint, onPress }) {
         <MaterialIcons name="lock-outline" size={20} color="#B8B4A6" />
         <View style={{ flex: 1, marginLeft: 12 }}>
           <ILText role="label" color="#8A8678" style={{ fontSize: 15, lineHeight: 20 }}>
-            {String(index + 1).padStart(2, '0')} {phase.title.replace(/—/g, '–')}
+            {phase.title.replace(/—/g, '–')}
           </ILText>
           <ILText role="bodySm" color="#A39F91" style={{ marginTop: 4, fontSize: 12, lineHeight: 16 }}>
             {hint || phase.sub}
@@ -328,7 +326,7 @@ function ExpandedPhaseCard({
             lineHeight: 28,
           }}
         >
-          {String(index + 1).padStart(2, '0')} {phase.title.replace(/—/g, '–')}
+          {phase.title.replace(/—/g, '–')}
         </ILText>
       </Pressable>
 

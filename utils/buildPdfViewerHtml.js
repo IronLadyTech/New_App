@@ -140,24 +140,40 @@ export function buildPdfViewerHtml(base64, pages, label = 'Document') {
       ? filterPages.filter(function(n) { return n >= 1 && n <= pdf.numPages; })
       : Array.from({ length: pdf.numPages }, function(_, i) { return i + 1; });
     var root = document.getElementById('pages');
-    nums.forEach(function(num) {
-      pdf.getPage(num).then(function(page) {
-        var canvas = document.createElement('canvas');
-        canvas.setAttribute('role', 'img');
-        canvas.setAttribute('aria-label', label + ' — page ' + num + ' of ' + pdf.numPages);
-        root.appendChild(canvas);
-        var pad = 24;
-        var w = Math.max((document.body.clientWidth || window.innerWidth) - pad, 280);
-        var base = page.getViewport({ scale: 1 });
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        var vp = page.getViewport({ scale: (w / base.width) * dpr });
-        canvas.width = Math.floor(vp.width);
-        canvas.height = Math.floor(vp.height);
-        canvas.style.width = Math.floor(vp.width / dpr) + 'px';
-        canvas.style.height = Math.floor(vp.height / dpr) + 'px';
-        page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
+    // One page after another, in order: the first page shows at once, and the phone is not
+    // asked to draw every page together at double resolution (that made long PDFs slow).
+    var canvases = nums.map(function(num) {
+      var c = document.createElement('canvas');
+      c.setAttribute('role', 'img');
+      c.setAttribute('aria-label', label + ' — page ' + num + ' of ' + pdf.numPages);
+      root.appendChild(c);
+      return c;
+    });
+    var chain = Promise.resolve();
+    nums.forEach(function(num, i) {
+      chain = chain.then(function() {
+        return pdf.getPage(num).then(function(page) {
+          var canvas = canvases[i];
+          var pad = 24;
+          var w = Math.max((document.body.clientWidth || window.innerWidth) - pad, 280);
+          var base = page.getViewport({ scale: 1 });
+          var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+          var vp = page.getViewport({ scale: (w / base.width) * dpr });
+          canvas.width = Math.floor(vp.width);
+          canvas.height = Math.floor(vp.height);
+          canvas.style.width = Math.floor(vp.width / dpr) + 'px';
+          canvas.style.height = Math.floor(vp.height / dpr) + 'px';
+          return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise.then(function() {
+            if (i === 0) {
+              try {
+                window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'pdf-ready' }));
+              } catch (e) {}
+            }
+          });
+        });
       });
     });
+    return chain;
   }).catch(function() {
     document.getElementById('status').style.display = 'none';
     var err = document.getElementById('err');

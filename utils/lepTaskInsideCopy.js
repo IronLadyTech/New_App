@@ -64,7 +64,7 @@ export function lepTaskInsideSteps(task) {
   }
   if (id === 'lep-resume-linkedin') {
     return [
-      'Watch the video on this screen.',
+      'Watch the LinkedIn session by Ms Divya on this screen.',
       'Update your LinkedIn profile on linkedin.com.',
       'Paste your profile link below and tap Submit link.',
     ];
@@ -101,7 +101,7 @@ export function lepTaskInsideSteps(task) {
     return [
       'Open VIA Character Survey in Batch materials (viacharacter.org) and complete the free survey.',
       'Download or save your results report as a PDF.',
-      'Upload your VIA report and your 3 photographs using Submit file on this screen.',
+      'Upload your VIA report using Submit file on this screen.',
     ];
   }
   if (type === TASK_TYPES.LINK) {

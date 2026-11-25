@@ -7,15 +7,15 @@ import { makeTaskDoneChecker } from './taskDone';
 /**
  * What an LEP learner must finish to graduate and collect her certificate.
  * From the programme sheet (LEP-Messages-Complete-v6, "Before Certification": Graduation
- * Preparations, 5 Daily Rituals quiz, 27 Principles quiz, Week 4 Engagement Form, Week 4
+ * Preparations, 5 Daily Rituals quiz, 27 Principles quiz, Week 4
  * Challenge, Attendance), plus Practising the 5 Rituals and NSDC registration (needed for the
- * certificate paperwork). Change this list to change the rule everywhere.
+ * certificate paperwork). The weekly engagement forms were removed from the programme
+ * (programme team, 25 Nov 2026). Change this list to change the rule everywhere.
  */
 export const LEP_GRADUATION_REQUIRED = [
   { taskId: 'lep-day3-5-rituals', title: 'Practising the 5 Rituals' },
   { taskId: 'lep-quiz-5-rituals', title: '5 Daily Rituals quiz' },
   { taskId: 'lep-quiz-27-principles', title: '27 Principles quiz' },
-  { taskId: 'lep-weekly-4', title: 'Week 4 Engagement Form' },
   { taskId: 'lep-challenge-4', title: 'Challenge for Week 4' },
   { taskId: 'lep-day8-preparation', title: 'Graduation Preparations' },
   { taskId: 'lep-prep-nsdc', title: 'NSDC registration' },

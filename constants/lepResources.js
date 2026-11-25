@@ -96,7 +96,8 @@ export const LEP_RESOURCES = {
     ],
   },
   'lep-day6-guiding-stars': {
-    readingDocument: { label: 'Guiding Stars Poster', url: lepDoc('guiding-stars.pdf') },
+    // Iron Lady colours, same content (25 Nov 2026); served by the app's site (public/).
+    readingDocument: { label: 'Guiding Stars Poster', url: 'https://lmsironlady-app.web.app/templates/lep/guiding-stars.pdf' },
   },
 };
 

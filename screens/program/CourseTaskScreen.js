@@ -1504,14 +1504,14 @@ export default function CourseTaskScreen({ route, navigation }) {
               title="Choose file"
               sub={
                 taskId === 'lep-via-survey'
-                  ? 'Add your VIA report and each photo · up to 15 MB each'
+                  ? 'Add your VIA report · PDF or photo · up to 15 MB'
                   : 'PDF, Word or photo · up to 15 MB'
               }
               onPress={() => pickFile('file')}
             />
             {taskId === 'lep-via-survey' ? (
               <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 12, lineHeight: 17 }}>
-                Submit each file once — your report and all three photos stay on this task.
+                Your report stays on this task. Photographs have their own tasks (before Day 1 and for NSDC).
               </ILText>
             ) : null}
                         <SubmittedFilesList

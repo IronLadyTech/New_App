@@ -272,7 +272,7 @@ function McArt() {
 
 function LepBody({ onFind }) {
   const steps = [
-    ['01', 'Pre-Program Preparation', 'VIA Survey, 3 photographs, CoDeSeF sheet'],
+    ['01', 'Pre-Program Preparation', 'VIA Survey, photograph, CoDeSeF sheet'],
     ['03', 'Day 1 — Personal Transformation', 'A-Game Self Awareness, Crucibles of Leadership, ERRC Table'],
     ['04', 'Day 2 — Strategies and Tactics', 'CoDeSeF, Maximise Key Relationships, Purpose Peg Table'],
     ['05', 'Weeks 1–4 · Practice & profile', '0.5% League Roadmap, LinkedIn & resume, Shameless Pitch'],

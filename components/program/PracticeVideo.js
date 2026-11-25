@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Modal, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, Text, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEventListener } from 'expo';
@@ -122,7 +122,7 @@ function PlayOverlay({ onPress }) {
           width: 56,
           height: 56,
           borderRadius: 28,
-          backgroundColor: 'rgba(201, 74, 56, 0.92)',
+          backgroundColor: '#E52A2A',
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -147,8 +147,11 @@ function VideoFrame({
   autoPlay = false,
 }) {
   const youtubeId = youtubeIdFromUri(uri);
-  const showPoster = !!poster;
-  const showYoutubeGate = youtubeId && !started;
+  // Every video gets a cover: its own picture, else YouTube's thumbnail, else an Iron Lady card.
+  const cover = poster || (youtubeId ? { uri: `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg` } : null);
+  const showPoster = !!cover;
+  // Until she taps, only the cover shows (no player loaded); one tap starts the video.
+  const showGate = !started;
   const [box, setBox] = useState({ width: 0, height: 0 });
 
   return (
@@ -169,15 +172,20 @@ function VideoFrame({
           : { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#000', overflow: 'hidden' }
       }
     >
-      {showPoster ? (
+      {showGate && showPoster ? (
         <Image
-          source={poster}
+          source={cover}
           style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, width: '100%', height: '100%' }}
           resizeMode="cover"
         />
       ) : null}
-      {showYoutubeGate ? <PlayOverlay onPress={onStart} /> : null}
-      {!showYoutubeGate && box.width > 0 && box.height > 0 ? (
+      {showGate && !showPoster ? (
+        <View style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0, backgroundColor: '#0E3A44', alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 14 }}>
+          <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '700', letterSpacing: 3 }}>IRON LADY</Text>
+        </View>
+      ) : null}
+      {showGate ? <PlayOverlay onPress={onStart} /> : null}
+      {!showGate && box.width > 0 && box.height > 0 ? (
         youtubeId ? (
           <YoutubeEmbed
             uri={uri}
@@ -195,7 +203,8 @@ function VideoFrame({
             onStart={onPlaybackStart}
             onProgress={onProgress}
             allowsFullscreen={allowsNativeFullscreen}
-            autoPlay={autoPlay}
+            // The player only appears after her tap (or an Up next pick), so it starts at once.
+            autoPlay
           />
         )
       ) : null}
@@ -234,7 +243,7 @@ function FullscreenButton({ onPress, style }) {
 export default function PracticeVideo({ uri, poster, trackKey = uri, onStart, onProgress, autoPlay = false }) {
   const [landscape, setLandscape] = useState(false);
   // autoPlay: no tap on the poster needed (a video picked from "Up next").
-  const [started, setStarted] = useState(autoPlay || !youtubeIdFromUri(uri));
+  const [started, setStarted] = useState(Boolean(autoPlay));
   const [stage, setStage] = useState({ width: 0, height: 0 });
   const insets = useSafeAreaInsets();
   useVideoLandscape(landscape);

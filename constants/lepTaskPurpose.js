@@ -5,7 +5,7 @@
 export const LEP_TASK_PURPOSE = {
   'lep-via-survey': {
     why: 'Your strengths are the foundation of Week 1 — Strength Based Excellence.',
-    gain: 'Iron Lady can build your individualised excellence profile from your VIA report (and photos).',
+    gain: 'Iron Lady can build your individualised excellence profile from your VIA report.',
   },
   'lep-prep-nsdc': {
     why: 'Government registration is required for programme certification paperwork.',

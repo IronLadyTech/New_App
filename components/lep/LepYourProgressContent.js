@@ -38,7 +38,7 @@ function ProgramProgressRow({ icon, label, phaseN, totalPhases, percent }) {
           {label}
         </ILText>
         <ILText role="label" color={G.meta} style={{ fontSize: 12 }}>
-          Phase {phaseN} of {totalPhases} · {percent}%
+          {percent}% complete
         </ILText>
       </View>
       <View
