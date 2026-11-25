@@ -29,6 +29,7 @@ import BatchHubMessagesTab from './batchHub/BatchHubMessagesTab';
 import BatchHubContentTab from './batchHub/BatchHubContentTab';
 import BatchHubPracticeTab from './batchHub/BatchHubPracticeTab';
 import BatchHubEngageTab from './batchHub/BatchHubEngageTab';
+import BatchHubChallengesTab from './batchHub/BatchHubChallengesTab';
 import AppPreview from './AppPreview';
 import ReminderChecklist, { reminderState } from './batchHub/ReminderChecklist';
 import BatchSetupWizard from './batchHub/BatchSetupWizard';
@@ -46,6 +47,7 @@ const TABS = [
   { key: 'messages', label: 'Messages' },
   { key: 'engage', label: 'Engage' },
   { key: 'practice', label: 'Practice', lepOnly: true },
+  { key: 'challenges', label: 'Challenges', lepOnly: true },
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'setup', label: 'Batch setup' },
 ];
@@ -574,6 +576,7 @@ export default function BatchHubAdmin({ canEdit, canManage, isAdmin, onOpenTempl
           {tab === 'practice' ? (
             <BatchHubPracticeTab batch={batch} programId={programId} learner={learner} canEdit={canEdit} canManage={canManage} />
           ) : null}
+          {tab === 'challenges' ? <BatchHubChallengesTab batch={batch} /> : null}
           {tab === 'dashboard' ? (
             batch?.lmsGroupId ? (
               <AppAnalyticsView program={programId} batchId={batch.id} />

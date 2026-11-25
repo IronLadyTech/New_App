@@ -26,6 +26,13 @@ const DOCUMENT_TYPES = [
   'image/*',
 ];
 
+/** Graduation deck: PowerPoint too. */
+export const DECK_DOCUMENT_TYPES = [
+  ...DOCUMENT_TYPES,
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
+
 function mb(bytes) {
   return `${Math.round(bytes / (1024 * 1024))} MB`;
 }
@@ -58,9 +65,9 @@ export async function pickTaskDocument() {
  * Several at once (VIA report + photos). Returns an array (empty when cancelled).
  * One file over the limit stops the pick with its name, so she knows which one.
  */
-export async function pickTaskDocuments({ multiple = true } = {}) {
+export async function pickTaskDocuments({ multiple = true, types = DOCUMENT_TYPES } = {}) {
   const result = await DocumentPicker.getDocumentAsync({
-    type: DOCUMENT_TYPES,
+    type: types,
     copyToCacheDirectory: true,
     multiple,
   });

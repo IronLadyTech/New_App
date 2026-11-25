@@ -7,6 +7,8 @@ import { G } from '../../constants/guestTheme';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import { WhiteCard } from '../../screens/lep/LepBits';
 import { LEP_RITUAL_DAILY_MARKS_MAX } from '../../constants/lepFiveRituals';
+import { ChallengeToday } from './LepChallengeCard';
+import { challengeDayLabel } from './LepChallengeItems';
 
 /**
  * One line icon per ritual, the same set as the 5 Rituals film's artwork (sunrise, target,
@@ -25,7 +27,15 @@ const RED = '#E52A2A';
  * Home: today's five rituals. Tapping a ritual ticks it (tap again to untick); tapping anywhere
  * else on the card opens the full weekly grid. The rituals video is one tap away.
  */
-export default function LepRitualsTodayCard({ today, model, toggleRitual, unmarkRitual, onOpenTracker, onWatchVideo }) {
+export default function LepRitualsTodayCard({
+  today,
+  model,
+  toggleRitual,
+  unmarkRitual,
+  onOpenTracker,
+  onWatchVideo,
+  challenge,
+}) {
   const { grid, todayMarks } = model;
   const allDone = todayMarks >= LEP_RITUAL_DAILY_MARKS_MAX;
   return (
@@ -114,6 +124,31 @@ export default function LepRitualsTodayCard({ today, model, toggleRitual, unmark
           })}
         </View>
       </View>
+
+      {/* Week 1 Challenge: Mirror Work and A-Game are rituals 1 and 2, so it lives here. */}
+      {challenge ? (
+        <View
+          onStartShouldSetResponder={() => true}
+          style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: G.line }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="star" size={16} color={RED} />
+            <ILText role="label" color={RED} style={{ marginLeft: 6, fontSize: 12, flex: 1 }}>
+              {challenge.state.challenge.title}
+            </ILText>
+            <ILText role="label" color={G.meta} style={{ fontSize: 12 }}>
+              {challengeDayLabel(challenge.state)}
+            </ILText>
+          </View>
+          <ChallengeToday
+            state={challenge.state}
+            log={challenge.log}
+            saveDay={challenge.saveDay}
+            saveOnce={challenge.saveOnce}
+            onOpenTask={challenge.onOpenTask}
+          />
+        </View>
+      ) : null}
 
       {onWatchVideo ? (
         <Pressable onPress={onWatchVideo} accessibilityRole="button" hitSlop={8} style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' }}>

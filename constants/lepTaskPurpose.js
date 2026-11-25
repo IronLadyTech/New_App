@@ -85,7 +85,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-challenge-1': {
     why: 'Two days of learning become habit only through daily practice.',
-    gain: 'Seven days of A-Game tables and mirror-work learnings, shared with your batch.',
+    gain: 'Seven days of A-Game tables and mirror-work learnings, seen by your coach.',
   },
   'lep-day3-27-principles': {
     why: 'These principles are the language of Iron Lady leadership.',

@@ -31,7 +31,7 @@ export const LEP_GRADUATION_PREP = {
     },
     '**Complete your Graduation Report** (Word document).',
   ],
-  note: 'Submit both in your **Assignment folder before Friday**.',
+  note: 'Upload both **on this screen before Friday**: your deck (PDF or PowerPoint) and your Graduation Report (Word).',
 };
 
 export function lepAssignmentBrief(taskId) {

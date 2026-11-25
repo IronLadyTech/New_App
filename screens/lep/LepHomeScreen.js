@@ -93,6 +93,9 @@ import LepHomeTakeAMoment from '../../components/lep/LepHomeTakeAMoment';
 import GetReadyChecklistCard from '../../components/lep/GetReadyChecklistCard';
 import PreworkBeforeDay1 from '../../components/lep/PreworkBeforeDay1';
 import LepRitualsTodayCard from '../../components/lep/LepRitualsTodayCard';
+import LepChallengeCard from '../../components/lep/LepChallengeCard';
+import { LEP_CHALLENGES, lepChallengeState } from '../../utils/lepChallenges';
+import { useLepChallengeLog } from '../../hooks/useLepChallengeLog';
 import { useLepFiveRitualsTracker } from '../../hooks/useLepFiveRitualsTracker';
 import { mergeGetReadyItems, toggleGetReadyItem } from '../../utils/lepGetReadyChecklist';
 import { daysFromDay1, todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
@@ -513,6 +516,22 @@ function EnrolledHome({ cmsBatch }) {
   const showWatchThese = showPrelaunchBlocks && prework.some((item) => !item.done);
   const showRitualsWatch = ritualsUnlocked && !ritualsWatch.done;
   const showRitualsTracker = ritualsUnlocked && ritualsWatch.done;
+  // Weekly challenges: each shows only after its session ends, then 7 days, then the summary.
+  const { log: challengeLog, saveDay: saveChallengeDay, saveOnce: saveChallengeOnce } = useLepChallengeLog();
+  const openChallengeTask = (taskId) => nav.goCourseTask('lep', taskId);
+  const challengeStates = LEP_CHALLENGES.map((c) => lepChallengeState(c, day1Iso)).filter(Boolean);
+  const week1InRituals = challengeStates.find((s) => s.challenge.key === 'c1' && s.phase === 'daily' && showRitualsTracker) || null;
+  const challengeCards = challengeStates
+    .map((s) => {
+      const sub = getTaskSubmission('lep', s.challenge.taskId);
+      const summaryDone = Boolean(
+        sub && (String(sub.textValue || '').trim() || ['submitted', 'under_review', 'completed'].includes(sub.status))
+      );
+      const dailyHere = s.phase === 'daily' && !(week1InRituals && s.challenge.key === 'c1');
+      const summaryDue = s.summaryOpen && !summaryDone && !s.summaryNudgeOver;
+      return { state: s, summaryDone, hideDaily: !dailyHere, show: s.phase === 'soon' || dailyHere || summaryDue };
+    })
+    .filter((c) => c.show);
   const streak = useLepPracticeStreak();
   const enrolledBhag = String(
     learnerBhagText(profile) || demo.getSubmission('lep', practiceKey('lep-bhag'))?.data?.note || ''
@@ -896,8 +915,32 @@ function EnrolledHome({ cmsBatch }) {
           unmarkRitual={unmarkRitual}
           onOpenTracker={nav.goRitualsDashboard}
           onWatchVideo={() => nav.goPractice('lep', 'lep-rituals')}
+          challenge={
+            week1InRituals
+              ? {
+                  state: week1InRituals,
+                  log: challengeLog,
+                  saveDay: saveChallengeDay,
+                  saveOnce: saveChallengeOnce,
+                  onOpenTask: openChallengeTask,
+                }
+              : null
+          }
         />
       ) : null}
+
+      {challengeCards.map((c) => (
+        <LepChallengeCard
+          key={c.state.challenge.key}
+          state={c.state}
+          log={challengeLog}
+          saveDay={saveChallengeDay}
+          saveOnce={saveChallengeOnce}
+          onOpenTask={openChallengeTask}
+          summaryDone={c.summaryDone}
+          hideDaily={c.hideDaily}
+        />
+      ))}
 
       {showPrelaunchBlocks ? (
         <GetReadyChecklistCard items={readyItems} onToggleItem={toggleReady} />

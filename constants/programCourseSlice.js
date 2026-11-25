@@ -271,7 +271,7 @@ export const COURSE_TASKS = {
       title: "Week 1 Challenge: A-Game & Crucible",
       type: TASK_TYPES.TEXT,
       kind: "Write",
-      description: "Take this up as a group, every day for the next 7 days: (1) A-Game Challenge: update your A-Game table and share it in your batch group. The template is in the A-Game Table task. (2) Crucible Challenge: share one learning from your mirror work. At the end of the week, write here how it went.",
+      description: "Every day for 7 days, in your 5 Daily Rituals on Home: (1) A-Game Challenge: update your A-Game table (A-Game Table task). (2) Crucible Challenge: write one learning from your mirror work. On Day 7, send your week summary here.",
       week: "Week 1",
     },
     {
@@ -409,7 +409,7 @@ export const COURSE_TASKS = {
       title: "Week 2 Challenge: Build your brand",
       type: TASK_TYPES.TEXT,
       kind: "Write",
-      description: "Based on what you learnt about your differentiated strength: (1) Share your LinkedIn profile in your batch group. (2) Write one LinkedIn post, article or share every day and send it to the group. At the end of the week, write here how it went.",
+      description: "Based on what you learnt about your differentiated strength, on Home: (1) Add your LinkedIn profile link. (2) Write one LinkedIn post, article or share every day and mark it done. On Day 7, send your week summary here.",
       week: "Week 2",
     },
     {
@@ -449,7 +449,7 @@ export const COURSE_TASKS = {
       title: "Week 3 Challenge: Shameless Pitch",
       type: TASK_TYPES.TEXT,
       kind: "Write",
-      description: "(1) Make a script or video for one shameless pitch and send it to your batch group every day. (2) Make at least one real pitch this week. At the end of the week, write here what you learnt.",
+      description: "On Home: (1) Write your script for one shameless pitch every day. (2) Make at least one real pitch this week and note what happened. On Day 7, send your week summary here.",
       week: "Week 3",
     },
     {
@@ -457,15 +457,10 @@ export const COURSE_TASKS = {
       phase: "week-4",
       order: 700,
       title: "Graduation Preparations",
-      type: TASK_TYPES.CHECKLIST,
-      kind: "Checklist",
-      description: "Prepare your 2-minute graduation presentation and your Graduation Report, and submit both before Friday.",
+      type: TASK_TYPES.FILE_UPLOAD,
+      kind: "Upload",
+      description: "Prepare your 2-minute graduation presentation and your Graduation Report, and upload both here before Friday.",
       week: "Day 8",
-      checklistItems: [
-        "I have prepared my 2-minute deck (5–6 slides) or 90-second introduction",
-        "I have completed my Graduation Report",
-        "I have submitted both in my Assignment folder",
-      ],
     },
     {
       id: "lep-day8-alumni",

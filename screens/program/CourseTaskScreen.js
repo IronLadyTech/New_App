@@ -65,6 +65,7 @@ import {
   discardUploadedFile,
   pickTaskDocument,
   pickTaskDocuments,
+  DECK_DOCUMENT_TYPES,
   pickTaskVideo,
   uploadTaskSubmission,
 } from '../../services/taskUploads';
@@ -89,6 +90,9 @@ import { lepTaskCategoryLabel, lepTaskInsideSteps, lepTaskPurpose, lepTaskWatchL
 import LepTaskInsightFlipCard from '../../components/program/LepTaskInsightFlipCard';
 import { resolveLepDay1Iso, resolveLepEnrolledCohortPhase } from '../../utils/lepEnrolledCohortPhase';
 import LepAssignmentBriefCard from '../../components/program/LepAssignmentBriefCard';
+import LepChallengeSummaryForm from '../../components/program/LepChallengeSummaryForm';
+import { lepChallengeByTaskId, lepChallengeState } from '../../utils/lepChallenges';
+import { useLepChallengeLog } from '../../hooks/useLepChallengeLog';
 import { lepAssignmentBrief } from '../../constants/lepAssignmentCopy';
 import {
   ALUMNI_PRACTICE_BANNER,
@@ -124,9 +128,12 @@ function lmsFieldsForJourneyTask(task, { text, link, form, checked, uploaded }) 
   return { note: 'Completed in app' };
 }
 
-/** VIA report + photos — each upload is saved on the same task (not a replace). */
+/** VIA report + photos, graduation deck + report — each upload stays on the task (not a replace). */
 function isMultiFileUploadTask(task) {
-  return task?.type === TASK_TYPES.FILE_UPLOAD && task?.id === 'lep-via-survey';
+  return (
+    task?.type === TASK_TYPES.FILE_UPLOAD &&
+    (task?.id === 'lep-via-survey' || task?.id === 'lep-day8-preparation')
+  );
 }
 
 function PickCard({ icon, title, sub, onPress }) {
@@ -724,6 +731,12 @@ export default function CourseTaskScreen({ route, navigation }) {
         }
       : null;
   const lepAssignment = programId === PROGRAMS.LEP ? lepAssignmentBrief(taskId) : null;
+  // Weekly challenge: an end-of-week summary built from her daily entries (an older
+  // free-text answer still shows as text).
+  const { log: challengeLog } = useLepChallengeLog();
+  const challengeDef = programId === PROGRAMS.LEP ? lepChallengeByTaskId(taskId) : null;
+  const challengeState = challengeDef && day1Iso ? lepChallengeState(challengeDef, day1Iso) : null;
+  const showChallengeForm = Boolean(challengeState && !String(submission?.textValue || '').trim());
 
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -906,7 +919,9 @@ export default function CourseTaskScreen({ route, navigation }) {
       const chosen =
         source === 'file'
           ? isMultiFileUploadTask(task)
-            ? await pickTaskDocuments()
+            ? await pickTaskDocuments(
+                task?.id === 'lep-day8-preparation' ? { types: DECK_DOCUMENT_TYPES } : undefined
+              )
             : [await pickTaskDocument()].filter(Boolean)
           : [await pickTaskVideo(source)].filter(Boolean);
       if (!chosen.length) return;
@@ -1366,7 +1381,11 @@ export default function CourseTaskScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {type === TASK_TYPES.TEXT ? (
+        {type === TASK_TYPES.TEXT && showChallengeForm ? (
+          <LepChallengeSummaryForm state={challengeState} log={challengeLog} onChangeText={setText} />
+        ) : null}
+
+        {type === TASK_TYPES.TEXT && !showChallengeForm ? (
           <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14 }}>
             <TextInput
               value={text}
@@ -1510,7 +1529,9 @@ export default function CourseTaskScreen({ route, navigation }) {
               sub={
                 taskId === 'lep-via-survey'
                   ? 'Add your VIA report · PDF or photo · up to 15 MB'
-                  : 'PDF, Word or photo · up to 15 MB'
+                  : taskId === 'lep-day8-preparation'
+                    ? 'Your deck and Graduation Report · PDF, PowerPoint or Word · up to 15 MB each'
+                    : 'PDF, Word or photo · up to 15 MB'
               }
               onPress={() => pickFile('file')}
             />

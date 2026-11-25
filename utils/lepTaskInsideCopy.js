@@ -50,30 +50,30 @@ export function lepTaskInsideSteps(task) {
   }
   if (id === 'lep-challenge-1') {
     return [
-      'Every day for 7 days: update your A-Game table (A-Game Table task) and share it in your batch group.',
-      'Every day for 7 days: share one learning from your mirror work in the group.',
-      'At the end of the week, write how it went below and tap Submit.',
+      'It starts the day after Day 2. Each day, in your 5 Daily Rituals on Home: tick that you updated your A-Game table.',
+      'Each day, after Mirror Work: write one learning from it.',
+      'On Day 7, answer the few questions below and tap Submit.',
     ];
   }
   if (id === 'lep-challenge-2') {
     return [
-      'Share your LinkedIn profile link in your batch group.',
-      'Every day: write one LinkedIn post, article or share, and send it to the group.',
-      'At the end of the week, write how it went below and tap Submit.',
+      'It starts the day after the Differentiated Brand session. On Home: add your LinkedIn profile link.',
+      'Each day: write one LinkedIn post, article or share, paste its link and tap Mark done.',
+      'On Day 7, answer the few questions below and tap Submit.',
     ];
   }
   if (id === 'lep-challenge-3') {
     return [
-      'Every day: make a script or video of one shameless pitch and send it to your batch group.',
-      'Make at least one real pitch this week.',
-      'At the end of the week, write your learnings below and tap Submit.',
+      'It starts the day after the Shameless Pitch session. Each day on Home: write your pitch script.',
+      'Make at least one real pitch this week and note what happened.',
+      'On Day 7, answer the few questions below and tap Submit.',
     ];
   }
   if (id === 'lep-day8-preparation') {
     return [
       'Read "Get ready for your Graduation Day" on this screen.',
       'Prepare your 2-minute deck (5–6 slides) or 90-second introduction, and complete your Graduation Report.',
-      'Submit both in your Assignment folder before Friday, then tick each item and tap Submit checklist.',
+      'Upload both here before Friday: your deck (PDF or PowerPoint) and your Graduation Report (Word).',
     ];
   }
   if (id === 'lep-orientation-framework') {
