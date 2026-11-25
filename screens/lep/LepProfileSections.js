@@ -586,7 +586,16 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
   const access = source?.programAccess?.[program.id] || {};
   const paidHow = access.razorpayPaymentId ? 'Paid via Razorpay' : 'Paid';
   const recordedBalance = access.programBalance ?? access.balanceDue ?? access.balanceAmount;
-  const paidBalanceLabel = recordedBalance != null && Number(recordedBalance) > 1 ? formatInr(Number(recordedBalance)) : '—';
+  // What she paid after registration (from Zoho), else the balance recorded before she paid it.
+  const paidAfterRegistration =
+    view.feePaid != null && view.registrationFee != null ? view.feePaid - view.registrationFee : 0;
+  const paidBalanceLabel =
+    paidAfterRegistration > 0
+      ? formatInr(paidAfterRegistration)
+      : recordedBalance != null && Number(recordedBalance) > 1
+        ? formatInr(Number(recordedBalance))
+        : '—';
+  const paidUp = fullyPaid || view.balanceCleared;
 
   return (
     <WhiteCard style={{ marginTop: 14, borderRadius: 22, padding: 18 }}>
@@ -619,6 +628,11 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
             </ILText>
           </View>
         </View>
+        {view.courseFeeLabel ? (
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 12 }}>
+            {`Course fee ${view.courseFeeLabel}`}
+          </ILText>
+        ) : null}
         <BillRow
           label="Registration fee"
           detail={regPaid ? `Received${pay.paidOn ? ` · ${pay.paidOn}` : ''}` : 'Due'}
@@ -629,13 +643,13 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
         <BillRow
           label="Programme balance"
           detail={fullyPaid ? paidHow : view.balanceNote}
-          amount={fullyPaid ? paidBalanceLabel : view.programBalanceLabel}
-          status={fullyPaid ? 'PAID' : 'DUE'}
+          amount={paidUp ? paidBalanceLabel : view.programBalanceLabel}
+          status={paidUp ? 'PAID' : 'DUE'}
         />
         <View style={{ marginTop: 14, height: 6, borderRadius: 3, backgroundColor: G.line, overflow: 'hidden' }}>
           <View
             style={{
-              width: `${fullyPaid ? 100 : regPaid ? view.progressPercent ?? 0 : 0}%`,
+              width: `${paidUp ? 100 : regPaid ? view.progressPercent ?? 0 : 0}%`,
               height: '100%',
               backgroundColor: fullyPaid ? '#1B7A4A' : G.cta,
             }}
@@ -643,7 +657,7 @@ export function PaymentBillingCard({ program, source, latest, onPay, onReceipt }
         </View>
       </View>
       <View style={{ marginTop: 14, flexDirection: 'row', gap: 10 }}>
-        {!fullyPaid ? (
+        {!paidUp ? (
           <View style={{ flex: latest ? 1 : undefined, alignSelf: latest ? undefined : 'stretch', flexGrow: latest ? undefined : 1 }}>
             <RedCta label="Pay balance" onPress={onPay} />
           </View>

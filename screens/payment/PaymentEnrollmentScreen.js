@@ -134,6 +134,9 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
               </View>
             )}
           </View>
+          {vm.courseFeeLabel ? (
+            <Text style={[styles.supportText, { marginTop: 6 }]}>{`Course fee ${vm.courseFeeLabel}`}</Text>
+          ) : null}
 
           <TouchableOpacity
             activeOpacity={0.85}
@@ -205,7 +208,7 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
                   </Text>
                 )}
               </TouchableOpacity>
-            ) : vm.showPayButton ? (
+            ) : vm.showPayButton && !vm.balanceCleared ? (
               // Not paid, but no balance amount on record: no Pay button with a guessed amount.
               <Text style={styles.supportText}>
                 Your balance amount will appear here once the Iron Lady team confirms it.

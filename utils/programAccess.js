@@ -275,12 +275,9 @@ const ZOHO_LEAD_FIELDS = {
     end: ['LEP_End_Date', 'LEP End Date'],
     status: ['LEP_Status', 'LEP Status'],
     active: ['LEP_Active_Status', 'LEP Active Status'],
-    amount: [
-      'LEP_Full_Amount',
-      'LEP Enrollment Amount',
-      'LEP_Payment_Amount',
-      'LEP Payment Amount',
-    ],
+    // Registration fee only. LEP_Full_Amount is "LEP Enrollment Amount" (paid after
+    // registration), not the registration fee.
+    amount: ['LEP_Payment_Amount', 'LEP Payment Amount'],
     txn: [
       'LEP_Enrollment_Transaction_Id',
       'LEP Enrollment Transaction Id',

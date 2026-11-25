@@ -190,6 +190,11 @@ export function buildPaymentEnrollmentView(
     access.balanceAmount ??
     null;
   const programBalance = Number(recordedBalance) > 0 ? Number(recordedBalance) : null;
+  // The fee agreed with her (Zoho LEP Pitched Amount) and everything paid so far, from the sync.
+  const courseFee = Number(access.courseFee) > 0 ? Number(access.courseFee) : null;
+  const feePaid = Number(access.feePaid) > 0 ? Number(access.feePaid) : null;
+  // Fee on record and nothing left: the team recorded the rest in Zoho.
+  const balanceCleared = courseFee != null && Number(recordedBalance) === 0;
   const registrationPaidAt =
     access.registrationPaidAt ?? access.paidAt ?? profile?.registrationPaidAt ?? null;
   const balanceDueDate =
@@ -206,9 +211,11 @@ export function buildPaymentEnrollmentView(
 
   // Progress only when both real amounts are known (it was drawn from guesses).
   const progressPercent =
-    payStatus === PAYMENT_STATUS.PAID
+    payStatus === PAYMENT_STATUS.PAID || balanceCleared
       ? 100
-      : registrationFee != null && programBalance != null
+      : courseFee != null && feePaid != null
+        ? Math.min(100, Math.round((feePaid / courseFee) * 100))
+        : registrationFee != null && programBalance != null
         ? Math.min(100, Math.round((registrationFee / (registrationFee + programBalance)) * 100))
         : null;
 
@@ -237,12 +244,17 @@ export function buildPaymentEnrollmentView(
   const paymentUrl =
     access.paymentUrl ?? profile?.paymentUrl ?? profile?.paymentLink ?? null;
 
-  const balanceDetailNote =
-    programBalance == null
+  const paidSoFar =
+    courseFee != null && feePaid != null && registrationFee != null && feePaid > registrationFee
+      ? `${formatInr(feePaid)} of ${formatInr(courseFee)} paid · `
+      : '';
+  const balanceDetailNote = balanceCleared
+    ? 'Paid in full'
+    : programBalance == null
       ? 'The Iron Lady team will confirm your balance amount'
       : dueLabel
-        ? `Due by ${dueLabel} · pay via Razorpay`
-        : 'Pay via Razorpay';
+        ? `${paidSoFar}Due by ${dueLabel} · pay via Razorpay`
+        : `${paidSoFar}Pay via Razorpay`;
 
   return {
     programId: pid,
@@ -255,7 +267,11 @@ export function buildPaymentEnrollmentView(
     registrationFee,
     registrationFeeLabel: registrationFee != null ? formatInr(registrationFee) : '—',
     programBalance,
-    programBalanceLabel: programBalance != null ? formatInr(programBalance) : '—',
+    programBalanceLabel: programBalance != null ? formatInr(programBalance) : balanceCleared ? formatInr(0) : '—',
+    courseFee,
+    courseFeeLabel: courseFee != null ? formatInr(courseFee) : null,
+    feePaid,
+    balanceCleared,
     // Pay online only with a real balance on record; otherwise she talks to the team.
     canPayOnline: payStatus !== PAYMENT_STATUS.PAID && programBalance != null,
     registrationPaidLabel: regPaidLabel || '—',
