@@ -46,7 +46,7 @@ export default function LepTaskInsightFlipCard({ front, back, backgroundColor = 
   const [slotH, setSlotH] = useState(MIN_SLOT_H);
 
   const bumpHeight = useCallback((event) => {
-    const h = Math.ceil(event.nativeEvent.layout.height);
+    const h = Math.ceil(event.nativeEvent.layout.height) + 6;
     const clamped = Math.min(MAX_SLOT_H, Math.max(MIN_SLOT_H, h));
     setSlotH((prev) => (clamped > prev ? clamped : prev));
   }, []);
@@ -92,12 +92,12 @@ export default function LepTaskInsightFlipCard({ front, back, backgroundColor = 
         importantForAccessibility="no-hide-descendants"
       >
         <View onLayout={bumpHeight} style={styles.measureFace}>
-          <CoinFace eyebrow={front.eyebrow} backgroundColor={backgroundColor}>
+          <CoinFace eyebrow={front.eyebrow} backgroundColor={backgroundColor} hint="Tap to flip">
             {front.content}
           </CoinFace>
         </View>
         <View onLayout={bumpHeight} style={styles.measureFace}>
-          <CoinFace eyebrow={back.eyebrow} backgroundColor={backgroundColor}>
+          <CoinFace eyebrow={back.eyebrow} backgroundColor={backgroundColor} hint="Tap to flip back">
             {back.content}
           </CoinFace>
         </View>

@@ -1,7 +1,7 @@
 /** Copy when LEP cohort has ended — tasks are refresh / practice, not certificate gates. */
 
 export const ALUMNI_PRACTICE_BANNER =
-  'Your LEP batch has graduated. This is alumni practice from your monthly challenge — optional, and it does not change your certificate.';
+  'You have graduated. This practice is optional.';
 
 export function alumniTaskSubtitle(task) {
   const kind = task?.kind ? String(task.kind) : 'Practice';

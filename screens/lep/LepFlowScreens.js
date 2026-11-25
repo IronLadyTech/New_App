@@ -1176,12 +1176,12 @@ function GraduationPending({ name, checklist }) {
           color="#FFFFFF"
           style={{ marginTop: 18, fontFamily: IL_FONTS.display, fontSize: 30, lineHeight: 36 }}
         >
-          Your certificate is one step away, {name}.
+          {checklist.missing.length === 1
+            ? `One step to your certificate, ${name}.`
+            : `${checklist.missing.length} steps to your certificate, ${name}.`}
         </ILText>
         <ILText role="body" color="rgba(248,214,212,0.88)" style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
-          {`${checklist.doneCount} of ${checklist.total} done. Graduation is earned — finish the ${
-            checklist.missing.length === 1 ? 'last step' : `${checklist.missing.length} steps`
-          } below and your LEP certificate opens.`}
+          {`${checklist.doneCount} of ${checklist.total} done. Tap a step to finish it.`}
         </ILText>
         <View style={{ marginTop: 18, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.14)' }}>
           <View
@@ -1297,7 +1297,7 @@ export function LepGraduationScreen({ onCelebrated }) {
           color="rgba(248,214,212,0.88)"
           style={{ marginTop: 14, fontSize: 16, lineHeight: 24, textAlign: 'center' }}
         >
-          All 11 phases, 6 of 6 sessions, both quizzes. Your LEP Certification is ready.
+          Every step done. Your LEP certificate is ready.
         </ILText>
 
         <WhiteCard
