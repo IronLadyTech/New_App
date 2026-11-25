@@ -1325,7 +1325,12 @@ export default function CourseTaskScreen({ route, navigation }) {
         ) : null}
 
         {lepAssignment ? (
-          <LepAssignmentBriefCard title={lepAssignment.title} items={lepAssignment.items} />
+          <LepAssignmentBriefCard
+            title={lepAssignment.title}
+            items={lepAssignment.items}
+            intro={lepAssignment.intro}
+            note={lepAssignment.note}
+          />
         ) : null}
 
         {videoUri &&

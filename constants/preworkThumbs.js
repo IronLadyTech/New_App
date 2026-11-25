@@ -31,7 +31,6 @@ export const PREWORK_THUMBS = {
   /** Differentiated Brand session — not the 27 Principles pre-work art. */
   'lep-brand-roadmap': require('../assets/il/suvarna-hero.jpg'),
   'lep:differentiated-brand': require('../assets/il/suvarna-hero.jpg'),
-  'lep:mentors-yt': require('../assets/il/suvarna-face.jpg'),
   'lep:3t-suvarna': require('../assets/il/suvarna-hero.jpg'),
   'lep:errc-yt': require('../assets/il/prework/thumb-27-principles.jpg'),
 };
@@ -63,7 +62,6 @@ export const VIDEO_POSTERS = {
   // Their own branded covers (the generic portrait made both look the same).
   'community:iron-ladies': require('../assets/il/community-75-crore.jpg'),
   'community:indra-nooyi': require('../assets/il/community-indra-nooyi.jpg'),
-  'lep:mentors': P.smriti,
 };
 
 const BY_TASK = {
@@ -73,7 +71,6 @@ const BY_TASK = {
   'mbw-lep': PREWORK_THUMBS['lep-rituals'],
   'lep-shameless': PREWORK_THUMBS['lep-shameless'],
   'lep-day1-errc': PREWORK_THUMBS['lep-principles-video'],
-  'lep-day3-mentors': P.smriti,
   'mbw-errc': PREWORK_THUMBS['lep-principles-video'],
   'mbw-csuite': P.priyanka,
   'mbw-orientation': P.speaks06,

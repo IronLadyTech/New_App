@@ -118,7 +118,7 @@ export const TASK_VIDEOS = {
   'lep-day1-errc': LEP_ERRC_YT,
   'lep-day3-27-principles': PRINCIPLES_FULL_M3U8,
   'lep-day3-5-rituals': RITUALS_M3U8,
-  'lep-day3-mentors': LEP_MENTORS_MP4,
+  'lep-day3-mentors': LEP_MENTORS_YT,
   'lep-day3-brand-roadmap': LEP_BRAND_MP4,
   'lep-day3-max-value': LEP_MAX_VALUE_YT,
   'lep-resume-template-study': LEP_RESUME_RAJESH_YT,

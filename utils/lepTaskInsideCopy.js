@@ -48,6 +48,34 @@ export function lepTaskInsideSteps(task) {
       'Tap Submit answer — it saves to your Week 1 engagement check-in.',
     ];
   }
+  if (id === 'lep-challenge-1') {
+    return [
+      'Every day for 7 days: update your A-Game table (A-Game Table task) and share it in your batch group.',
+      'Every day for 7 days: share one learning from your mirror work in the group.',
+      'At the end of the week, write how it went below and tap Submit.',
+    ];
+  }
+  if (id === 'lep-challenge-2') {
+    return [
+      'Share your LinkedIn profile link in your batch group.',
+      'Every day: write one LinkedIn post, article or share, and send it to the group.',
+      'At the end of the week, write how it went below and tap Submit.',
+    ];
+  }
+  if (id === 'lep-challenge-3') {
+    return [
+      'Every day: make a script or video of one shameless pitch and send it to your batch group.',
+      'Make at least one real pitch this week.',
+      'At the end of the week, write your learnings below and tap Submit.',
+    ];
+  }
+  if (id === 'lep-day8-preparation') {
+    return [
+      'Read "Get ready for your Graduation Day" on this screen.',
+      'Prepare your 2-minute deck (5–6 slides) or 90-second introduction, and complete your Graduation Report.',
+      'Submit both in your Assignment folder before Friday, then tick each item and tap Submit checklist.',
+    ];
+  }
   if (id === 'lep-orientation-framework') {
     return [
       'Open Leadership Essentials Program Information under Batch materials and read it in the app.',

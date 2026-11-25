@@ -84,8 +84,8 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Engagement saved for your CEM — same Week 1 check-in as My Program.',
   },
   'lep-challenge-1': {
-    why: 'The Game of Excellence turns concepts into behaviour.',
-    gain: 'One real-world try this week — and reflection on how it went.',
+    why: 'Two days of learning become habit only through daily practice.',
+    gain: 'Seven days of A-Game tables and mirror-work learnings, shared with your batch.',
   },
   'lep-day3-27-principles': {
     why: 'These principles are the language of Iron Lady leadership.',
@@ -140,8 +140,8 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Support aligned to LinkedIn, resume, and pitch week.',
   },
   'lep-challenge-2': {
-    why: 'Weekly practice builds the excellence muscle.',
-    gain: 'Another real challenge attempted and reflected on.',
+    why: 'Your differentiated strength only counts when people can see it.',
+    gain: 'A visible LinkedIn presence, one post a day.',
   },
   'lep-day7-review': {
     why: 'Graduation is closer than it feels — name the shift.',
@@ -160,12 +160,12 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Engagement tracked through the home stretch.',
   },
   'lep-challenge-3': {
-    why: 'Consistent practice beats one perfect week.',
-    gain: 'Week 3 challenge captured in your own words.',
+    why: 'Asking boldly gets easier only by doing it.',
+    gain: 'A pitch practised daily, and at least one made for real.',
   },
   'lep-day8-preparation': {
-    why: 'Certification day deserves intention, not scramble.',
-    gain: 'You arrive ready for graduation.',
+    why: 'Graduation Day is where you show the journey: your B-HAG, your breakthroughs and what comes next.',
+    gain: 'A 2-minute presentation and your Graduation Report, ready before Friday.',
   },
   'lep-day8-alumni': {
     why: 'The network is part of the ROI of LEP.',
