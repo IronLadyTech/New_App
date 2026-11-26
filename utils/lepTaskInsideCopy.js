@@ -69,6 +69,13 @@ export function lepTaskInsideSteps(task) {
       'On Day 7: answer two quick questions and one line below, then tap Submit.',
     ];
   }
+  if (id === 'lep-challenge-4') {
+    return [
+      'Answer the four questions on this screen: your B-HAG at the start, your breakthroughs, the principles you use, your next B-HAG and CoDeSeF.',
+      'Tap Submit. Your answers are the outline of your graduation presentation.',
+      'Turn them into a 5–6 slide deck or a 90-second introduction, and upload it in Graduation Preparations before Friday.',
+    ];
+  }
   if (id === 'lep-brand-statement') {
     return [
       'Attend the Differentiated Brand session.',

@@ -139,6 +139,25 @@ function PodcastMomentCard({ moment, width, onPress }) {
   );
 }
 
+/**
+ * C-Suite League story: the cover already carries the title, guest and role, so it is shown
+ * whole (no teal panel over it), with the action bar below.
+ */
+function CsuiteMomentCard({ moment, onPress }) {
+  return (
+    <MomentShell
+      onPress={onPress}
+      label={`Play ${moment.title}`}
+      barIcon={<MaterialIcons name="play-circle-outline" size={20} color={RED} />}
+      barLabel={moment.barText || 'Watch now'}
+    >
+      <View style={{ aspectRatio: 16 / 9, backgroundColor: TEAL }}>
+        {moment.img ? <Image source={moment.img} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
+      </View>
+    </MomentShell>
+  );
+}
+
 /** Shared shell: red shape behind the corner, rounded white card, and the pink action bar. */
 function MomentShell({ onPress, label, barIcon, barLabel, children, blobLeft = false }) {
   return (
@@ -380,7 +399,9 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
           {`Preview: ${force === 'cms' ? 'team post' : force === 'army' ? 'Army event' : force === 'listen' ? 'podcast' : force === 'csuite' ? 'C-suite story' : 'principle'} · long-press the heading for the next`}
         </ILText>
       ) : null}
-      {moment.kind === 'listen' || moment.kind === 'csuite' ? (
+      {moment.kind === 'csuite' ? (
+        <CsuiteMomentCard moment={moment} onPress={onPrimary} />
+      ) : moment.kind === 'listen' ? (
         <PodcastMomentCard moment={moment} width={width || 360} onPress={onPrimary} />
       ) : moment.kind === 'cms' ? (
         <TeamPostMomentCard moment={moment} width={width || 360} onPress={onPrimary} />

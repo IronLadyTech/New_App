@@ -491,10 +491,10 @@ export const COURSE_TASKS = {
       id: "lep-challenge-4",
       phase: "week-4",
       order: 790,
-      title: "Challenge for Week 4",
+      title: "Week 4 Challenge: Your graduation story",
       type: TASK_TYPES.TEXT,
       kind: "Write",
-      description: "Game of Excellence — complete the week 4 challenge and tell us how it went.",
+      description: "Answer the four things you will present on Graduation Day. Your answers become your 2-minute presentation.",
       week: "Week 4",
     },
     {

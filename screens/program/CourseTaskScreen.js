@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import LepGraduationStoryForm from '../../components/program/LepGraduationStoryForm';
 import QuizView from '../../components/program/QuizView';
 import { QUIZ_FOR_TASK } from '../../constants/lepQuizzes';
 import { learnerBhagText } from '../../utils/programAccess';
@@ -1448,6 +1449,10 @@ export default function CourseTaskScreen({ route, navigation }) {
           />
         ) : null}
 
+        {taskId === 'lep-challenge-4' ? (
+          <LepGraduationStoryForm initialText={priorText} onChangeText={setText} />
+        ) : null}
+
         {type === TASK_TYPES.TEXT && showChallengeForm && !quizId ? (
           <LepChallengeSummaryForm
             state={challengeState}
@@ -1457,7 +1462,7 @@ export default function CourseTaskScreen({ route, navigation }) {
           />
         ) : null}
 
-        {type === TASK_TYPES.TEXT && !showChallengeForm && !quizId ? (
+        {type === TASK_TYPES.TEXT && !showChallengeForm && !quizId && taskId !== 'lep-challenge-4' ? (
           <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14 }}>
             <TextInput
               value={text}

@@ -184,8 +184,8 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Your LEP journey closed well, with your reflections captured.',
   },
   'lep-challenge-4': {
-    why: 'Last weekly push before you graduate.',
-    gain: 'Your final Game of Excellence reflection.',
+    why: 'On Graduation Day you present your 4-week journey in 2 minutes.',
+    gain: 'The outline of your graduation presentation: your B-HAG, your breakthroughs, the principles you use and your next B-HAG.',
   },
   'lep-community-schedule': {
     why: 'Learning continues after the four weeks.',
