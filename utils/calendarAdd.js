@@ -10,9 +10,8 @@ export { calendarAllDay, calendarDates, calendarKeyFromUrl, googleCalendarUrl } 
  * (with a correct end time, also past midnight) and a remembered "added" state per event, so a
  * button she already used turns into a small green "In your calendar".
  *
- * On many Android phones the Google Calendar app takes over calendar.google.com links but drops
- * the event details (it just opens the month view). So on Android the link goes to Chrome, which
- * shows Google's "add event" page. And the button turns green only after she says it was saved.
+ * The button turns green only after she says the event was saved: on a phone whose Calendar
+ * app cannot sync, the link opens but nothing is added.
  */
 
 // v2: v1 marked an event as added as soon as the link opened, even when nothing was saved.
@@ -48,15 +47,6 @@ export function markCalendarAdded(key) {
 }
 
 async function openCalendarLink(url) {
-  if (Platform.OS === 'android') {
-    try {
-      // Chrome's own link: opens the page in Chrome, not in the Calendar app.
-      await Linking.openURL(`googlechrome://navigate?url=${url}`);
-      return true;
-    } catch {
-      /* no Chrome: the plain link */
-    }
-  }
   await Linking.openURL(url);
   return true;
 }
