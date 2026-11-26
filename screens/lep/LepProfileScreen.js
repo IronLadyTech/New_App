@@ -262,7 +262,7 @@ export default function LepProfileScreen({ route, navigation }) {
   const onDeleteAccount = () => {
     Alert.alert(
       'Delete account',
-      'Email support@ironlady.tech to delete your account. This cannot be undone.',
+      'Email askanakanksha@iamironlady.com to delete your account. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -270,7 +270,7 @@ export default function LepProfileScreen({ route, navigation }) {
           style: 'destructive',
           onPress: () =>
             Linking.openURL(
-              'mailto:support@ironlady.tech?subject=Delete%20my%20Iron%20Lady%20account'
+              'mailto:askanakanksha@iamironlady.com?subject=Delete%20my%20Iron%20Lady%20account'
             ).catch(() => {}),
         },
       ]

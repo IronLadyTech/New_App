@@ -1366,6 +1366,31 @@ export default function CourseTaskScreen({ route, navigation }) {
             note={lepAssignment.note}
           />
         ) : null}
+        {taskId === 'lep-community-schedule' && !alumniPractice ? (
+          <Pressable
+            onPress={() =>
+              nav.goTickets?.({ subject: 'Which Thursday community track is for me?', category: 'course' })
+            }
+            accessibilityRole="button"
+            style={{
+              marginTop: 12,
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: G.dash,
+              backgroundColor: G.white,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+            }}
+          >
+            <MaterialIcons name="support-agent" size={18} color={G.ink} style={{ marginRight: 8 }} />
+            <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
+              Ask my CEM
+            </ILText>
+          </Pressable>
+        ) : null}
 
         {videoUri &&
         type !== TASK_TYPES.WATCH_ONLY &&

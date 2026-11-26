@@ -700,5 +700,5 @@ export function memberSinceLabel(profile) {
 }
 
 export function talkToIronLady() {
-  Linking.openURL('mailto:support@ironlady.tech?subject=Help%20deciding%20on%20LEP%20enrollment').catch(() => {});
+  Linking.openURL('mailto:askanakanksha@iamironlady.com?subject=Help%20deciding%20on%20LEP%20enrollment').catch(() => {});
 }

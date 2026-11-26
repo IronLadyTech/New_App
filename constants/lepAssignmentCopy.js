@@ -44,7 +44,8 @@ export const LEP_COMMUNITY_SESSIONS = {
     '**Disha**: for job seekers.',
     '**Visibility Platform**: volunteer to speak on a topic, and build your presence in front of an audience.',
   ],
-  note: 'All four run in the **Thursday community session**.',
+  note:
+    'All four run in the **Thursday community session**. **Not sure which one is for you?** Raise a ticket to your CEM (button below) or ask in your **chapter WhatsApp group**, then tick below.',
 };
 
 export function lepAssignmentBrief(taskId) {

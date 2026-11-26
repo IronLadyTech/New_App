@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { IRON_LADY_SUPPORT_EMAIL, LEP_SUPPORT_EMAIL } from '../../constants/profileSupport';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -169,7 +170,7 @@ export default function OrderReceiptScreen({ navigation, route }) {
 
           <Text style={{ marginTop: 22, fontSize: 11, lineHeight: 16, color: IL_BRAND.forestMuted }}>
             This receipt is generated after Razorpay confirms the payment. Keep the
-            transaction ID for support. Questions: support@ironlady.tech
+            transaction ID for support. Questions: {order?.programId === 'lep' || !order?.programId ? LEP_SUPPORT_EMAIL : IRON_LADY_SUPPORT_EMAIL}
           </Text>
         </View>
       </ScrollView>

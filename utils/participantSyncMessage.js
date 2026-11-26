@@ -7,7 +7,7 @@ const SAVED_APP_ONLY =
   'Saved in the app. Your registration record will update shortly — no need to enter this again.';
 const SAVE_FAILED = 'We could not save that right now. Check your connection and try again.';
 const BATCH_SAVED_APP =
-  'Your batch is saved in the app. If anything looks wrong on your dashboard, tap Change batch date or contact support@ironlady.tech.';
+  'Your batch is saved in the app. If anything looks wrong on your dashboard, tap Change batch date or contact askanakanksha@iamironlady.com.';
 
 /** Strip technical detail before it could leak into UI. */
 export function sanitizeParticipantDetail(raw) {
@@ -81,7 +81,7 @@ export function batchZohoFeedback(zohoResult, error) {
   if (zohoResult?.reasonCode === 'lead_not_found') {
     return {
       message:
-        'Your batch is saved in the app. If your dashboard looks wrong, email support@ironlady.tech with your mobile number.',
+        'Your batch is saved in the app. If your dashboard looks wrong, email askanakanksha@iamironlady.com with your mobile number.',
       showAlert: true,
       reasonCode: 'lead_not_found',
     };
@@ -97,7 +97,7 @@ export function batchZohoFeedback(zohoResult, error) {
   if (zohoResult?.reasonCode === 'zoho_write_failed') {
     return {
       message:
-        'Your batch is saved in the app. If dates still look wrong, try Change batch date once or email support@ironlady.tech.',
+        'Your batch is saved in the app. If dates still look wrong, try Change batch date once or email askanakanksha@iamironlady.com.',
       showAlert: true,
       reasonCode: 'zoho_write_failed',
     };

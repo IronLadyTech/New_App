@@ -127,6 +127,8 @@ export function useLepNav() {
     goNudges: () => openInTab(navigation, 'Profile', 'NudgeSettings'),
     goFoundationGuides: () => goTab('Learn'),
     goHelp: () => goProfileScreen('HelpSupport'),
+    // Raise / see support tickets; params prefill a new one ({ subject, category }).
+    goTickets: (params) => goProfileScreen('SupportTickets', params),
     goPrivacyCenter: () => goProfileScreen('PrivacyCenter'),
     goPrivacy: () => goProfileScreen('LegalWeb', { url: `${LMS_HOST}/privacy`, title: 'Privacy' }),
     goTerms: () => goProfileScreen('LegalWeb', { url: `${LMS_HOST}/terms`, title: 'Terms' }),

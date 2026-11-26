@@ -1,6 +1,16 @@
 /** Profile → Help & Support (learner-facing). */
 export const IRON_LADY_SUPPORT_EMAIL = 'admin@iamironlady.com';
 
+/** LEP learners write to the LEP team (programme team, 26 Nov 2026). */
+export const LEP_SUPPORT_EMAIL = 'askanakanksha@iamironlady.com';
+
+/** The address a learner sees: the LEP team for LEP learners, the general one for everyone else. */
+export function supportEmailFor(profile) {
+  const programs = [profile?.program, ...(Array.isArray(profile?.programs) ? profile.programs : [])];
+  const lep = programs.some((p) => String(p || '').toLowerCase() === 'lep') || Boolean(profile?.programAccess?.lep);
+  return lep ? LEP_SUPPORT_EMAIL : IRON_LADY_SUPPORT_EMAIL;
+}
+
 export const PROFILE_FAQ = [
   {
     q: 'How do I pick or change my LEP batch date?',

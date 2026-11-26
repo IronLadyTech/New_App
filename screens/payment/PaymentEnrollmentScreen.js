@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { supportEmailFor } from '../../constants/profileSupport';
 import {
   ActivityIndicator,
   Alert,
@@ -85,9 +86,9 @@ export default function PaymentEnrollmentScreen({ navigation, route }) {
   const onTalkToTeam = () => {
     const url = vm.supportPhone
       ? `tel:${vm.supportPhone}`
-      : 'mailto:support@ironlady.tech';
+      : `mailto:${supportEmailFor(profile)}`;
     Linking.openURL(url).catch(() => {
-      Alert.alert('Contact Iron Lady', 'Email support@ironlady.tech for payment help.');
+      Alert.alert('Contact Iron Lady', `Email ${supportEmailFor(profile)} for payment help.`);
     });
   };
 

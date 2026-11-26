@@ -20,6 +20,10 @@ export default function ProfileStack() {
       <Stack.Screen name="ProfileHome" component={LepProfileScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen
+        name="SupportTickets"
+        getComponent={() => require('../screens/profile/SupportTicketsScreen').default}
+      />
       <Stack.Screen name="LegalWeb" component={LegalWebScreen} />
       <Stack.Screen name="PrivacyCenter" component={PrivacyCenterScreen} />
       <Stack.Screen name="LepProgress" component={LepProgressScreen} />

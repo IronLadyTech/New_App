@@ -545,7 +545,7 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
       openLink(waUrl).catch(() => {});
       return;
     }
-    Linking.openURL('mailto:support@ironlady.tech?subject=LEP%20batch%20WhatsApp%20group').catch(() => {});
+    Linking.openURL('mailto:askanakanksha@iamironlady.com?subject=LEP%20batch%20WhatsApp%20group').catch(() => {});
   };
 
   const thursdayCalUrl = lepSessionCalendarUrl({

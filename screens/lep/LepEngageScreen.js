@@ -1,4 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import EpisodeFoot, { episodeMeta } from '../../components/learn/EpisodeFoot';
+import { videoLength } from '../../constants/videoDurations';
+import { learnFieldFromWho } from '../../utils/learnMediaShelves';
 import AddToCalendarButton from '../../components/il/AddToCalendarButton';
 import { addToCalendar } from '../../utils/calendarAdd';
 import CalendarIconButton from '../../components/il/CalendarIconButton';
@@ -140,15 +143,24 @@ function CsuiteVideos({ nav }) {
         keyOf={(c) => c.assetKey}
         inset={20}
         style={{ marginTop: 12 }}
-        renderItem={(c, { width }) => (
-            <StoryVideoCard
-              width={width}
-              img={c.img}
-              title={c.title}
-              meta={c.who}
-              time={engageVideoShelfLabel(c)}
+        renderItem={(c) => (
+            // The cover already shows the title, the guest and her role: the strip adds who it
+            // is for and how long it is.
+            <Pressable
               onPress={() => nav.goWatch({ assetKey: c.assetKey, title: c.title, sub: c.who })}
-            />
+              accessibilityRole="button"
+              accessibilityLabel={`Play ${c.title}, ${c.who}`}
+            >
+              <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
+                <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                  <CoverThumb source={c.img} height="100%" />
+                </View>
+                <EpisodeFoot
+                  lead={`For women in ${learnFieldFromWho(c.who)}`}
+                  meta={episodeMeta(videoLength(c.assetKey), 'case study')}
+                />
+              </WhiteCard>
+            </Pressable>
         )}
       />
     </>
@@ -169,42 +181,23 @@ function PodcastLibrary({ nav }) {
         keyOf={(ep) => ep.assetKey}
         inset={20}
         style={{ marginTop: 12 }}
-        renderItem={(ep, { width }) => {
-          const thumbH = Math.round((width * 9) / 16);
-          return (
+        renderItem={(ep) => (
+            // The cover already shows the episode, its title and the guest.
             <Pressable
               onPress={() => nav.goWatch({ assetKey: ep.assetKey, title: ep.title, sub: ep.who })}
+              accessibilityRole="button"
+              accessibilityLabel={`Play ${ep.title}, ${ep.who}`}
             >
-              <WhiteCard
-                style={{
-                  borderRadius: 18,
-                  overflow: 'hidden',
-                  height: thumbH + 12 + 14 + 6 + STORY_TITLE_H + 4 + 16 + 12,
-                }}
-              >
-                <View style={{ height: thumbH, width: '100%', backgroundColor: G.dark }}>
-                  <CoverThumb source={ep.img} height={thumbH} play time={ep.meta} />
+              <WhiteCard style={{ borderRadius: 18, overflow: 'hidden' }}>
+                <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+                  <CoverThumb source={ep.img} height="100%" />
                 </View>
-                <View style={{ paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12 }}>
-                  <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9, height: 14 }]} numberOfLines={1}>
-                    {ep.meta}
-                  </ILText>
-                  <ILText
-                    role="label"
-                    color={G.ink}
-                    style={{ marginTop: 6, fontSize: 13, lineHeight: 18, height: STORY_TITLE_H }}
-                    numberOfLines={2}
-                  >
-                    {ep.title}
-                  </ILText>
-                  <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11, height: 16 }} numberOfLines={1}>
-                    {ep.who}
-                  </ILText>
-                </View>
+                <EpisodeFoot
+                  meta={episodeMeta(videoLength(ep.assetKey, ep.meta), 'conversation')}
+                />
               </WhiteCard>
             </Pressable>
-          );
-        }}
+        )}
       />
     </>
   );
