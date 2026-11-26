@@ -17,6 +17,9 @@ export const LEP_RESOURCES = {
   'lep-via-survey': {
     resourceLinks: [{ label: 'VIA Character Survey', url: 'https://www.viacharacter.org' }],
   },
+  'lep-prep-nsdc': {
+    resourceLinks: [{ label: 'Skill India Digital (NSDC portal)', url: 'https://www.skillindiadigital.gov.in' }],
+  },
   'lep-day1-promises': {
     readingDocument: {
       label: 'Promises and Agreements',

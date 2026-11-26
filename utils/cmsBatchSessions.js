@@ -121,6 +121,11 @@ export function nextCmsBatchSession(batch, now = new Date(), opts = {}) {
 
 /** Next raw session row for the enrolled home card. */
 export function nextRawCmsSession(batch, now = new Date(), opts = {}) {
+  return upcomingRawCmsSessions(batch, now, opts)[0] || null;
+}
+
+/** Her coming core sessions, soonest first (the next one is [0]). */
+export function upcomingRawCmsSessions(batch, now = new Date(), opts = {}) {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
@@ -142,6 +147,6 @@ export function nextRawCmsSession(batch, now = new Date(), opts = {}) {
         `${String(a.date).slice(0, 10)} ${a.startTime || ''}`.localeCompare(
           `${String(b.date).slice(0, 10)} ${b.startTime || ''}`
         )
-      )[0] || null
+      )
   );
 }

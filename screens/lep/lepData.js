@@ -615,8 +615,8 @@ export const ROAD = [
   { title: 'Day 2 — Strategies and Tactics', sub: 'Live · Day 2 Assignment submitted', done: true },
   { title: 'Week 1 — Differentiated Brand Statement', sub: '0.5% League Roadmap · Engagement Form', done: true },
   { title: 'Week 2 — Profile, Resume, Shameless Pitch', sub: '3 of 7 done · this week', now: true },
-  { title: 'Week 3 — Progress Review, Guiding Stars', sub: 'Weekly Handholding Session' },
-  { title: 'Week 4 — Certification', sub: 'Graduation Preparations · NSDC · Attendance' },
+  { title: 'Week 3 — Progress Review, Guiding Stars', sub: 'Mentors · Jobseekers Bootcamp' },
+  { title: 'Week 4 — Certification', sub: 'Graduation Preparations · Attendance' },
 ];
 
 export const TODAY_ITEMS = [

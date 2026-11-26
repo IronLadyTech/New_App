@@ -5,9 +5,17 @@ import { daysFromDay1, todayIsoIST } from './lepDailyPractice';
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MON_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Before the programme she is asked only for her B-HAG and profile (Home shows those), so no
-// CoDeSeF sheet or NSDC registration is due here (programme team, Nov 2026).
+// Before the programme: B-HAG and profile (Home shows those) and the mandatory NSDC
+// registration, due the Friday before Day 1 (programme team, 26 Nov 2026).
 const DUE_TEMPLATES = [
+  {
+    title: 'Complete NSDC Registration',
+    tag: 'LEP',
+    kind: 'Mandatory · before Day 1',
+    icon: 'how-to-reg',
+    taskId: 'lep-prep-nsdc',
+    anchor: 'nsdc',
+  },
   {
     title: 'Program Access Essentials',
     tag: 'LEP',
@@ -99,12 +107,10 @@ function sessionDueItems(batch, now = new Date()) {
 
 /**
  * Tasks due during the programme, shown in the 7 days before they are due: VIA Survey before
- * the Differentiated Brand session (S4, Day 1 + 7), NSDC registration before Graduation
- * (S8, Day 1 + 28).
+ * the Differentiated Brand session (S4, Day 1 + 7).
  */
 const PROGRAM_TASK_DUES = [
   { title: 'Complete your VIA Survey', kind: 'Assignment · before Differentiated Brand', icon: 'assignment', taskId: 'lep-via-survey', dayOffset: 7 },
-  { title: 'Complete NSDC Registration', kind: 'Link · before Graduation', icon: 'how-to-reg', taskId: 'lep-prep-nsdc', dayOffset: 28 },
 ];
 
 function programTaskDues(day1, now = new Date()) {

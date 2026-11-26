@@ -5,7 +5,7 @@ import Pressable from './Press';
 import ILText from './ILText';
 import { G } from '../../constants/guestTheme';
 import { RedCta } from '../../screens/lep/LepBits';
-import { addToCalendar, useCalendarAdded } from '../../utils/calendarAdd';
+import { addToCalendar, calendarKeyFromUrl, isCalendarAdded, useCalendarAdded } from '../../utils/calendarAdd';
 
 const GREEN = '#1B7A4A';
 const GREEN_BG = '#E8F6EE';
@@ -30,12 +30,49 @@ export function InCalendarChip({ url, align = 'center', style }) {
           backgroundColor: GREEN_BG,
         }}
       >
-        <MaterialIcons name="event-available" size={15} color={GREEN} />
+        <MaterialIcons name="check-circle" size={16} color={GREEN} />
         <ILText role="label" color={GREEN} style={{ marginLeft: 6, fontSize: 12 }}>
           In your calendar
         </ILText>
       </View>
     </Pressable>
+  );
+}
+
+/**
+ * Next session on Home: "Add to calendar" until it is in her calendar; then a green tick for it
+ * and the button moves on to the next session she has not added yet.
+ */
+export function SessionCalendarAdd({ url, later = [], onFail }) {
+  const added = useCalendarAdded(url);
+  const add = (u) =>
+    addToCalendar(u).then((ok) => {
+      if (!ok && onFail) onFail();
+    });
+  if (!url || !added) {
+    return (
+      <View style={{ marginTop: 16 }}>
+        <RedCta label="Add to calendar" icon="event" onPress={() => (url ? add(url) : onFail && onFail())} />
+      </View>
+    );
+  }
+  const next = later.find((s) => !isCalendarAdded(calendarKeyFromUrl(s.calendarUrl)));
+  return (
+    <View style={{ marginTop: 14 }}>
+      <InCalendarChip url={url} align="left" />
+      {next ? (
+        <View style={{ marginTop: 12 }}>
+          <RedCta label={`Add next: ${next.title}`} icon="event" onPress={() => add(next.calendarUrl)} />
+          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 12, textAlign: 'center' }}>
+            {next.when}
+          </ILText>
+        </View>
+      ) : later.length ? (
+        <ILText role="bodySm" color={GREEN} style={{ marginTop: 8, fontSize: 13 }}>
+          All your coming sessions are in your calendar.
+        </ILText>
+      ) : null}
+    </View>
   );
 }
 

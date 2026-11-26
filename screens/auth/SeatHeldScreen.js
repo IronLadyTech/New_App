@@ -13,6 +13,7 @@ import { lockLepBatchChoice } from '../../utils/lockLepBatch';
 import { buildPaymentEnrollmentView } from '../../utils/paymentEnrollment';
 import { day1CalendarUrl } from '../../utils/registeredHomeData';
 import { BATCHES } from './ChooseBatchDateScreen';
+import { addToCalendar } from '../../utils/calendarAdd';
 
 const PAGE = '#F7F6E4';
 const INK = '#113744';
@@ -438,8 +439,8 @@ export default function SeatHeldScreen({ navigation, route, onContinue }) {
               const clock = day1.title?.includes('·')
                 ? day1.title.split('·').slice(1).join('·').trim()
                 : '9:00 AM';
-              Linking.openURL(day1CalendarUrl(day1.dateIso, clock)).catch(() => {
-                Alert.alert('Calendar', 'Could not open your calendar app.');
+              addToCalendar(day1CalendarUrl(day1.dateIso, clock)).then((ok) => {
+                if (!ok) Alert.alert('Calendar', 'Could not open your calendar app.');
               });
             }}
             style={({ pressed }) => ({

@@ -1,6 +1,6 @@
 import { resolveMeetingJoinUrl } from './openMeetingUrl';
 import { addCalendarDays } from './lepBatchSchedule';
-import { nextCmsBatchSession, nextRawCmsSession } from './cmsBatchSessions';
+import { nextCmsBatchSession, upcomingRawCmsSessions } from './cmsBatchSessions';
 import { day1CalendarUrl, formatLepDay, lepSessionCalendarUrl } from './registeredHomeData';
 
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -75,7 +75,18 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
   const day2 = day1 ? addCalendarDays(day1, 1) : '';
   const anchor = cmsBatch || (day1 ? { day1Date: day1, sessions: [] } : null);
   const sessionCodes = opts.registeredIntensiveOnly ? LEP_REGISTERED_INTENSIVE_CODES : null;
-  const raw = nextRawCmsSession(anchor, new Date(), { day1Iso: day1, sessionCodes });
+  const coming = upcomingRawCmsSessions(anchor, new Date(), { day1Iso: day1, sessionCodes });
+  const raw = coming[0] || null;
+  const sessionCalendarUrl = (s) => {
+    const iso = s?.date ? String(s.date).slice(0, 10) : '';
+    if (!iso) return '';
+    return lepSessionCalendarUrl({
+      iso,
+      clockLabelText: clockLabel(s.startTime || '') || '9:00 AM',
+      title: `LEP · ${s.title}`,
+      durationHours: durationHours(s.startTime || '', s.endTime || ''),
+    });
+  };
   const card = sessionCodes
     ? null
     : nextCmsBatchSession(anchor, new Date(), { day1Iso: day1 });
@@ -104,6 +115,11 @@ export function buildUpcomingSessionCard(cmsBatch, opts = {}) {
       hours,
       joinLink,
       calendarUrl,
+      // The sessions after this one: once this one is in her calendar, Home offers the next.
+      later: coming
+        .slice(1, 10)
+        .map((s) => ({ title: s.title, when: fmtShort(String(s.date).slice(0, 10)), calendarUrl: sessionCalendarUrl(s) }))
+        .filter((s) => s.calendarUrl),
       ready: Boolean(joinLink),
       code: raw?.code || '',
       // Live: from 15 minutes before it starts until it ends (Home shows LIVE + Join only).

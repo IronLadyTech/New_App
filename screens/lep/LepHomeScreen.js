@@ -105,6 +105,7 @@ import {
   cancelLepRitualsNotifications,
   scheduleLepRitualsNotifications,
 } from '../../services/lepRitualsNotifications';
+import { SessionCalendarAdd } from '../../components/il/AddToCalendarButton';
 
 function EnrolledRoute({ cmsBatch }) {
   const { profile } = useAuth();
@@ -979,16 +980,7 @@ function EnrolledHome({ cmsBatch }) {
         ) : null}
         {/* Live: only the Zoom button (adding to the calendar no longer helps). */}
         {upcoming.live ? null : (
-          <View style={{ marginTop: 16 }}>
-            <RedCta
-              label="Add to calendar"
-              icon="event"
-              onPress={() => {
-                if (upcoming.calendarUrl) Linking.openURL(upcoming.calendarUrl).catch(() => nav.goSchedule());
-                else nav.goSchedule();
-              }}
-            />
-          </View>
+          <SessionCalendarAdd url={upcoming.calendarUrl} later={upcoming.later} onFail={nav.goSchedule} />
         )}
         <Pressable
           onPress={() => {

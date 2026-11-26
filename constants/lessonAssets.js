@@ -125,6 +125,8 @@ export const TASK_VIDEOS = {
   // LinkedIn session by Ms Divya (programme team, 25 Nov 2026).
   'lep-resume-linkedin': YT('DH-KDm6anic'),
   'lep-resume-bootcamp': LEP_JOBSEEKERS_BOOTCAMP_YT,
+  // How to register on Skill India Digital (programme team, 26 Nov 2026).
+  'lep-prep-nsdc': YT('evx3ewOow3M'),
   'q1-session1': YT('qtSBQTXtS4A'),
   'q1-session2': YT('k16c3d02yj0'),
   'q1-suvarna-session': YT('GsCztuFb7rM'),

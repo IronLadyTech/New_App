@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Linking, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Pressable from '../il/Press';
 import ILText from '../il/ILText';
@@ -14,6 +14,7 @@ import { FEEDBACK_DONE_JS, feedbackFormUrl } from '../../utils/feedbackForms';
 export default function FeedbackFormView({ url, profile, done, onDone }) {
   const src = useMemo(() => feedbackFormUrl(url, profile), [url, profile?.uid, profile?.email]);
   const [loading, setLoading] = useState(true);
+  const [outside, setOutside] = useState(false);
   const fired = useRef(false);
   const finish = () => {
     if (fired.current) return;
@@ -34,6 +35,37 @@ export default function FeedbackFormView({ url, profile, done, onDone }) {
     );
   }
 
+  // Google does not allow signing in inside an app's web view. If a form ever asks her to sign
+  // in, open it in her phone's browser (where she is usually signed in) instead.
+  const openOutside = () => {
+    setOutside(true);
+    Linking.openURL(src).catch(() => {});
+  };
+
+  if (outside) {
+    return (
+      <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 16 }}>
+        <ILText role="label" color={G.ink} style={{ fontSize: 16 }}>
+          The form opened in your browser
+        </ILText>
+        <ILText role="bodySm" color={G.body} style={{ marginTop: 6, fontSize: 14, lineHeight: 20 }}>
+          This form needs your Google sign-in, so it opened in your browser. Submit it there, then come back and
+          tap below.
+        </ILText>
+        <Pressable onPress={finish} accessibilityRole="button" hitSlop={8} style={{ marginTop: 14 }}>
+          <ILText role="label" color={G.cta} style={{ fontSize: 15 }}>
+            I have submitted it
+          </ILText>
+        </Pressable>
+        <Pressable onPress={openOutside} accessibilityRole="button" hitSlop={8} style={{ marginTop: 12 }}>
+          <ILText role="label" color={G.meta} style={{ fontSize: 13 }}>
+            Open the form again
+          </ILText>
+        </Pressable>
+      </WhiteCard>
+    );
+  }
+
   return (
     <View style={{ marginTop: 18 }}>
       <WhiteCard style={{ borderRadius: 18, padding: 0, overflow: 'hidden', height: 620 }}>
@@ -45,6 +77,13 @@ export default function FeedbackFormView({ url, profile, done, onDone }) {
           onMessage={(e) => e.nativeEvent.data === 'il-feedback-done' && finish()}
           onLoadEnd={() => setLoading(false)}
           setSupportMultipleWindows={false}
+          onShouldStartLoadWithRequest={(req) => {
+            if (req.isTopFrame !== false && /accounts\.google\.com\/(ServiceLogin|signin|v3\/signin|AccountChooser)/i.test(req.url || '')) {
+              openOutside();
+              return false;
+            }
+            return true;
+          }}
         />
         {loading ? (
           <View

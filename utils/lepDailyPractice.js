@@ -36,9 +36,8 @@ export function orientationIsoFromGroup(group) {
   return day1 ? orientationFromDay1Saturday(day1) : null;
 }
 
-/** Days after Day 1: VIA before S4 Differentiated Brand, NSDC before S8 Graduation. */
+/** Days after Day 1: VIA before S4 Differentiated Brand. NSDC is pre-work, due before Day 1. */
 export const VIA_DUE_OFFSET = 7;
-export const NSDC_DUE_OFFSET = 28;
 
 function row(partial) {
   return { programId: 'lep', ...partial };
@@ -84,8 +83,11 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
   const ritualsUnlocked = isLepRitualsUnlocked(todayIso, day1Iso);
   const session = sessionDueToday(todayIso, day1Iso);
 
-  // Before the programme she is asked only for her B-HAG (and profile details, on Home) —
-  // no CoDeSeF sheet, VIA or NSDC at this stage (programme team, Nov 2026).
+  // Before the programme: her B-HAG (and profile details, on Home) and the mandatory NSDC
+  // registration (programme team, 26 Nov 2026). No CoDeSeF sheet or VIA at this stage.
+  const nsdcRow = (meta) =>
+    row({ id: 'pre-nsdc', title: 'Complete NSDC Registration', meta, taskId: 'lep-prep-nsdc' });
+
   if (offset == null) {
     return [
       row({
@@ -94,6 +96,7 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
         meta: 'Pre-program · before Orientation',
         practiceId: 'lep-bhag',
       }),
+      nsdcRow('Mandatory · before Day 1'),
     ];
   }
 
@@ -112,6 +115,7 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
         meta: `Pre-work · ${videoLength('lep-principles-video')}`,
         practiceId: 'lep-principles-video',
       }),
+      nsdcRow('Mandatory · before Day 1'),
     ];
   }
 
@@ -148,6 +152,7 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
         meta: 'Bring it to Day 1',
         practiceId: 'lep-bhag',
       }),
+      nsdcRow('Mandatory · due today'),
     ];
   }
 
@@ -237,13 +242,9 @@ export function buildEnrolledDailyPractice(todayIso, anchorIso, day1Iso) {
     ...(ritualsUnlocked ? [ritualsPracticeRow()] : []),
     // weekFocus: resolved to her next unfinished task — show before daily principle on Home.
     row({ ...phaseTask, weekFocus: phaseId }),
-    // VIA is due before the Differentiated Brand session (Day 1 + 7), NSDC before Graduation
-    // (Day 1 + 28) — asked in the week before each, not before the programme (programme team).
+    // VIA is due before the Differentiated Brand session (Day 1 + 7), asked in the week before.
     ...(offset >= 2 && offset < VIA_DUE_OFFSET
       ? [row({ id: 'via-before-brand', title: 'Complete your VIA Survey', meta: 'Due before Differentiated Brand', taskId: 'lep-via-survey' })]
-      : []),
-    ...(offset >= NSDC_DUE_OFFSET - 7 && offset < NSDC_DUE_OFFSET
-      ? [row({ id: 'nsdc-before-grad', title: 'Complete NSDC Registration', meta: 'Due before Graduation', taskId: 'lep-prep-nsdc' })]
       : []),
     principleRow(todayIso, day1Iso),
   ];

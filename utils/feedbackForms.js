@@ -10,10 +10,8 @@ import { lepFullName } from './lepState';
 const GOOGLE_PREFILL = {
   // Day 1–2 feedback: name, city, batch (dropdown "28th Nov 26").
   '1FAIpQLSdznJWqprFRmTjYOovjixhjC-9rilL4mB0eaK0StjpmYLTlzQ': { name: '1851737840', city: '893030630', batch: '1871340838' },
-  // Session feedback forms share the same "Your full name" question.
-  '1FAIpQLSf0TeNTjopitMAvg9nELcMTKwBTklwVfSmhW4T_l0KD9vhWwQ': { name: '1051168791' },
-  '1FAIpQLSetSj2DU-AbJq-Dkn-f1BPGYuZxjJ_dU9PFE0pj3aEyutrj6Q': { name: '1051168791' },
-  '1FAIpQLScMtmYaU7ZgEqZFnIc9wfnTyJSXxCESfkMbBtxO3EigyuZ03g': { name: '1051168791' },
+  // Graduation feedback: full name, email, city.
+  '1FAIpQLScvMWo0CHUECMLvFYSotw51411k3Mh0Dxdc7_9vKMR0SdoZ9A': { name: '1051168791', email: '403470362', city: '1601181504' },
 };
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -34,7 +32,7 @@ export function formBatchLabel(day1Iso) {
 export function feedbackFormKind(url) {
   const u = String(url || '');
   if (/docs\.google\.com\/forms|forms\.gle/.test(u)) return 'google';
-  if (/zoho(public)?\.(in|com)\/zs|survey\.zoho/.test(u)) return 'zoho';
+  if (/zoho(public)?\.(in|com)\/zs|survey\.zoho|survey\.iamironlady\.com/.test(u)) return 'zoho';
   return 'other';
 }
 
@@ -82,8 +80,14 @@ export const FEEDBACK_DONE_JS = `
     var text = (document.body && document.body.innerText) || '';
     var fields = document.querySelectorAll('[role="listitem"], input:not([type="hidden"]), textarea, select').length;
     var google = /formResponse/.test(href) && !document.querySelector('[role="listitem"]');
-    var zoho = /zoho/.test(href) && fields === 0 && /thank|response has been|submitted/i.test(text);
+    var zoho = /zoho|survey\\.iamironlady/.test(href) && fields === 0 && /thank|response has been|submitted/i.test(text);
     var redirect = /ironlady\\.app\\/feedback-done/.test(href);
+    // Google's optional "Sign in to save your progress" line: she never needs it, so hide it.
+    var signIn = document.querySelectorAll('a[href*="accounts.google.com"]');
+    for (var i = 0; i < signIn.length; i++) {
+      var box = signIn[i].parentElement;
+      if (box && /sign in|save your progress/i.test(box.innerText || '')) box.style.display = 'none';
+    }
     if (google || zoho || redirect) {
       sent = true;
       window.ReactNativeWebView.postMessage('il-feedback-done');

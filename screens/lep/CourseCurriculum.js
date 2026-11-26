@@ -30,7 +30,15 @@ import { isLepProfileInfoDone } from '../../utils/registeredHomeData';
 const LEP_PREP_ROWS = [
   { id: '__lep-bhag', title: 'Update your B-HAG', kind: 'Form' },
   { id: '__lep-profile', title: 'Complete your profile details', kind: 'Form' },
+  // NSDC registration is pre-work now (programme team, 26 Nov 2026).
+  { id: 'lep-prep-nsdc', title: 'Complete NSDC Registration', kind: 'Checklist', dueLabel: 'mandatory · before Day 1' },
+  { id: 'lep-photo-nsdc', title: 'Photograph for NSDC registration', kind: 'Upload', dueLabel: 'before Day 1' },
 ];
+
+/** Shown in a phase but not open yet: no task to open, not counted in progress. */
+const LEP_COMING_SOON = {
+  'week-4': [{ id: '__lep-nsdc-test', title: 'NSDC Test' }],
+};
 
 function taskIcon(kind) {
   const k = String(kind || '').toLowerCase();
@@ -164,6 +172,7 @@ export default function CourseCurriculum({
               programId={programId}
               isDone={taskIsDone}
               onTask={openTask}
+              comingSoon={programId === PROGRAMS.LEP ? LEP_COMING_SOON[phase.id] || [] : []}
               onCollapse={() => setExpandedId('__none__')}
               complete={done && doneCount >= tasks.length && tasks.length > 0}
             />
@@ -295,6 +304,7 @@ function ExpandedPhaseCard({
   isDone,
   onTask,
   onCollapse,
+  comingSoon = [],
   complete = false,
 }) {
   const status = complete
@@ -384,6 +394,35 @@ function ExpandedPhaseCard({
             </Pressable>
           );
         })}
+        {comingSoon.map((item) => (
+          <View
+            key={item.id}
+            accessibilityLabel={`${item.title}, coming soon`}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 12,
+              borderTopWidth: 1,
+              borderTopColor: G.line,
+              opacity: 0.75,
+            }}
+          >
+            <MaterialIcons name="schedule" size={22} color={G.meta} />
+            <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+              <ILText role="label" color={G.ink} style={{ fontSize: 14, lineHeight: 19 }}>
+                {item.title}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 2, fontSize: 12 }}>
+                Opens here soon. We will let you know.
+              </ILText>
+            </View>
+            <View style={{ backgroundColor: G.mutedFill, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+              <ILText role="label" color={G.meta} style={{ fontSize: 11 }}>
+                Coming soon
+              </ILText>
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );

@@ -309,9 +309,9 @@ export function buildRegisteredHome(input) {
   const enrolled = pay === PAYMENT_STATUS.PAID;
   const seatHeld = pay === PAYMENT_STATUS.REGISTER || enrolled;
   const linked = lepBatchIsAssigned(profile);
-  // Before the programme she is asked only for her B-HAG and profile details (programme team,
-  // Nov 2026): VIA and NSDC are not pre-work any more.
-  const preworkComplete = Boolean(bhagDone && profileDone);
+  // Before the programme: her B-HAG, profile details and the mandatory NSDC registration
+  // (programme team, 26 Nov 2026). VIA is not pre-work.
+  const preworkComplete = Boolean(bhagDone && profileDone && nsdcDone);
   const dates = linked ? batchDates(profile, cmsBatch) : null;
 
   // CTA / copy phase — paying full fee early still leaves pre-work open.
@@ -358,6 +358,14 @@ export function buildRegisteredHome(input) {
       openMeta: dates ? dueMeta(viaDue, viaClock) : noDate,
       doneMeta: 'Done',
     },
+    {
+      id: 'nsdc',
+      title: 'NSDC registration · mandatory',
+      required: true,
+      done: Boolean(nsdcDone),
+      openMeta: dates ? dueMeta(nsdcDue, nsdcClock) : noDate,
+      doneMeta: 'Done',
+    },
   ];
 
   let markedNow = false;
@@ -387,7 +395,9 @@ export function buildRegisteredHome(input) {
       : status === 'batch'
         ? 'Pick your batch first — your pre-work due dates follow it.'
         : status === 'prework'
-          ? `Your B-HAG and profile are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''} — we discuss your B-HAG at Orientation.`
+          ? bhagDone && profileDone
+            ? 'One step left: your NSDC registration. It is mandatory and due before Day 1.'
+            : `Your B-HAG and profile are due ${viaWeekday}${viaClock ? ` ${viaClock}` : ''} — we discuss your B-HAG at Orientation.`
           : `You are all set. See you at Orientation on ${orientDay}${orientClock ? `, ${orientClock}` : ''}.`;
 
   const note =

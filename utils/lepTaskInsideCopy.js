@@ -13,13 +13,14 @@ export function lepTaskWatchLabel(taskId) {
   if (id === 'lep-day3-27-principles') return 'Watch · 27 Principles session';
   if (id === 'lep-day3-5-rituals') return 'Watch · 5 Daily Rituals';
   if (id === 'lep-day3-mentors') return 'Watch · Finding mentors';
+  if (id === 'lep-prep-nsdc') return 'Watch · How to register on NSDC';
   return 'Watch first';
 }
 
 /** Plain-language label for participants (Excel / task guide categories). */
 export function lepTaskCategoryLabel(task) {
   const id = task?.id || '';
-  if (id === 'lep-prep-nsdc') return 'NSDC registration';
+  if (id === 'lep-prep-nsdc') return 'NSDC registration (mandatory)';
   if (id === 'lep-via-survey') return 'VIA survey + upload';
   if (id === 'lep-day5-pitch') return 'Video pitch (must-do)';
   if (task?.type === TASK_TYPES.WATCH_ONLY) return 'Watch video';
@@ -134,9 +135,11 @@ export function lepTaskInsideSteps(task) {
   }
   if (id === 'lep-prep-nsdc') {
     return [
-      'Register on the NSDC portal (government site) using the link in Batch materials if provided.',
-      'Copy the confirmation or registration link the portal gives you.',
-      'Paste that link in the box on this screen and tap Submit link.',
+      'Open www.skillindiadigital.gov.in (link below) and tap Register, then Learner/Participant.',
+      'Enter your 10-digit mobile number and the 6-digit OTP, then set a 4-digit password.',
+      'Complete KYC by OTP: enter your 12-digit Aadhaar number, tap Generate OTP and enter the OTP sent to your Aadhaar-linked mobile.',
+      'Mandatory: after logging in, tap Show interest. The Universal form opens: fill it in and submit.',
+      'Tick both boxes on this screen to confirm. Stuck? Watch the video on this screen.',
     ];
   }
   if (id === 'lep-via-survey') {

@@ -8,8 +8,8 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Your individual excellence profile, built by Iron Lady from your VIA report.',
   },
   'lep-prep-nsdc': {
-    why: 'Government registration is required for programme certification paperwork.',
-    gain: 'Your NSDC registration done — one less thing to sort before Day 1 and graduation.',
+    why: 'Our program is conducted in collaboration with the National Skill Development Corporation (NSDC), a government-backed initiative. A one-time registration is mandatory for every participant.',
+    gain: 'Your participation officially recognised by NSDC and aligned with national standards.',
   },
   'lep-orientation-framework': {
     why: 'You need the map before the journey starts.',
