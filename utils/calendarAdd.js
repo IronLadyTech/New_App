@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, AppState, Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calendarKeyFromUrl } from './calendarLinks';
 import {
@@ -17,8 +17,8 @@ export { calendarAllDay, calendarDates, calendarKeyFromUrl, googleCalendarUrl } 
  * event, so a button she already used turns into a small green "In your calendar".
  *
  * APK 1.2.0+: the app writes the event into her phone calendar itself, so it knows it is there
- * (no question) and notices when she deletes it. Older APK, or calendar permission refused: the
- * Google Calendar link, and the button turns green only after she says she saved it.
+ * and notices when she deletes it. Older APK, or calendar permission refused: the Google
+ * Calendar link, and the button turns green when she comes back (it cannot see her calendar).
  */
 
 // v2: v1 marked an event as added as soon as the link opened, even when nothing was saved.
@@ -89,8 +89,11 @@ export function markCalendarAdded(key, eventId = null) {
   notify();
 }
 
-/** When she comes back to the app, ask whether the event was saved; only then turn it green. */
-function confirmWhenBack(key) {
+/**
+ * Link path (older APK / no permission): the app cannot see her calendar, so it never asks —
+ * the event counts as added once she has been to the calendar and comes back.
+ */
+function markWhenBack(key) {
   if (!key || Platform.OS === 'web') {
     markCalendarAdded(key);
     return;
@@ -103,10 +106,7 @@ function confirmWhenBack(key) {
     }
     if (!left) return;
     sub.remove();
-    Alert.alert('Is it in your calendar?', 'Tap Yes once you have saved the event in Google Calendar.', [
-      { text: 'Not yet', style: 'cancel' },
-      { text: 'Yes, saved', onPress: () => markCalendarAdded(key) },
-    ]);
+    markCalendarAdded(key);
   });
   // Never keep listening for long.
   setTimeout(() => sub.remove(), 30 * 60 * 1000);
@@ -125,7 +125,7 @@ export async function addToCalendar(url) {
   }
   try {
     await Linking.openURL(url);
-    confirmWhenBack(key);
+    markWhenBack(key);
     return true;
   } catch {
     return false;

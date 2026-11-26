@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { addToCalendar } from '../../utils/calendarAdd';
+import { addToCalendar, calendarKeyFromUrl, isCalendarAdded, useCalendarAdded } from '../../utils/calendarAdd';
+import { InCalendarChip } from '../../components/il/AddToCalendarButton';
 import { videoLength } from '../../constants/videoDurations';
 import { Image, Linking, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -617,6 +618,9 @@ export function BhagHomeCard({ bhag, onBhag, style }) {
 function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) {
   const joinTarget = resolveMeetingJoinUrl(upcoming.joinLink);
   const canJoin = Boolean(joinTarget);
+  // Once this session is in her calendar: a green tick, and the button moves to the next one.
+  const added = useCalendarAdded(upcoming.calendarUrl) && Boolean(upcoming.calendarUrl);
+  const next = (upcoming.later || []).find((s) => !isCalendarAdded(calendarKeyFromUrl(s.calendarUrl)));
   return (
     <View style={{ backgroundColor: T.surface, borderRadius: 22, padding: 18 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -640,23 +644,54 @@ function RegisteredNextSessionCard({ upcoming, onAddCalendar, onOpenSchedule }) 
           {upcoming.hours}
         </ILText>
       ) : null}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Add to calendar"
-        onPress={onAddCalendar}
-        style={{
-          marginTop: 16,
-          minHeight: 48,
-          borderRadius: 999,
-          backgroundColor: T.red,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ILText role="label" color="#FFFFFF" style={{ fontSize: 16 }}>
-          Add to calendar →
-        </ILText>
-      </Pressable>
+      {added ? (
+        <>
+          <InCalendarChip url={upcoming.calendarUrl} align="left" style={{ marginTop: 14 }} />
+          {next ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Add ${next.title} to calendar`}
+                onPress={() => addToCalendar(next.calendarUrl)}
+                style={{
+                  marginTop: 12,
+                  minHeight: 48,
+                  borderRadius: 999,
+                  backgroundColor: T.red,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 12,
+                }}
+              >
+                <ILText role="label" color="#FFFFFF" style={{ fontSize: 15 }} numberOfLines={1}>
+                  {`Add next: ${next.title}`}
+                </ILText>
+              </Pressable>
+              <ILText role="bodySm" color={T.muted} style={{ marginTop: 6, fontSize: 12, textAlign: 'center' }}>
+                {next.when}
+              </ILText>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add to calendar"
+          onPress={onAddCalendar}
+          style={{
+            marginTop: 16,
+            minHeight: 48,
+            borderRadius: 999,
+            backgroundColor: T.red,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ILText role="label" color="#FFFFFF" style={{ fontSize: 16 }}>
+            Add to calendar →
+          </ILText>
+        </Pressable>
+      )}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={canJoin ? 'Join Zoom session' : 'View schedule'}
