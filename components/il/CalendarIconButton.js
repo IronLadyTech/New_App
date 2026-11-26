@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Pressable from './Press';
 import { armyEventCalendarUrl } from '../../utils/armyEventCalendar';
-import { addToCalendar, useCalendarAdded } from '../../utils/calendarAdd';
+import { addToCalendar, openAddedEvent, useCalendarAdded } from '../../utils/calendarAdd';
 
 /**
  * Round calendar icon on an event row: saves that event to her phone calendar. Once added it
@@ -16,7 +16,7 @@ export default function CalendarIconButton({ event, color = '#E52A2A', size = 40
     const s = Math.round(size * 0.72);
     return (
       <Pressable
-        onPress={() => addToCalendar(url)}
+        onPress={() => openAddedEvent(url)}
         hitSlop={12}
         accessibilityRole="button"
         accessibilityLabel={`${event?.title || 'This event'} is in your calendar`}

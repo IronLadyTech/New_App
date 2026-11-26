@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import EpisodeFoot, { episodeMeta } from '../../components/learn/EpisodeFoot';
 import { videoLength } from '../../constants/videoDurations';
 import { learnFieldFromWho } from '../../utils/learnMediaShelves';
-import AddToCalendarButton from '../../components/il/AddToCalendarButton';
-import { addToCalendar } from '../../utils/calendarAdd';
+import { addToCalendar, calendarKeyFromUrl, isCalendarAdded, useCalendarAdded } from '../../utils/calendarAdd';
 import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import {
@@ -262,6 +261,17 @@ function EnrolledEngage({ nav, topPad }) {
   const chapter = nextOffline;
   // The featured card is often the next spotlight itself: never show the same event twice.
   const spotlight = highlights.filter((ev) => ev.id !== featured?.id).slice(0, 2);
+  // One red "Add to calendar" at a time: on the first event (top to bottom) not in her calendar
+  // yet. Added events show the small green calendar; the rest keep their round calendar icon.
+  const calendarEvents = [featured, ...spotlight, chapter].filter(Boolean);
+  useCalendarAdded(calendarEvents[0] ? armyEventCalendarUrl(calendarEvents[0]) : ''); // re-render on add
+  const nextToAdd = calendarEvents.find((ev) => !isCalendarAdded(calendarKeyFromUrl(armyEventCalendarUrl(ev))));
+  const isNext = (ev) => Boolean(ev && nextToAdd && ev.id === nextToAdd.id);
+  const addBar = (ev) => (
+    <View style={{ marginTop: 14 }}>
+      <RedCta label="Add to calendar" icon="event" onPress={() => openArmyCalendar(ev)} />
+    </View>
+  );
 
   return (
     <>
@@ -335,9 +345,12 @@ function EnrolledEngage({ nav, topPad }) {
           >
             {featured.title}
           </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 8, fontSize: 13, lineHeight: 18 }}>
-            {featured.whenLabel}
-          </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+            <ILText role="bodySm" color={G.meta} style={{ flex: 1, fontSize: 13, lineHeight: 18 }}>
+              {featured.whenLabel}
+            </ILText>
+            {isNext(featured) ? null : <CalendarIconButton event={featured} color={G.cta} />}
+          </View>
           {featured.mode === 'online' && !featured.highlight ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14 }}>
               {CIRCLE.map((c) => (
@@ -359,7 +372,7 @@ function EnrolledEngage({ nav, topPad }) {
               ))}
             </View>
           ) : null}
-          <AddToCalendarButton url={armyEventCalendarUrl(featured)} style={{ marginTop: 8 }} />
+          {isNext(featured) ? addBar(featured) : null}
         </WhiteCard>
       ) : null}
 
@@ -392,26 +405,30 @@ function EnrolledEngage({ nav, topPad }) {
                 {ev.whenLabel}
               </ILText>
             </View>
-            <CalendarIconButton event={ev} color={G.cta} />
+            {isNext(ev) ? null : <CalendarIconButton event={ev} color={G.cta} />}
           </View>
+          {isNext(ev) ? addBar(ev) : null}
         </WhiteCard>
       ))}
 
       {chapter ? (
         <WhiteCard
-          style={{ marginTop: 12, borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center' }}
+          style={{ marginTop: 12, borderRadius: 22, padding: 16 }}
           onPress={() => nav.goEventDetail(chapter)}
         >
-          <MaterialIcons name="place" size={18} color={G.ink} />
-          <View style={{ flex: 1, marginLeft: 10 }}>
-            <ILText role="label" color={G.ink}>
-              {chapter.city ? `${chapter.city} Chapter` : 'Chapter meetup'}
-            </ILText>
-            <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }} numberOfLines={2}>
-              {chapter.title} · {chapter.whenLabel}
-            </ILText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <MaterialIcons name="place" size={18} color={G.ink} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <ILText role="label" color={G.ink}>
+                {chapter.city ? `${chapter.city} Chapter` : 'Chapter meetup'}
+              </ILText>
+              <ILText role="bodySm" color={G.meta} style={{ marginTop: 3, fontSize: 12 }} numberOfLines={2}>
+                {chapter.title} · {chapter.whenLabel}
+              </ILText>
+            </View>
+            {isNext(chapter) ? null : <CalendarIconButton event={chapter} color={G.cta} />}
           </View>
-          <CalendarIconButton event={chapter} color={G.cta} />
+          {isNext(chapter) ? addBar(chapter) : null}
         </WhiteCard>
       ) : null}
 
