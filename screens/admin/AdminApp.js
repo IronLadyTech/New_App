@@ -17,6 +17,7 @@ import AnalyticsAdmin from './AnalyticsAdmin';
 import GuestsAdmin from './GuestsAdmin';
 import GuestContentAdmin from './GuestContentAdmin';
 import PaymentsAdmin from './PaymentsAdmin';
+import QuizzesAdmin from './QuizzesAdmin';
 import { AdminWorkflowStrip } from './AdminSectionGuide';
 
 const SECTIONS = [
@@ -25,6 +26,7 @@ const SECTIONS = [
   { key: 'guests', label: 'App guests', hint: 'Guests · Masterclass · follow-up', Screen: GuestsAdmin },
   { key: 'guestContent', label: 'Guest app', hint: 'Recordings · home slides · events', Screen: GuestContentAdmin },
   { key: 'payments', label: 'App payments', hint: 'Paid in the app · Zoho status · Razorpay check', Screen: PaymentsAdmin },
+  { key: 'quizzes', label: 'Quizzes', hint: '5 Rituals · 27 Principles questions', Screen: QuizzesAdmin },
   // Program Lead tools — CX does not need these day to day.
   { key: 'templates', label: 'Program templates', hint: 'Default reminder rules', Screen: NotificationsAdmin, advanced: true },
   { key: 'ilguide', label: 'IL Guide settings', hint: 'Playbook · quotations', Screen: ILGuideAdmin, advanced: true },
@@ -156,6 +158,9 @@ export default function AdminApp() {
         ) : section === 'guestContent' ? (
           // CX edit guest content too, like batches.
           <GuestContentAdmin canEdit={canEditBatch} />
+        ) : section === 'quizzes' ? (
+          // CX edit quiz questions too (same rights as batch content).
+          <QuizzesAdmin canEdit={canEditBatch} />
         ) : (
           <Active canEdit={canEdit} />
         )}

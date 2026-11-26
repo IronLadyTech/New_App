@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import QuizView from '../../components/program/QuizView';
+import { QUIZ_FOR_TASK } from '../../constants/lepQuizzes';
 import { learnerBhagText } from '../../utils/programAccess';
 import { practiceKey } from '../../constants/practice';
 import {
@@ -759,6 +761,15 @@ export default function CourseTaskScreen({ route, navigation }) {
     : null;
   const priorText = String(submission?.textValue || '').trim();
   const showChallengeForm = Boolean(challengeState && !isLepChallengeSummaryText(challengeDef, priorText));
+  // Quiz tasks: the quiz replaces the text box; passing saves her score as the answer.
+  const quizId = programId === PROGRAMS.LEP ? QUIZ_FOR_TASK[taskId] || null : null;
+  const [quizPassed, setQuizPassed] = useState(false);
+  useEffect(() => {
+    if (quizPassed && text) {
+      setQuizPassed(false);
+      submitRef.current?.();
+    }
+  }, [quizPassed, text]);
 
   useEffect(() => {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -1426,7 +1437,18 @@ export default function CourseTaskScreen({ route, navigation }) {
           </View>
         ) : null}
 
-        {type === TASK_TYPES.TEXT && showChallengeForm ? (
+        {quizId ? (
+          <QuizView
+            quizId={quizId}
+            doneText={done && !editing ? priorText || text : ''}
+            onPass={(summary) => {
+              setText(summary);
+              setQuizPassed(true);
+            }}
+          />
+        ) : null}
+
+        {type === TASK_TYPES.TEXT && showChallengeForm && !quizId ? (
           <LepChallengeSummaryForm
             state={challengeState}
             log={challengeLog}
@@ -1435,7 +1457,7 @@ export default function CourseTaskScreen({ route, navigation }) {
           />
         ) : null}
 
-        {type === TASK_TYPES.TEXT && !showChallengeForm ? (
+        {type === TASK_TYPES.TEXT && !showChallengeForm && !quizId ? (
           <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14 }}>
             <TextInput
               value={text}
@@ -1750,7 +1772,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                     disabled={syncing}
                     onPress={submit}
                   />
-                ) : task?.formUrl ? null : (
+                ) : task?.formUrl || quizId ? null : (
                   <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
                     <RedCta
                       label={syncing ? 'Saving…' : cta}

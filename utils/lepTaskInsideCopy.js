@@ -188,7 +188,11 @@ export function lepTaskInsideSteps(task) {
     ];
   }
   if (id.startsWith('lep-quiz')) {
-    return ['Complete the quiz linked from this task or your cohort channel.', 'Tick the checklist when finished, then submit.'];
+    return [
+      'Answer each question on this screen: tap one option, then Next question.',
+      'See your score and the right answer for anything you missed.',
+      'Pass, then tap Save my score. You can retake it any time.',
+    ];
   }
   if (id === 'lep-attendance') {
     return ['Your CEM records live attendance.', 'Confirm here that your attendance record looks correct.'];
