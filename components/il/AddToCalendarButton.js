@@ -5,7 +5,13 @@ import Pressable from './Press';
 import ILText from './ILText';
 import { G } from '../../constants/guestTheme';
 import { RedCta } from '../../screens/lep/LepBits';
-import { addToCalendar, calendarKeyFromUrl, isCalendarAdded, useCalendarAdded } from '../../utils/calendarAdd';
+import {
+  addToCalendar,
+  calendarKeyFromUrl,
+  isCalendarAdded,
+  openAddedEvent,
+  useCalendarAdded,
+} from '../../utils/calendarAdd';
 
 const GREEN = '#1B7A4A';
 const GREEN_BG = '#E8F6EE';
@@ -14,9 +20,9 @@ const GREEN_BG = '#E8F6EE';
 export function InCalendarChip({ url, align = 'center', style }) {
   return (
     <Pressable
-      onPress={() => addToCalendar(url)}
+      onPress={() => openAddedEvent(url)}
       accessibilityRole="button"
-      accessibilityLabel="In your calendar. Tap to add it again"
+      accessibilityLabel="In your calendar. Tap to open it"
       hitSlop={8}
       style={[{ alignSelf: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center' }, style]}
     >

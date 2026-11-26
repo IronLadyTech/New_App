@@ -2,19 +2,27 @@ import { useEffect, useState } from 'react';
 import { Alert, AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { calendarKeyFromUrl } from './calendarLinks';
+import {
+  addEventToDevice,
+  deviceCalendarAvailable,
+  deviceEventExists,
+  eventFromCalendarUrl,
+  openDeviceEvent,
+} from './deviceCalendar';
 
 export { calendarAllDay, calendarDates, calendarKeyFromUrl, googleCalendarUrl } from './calendarLinks';
 
 /**
- * "Add to calendar" for every event and session in the app: one Google Calendar link format
- * (with a correct end time, also past midnight) and a remembered "added" state per event, so a
- * button she already used turns into a small green "In your calendar".
+ * "Add to calendar" for every event and session in the app, with a remembered "added" state per
+ * event, so a button she already used turns into a small green "In your calendar".
  *
- * The button turns green only after she says the event was saved: on a phone whose Calendar
- * app cannot sync, the link opens but nothing is added.
+ * APK 1.2.0+: the app writes the event into her phone calendar itself, so it knows it is there
+ * (no question) and notices when she deletes it. Older APK, or calendar permission refused: the
+ * Google Calendar link, and the button turns green only after she says she saved it.
  */
 
 // v2: v1 marked an event as added as soon as the link opened, even when nothing was saved.
+// A value is the date it was added ("2026-11-26") or { on, id } when the app wrote it itself.
 const KEY = 'il.calendarAdded.v2';
 let added = {};
 let loaded = false;
@@ -22,6 +30,31 @@ const subs = new Set();
 
 function notify() {
   subs.forEach((fn) => fn());
+}
+
+function save() {
+  AsyncStorage.setItem(KEY, JSON.stringify(added)).catch(() => {});
+}
+
+/** Events the app wrote itself and she has since deleted go back to "Add to calendar". */
+let checking = false;
+async function dropDeleted() {
+  if (!deviceCalendarAvailable || checking) return;
+  checking = true;
+  try {
+    const gone = [];
+    for (const [key, v] of Object.entries(added)) {
+      if (v && typeof v === 'object' && v.id && (await deviceEventExists(v.id)) === false) gone.push(key);
+    }
+    if (gone.length) {
+      added = { ...added };
+      gone.forEach((k) => delete added[k]);
+      save();
+      notify();
+    }
+  } finally {
+    checking = false;
+  }
 }
 
 async function load() {
@@ -33,22 +66,27 @@ async function load() {
     added = {};
   }
   notify();
+  dropDeleted();
+  // Back in the app (she may have deleted an event in her calendar meanwhile).
+  AppState.addEventListener('change', (s) => s === 'active' && dropDeleted());
 }
 
 export function isCalendarAdded(key) {
   return Boolean(key && added[key]);
 }
 
-export function markCalendarAdded(key) {
-  if (!key || added[key]) return;
-  added = { ...added, [key]: new Date().toISOString().slice(0, 10) };
-  AsyncStorage.setItem(KEY, JSON.stringify(added)).catch(() => {});
-  notify();
+/** The phone-calendar event id, when the app wrote the event itself. */
+export function calendarEventId(key) {
+  const v = key ? added[key] : null;
+  return v && typeof v === 'object' ? v.id || null : null;
 }
 
-async function openCalendarLink(url) {
-  await Linking.openURL(url);
-  return true;
+export function markCalendarAdded(key, eventId = null) {
+  if (!key || (added[key] && !eventId)) return;
+  const on = new Date().toISOString().slice(0, 10);
+  added = { ...added, [key]: eventId ? { on, id: String(eventId) } : on };
+  save();
+  notify();
 }
 
 /** When she comes back to the app, ask whether the event was saved; only then turn it green. */
@@ -74,19 +112,34 @@ function confirmWhenBack(key) {
   setTimeout(() => sub.remove(), 30 * 60 * 1000);
 }
 
-/** Open the calendar link; the event shows as added once she confirms it was saved. */
+/** Add the event: straight into her phone calendar when it can, else the Google Calendar link. */
 export async function addToCalendar(url) {
   if (!url) return false;
+  const key = calendarKeyFromUrl(url);
+  if (deviceCalendarAvailable) {
+    const id = await addEventToDevice(eventFromCalendarUrl(url));
+    if (id) {
+      markCalendarAdded(key, id);
+      return true;
+    }
+  }
   try {
-    await openCalendarLink(url);
-    confirmWhenBack(calendarKeyFromUrl(url));
+    await Linking.openURL(url);
+    confirmWhenBack(key);
     return true;
   } catch {
     return false;
   }
 }
 
-/** True once this event's calendar link was opened on this phone. */
+/** Tapping "In your calendar": open the event the app wrote, or add it again. */
+export async function openAddedEvent(url) {
+  const id = calendarEventId(calendarKeyFromUrl(url));
+  if (id && (await openDeviceEvent(id))) return true;
+  return addToCalendar(url);
+}
+
+/** True once this event is in her calendar (written by the app, or she confirmed it). */
 export function useCalendarAdded(url) {
   const key = calendarKeyFromUrl(url);
   const [, force] = useState(0);
