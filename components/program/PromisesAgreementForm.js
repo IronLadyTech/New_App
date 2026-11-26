@@ -11,8 +11,10 @@ import { WhiteCard, RedCta } from '../../screens/lep/LepBits';
 import { SalaryPicker } from '../profile/ProfilePickers';
 import {
   PROMISES_PARTICIPANT,
+  PROMISES_PARTICIPANT_INTRO,
   PROMISES_PARTICIPANT_TITLE,
   PROMISES_TEAM,
+  PROMISES_TEAM_INTRO,
   PROMISES_TEAM_TITLE,
   PROMISES_WELCOME,
 } from '../../constants/promisesAgreementContent';
@@ -56,6 +58,14 @@ function LabeledInput({ label, value, onChangeText, keyboardType, editable = tru
       />
     </View>
   );
+}
+
+function Intro({ lines }) {
+  return lines.map((line) => (
+    <ILText key={line} role="body" color={G.ink} style={{ marginTop: 10, fontSize: 14, lineHeight: 21 }}>
+      {line}
+    </ILText>
+  ));
 }
 
 function BulletList({ items }) {
@@ -111,6 +121,7 @@ export function PromisesPdfGate({ onMarkRead, onOpenPdf, pdfAvailable }) {
             <ILText role="label" color={G.ink} style={{ fontFamily: IL_FONTS.semibold, fontSize: 16 }}>
               {PROMISES_TEAM_TITLE}
             </ILText>
+            <Intro lines={PROMISES_TEAM_INTRO} />
             <BulletList items={PROMISES_TEAM} />
 
             <ILText
@@ -120,6 +131,7 @@ export function PromisesPdfGate({ onMarkRead, onOpenPdf, pdfAvailable }) {
             >
               {PROMISES_PARTICIPANT_TITLE}
             </ILText>
+            <Intro lines={PROMISES_PARTICIPANT_INTRO} />
             <BulletList items={PROMISES_PARTICIPANT} />
           </View>
         </ScrollView>
