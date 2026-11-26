@@ -77,23 +77,9 @@ import { todayIsoIST as practiceTodayIso } from '../../utils/lepDailyPractice';
 /** Soft teal section tint behind Explore content (every chip). */
 const EXPLORE_SECTION_TEAL = 'rgba(17, 55, 68, 0.06)';
 
-function ExploreSectionSurface({ chip, children }) {
-  if (!chip) return children;
-  const bg = EXPLORE_SECTION_TEAL;
-  return (
-    <View
-      style={{
-        marginTop: 10,
-        marginHorizontal: -6,
-        paddingHorizontal: 10,
-        paddingVertical: 12,
-        borderRadius: 22,
-        backgroundColor: bg,
-      }}
-    >
-      {children}
-    </View>
-  );
+/** Section content sits straight on the page (the tinted panel behind it was removed, 26 Nov 2026). */
+function ExploreSectionSurface({ children }) {
+  return <View style={{ marginTop: 10 }}>{children}</View>;
 }
 
 export default function LepLearnScreen() {

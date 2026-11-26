@@ -88,7 +88,7 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Your Week 1 check-in with your Iron Lady team, so they can support you.',
   },
   'lep-challenge-1': {
-    why: 'Two days of learning become habit only through daily practice.',
+    why: 'What you learnt on Days 1 and 2 becomes habit only through daily practice.',
     gain: 'Seven days of A-Game tables and mirror-work learnings, seen by your coach.',
   },
   'lep-day3-27-principles': {

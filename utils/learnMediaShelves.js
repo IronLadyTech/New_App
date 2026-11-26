@@ -85,40 +85,33 @@ export function learnFeaturedHeadline(profile) {
   return `Picked for women in ${domain}`;
 }
 
-/** Two continue cards with different shelf types when possible. */
+/**
+ * "Up next for you": three other case studies — never the one featured above them — mixing
+ * fields first so the row is not three of the same kind.
+ */
 export function learnPickContinueRows(profile, cases = [], defaults = []) {
   const featured = learnPickFeaturedCase(profile, cases);
-  const rest = cases.filter((c) => c !== featured);
-  const second = rest.find((c) => c.tag !== featured?.tag) || rest[0];
-  const rows = [];
-  if (featured) {
-    rows.push({
-      tag: learnShelfForCase(featured),
-      title: featured.title,
-      who: featured.who,
-      fn: featured.fn,
-      time: featured.time,
-      left: featured.time?.replace(/\s*mins?/i, 'm left') || '8m left',
-      pct: 65,
-      cta: 'Resume',
-      img: featured.img,
-      assetKey: featured.assetKey,
-    });
-  }
-  if (second) {
-    rows.push({
-      tag: learnShelfForCase(second),
-      title: second.title,
-      who: second.who,
-      fn: second.fn,
-      time: second.time,
-      left: '',
-      pct: 35,
-      cta: 'Resume',
-      img: second.img,
-      assetKey: second.assetKey,
-    });
-  }
+  const rest = cases.filter((c) => c !== featured && c.assetKey !== featured?.assetKey);
+  const picked = [];
+  const seenTags = new Set([featured?.tag]);
+  rest.forEach((c) => {
+    if (picked.length < 3 && !seenTags.has(c.tag)) {
+      picked.push(c);
+      seenTags.add(c.tag);
+    }
+  });
+  rest.forEach((c) => {
+    if (picked.length < 3 && !picked.includes(c)) picked.push(c);
+  });
+  const rows = picked.map((c) => ({
+    tag: learnShelfForCase(c),
+    title: c.title,
+    who: c.who,
+    fn: c.fn,
+    time: c.time,
+    img: c.img,
+    assetKey: c.assetKey,
+  }));
   return rows.length ? rows : defaults;
 }
 

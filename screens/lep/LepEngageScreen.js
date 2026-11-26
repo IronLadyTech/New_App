@@ -193,6 +193,7 @@ function PodcastLibrary({ nav }) {
                   <CoverThumb source={ep.img} height="100%" />
                 </View>
                 <EpisodeFoot
+                  lead={(/ep\s*(\d+)/i.exec(String(ep.meta || '')) || [])[1] ? `Episode ${(/ep\s*(\d+)/i.exec(String(ep.meta)) || [])[1]}` : null}
                   meta={episodeMeta(videoLength(ep.assetKey, ep.meta), 'conversation')}
                 />
               </WhiteCard>

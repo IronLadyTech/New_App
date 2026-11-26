@@ -1305,7 +1305,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         </ILText>
         {alumniPractice ? <AlumniPracticeNote key={task.id} /> : null}
 
-        {!(lepInside?.steps?.length) && task.description ? (
+        {(!(lepInside?.steps?.length) || task.formUrl) && task.description ? (
           <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
             {alumniPractice
               ? 'Use the same steps you did in LEP — update your answers for where you are now.'
@@ -1313,7 +1313,8 @@ export default function CourseTaskScreen({ route, navigation }) {
           </ILText>
         ) : null}
 
-        {lepInside?.steps?.length ? (
+        {/* Feedback forms explain themselves: no "What you'll have" / "How to complete" card. */}
+        {lepInside?.steps?.length && !task.formUrl ? (
           <LepTaskInsightFlipCard
             backgroundColor={G.pink}
             front={{

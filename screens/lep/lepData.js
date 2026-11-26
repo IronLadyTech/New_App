@@ -523,7 +523,7 @@ export const PODCASTS = [
   {
     title: 'The Strategic Side of Quality',
     who: 'Mohini Hanwate',
-    meta: 'Ep 4 · 36 min',
+    meta: 'Ep 3 · 36 min',
     img: COVER.speaks04m,
     assetKey: 'podcast:mohini',
     // Subtitle from the episode's cover art.
