@@ -5,23 +5,23 @@
 export const LEP_TASK_PURPOSE = {
   'lep-via-survey': {
     why: 'Your strengths are the foundation of Week 1 — Strength Based Excellence.',
-    gain: 'Iron Lady can build your individualised excellence profile from your VIA report.',
+    gain: 'Your individual excellence profile, built by Iron Lady from your VIA report.',
   },
   'lep-prep-nsdc': {
     why: 'Government registration is required for programme certification paperwork.',
-    gain: 'NSDC on file — one less admin blocker before Day 1 and graduation.',
+    gain: 'Your NSDC registration done — one less thing to sort before Day 1 and graduation.',
   },
   'lep-orientation-framework': {
     why: 'You need the map before the journey starts.',
-    gain: 'Clarity on how the four weeks work, live days, and weekly rhythm.',
+    gain: 'A clear picture of the four weeks, the live days and the weekly rhythm.',
   },
   'lep-orientation-access': {
     why: 'Technical glitches on Day 1 waste your time and energy.',
-    gain: 'Login and session join details sorted so nothing blocks you on Saturday.',
+    gain: 'Your login and session links sorted, so nothing blocks you on Saturday.',
   },
   'lep-day1-promises': {
     why: 'Commitment from hour one changes how you show up.',
-    gain: 'A signed agreement with yourself and the cohort, after you read the full Promises and Agreements PDF.',
+    gain: 'A signed agreement with yourself and your cohort.',
   },
   'lep-day1-beliefs': {
     why: 'Limiting beliefs quietly pull you off your A-Game.',
@@ -33,7 +33,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day1-errc': {
     why: 'You cannot grow your brand if every minute is already spent.',
-    gain: 'Minutes freed from low-value work and redirected to growth (e.g. personal branding).',
+    gain: 'Time freed from low-value work and put into your growth, like your personal brand.',
   },
   'lep-day1-crucible': {
     why: 'Your hardest experiences are often your leadership story.',
@@ -41,7 +41,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day1-assignment': {
     why: 'Insight without action fades after the weekend.',
-    gain: 'Letting go of the past, stronger self-belief, gratitude, courage to ask — plus a 90-day plan.',
+    gain: 'A lighter past, stronger self-belief, gratitude and the courage to ask — plus a 90-day plan.',
   },
   'lep-day2-codesef': {
     why: 'A BHAG without a path stays a wish.',
@@ -49,7 +49,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day2-responding': {
     why: 'Reacting costs trust; responding builds power.',
-    gain: 'Awareness of your pattern so you can choose a powerful response.',
+    gain: 'A clear view of how you react, so you can choose a powerful response.',
   },
   'lep-day2-relationships': {
     why: 'No big goal is reached alone.',
@@ -61,11 +61,11 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day2-assignment': {
     why: 'Day 2 work locks in your strategy on paper.',
-    gain: 'Completed Day 2 work you can sharpen in the Tuesday review session.',
+    gain: 'Your Day 2 work done, ready to sharpen in the Tuesday review session.',
   },
   'lep-day3-feedback': {
     why: 'Your voice improves the programme for every woman after you.',
-    gain: 'The team hears how Days 1–2 landed for you.',
+    gain: 'Your say in the sessions ahead, based on how Days 1–2 landed for you.',
   },
   'lep-day4-roadmap-sample': {
     why: 'You need a reference before you build your own.',
@@ -81,11 +81,11 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day4-feedback': {
     why: 'Session feedback shapes what we reinforce in Week 2.',
-    gain: 'Your input on the Differentiated Brand session.',
+    gain: 'Your say in what we reinforce after the Differentiated Brand session.',
   },
   'lep-weekly-1': {
     why: 'Your breakthrough and what inspires you help us tailor cases, nudges, and cohort support.',
-    gain: 'Engagement saved for your CEM — same Week 1 check-in as My Program.',
+    gain: 'Your Week 1 check-in with your Iron Lady team, so they can support you.',
   },
   'lep-challenge-1': {
     why: 'Two days of learning become habit only through daily practice.',
@@ -93,7 +93,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day3-27-principles': {
     why: 'These principles are the language of Iron Lady leadership.',
-    gain: 'Mental models you reuse daily (and in the final principles quiz).',
+    gain: 'Mental models you can use every day.',
   },
   'lep-day3-5-rituals': {
     why: 'Transformation sticks through daily habits, not one weekend.',
@@ -101,7 +101,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day3-brand-roadmap': {
     why: 'Video bridges the live session and your roadmap task.',
-    gain: 'Understanding how brand and roadmap fit together before you write yours.',
+    gain: 'A clear picture of how your brand and roadmap fit together, before you write yours.',
   },
   'lep-day3-mentors': {
     why: 'Mentors compress years of learning into conversations.',
@@ -109,7 +109,7 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day3-max-value': {
     why: 'The programme offers more than live sessions alone.',
-    gain: 'You know every resource available and how to use it.',
+    gain: 'Every Iron Lady resource at hand, and how to use each one.',
   },
   'lep-resume-linkedin': {
     why: 'People look you up before they promote you.',
@@ -117,31 +117,27 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-resume-template-study': {
     why: 'Format and impact matter as much as content.',
-    gain: 'The Iron Lady standard before you write your own resume.',
+    gain: 'Your resume in the Iron Lady format, uploaded and ready to send anywhere.',
   },
   'lep-resume-bootcamp': {
     why: 'Job transitions need a sharper toolkit.',
-    gain: 'Extra job-search readiness (especially if you are actively looking).',
-  },
-  'lep-resume-prepare': {
-    why: 'Opportunities appear without warning.',
-    gain: 'A resume you can send anywhere — always ready.',
+    gain: 'Extra readiness for your job search, especially if you are actively looking.',
   },
   'lep-day5-instructions': {
     why: 'You get what you negotiate — preparation wins the room.',
-    gain: 'Need, Differentiation, Offer clear before you record.',
+    gain: 'Your Need, Differentiation and Offer clear before you record.',
   },
   'lep-day5-pitch': {
     why: 'Asking with conviction is a certificate must-do.',
-    gain: 'A shameless pitch on video — practice asking for what you want.',
+    gain: 'A shameless pitch on video, and practice in asking for what you want.',
   },
   'lep-day5-feedback': {
     why: 'Pitch session feedback improves Week 3 progress work.',
-    gain: 'Your input on the Shameless Pitch session.',
+    gain: 'Your say in what we reinforce after the Shameless Pitch session.',
   },
   'lep-weekly-2': {
     why: 'Week 2 is profile-heavy; engagement data guides nudges.',
-    gain: 'Support aligned to LinkedIn, resume, and pitch week.',
+    gain: 'Support from your Iron Lady team through LinkedIn, resume and pitch week.',
   },
   'lep-challenge-2': {
     why: 'Your differentiated strength only counts when people can see it.',
@@ -152,16 +148,16 @@ export const LEP_TASK_PURPOSE = {
     gain: 'Clarity on what changed since Day 1 and what is still open.',
   },
   'lep-day6-guiding-stars': {
-    why: 'After LEP you still need direction, not drift.',
-    gain: 'Guiding stars that keep you on track after certification.',
+    why: 'When the programme ends, nine Guiding Stars keep you leading on purpose, not drifting.',
+    gain: 'The nine Iron Lady Guiding Stars in your own words, and what each one means for your next step.',
   },
   'lep-day6-feedback': {
     why: 'Guiding Stars session feedback shapes alumni support.',
-    gain: 'Your input on the Guiding Stars session.',
+    gain: 'Your say in what we reinforce after the Guiding Stars session.',
   },
   'lep-weekly-3': {
     why: 'Week 3 connects habits to graduation.',
-    gain: 'Engagement tracked through the home stretch.',
+    gain: 'Your Iron Lady team alongside you through the home stretch.',
   },
   'lep-challenge-3': {
     why: 'Asking boldly gets easier only by doing it.',
@@ -177,39 +173,39 @@ export const LEP_TASK_PURPOSE = {
   },
   'lep-day8-feedback': {
     why: 'Closing feedback improves the next cohort.',
-    gain: 'Your voice on the full LEP experience.',
+    gain: 'Your say in how LEP runs for the women who come after you.',
   },
   'lep-weekly-4': {
     why: 'Final week engagement still matters for support.',
-    gain: 'CEM visibility through certification.',
+    gain: 'Support from your Iron Lady team all the way to your certificate.',
   },
   'lep-weekly-5': {
     why: 'Some batches use a short fifth-week check-in.',
-    gain: 'Closure captured after graduation.',
+    gain: 'Your LEP journey closed well, with your reflections captured.',
   },
   'lep-challenge-4': {
     why: 'Last weekly push before you graduate.',
-    gain: 'Final Game of Excellence reflection.',
+    gain: 'Your final Game of Excellence reflection.',
   },
   'lep-community-schedule': {
     why: 'Learning continues after the four weeks.',
-    gain: 'You know when community sessions run and can join.',
+    gain: 'Your Thursday community track: Yukti, Udaan, Disha or the Visibility Platform.',
   },
   'lep-community-handholding': {
     why: 'You are not alone after Day 1.',
-    gain: 'Awareness of weekly handholding support.',
+    gain: 'Weekly handholding support, and how to use it.',
   },
   'lep-quiz-5-rituals': {
     why: 'Rituals only work if you understand them deeply.',
-    gain: 'Confirmation you know the five daily rituals.',
+    gain: 'Proof that you know the five daily rituals by heart.',
   },
   'lep-quiz-27-principles': {
     why: 'Principles are tested so they stay usable, not theoretical.',
-    gain: 'Confirmation you can recall the 27 Principles.',
+    gain: 'Proof that you can recall the 27 Principles.',
   },
   'lep-attendance': {
     why: 'Certificate rules include live participation.',
-    gain: 'Attendance record aligned with certification requirements.',
+    gain: 'Your attendance on record for your certificate.',
   },
   'lep-certification': {
     why: 'Completion deserves recognition.',

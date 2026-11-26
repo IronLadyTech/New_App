@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { addToCalendar } from '../../utils/calendarAdd';
 import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import { Image, Linking, ScrollView, View } from 'react-native';
@@ -17,6 +18,8 @@ import { usePrograms } from '../../context/ProgramsContext';
 import { PROGRAMS } from '../../constants/programs';
 import { isLepEnrolled } from '../../utils/lepState';
 import { CoverThumb, GuideFace, LepHeader, Page, SectionHead, WhiteCard } from './LepBits';
+import EpisodeFoot, { episodeMeta } from '../../components/learn/EpisodeFoot';
+import { learnFieldFromWho } from '../../utils/learnMediaShelves';
 import { useLepNav } from './useLepNav';
 import {
   CASES_ENR,
@@ -757,8 +760,7 @@ function cityEmptyLabel(city) {
 }
 
 function openArmyEventCal(event) {
-  const url = armyEventCalendarUrl(event);
-  if (url) Linking.openURL(url).catch(() => {});
+  addToCalendar(armyEventCalendarUrl(event));
 }
 
 function ArmyEventRows({ events, onOpenEvent, emptyLabel = 'Upcoming Army events load from the Iron Lady calendar.' }) {
@@ -973,33 +975,19 @@ function EnrolledForYou({ onTicket, onWatch, onSeeAll, onChapterHub }) {
     <>
       <Pressable
         onPress={() => featured && openWatch(featured)}
-        style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}
+        accessibilityRole="button"
+        accessibilityLabel={featured ? `Play ${featured.title}, ${featured.who}` : 'Play'}
       >
-        <View style={{ aspectRatio: 16 / 9 }}>
-          <CoverThumb source={featured?.img || COVER.priyanka} height="100%" play />
-        </View>
+        <WhiteCard style={{ marginTop: 18, borderRadius: 24, overflow: 'hidden' }}>
+          <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+            <CoverThumb source={featured?.img || COVER.priyanka} height="100%" />
+          </View>
+          <EpisodeFoot size="lg" lead={headline} meta={episodeMeta(featured?.time, 'case study')} />
+        </WhiteCard>
       </Pressable>
-      <ILText role="eyebrow" color={G.cta} style={[af, { marginTop: 12, fontSize: 10 }]}>
-        TARGETED RECOMMENDATION
-      </ILText>
-      <ILText
-        role="title"
-        color={G.ink}
-        style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}
-      >
-        {headline}
-      </ILText>
-      <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 13 }}>
-        {featured?.who || 'Priyanka Sunder · Cybersecurity & Information Security'}
-      </ILText>
-      {featured ? (
-        <ILText role="eyebrow" color={G.meta} style={[af, { marginTop: 8, fontSize: 9 }]}>
-          {learnShelfForCase(featured)}
-        </ILText>
-      ) : null}
 
       <View style={{ marginTop: 26 }}>
-        <SectionHead title="Continue watching" accent={`${continueRows.length} in progress`} />
+        <SectionHead title="Up next for you" />
       </View>
       <OneByOneRail
         items={continueRows}
@@ -1007,34 +995,19 @@ function EnrolledForYou({ onTicket, onWatch, onSeeAll, onChapterHub }) {
         inset={20}
         style={{ marginTop: 12 }}
         renderItem={(item) => (
-            <Pressable onPress={() => openWatch(item)}>
+            <Pressable
+              onPress={() => openWatch(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Play ${item.title}, ${item.who}`}
+            >
               <WhiteCard style={{ borderRadius: 22, overflow: 'hidden' }}>
                 <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-                  <CoverThumb source={item.img} play time={item.left} />
-                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, backgroundColor: G.mutedFill }}>
-                    <View style={{ width: `${item.pct}%`, height: 3, backgroundColor: G.cta }} />
-                  </View>
+                  <CoverThumb source={item.img} />
                 </View>
-                <View style={{ padding: 14 }}>
-                  <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 10 }]}>
-                    {item.tag}
-                  </ILText>
-                  <ILText
-                    role="title"
-                    color={G.ink}
-                    style={{ marginTop: 6, fontFamily: IL_FONTS.display, fontSize: 17, lineHeight: 22 }}
-                  >
-                    {item.title}
-                  </ILText>
-                  <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-                      {item.pct}% completed
-                    </ILText>
-                    <ILText role="label" color={G.cta} style={{ fontSize: 12 }}>
-                      {item.cta}
-                    </ILText>
-                  </View>
-                </View>
+                <EpisodeFoot
+                  lead={item.fn ? `For women in ${item.fn}` : learnFieldFromWho(item.who)}
+                  meta={episodeMeta(item.time, 'case study')}
+                />
               </WhiteCard>
             </Pressable>
         )}
@@ -1359,18 +1332,14 @@ function CasesEnrolled({ onShareReflection, onWatch, onSeeAll }) {
         </ILText>
       </View>
       {feat ? (
-        <Pressable onPress={() => play(feat)} accessibilityRole="button" accessibilityLabel={`Play ${feat.title}`}>
-          <View style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden', backgroundColor: G.dark }}>
-            <View style={{ aspectRatio: 16 / 9 }}>
-              <CoverThumb source={feat.img} play time={feat.time} />
+        <Pressable onPress={() => play(feat)} accessibilityRole="button" accessibilityLabel={`Play ${feat.title}, ${feat.who}`}>
+          <WhiteCard style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden' }}>
+            <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
+              <CoverThumb source={feat.img} />
             </View>
-          </View>
+            <EpisodeFoot size="lg" lead={`For women in ${feat.fn || fn}`} meta={episodeMeta(feat.time, 'case study')} />
+          </WhiteCard>
         </Pressable>
-      ) : null}
-      {feat ? (
-        <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, fontSize: 13 }}>
-          {feat.who} · {learnShelfForCase(feat)}
-        </ILText>
       ) : null}
       <View style={{ marginTop: 22, flexDirection: 'row', alignItems: 'flex-end' }}>
         <ILText role="title" color={G.ink} style={{ flex: 1, fontFamily: IL_FONTS.display, fontSize: 22 }}>
@@ -1390,16 +1359,9 @@ function CasesEnrolled({ onShareReflection, onWatch, onSeeAll }) {
         renderItem={(item) => (
             <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }} onPress={() => play(item)}>
               <View style={{ aspectRatio: 16 / 9 }}>
-                <CoverThumb source={item.img} play time={item.time} />
+                <CoverThumb source={item.img} />
               </View>
-              <View style={{ padding: 12 }}>
-                <ILText role="eyebrow" color={G.cta} style={[af, { fontSize: 9 }]}>
-                  {learnShelfForCase(item)}
-                </ILText>
-                <ILText role="label" color={G.ink} style={{ marginTop: 6, fontSize: 13 }} numberOfLines={2}>
-                  {item.who}
-                </ILText>
-              </View>
+              <EpisodeFoot lead={`For women in ${item.fn || fn}`} meta={episodeMeta(item.time, 'case study')} />
             </WhiteCard>
         )}
       />
@@ -1641,7 +1603,7 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
       >
       <WhiteCard style={{ marginTop: 12, borderRadius: 24, overflow: 'hidden' }}>
         <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-          <CoverThumb source={STORY_FEATURED_ENR.img} play time={STORY_FEATURED_ENR.time} />
+          <CoverThumb source={STORY_FEATURED_ENR.img} />
           <View
             style={{
               position: 'absolute',
@@ -1658,14 +1620,11 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
             </ILText>
           </View>
         </View>
-        <View style={{ padding: 16 }}>
-          <ILText role="title" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 22, lineHeight: 28 }}>
-            {STORY_FEATURED_ENR.title}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 6, fontSize: 13 }}>
-            {STORY_FEATURED_ENR.who}
-          </ILText>
-        </View>
+        <EpisodeFoot
+          size="lg"
+          lead={learnFieldFromWho(STORY_FEATURED_ENR.who)}
+          meta={episodeMeta(STORY_FEATURED_ENR.time, 'story')}
+        />
       </WhiteCard>
       </Pressable>
 
@@ -1692,16 +1651,9 @@ function StoriesEnrolled({ onHow, onSeeAll, onWatch }) {
             >
             <WhiteCard style={{ borderRadius: 20, overflow: 'hidden' }}>
               <View style={{ aspectRatio: 16 / 9, backgroundColor: G.dark }}>
-                <CoverThumb source={item.img} play time={item.time} />
+                <CoverThumb source={item.img} />
               </View>
-              <View style={{ padding: 12 }}>
-                <ILText role="label" color={G.ink} style={{ fontSize: 13 }} numberOfLines={3}>
-                  {item.title}
-                </ILText>
-                <ILText role="bodySm" color={G.meta} style={{ marginTop: 4, fontSize: 11 }}>
-                  {item.who}
-                </ILText>
-              </View>
+              <EpisodeFoot lead={learnFieldFromWho(item.who)} meta={episodeMeta(item.time, 'story')} />
             </WhiteCard>
             </Pressable>
         )}

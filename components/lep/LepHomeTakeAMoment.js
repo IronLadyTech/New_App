@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { addToCalendar } from '../../utils/calendarAdd';
 import { Image, View, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Pressable from '../il/Press';
@@ -341,7 +342,7 @@ export default function LepHomeTakeAMoment({ todayIso, day1Iso, cmsBatch, nav, n
       }
       case 'army': {
         const url = armyEventCalendarUrl(moment.event);
-        if (url) Linking.openURL(url).catch(() => nav.goEngage());
+        if (url) addToCalendar(url).then((ok) => !ok && nav.goEngage());
         else nav.goEngage();
         break;
       }

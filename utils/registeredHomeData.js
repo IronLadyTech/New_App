@@ -1,3 +1,4 @@
+import { calendarAllDay, calendarDates, googleCalendarUrl } from './calendarLinks';
 import { PAYMENT_STATUS } from '../constants/programs';
 import { isLepEnrolled } from './lepState';
 import {
@@ -593,17 +594,11 @@ function parseClockParts(clockLabelText) {
 /** Google Calendar template for an LEP session (Orientation, Day 1, …). */
 export function lepSessionCalendarUrl({ iso, clockLabelText, title, durationHours = 1 }) {
   if (!iso) return '';
-  const compact = iso.replace(/-/g, '');
-  const text = encodeURIComponent(title || 'LEP session');
-  let dates = `${compact}/${addCalendarDays(iso, 1).replace(/-/g, '')}`;
   const parts = parseClockParts(clockLabelText);
-  if (parts) {
-    const hh = String(parts.hour).padStart(2, '0');
-    const start = `${compact}T${hh}${parts.minute}00`;
-    const endHour = String((parts.hour + Math.max(1, durationHours)) % 24).padStart(2, '0');
-    dates = `${start}/${compact}T${endHour}${parts.minute}00`;
-  }
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&ctz=Asia%2FKolkata`;
+  const dates = parts
+    ? calendarDates(iso, parts.hour, Number(parts.minute), Math.round(Math.max(0.5, durationHours) * 60))
+    : calendarAllDay(iso);
+  return googleCalendarUrl({ title: title || 'LEP session', dates, details: 'Iron Lady Leadership Essentials Program' });
 }
 
 export function day1CalendarUrl(day1Iso, clockLabelText) {

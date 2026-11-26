@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import AddToCalendarButton, { InCalendarChip } from '../../components/il/AddToCalendarButton';
+import { addToCalendar, useCalendarAdded } from '../../utils/calendarAdd';
 import { Image, Linking, ScrollView, TextInput, View } from 'react-native';
 import Pressable from '../../components/il/Press';
 import { StatusBar } from 'expo-status-bar';
@@ -107,18 +109,21 @@ function ScheduleRow({ item, nav, alumniArchive = false, recordings = {}, naviga
     if (item.taskId) nav.goCourseTask(PROGRAMS.LEP, item.taskId);
     else nav.goCheckin();
   };
+  const sessionCalUrl = item.dateIso
+    ? lepSessionCalendarUrl({
+        iso: item.dateIso,
+        clockLabelText: item.startTime || item.time,
+        title: item.title || 'LEP session',
+        durationHours: item.durationHours || 1,
+      })
+    : '';
+  const sessionInCal = useCalendarAdded(sessionCalUrl);
   const openCalendar = () => {
     if (!item.dateIso) {
       nav.goSchedule?.();
       return;
     }
-    const url = lepSessionCalendarUrl({
-      iso: item.dateIso,
-      clockLabelText: item.startTime || item.time,
-      title: item.title || 'LEP session',
-      durationHours: item.durationHours || 1,
-    });
-    if (url) Linking.openURL(url).catch(() => {});
+    addToCalendar(sessionCalUrl);
   };
   const isDeadline = item.tag === 'DEADLINE' || Boolean(item.taskId);
   // Red left rail only when live or starting soon (matches Schedule mockup).
@@ -217,22 +222,26 @@ function ScheduleRow({ item, nav, alumniArchive = false, recordings = {}, naviga
                 Join
               </ILText>
             </Pressable>
-            <Pressable
-              onPress={openCalendar}
-              style={{
-                borderRadius: 999,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                marginBottom: 4,
-                borderWidth: 1,
-                borderColor: G.dash,
-                backgroundColor: G.white,
-              }}
-            >
-              <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
-                Add to calendar
-              </ILText>
-            </Pressable>
+            {sessionInCal ? (
+              <InCalendarChip url={sessionCalUrl} style={{ marginBottom: 4 }} />
+            ) : (
+              <Pressable
+                onPress={openCalendar}
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  marginBottom: 4,
+                  borderWidth: 1,
+                  borderColor: G.dash,
+                  backgroundColor: G.white,
+                }}
+              >
+                <ILText role="label" color={G.ink} style={{ fontSize: 13 }}>
+                  Add to calendar
+                </ILText>
+              </Pressable>
+            )}
           </View>
         ) : item.taskId ? (
           <Pressable onPress={openJoin} style={{ marginTop: 12, alignSelf: 'flex-start' }}>
@@ -987,16 +996,7 @@ export function LepEventDetailScreen() {
       <ILText role="bodySm" color={G.meta} style={{ marginTop: 10, textAlign: 'center', fontSize: 12 }}>
         Show at the door · works offline
       </ILText>
-      <View style={{ marginTop: 18 }}>
-        <RedCta
-          label="Add to calendar"
-          icon="event"
-          onPress={() => {
-            const url = armyEventCalendarUrl(event);
-            if (url) Linking.openURL(url).catch(() => {});
-          }}
-        />
-      </View>
+      <AddToCalendarButton url={armyEventCalendarUrl(event)} style={{ marginTop: 18 }} />
     </Shell>
   );
 }
@@ -1052,16 +1052,7 @@ export function LepEventTicketScreen() {
           {when || event.whenLabel}
         </ILText>
       </WhiteCard>
-      <View style={{ marginTop: 18 }}>
-        <RedCta
-          label="Add to calendar"
-          icon="event"
-          onPress={() => {
-            const url = armyEventCalendarUrl(event);
-            if (url) Linking.openURL(url).catch(() => {});
-          }}
-        />
-      </View>
+      <AddToCalendarButton url={armyEventCalendarUrl(event)} style={{ marginTop: 18 }} />
     </Shell>
   );
 }

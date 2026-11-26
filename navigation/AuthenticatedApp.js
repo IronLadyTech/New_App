@@ -16,7 +16,6 @@ import { useLocalEngagementNotifications } from '../hooks/useLocalEngagementNoti
 import { useActivityTracking } from '../hooks/useActivityTracking';
 import { useAccessRefreshOnOpen } from '../hooks/useAccessRefreshOnOpen';
 import { prefetchArmyEvents } from '../hooks/useArmyEventCalendar';
-import PerfHud from '../components/PerfHud';
 import { setPerfUser } from '../utils/perfHud';
 
 export default function AuthenticatedApp() {
@@ -57,7 +56,6 @@ export default function AuthenticatedApp() {
               <TabNavigator />
               <LandingGate profile={profile} />
               <StreakReminderSync />
-              <PerfHud />
             </View>
           </ProgramNavProvider>
         </EngagementProvider>

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
+import AddToCalendarButton from '../../components/il/AddToCalendarButton';
+import { addToCalendar } from '../../utils/calendarAdd';
 import CalendarIconButton from '../../components/il/CalendarIconButton';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import {
@@ -251,8 +253,7 @@ export default function LepEngageScreen() {
 }
 
 function openArmyCalendar(event) {
-  const url = armyEventCalendarUrl(event);
-  if (url) Linking.openURL(url).catch(() => {});
+  addToCalendar(armyEventCalendarUrl(event));
 }
 
 function EnrolledEngage({ nav, topPad }) {
@@ -364,9 +365,7 @@ function EnrolledEngage({ nav, topPad }) {
               ))}
             </View>
           ) : null}
-          <View style={{ marginTop: 8 }}>
-            <RedCta label="Add to calendar" icon="event" onPress={() => openArmyCalendar(featured)} />
-          </View>
+          <AddToCalendarButton url={armyEventCalendarUrl(featured)} style={{ marginTop: 8 }} />
         </WhiteCard>
       ) : null}
 

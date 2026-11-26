@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { addToCalendar } from '../../utils/calendarAdd';
 import { videoLength } from '../../constants/videoDurations';
 import { Image, Linking, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -1078,6 +1079,5 @@ function FadeLayer({ i, slide, active, onHeight, children }) {
 }
 
 export function openDay1Calendar(url) {
-  if (!url) return;
-  Linking.openURL(url).catch(() => {});
+  addToCalendar(url);
 }

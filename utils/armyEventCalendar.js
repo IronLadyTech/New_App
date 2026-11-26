@@ -1,3 +1,4 @@
+import { calendarDates, googleCalendarUrl } from './calendarLinks';
 import { ARMY_EVENT_MONTHS } from '../constants/armyEventCalendar';
 
 const MONTH_INDEX = {
@@ -455,14 +456,14 @@ export function armyEventModeLabel(event) {
 
 export function armyEventCalendarUrl(event) {
   if (!event?.dateIso) return '';
-  const compact = event.dateIso.replace(/-/g, '');
-  const hh = String(event.startHour24 ?? 20).padStart(2, '0');
-  const start = `${compact}T${hh}0000`;
-  const endH = String(((event.startHour24 ?? 20) + 1) % 24).padStart(2, '0');
-  const end = `${compact}T${endH}0000`;
-  const text = encodeURIComponent(event.title || 'Iron Lady event');
-  const details = encodeURIComponent(event.sourceText || event.meta || 'Iron Lady Army');
-  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${start}/${end}&details=${details}&ctz=Asia%2FKolkata`;
+  // Minutes from the time label ("7:30 PM"); the event used to be saved on the hour.
+  const minute = Number((/:(\d{2})/.exec(String(event.timeLabel || '')) || [])[1] || 0);
+  return googleCalendarUrl({
+    title: event.title || 'Iron Lady event',
+    dates: calendarDates(event.dateIso, event.startHour24 ?? 20, minute, 60),
+    details: event.sourceText || event.meta || 'Iron Lady Army',
+    location: event.venue || event.location || '',
+  });
 }
 
 /** Match learner city chip to event city (Bengaluru / Delhi NCR, etc.). */

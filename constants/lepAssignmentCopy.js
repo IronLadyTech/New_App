@@ -34,10 +34,24 @@ export const LEP_GRADUATION_PREP = {
   note: 'Upload both **on this screen before Friday**: your deck (PDF or PowerPoint) and your Graduation Report (Word).',
 };
 
+/** Community sessions: four tracks, every Thursday (Iron Lady team, 26 Nov 2026). */
+export const LEP_COMMUNITY_SESSIONS = {
+  title: 'Community sessions, every Thursday',
+  intro: 'Join the track that fits where you are right now:',
+  items: [
+    '**Yukti**: for women looking for a hike, a promotion or a shift in their career.',
+    '**Udaan**: for entrepreneurs and women building their own enterprise.',
+    '**Disha**: for job seekers.',
+    '**Visibility Platform**: volunteer to speak on a topic, and build your presence in front of an audience.',
+  ],
+  note: 'All four run in the **Thursday community session**.',
+};
+
 export function lepAssignmentBrief(taskId) {
   const id = String(taskId || '');
   if (id === 'lep-day2-assignment') return LEP_DAY2_ASSIGNMENT;
   if (id === 'lep-day8-preparation') return LEP_GRADUATION_PREP;
+  if (id === 'lep-community-schedule') return LEP_COMMUNITY_SESSIONS;
   // Day 2 list is in-app only — no hosted PDF (day-2-assignment.pdf was missing on LMS).
   return null;
 }

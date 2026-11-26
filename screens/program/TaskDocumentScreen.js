@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { StatusBar } from 'expo-status-bar';
 import { WebView } from 'react-native-webview';
@@ -13,6 +13,7 @@ import { buildPdfViewerHtml, buildPdfViewerHtmlFromUrl } from '../../utils/build
 import { isPdfDocument } from '../../utils/taskDocumentUri';
 import { useAuth } from '../../context/AuthContext';
 import { setTaskReadingAck } from '../../utils/taskReadingAck';
+import DocumentLoader from '../../components/program/DocumentLoader';
 
 export default function TaskDocumentScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,13 @@ export default function TaskDocumentScreen({ route, navigation }) {
   const [html, setHtml] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  // The first page is drawn (the viewer says so); until then the loader stays on top.
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    if (!html) return undefined;
+    const t = setTimeout(() => setShown(true), 8000); // never leave her on the loader
+    return () => clearTimeout(t);
+  }, [html]);
   // Android WebView often cannot load remote PDFs (CORS) — embed bytes in-page instead.
   const [useUrlViewer, setUseUrlViewer] = useState(Platform.OS === 'web');
 
@@ -58,6 +66,7 @@ export default function TaskDocumentScreen({ route, navigation }) {
       setLoading(true);
       setError(null);
       setHtml(null);
+      setShown(false);
 
       if (!url) {
         setError('No document URL.');
@@ -98,6 +107,7 @@ export default function TaskDocumentScreen({ route, navigation }) {
         return;
       }
       if (data?.type === 'pdf-ready') {
+        setShown(true);
         markRead();
       }
       if (data?.type === 'pdf-error' && useUrlViewer) {
@@ -126,14 +136,7 @@ export default function TaskDocumentScreen({ route, navigation }) {
         />
       </View>
 
-      {loading && !html ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#ED1D24" />
-          <ILText role="bodySm" color={G.meta} style={{ marginTop: 12, fontSize: 14 }}>
-            Opening document…
-          </ILText>
-        </View>
-      ) : null}
+      {loading && !html ? <DocumentLoader label={label} /> : null}
 
       {error === 'word' ? (
         <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center' }}>
@@ -161,15 +164,22 @@ export default function TaskDocumentScreen({ route, navigation }) {
       ) : null}
 
       {html ? (
-        <WebView
-          source={{ html, baseUrl: 'https://lmsironlady.web.app/' }}
-          style={{ flex: 1, backgroundColor: '#F7F6E4' }}
-          originWhitelist={['*']}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsInlineMediaPlayback
-          onMessage={onWebMessage}
-        />
+        <View style={{ flex: 1 }}>
+          <WebView
+            source={{ html, baseUrl: 'https://lmsironlady.web.app/' }}
+            style={{ flex: 1, backgroundColor: '#F7F6E4' }}
+            originWhitelist={['*']}
+            javaScriptEnabled
+            domStorageEnabled
+            allowsInlineMediaPlayback
+            onMessage={onWebMessage}
+          />
+          {!shown ? (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#F7F6E4' }}>
+              <DocumentLoader label={label} />
+            </View>
+          ) : null}
+        </View>
       ) : null}
 
       {allowDownload && url && isPdfDocument(url) ? (

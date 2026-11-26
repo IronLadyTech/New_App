@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { addToCalendar, useCalendarAdded } from '../../utils/calendarAdd';
+import { InCalendarChip } from '../../components/il/AddToCalendarButton';
 import { listedSession } from '../../utils/lepBatchScheduleView';
 import { RevealScrollView } from '../../components/il/RevealScroll';
 import { ScrollView, View } from 'react-native';
@@ -546,16 +548,16 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
     Linking.openURL('mailto:support@ironlady.tech?subject=LEP%20batch%20WhatsApp%20group').catch(() => {});
   };
 
+  const thursdayCalUrl = lepSessionCalendarUrl({
+    iso: nextCommunityCircleIso(),
+    clockLabelText: '8:00 PM',
+    title: 'LEP · Community Circle',
+    durationHours: 1,
+  });
+  const thursdayInCal = useCalendarAdded(thursdayCalUrl);
   const addThursdayCal = () => {
     if (preview) return;
-    const iso = nextCommunityCircleIso();
-    const url = lepSessionCalendarUrl({
-      iso,
-      clockLabelText: '8:00 PM',
-      title: 'LEP · Community Circle',
-      durationHours: 1,
-    });
-    if (url) Linking.openURL(url).catch(() => {});
+    addToCalendar(thursdayCalUrl);
   };
 
   return (
@@ -662,6 +664,8 @@ function CohortBody({ preview = false, alumniGraduate = false, cohort, onEnroll 
             <ILText role="label" color="#FFFFFF">Alumni events on Engage</ILText>
             <MaterialIcons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
           </Pressable>
+        ) : thursdayInCal ? (
+          <InCalendarChip url={thursdayCalUrl} style={{ marginTop: 10 }} />
         ) : (
           <Pressable
             onPress={addThursdayCal}

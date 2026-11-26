@@ -86,7 +86,8 @@ export function setPerfUser(uid) {
 
 export async function loadPerfHud() {
   try {
-    if ((await AsyncStorage.getItem(KEY)) === '1') setPerfHud(true);
+    // The on-screen overlay was removed (26 Nov 2026): clear a saved "on" so no timer runs.
+    await AsyncStorage.removeItem(KEY);
   } catch {
     /* stays off */
   }

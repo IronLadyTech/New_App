@@ -107,8 +107,8 @@ export function lepTaskInsideSteps(task) {
   if (id === 'lep-resume-template-study') {
     return [
       'Watch the resume template session video on this screen.',
-      'Open Sample Resume Template (PDF) to view the format — download from there only if you need a copy.',
-      'Tick the checklist when you are done, then tap Submit checklist.',
+      'Open Sample Resume Template (PDF) and study the format.',
+      'Write your resume in the Iron Lady format, then tap Choose file and upload it (PDF or Word).',
     ];
   }
   if (id === 'lep-day1-promises') {

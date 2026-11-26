@@ -99,8 +99,10 @@ import {
 } from '../../utils/lepChallenges';
 import { useLepChallengeLog } from '../../hooks/useLepChallengeLog';
 import { lepAssignmentBrief } from '../../constants/lepAssignmentCopy';
+import AlumniPracticeNote from '../../components/lep/AlumniPracticeNote';
+import FeedbackFormView from '../../components/program/FeedbackFormView';
+import { prefetchTaskPdf } from '../../utils/fetchTaskPdfBase64';
 import {
-  ALUMNI_PRACTICE_BANNER,
   alumniFlipGainFallback,
   alumniSubmitCta,
   alumniTaskSubtitle,
@@ -281,6 +283,12 @@ function TaskFiles({
     );
   }
   (task.resourceLinks || []).forEach((link) => add(link));
+  // Start downloading in-app PDFs now, so they open at once when she taps them.
+  const inAppKey = items.filter((it) => isInAppDocument(it.url)).map((it) => it.url).join('|');
+  useEffect(() => {
+    if (Platform.OS === 'web' || !inAppKey) return;
+    inAppKey.split('|').forEach((u) => prefetchTaskPdf(u));
+  }, [inAppKey]);
   if (!items.length) return null;
 
   const ack =
@@ -599,6 +607,12 @@ export default function CourseTaskScreen({ route, navigation }) {
 
   const [text, setText] = useState('');
   const [link, setLink] = useState('');
+  // Feedback form inside the task: once it reports "submitted", the task is sent by itself.
+  const [formSent, setFormSent] = useState(false);
+  const submitRef = useRef(null);
+  useEffect(() => {
+    if (formSent && link) submitRef.current?.();
+  }, [formSent, link]);
   const [form, setForm] = useState({});
   const [checked, setChecked] = useState([]);
   /** { uri, name, mimeType, size } chosen for a file / video task — uploaded on Submit. */
@@ -1086,6 +1100,7 @@ export default function CourseTaskScreen({ route, navigation }) {
       setSyncing(false);
     }
   };
+  submitRef.current = submit;
 
   const dateLocked = Boolean(phaseLock) && !hasSubmissionContent(submission) && !done;
   if (!task || ritualsTaskLocked || dateLocked) {
@@ -1143,7 +1158,9 @@ export default function CourseTaskScreen({ route, navigation }) {
     type === TASK_TYPES.TEXT
       ? !!text.trim()
       : type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST
-        ? !!link.trim()
+        ? task?.formUrl
+          ? formSent
+          : !!link.trim()
         : type === TASK_TYPES.CHECKLIST
           ? items.length > 0 && checked.length >= items.length
           : type === TASK_TYPES.WATCH_ONLY
@@ -1286,13 +1303,7 @@ export default function CourseTaskScreen({ route, navigation }) {
         >
           {task.title}
         </ILText>
-        {alumniPractice ? (
-          <WhiteCard style={{ marginTop: 12, borderRadius: 16, padding: 14, backgroundColor: G.pink }}>
-            <ILText role="bodySm" color={G.body} style={{ fontSize: 14, lineHeight: 20 }}>
-              {ALUMNI_PRACTICE_BANNER}
-            </ILText>
-          </WhiteCard>
-        ) : null}
+        {alumniPractice ? <AlumniPracticeNote key={task.id} /> : null}
 
         {!(lepInside?.steps?.length) && task.description ? (
           <ILText role="body" color={G.body} style={{ marginTop: 10, fontSize: 15, lineHeight: 22 }}>
@@ -1320,7 +1331,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                     {lepInside.purpose?.gain ||
                       (alumniPractice
                         ? alumniFlipGainFallback()
-                        : 'Finish this task so you can keep moving through your LEP journey.')}
+                        : 'One more step done on your LEP journey.')}
                   </ILText>
                 </>
               ),
@@ -1417,7 +1428,17 @@ export default function CourseTaskScreen({ route, navigation }) {
           </WhiteCard>
         ) : null}
 
-        {type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST ? (
+        {task?.formUrl ? (
+          <FeedbackFormView
+            url={task.formUrl}
+            profile={profile}
+            done={(done || formSent) && !editing}
+            onDone={() => {
+              setLink(task.formUrl);
+              setFormSent(true);
+            }}
+          />
+        ) : type === TASK_TYPES.LINK || type === TASK_TYPES.RECURRING_POST ? (
           <WhiteCard style={{ marginTop: 18, borderRadius: 18, padding: 14 }}>
             <TextInput
               value={link}
@@ -1703,7 +1724,7 @@ export default function CourseTaskScreen({ route, navigation }) {
                     disabled={syncing}
                     onPress={submit}
                   />
-                ) : (
+                ) : task?.formUrl ? null : (
                   <View style={{ opacity: ready && !syncing ? 1 : 0.45 }}>
                     <RedCta
                       label={syncing ? 'Saving…' : cta}

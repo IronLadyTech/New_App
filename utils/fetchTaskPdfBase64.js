@@ -22,6 +22,8 @@ export async function remoteUrlIsPdf(url) {
 
 export async function fetchTaskPdfBase64(url) {
   const dest = cachePathFor(url);
+  // A background download already running: wait for it instead of starting a second one.
+  if (prefetching.has(url)) await prefetching.get(url);
   const info = await FileSystem.getInfoAsync(dest);
   if (!info.exists) {
     const result = await FileSystem.downloadAsync(url, dest);
@@ -44,4 +46,39 @@ export async function fetchTaskPdfBase64ViaFetch(url) {
   const ct = String(res.headers.get('content-type') || '').toLowerCase();
   if (!ct.includes('pdf')) throw new Error('not_pdf');
   return arrayBufferToBase64(await res.arrayBuffer());
+}
+const prefetching = new Map();
+
+/**
+ * Download a task PDF into the phone's cache in the background (the task screen calls this as
+ * soon as it shows the document), so opening it later skips the download.
+ */
+export function prefetchTaskPdf(url) {
+  if (!url || !/^https?:\/\//i.test(String(url)) || !FileSystem.cacheDirectory) return Promise.resolve();
+  if (prefetching.has(url)) return prefetching.get(url);
+  const job = (async () => {
+    const dest = cachePathFor(url);
+    const info = await FileSystem.getInfoAsync(dest);
+    if (info.exists) return;
+    const tmp = `${dest}.part`;
+    const result = await FileSystem.downloadAsync(url, tmp);
+    if (result.status !== 200) {
+      await FileSystem.deleteAsync(tmp, { idempotent: true });
+      return;
+    }
+    const head = await FileSystem.readAsStringAsync(tmp, {
+      encoding: FileSystem.EncodingType.Base64,
+      length: 8,
+      position: 0,
+    });
+    if (!String(head || '').startsWith('JVBERi')) {
+      await FileSystem.deleteAsync(tmp, { idempotent: true });
+      return;
+    }
+    await FileSystem.moveAsync({ from: tmp, to: dest });
+  })()
+    .catch(() => {})
+    .finally(() => prefetching.delete(url));
+  prefetching.set(url, job);
+  return job;
 }

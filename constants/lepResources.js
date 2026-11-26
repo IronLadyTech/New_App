@@ -80,9 +80,6 @@ export const LEP_RESOURCES = {
     },
   },
   'lep-resume-linkedin': {},
-  'lep-resume-prepare': {
-    resourceLinks: [{ label: 'Sample Resume Template', url: lepDoc('resume-template.pdf') }],
-  },
   'lep-day5-instructions': {
     readingDocument: {
       label: 'Shameless Pitch Preparation Instructions',

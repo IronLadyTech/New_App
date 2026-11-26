@@ -7,12 +7,13 @@ import { G, af } from '../../constants/guestTheme';
 import { IL_FONTS } from '../../constants/ironLadyBrand';
 import { WhiteCard } from '../../screens/lep/LepBits';
 import { useCourseDemo } from '../../context/CourseDemoContext';
-import { dailyMarksForDate } from '../../utils/lepRitualsTracker';
-import { LEP_RITUAL_DAILY_MARKS_MAX } from '../../constants/lepFiveRituals';
+import { dailyMarksForDate, weekDaysMonSun } from '../../utils/lepRitualsTracker';
+import { LEP_RITUAL_DAILY_MARKS_MAX, LEP_RITUAL_WEEKLY_MARKS_MAX } from '../../constants/lepFiveRituals';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
+const WEEK_COL = 44;
 const pad = (n) => String(n).padStart(2, '0');
 const isoOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
@@ -24,7 +25,8 @@ function dayStyle(marks) {
 }
 
 /**
- * The month at a glance: each day shows how many of the five rituals she did (dark = all five).
+ * The month at a glance: each day shows how many of the five rituals she did (dark = all five),
+ * and each row (one Mon–Sun week) ends with that week's score out of 35.
  * Earlier months with the arrows; never past this month.
  */
 export default function LepRitualsMonthCard({ today }) {
@@ -40,21 +42,24 @@ export default function LepRitualsMonthCard({ today }) {
     const cells = [];
     for (let i = 0; i < lead; i += 1) cells.push(null);
     let fullDays = 0;
-    let marks = 0;
-    let countedDays = 0;
     for (let d = 1; d <= daysIn; d += 1) {
       const iso = isoOf(y, m, d);
       const future = iso > today;
       const n = future ? 0 : dailyMarksForDate(demo.isDoneOnDay, iso);
-      if (!future) {
-        countedDays += 1;
-        marks += n;
-        if (n >= LEP_RITUAL_DAILY_MARKS_MAX) fullDays += 1;
-      }
+      if (!future && n >= LEP_RITUAL_DAILY_MARKS_MAX) fullDays += 1;
       cells.push({ d, iso, n, future, isToday: iso === today });
     }
     while (cells.length % 7) cells.push(null);
-    return { y, m, cells, fullDays, marks, countedDays };
+    // One score per row: the whole Mon–Sun week (also its days in the next / last month).
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      const any = cells.slice(i, i + 7).find(Boolean);
+      const days = weekDaysMonSun(any.iso);
+      const started = days[0] <= today;
+      const score = days.filter((iso) => iso <= today).reduce((t, iso) => t + dailyMarksForDate(demo.isDoneOnDay, iso), 0);
+      weeks.push({ started, score, isThisWeek: days.includes(today) });
+    }
+    return { y, m, cells, fullDays, weeks };
     // demo.done: the marks change as she ticks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ty, tm, offset, today, demo.done]);
@@ -85,23 +90,13 @@ export default function LepRitualsMonthCard({ today }) {
         </Pressable>
       </View>
 
-      <View style={{ flexDirection: 'row', marginTop: 12 }}>
-        <View style={{ flex: 1 }}>
-          <ILText role="display" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 26 }}>
-            {view.fullDays}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            days with all five
-          </ILText>
-        </View>
-        <View style={{ flex: 1, alignItems: 'flex-end' }}>
-          <ILText role="display" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 26 }}>
-            {view.marks}
-          </ILText>
-          <ILText role="bodySm" color={G.meta} style={{ fontSize: 12 }}>
-            {`rituals of ${view.countedDays * LEP_RITUAL_DAILY_MARKS_MAX} so far`}
-          </ILText>
-        </View>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 12 }}>
+        <ILText role="display" color={G.ink} style={{ fontFamily: IL_FONTS.display, fontSize: 26 }}>
+          {view.fullDays}
+        </ILText>
+        <ILText role="bodySm" color={G.meta} style={{ fontSize: 13, marginLeft: 8 }}>
+          {view.fullDays === 1 ? 'day with all five rituals this month' : 'days with all five rituals this month'}
+        </ILText>
       </View>
 
       <View style={{ flexDirection: 'row', marginTop: 14 }}>
@@ -112,6 +107,11 @@ export default function LepRitualsMonthCard({ today }) {
             </ILText>
           </View>
         ))}
+        <View style={{ width: WEEK_COL, alignItems: 'flex-end' }}>
+          <ILText role="label" color={G.meta} style={{ fontSize: 10 }}>
+            WEEK
+          </ILText>
+        </View>
       </View>
       {rows.map((row, r) => (
         <View key={r} style={{ flexDirection: 'row', marginTop: 6 }}>
@@ -123,9 +123,9 @@ export default function LepRitualsMonthCard({ today }) {
                 <View
                   accessibilityLabel={`${c.d}: ${c.n} of 5 rituals`}
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: c.future ? 'transparent' : st.bg,
@@ -141,6 +141,18 @@ export default function LepRitualsMonthCard({ today }) {
               </View>
             );
           })}
+          <View style={{ width: WEEK_COL, alignItems: 'flex-end', justifyContent: 'center' }}>
+            {view.weeks[r]?.started ? (
+              <ILText
+                role="label"
+                color={view.weeks[r].isThisWeek ? G.cta : G.ink}
+                style={{ fontSize: 12 }}
+                accessibilityLabel={`Week score ${view.weeks[r].score} of ${LEP_RITUAL_WEEKLY_MARKS_MAX}`}
+              >
+                {`${view.weeks[r].score}/${LEP_RITUAL_WEEKLY_MARKS_MAX}`}
+              </ILText>
+            ) : null}
+          </View>
         </View>
       ))}
 
